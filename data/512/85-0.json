@@ -1,0 +1,36 @@
+{
+    "version": "0.4.15",
+    "flags": {},
+    "shapes": [
+        {
+            "label": "streak",
+            "points": [
+                [
+                    390.6875,
+                    244.125
+                ],
+                [
+                    120.6875,
+                    247.875
+                ],
+                [
+                    120.6875,
+                    266.625
+                ],
+                [
+                    391.9375,
+                    265.375
+                ],
+                [
+                    390.6875,
+                    244.125
+                ]
+            ],
+            "shape_type": "polygon"
+        }
+    ],
+    "imagePath": "85-0.jpg",
+    "imageData": null,
+    "imageHeight": 512,
+    "imageWidth": 512
+}
