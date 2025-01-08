@@ -1,0 +1,7 @@
+argparse
+numpy
+opencv-python
+sahi
+torch
+tqdm
+ultralytics

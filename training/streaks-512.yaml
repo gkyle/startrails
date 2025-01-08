@@ -1,0 +1,7 @@
+path: /home/kyle/share/projects/startrails/streaks training images/512
+train: 'train'
+val: 'validation'
+ 
+nc: 1
+names: 
+  0: 'streak'
