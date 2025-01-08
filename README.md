@@ -12,7 +12,7 @@ It can be difficult and tedious to remove satellite streaks from star trail imag
 
 Stacked Star Trail Image             |  Stacked Star Trail Image w/ Satellite Streaks Removed
 :-------------------------:|:-------------------------:
-!<img src="https://github.com/gkyle/startrails/blob/main/docs/images/example_stacked_image.jpg?raw=true" alt="A stacked star trail image based on 200 long exposure photos" width="400"/>  |  !<img src="https://github.com/gkyle/startrails/blob/main/docs/images/example_stacked_image_streaks_removed.jpg?raw=true" alt="A stacked star trail image with satellite streaks removed" width="400"/>
+<img src="https://github.com/gkyle/startrails/blob/main/docs/images/example_stacked_image.jpg?raw=true" alt="A stacked star trail image based on 200 long exposure photos" width="400"/>  |  <img src="https://github.com/gkyle/startrails/blob/main/docs/images/example_stacked_image_streaks_removed.jpg?raw=true" alt="A stacked star trail image with satellite streaks removed" width="400"/>
 
 ## Usage
 
