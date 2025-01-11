@@ -1,7 +1,10 @@
 argparse
+imagecodecs
 numpy
+cupy
 opencv-python
 sahi
+scikit-image
 torch
 tqdm
 ultralytics

@@ -1,4 +1,4 @@
-path: /home/kyle/share/projects/startrails/streaks training images/512
+path: ../code/startrails/data/512
 train: 'train'
 val: 'validation'
  
