@@ -25,9 +25,9 @@ except ModuleNotFoundError:
 
 STACK_BATCH_SIZE = 4
 DETECT_BATCH_SIZE = 2
-# If using GPU and cupy, set new defaults.
+# If using GPU and cupy, set more aggressive defaults.
 if USE_GPU_IF_AVAILABLE and hasattr(np, 'asnumpy') and is_torch_cuda_available():
-    STACK_BATCH_SIZE = 64 # This makes a big difference with cupy.
+    STACK_BATCH_SIZE = 16 # Can go to 64 or higher, but requires a lot of VRAM.
     DETECT_BATCH_SIZE = 8
 
 EXTENSIONS = [".jpg", ".tif", ".jpeg", ".tiff"]
@@ -212,7 +212,7 @@ class BlackoutTask(Task):
                 mask = np.repeat(mask[:, :, np.newaxis], 3, axis=2)
                 img = img * mask
 
-            imwrite("{}/{}".format(PREPROCESS_DIR, os.path.basename(self.fileName)), img)
+            imwrite("{}/{}".format(PREPROCESS_DIR, os.path.basename(self.fileName)), img, convertBGR=True)
             self.callback(self)
         except Exception as e:
             print(e)
