@@ -36,7 +36,7 @@ SAHI_SLICE_SIZE = 512
 SAHI_OVERLAP = 0.2
 PREPROCESS_DIR = ".preprocess"
 
-YOLO11N_MODEL_PATH = "../models/yolo11n-obb.pt"
+YOLO11N_MODEL_PATH = "./models/yolo11n-obb.pt"
 STREAKS_MODEL_PATH = "./models/streaks.pt"
 
 class Stacker:
