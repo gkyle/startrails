@@ -1,32 +1,66 @@
-# Startrails Stacker
+# StarStack AI
 
 ## Overview
 
-Startrails Stacker generates star trail images with a key feature: Unwanted satellite streaks are removed.
+StarStack AI is an opensource tool for creating star trail images that automates the laborious process using Machine Learning.
 
 These days, it's hard to take an image of the night sky without capturing satellite streaks. Satellite streaks are lines that appear in night sky images as a result of light reflecting off satellites or space debris. These streaks are caused when a satellite crosses the sky during long-exposure photography, leaving a visible path in the captured image.
-
-It can be difficult and tedious to remove satellite streaks from star trail images. If we try to remove streaks from a stacked image, photo editing software does a poor job preserving the natural arc of star trails. If we try to remove them from the inidividual frames that are used in the stack, the process is tedious because stacks are often composed of 100+ images.
 
 ## Examples
 
 Stacked Star Trail Image             |  Stacked Star Trail Image<br>w/ Satellite Streaks Removed
 :-------------------------:|:-------------------------:
-<img src="https://github.com/gkyle/startrails/blob/main/docs/images/example_stacked_image.jpg?raw=true" alt="A stacked star trail image based on 200 long exposure photos" width="400"/>  |  <img src="https://github.com/gkyle/startrails/blob/main/docs/images/example_stacked_image_streaks_removed.jpg?raw=true" alt="A stacked star trail image with satellite streaks removed" width="400"/>
+<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/example_stack_with_streaks.jpg" alt="A stacked star trail image based on 250 long exposure photos" width="100%"/>  |  <img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/example_stack_with%20streaks_removed_and%20gaps_filled.jpg" alt="A stacked star trail image with satellite streaks removed" width="100%"/>
+
+It can be difficult and tedious to remove satellite streaks from star trail images. If we try to remove streaks from a stacked image, photo editing software does a poor job preserving the natural arc of star trails. If we try to remove them from the inidividual frames that are used in the stack, the process is tedious because stacks are often composed of 100s of images so there may be 1000s of instances of streaks.
+
+## Features and Workflow
+
+#### Detect Streaks
+
+The model will automatically flag streaks, indicated with green boxes.
+
+<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_auto_detect_streaks.png" alt="Auto-detect streaks" width="100%"/>
+
+#### Stack images
+
+Produce a composite image by taking the lightest pixels from each input image.
+
+<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_stack.png" alt="Auto-detect streaks" width="100%"/>
+
+#### Manually flag unwanted regions
+
+The streak detection model isn't perfect. We may need to manually flag additional streaks or other unwanted areas from images. When viewing a stacked image, Shift-Click will search for the input image containing the brightest pixels at that location. We flag an unwanted region by drawing a polygon (Right-Click points outlining the region). The manually flagged region is indicated in blue.
+
+<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_manually_flag_streaks.png" width="100%"/>
+
+When all of the remaining streaks have been flagged, create a new stack.
+
+#### Fill Gaps
+
+Finally, we may notice some gaps in the star trails. These may be due to removing streaks or missing frames.
+
+Gaps             |  Gaps Filled
+:-------------------------:|:-------------------------:
+<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_fillgaps_A.png" width="100%"/>  |  <img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_fillgaps_B.png" alt="A stacked star trail image with satellite streaks removed" width="100%"/>
+
+#### Complete
+
+<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_complete.png" width="100%"/>
 
 ## Usage
+
+Clone this repo.
+
+`cd src`
 
 `pip install -r requirements.txt`
 
 Generate a star trail stack:
 
-`python stacker.py path_to_my_images`
+`python main.py`
 
-Generate a star trail stack with satelite streaks removed
-
-`python stacker.py path_to_my_images --removeStreaks`
-
-Removing streaks is not a fast operation. It can take a few seconds per image, so removing streaks from a stack of hundreds of images will take several minutes.
+Note: Removing streaks is not a fast operation. It can take a few seconds per image, so removing streaks from a stack of hundreds of images will take several minutes.
 
 ## How does it work?
 
@@ -44,4 +78,4 @@ Streak detection is performed using a fine-tuned [YOLO](https://docs.ultralytics
 
 Yes and yes. I've included the [dataset](https://github.com/gkyle/startrails/tree/main/data/512) that I used for training and notebooks for [working with labels and training here](https://github.com/gkyle/startrails/tree/main/training). Please feel free to make your own models.
 
-I would like to improve the diversity of the dataset in this repo and welcome contributions. Only the 512x512 crops are needed.
+I would like to improve the diversity of the dataset in this repo and welcome contributions. Only the 512x512 crops are needed. You can export your manually-flagged streaks directly from the app.
