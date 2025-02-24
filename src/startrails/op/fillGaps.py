@@ -16,7 +16,7 @@ class FillGaps(Observable):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = UNet(in_channels=3, out_channels=4).to(self.device)
-        self.model.load_state_dict(torch.load("../models/fillGaps/gapfill.pth",
+        self.model.load_state_dict(torch.load("../models/fillGaps/gapfill.pt",
                                    map_location=self.device, weights_only=True))
         self.model.eval()
 

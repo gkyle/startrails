@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class DoubleConv(nn.Module):
@@ -24,22 +23,22 @@ class UNet(nn.Module):
         super(UNet, self).__init__()
 
         # Encoder
-        self.enc1 = DoubleConv(in_channels, 64)
-        self.enc2 = DoubleConv(64, 128)
-        self.enc3 = DoubleConv(128, 256)
-        self.enc4 = DoubleConv(256, 512)
+        self.enc1 = DoubleConv(in_channels, 32)
+        self.enc2 = DoubleConv(32, 64)
+        self.enc3 = DoubleConv(64, 128)
+        self.enc4 = DoubleConv(128, 256)
 
         # Bottleneck
-        self.bottleneck = DoubleConv(512, 1024)
+        self.bottleneck = DoubleConv(256, 512)
 
         # Decoder
-        self.dec4 = DoubleConv(1024 + 512, 512)
-        self.dec3 = DoubleConv(512 + 256, 256)
-        self.dec2 = DoubleConv(256 + 128, 128)
-        self.dec1 = DoubleConv(128 + 64, 64)
+        self.dec4 = DoubleConv(512 + 256, 256)
+        self.dec3 = DoubleConv(256 + 128, 128)
+        self.dec2 = DoubleConv(128 + 64, 64)
+        self.dec1 = DoubleConv(64 + 32, 32)
 
         # Output layers
-        self.final_conv = nn.Conv2d(64, out_channels, kernel_size=1)  # 4 output channels
+        self.final_conv = nn.Conv2d(32, out_channels, kernel_size=1)  # 4 output channels
 
         # Pooling and upsampling layers
         self.maxpool = nn.MaxPool2d(2)
