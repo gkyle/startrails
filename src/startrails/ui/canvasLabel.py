@@ -128,8 +128,8 @@ class CanvasLabel(QLabel):
     def mousePressEvent(self, ev: QMouseEvent) -> None:
         super().mousePressEvent(ev)
         if ev.button() == Qt.LeftButton:
-            self.dragX = ev.x() - self.posX
-            self.dragY = ev.y() - self.posY
+            self.dragX = ev.position().x() - self.posX
+            self.dragY = ev.position().y() - self.posY
 
             # TODO: Is this a reasonable way to end a polygon? Dblclick instead?
             if isinstance(self.file, InputFile):
@@ -143,8 +143,8 @@ class CanvasLabel(QLabel):
         if isinstance(self.file, OutputFile):
             if ev.modifiers() == Qt.ShiftModifier:
                 self.signals.findBrightestFrame.emit(self.file,
-                                                     int((ev.x() - self.posX) / self.zoom_factor / self.ratio),
-                                                     int((ev.y() - self.posY) / self.zoom_factor / self.ratio))
+                                                     int((ev.position().x() - self.posX) / self.zoom_factor / self.ratio),
+                                                     int((ev.position().y() - self.posY) / self.zoom_factor / self.ratio))
 
         # Check if the mouse is over any mask
         if isinstance(self.file, InputFile):
@@ -152,14 +152,14 @@ class CanvasLabel(QLabel):
                 return
 
             if ev.modifiers() == Qt.ShiftModifier:
-                idx = self.checkMaskContains(self.file.streaksMasks, ev.x(), ev.y())
+                idx = self.checkMaskContains(self.file.streaksMasks, ev.position().x(), ev.position().y())
                 if idx is not None:
                     self.file.streaksMasks.pop(idx)
                     self.repaint()
                     if len(self.file.streaksMasks) == 0:
                         self.signals.updateFile.emit(self.file)
                 else:
-                    idx = self.checkMaskContains(self.file.streaksManualMasks, ev.x(), ev.y())
+                    idx = self.checkMaskContains(self.file.streaksManualMasks, ev.position().x(), ev.position().y())
                     if idx is not None:
                         self.file.streaksManualMasks.pop(idx)
                         self.repaint()
@@ -181,15 +181,15 @@ class CanvasLabel(QLabel):
                     # mask
                     path = QPainterPath()
                     path.addPolygon(polygon)
-                    if not self.draggingNub and path.contains(QPointF(ev.x(), ev.y())):
+                    if not self.draggingNub and path.contains(QPointF(ev.position().x(), ev.position().y())):
                         self.selectedMask = (mask, [point.copy() for point in mask])
                         self.draggingMask = True
                         break
 
     def mouseMoveEvent(self, ev: QMouseEvent) -> None:
         super().mouseMoveEvent(ev)
-        self.mouseX = ev.x()
-        self.mouseY = ev.y()
+        self.mouseX = ev.position().x()
+        self.mouseY = ev.position().y()
         if ev.buttons() == Qt.LeftButton:
             if self.draggingNub and self.selectedNub:
                 if self.renderWidth is None:
@@ -208,8 +208,8 @@ class CanvasLabel(QLabel):
                     self.selectedMask[0][i][0] = point[0] + dx
                     self.selectedMask[0][i][1] = point[1] + dy
             else:
-                self.posX = ev.x() - self.dragX
-                self.posY = ev.y() - self.dragY
+                self.posX = ev.position().x() - self.dragX
+                self.posY = ev.position().y() - self.dragY
 
         self.repaint()
 
@@ -225,8 +225,8 @@ class CanvasLabel(QLabel):
 
         if ev.button() == Qt.RightButton:
             if isinstance(self.file, InputFile):
-                self.file.activeMaskPoints.append([(ev.x() - self.posX) / self.zoom_factor / self.ratio,
-                                                   (ev.y() - self.posY) / self.zoom_factor / self.ratio])
+                self.file.activeMaskPoints.append([(ev.position().x() - self.posX) / self.zoom_factor / self.ratio,
+                                                   (ev.position().y() - self.posY) / self.zoom_factor / self.ratio])
                 self.repaint()
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
