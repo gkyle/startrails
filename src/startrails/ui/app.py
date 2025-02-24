@@ -20,7 +20,10 @@ class App:
     stateFile = "app.json"
 
     def __init__(self):
-        torch.cuda.init()
+        try:
+            torch.cuda.init()
+        except Exception as e:
+            pass
         self.loadAppState()
         self.loadProject(self.state["projectFile"])
         self.loadAppState()
@@ -82,10 +85,10 @@ class App:
         stackImages.removeObserver(progressBar)
         return file
 
-    def doDetectStreaks(self, progressBar):
-        detectStreaks = DetectStreaks()
+    def doDetectStreaks(self, progressBar, useGPU, confThreshold, mergeMethod, mergeThreshold):
+        detectStreaks = DetectStreaks(useGPU)
         detectStreaks.addObserver(progressBar)
-        detectStreaks.detectStreaks(self.getInputFileList())
+        detectStreaks.detectStreaks(self.getInputFileList(), confThreshold, mergeMethod, mergeThreshold)
         detectStreaks.removeObserver(progressBar)
 
     def doFindBrightFrame(self, x, y, progressBar):
@@ -122,9 +125,12 @@ class App:
         return fileFillGaps
 
     def getGPUStats(self):
-        if torch.cuda.is_available():
-            gpu = GPUtil.getGPUs()
-            return int(to_GB(gpu[0].memoryFree)), int(to_GB(gpu[0].memoryTotal))
+        try:
+            if torch.cuda.is_available():
+                gpu = GPUtil.getGPUs()
+                return int(to_GB(gpu[0].memoryFree)), int(to_GB(gpu[0].memoryTotal))
+        except Exception as e:
+            pass
         return None
 
     def loadAppState(self):

@@ -1,45 +1,18 @@
 import os
-from tqdm import tqdm
 from PySide6.QtGui import (QPixmap, QGuiApplication)
 from PySide6.QtCore import QThreadPool, QTimer, QPoint
-from PySide6.QtWidgets import QWidget, QPushButton, QFileDialog, QVBoxLayout, QMainWindow, QDialog, QLineEdit, QHBoxLayout, QProgressBar, QLabel
+from PySide6.QtWidgets import QWidget, QFileDialog, QMainWindow, QDialog
 from functools import partial
 
 from startrails.ui.app import App
+from startrails.ui.dialog_detectStreaks import DetectStreaksDialog
+from startrails.ui.progress import ProgressBarUpdater
 from startrails.ui.signals import AsyncWorker, getSignals
 from startrails.ui.filestrip import FileButton, FileStrip
 from startrails.ui.dialog_stackImages import FadeRadio, StackImagesDialog, StreaksRadio
 from startrails.ui.ui_interface import Ui_MainWindow
 from startrails.ui.canvasLabel import *
 from startrails.ui.file import File, InputFile, OutputFile
-
-
-class ProgressBarUpdater(tqdm):
-    def __init__(self, qpbar: QProgressBar, qlabel: QLabel, *args, suppressStdout=True, **kwargs):
-        tqdm.__init__(self, *args, **kwargs)
-        self.qpbar = qpbar
-        self.qlabel = qlabel
-        self.suppressStdout = suppressStdout
-        self.signals = getSignals()
-
-        self.total = None
-        if 'total' in kwargs:
-            self.total = kwargs['total']
-        self.desc = None
-        if 'desc' in kwargs:
-            self.desc = kwargs['desc']
-            self.qlabel.setText(self.desc)
-
-    def update(self, n=1):
-        super().update(n)
-        self.qlabel.setText(self.desc)
-        self.qpbar.setValue(self.n / self.total * 100)
-        f = self.format_meter(self.n, self.total, self._time() - self.start_t,
-                              bar_format="{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}{postfix}]")
-        self.qpbar.setFormat(f"{f}")
-
-    def tick(self, *args):
-        self.signals.incrementProgress.emit(self, *args)
 
 
 class MainWindow(QMainWindow):
@@ -104,7 +77,7 @@ class Ui_AppWindow(Ui_MainWindow):
     def setupUi(self, MainWindow):
         super().setupUi(MainWindow)
 
-        MainWindow.setWindowTitle("StarStackAI")
+        MainWindow.setWindowTitle("StarStack AI")
 
         # Set window size
         screen_resolution = QGuiApplication.primaryScreen().geometry()
@@ -126,7 +99,7 @@ class Ui_AppWindow(Ui_MainWindow):
         self.pushButton_openProject.clicked.connect(self.doOpenProject)
         self.pushButton_selectFiles.clicked.connect(self.selectInputFiles)
         self.pushButton_stackImages.clicked.connect(partial(self.doStack))
-        self.pushButton_removeStreaks.clicked.connect(self.doRemoveStreaks)
+        self.pushButton_removeStreaks.clicked.connect(self.doDetectStreaks)
         self.pushButton_exportMasks.clicked.connect(self.doExportMasks)
         self.pushButton_exportTraining.clicked.connect(self.doExportTrainingStreaks)
         self.pushButton_fillGaps.clicked.connect(self.doFillGaps)
@@ -298,16 +271,25 @@ class Ui_AppWindow(Ui_MainWindow):
         worker = AsyncWorker(partial(f, folderName))
         self.op_queue.start(worker)
 
-    def doRemoveStreaks(self):
-        def f(fileList):
-            total = len(list(fileList))
-            progressUpdater = ProgressBarUpdater(
-                self.progressBar, self.label_progressBar, total=total, desc="Removing Streaks:")
-            self.app.doDetectStreaks(progressUpdater.tick)
-            self.updateReadyStates()
+    def doDetectStreaks(self):
+        dialog = DetectStreaksDialog(self.app)
+        result = dialog.exec()
+        if result == QDialog.Accepted:
+            mergeMethod = dialog.ui.getMergeMethod()
+            useGPU = dialog.ui.getUseGPU()
+            confThreshold = float(dialog.ui.lineEdit_confThreshold.text())
+            mergeThreshold = float(dialog.ui.lineEdit_mergeThreshold.text())
 
-        worker = AsyncWorker(partial(f, self.app.getInputFileList()))
-        self.op_queue.start(worker)
+            def f(fileList):
+                total = len(list(fileList))
+                progressUpdater = ProgressBarUpdater(
+                    self.progressBar, self.label_progressBar, total=total, desc="Removing Streaks:")
+                self.app.doDetectStreaks(progressUpdater.tick, useGPU=useGPU, confThreshold=confThreshold,
+                                         mergeThreshold=mergeThreshold, mergeMethod=mergeMethod)
+                self.updateReadyStates()
+
+            worker = AsyncWorker(partial(f, self.app.getInputFileList()))
+            self.op_queue.start(worker)
 
     def observeResizeEvent(self, event):
         self.persistentSettings["windowSize"] = event.size()

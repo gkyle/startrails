@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import traceback
 from typing import List
 import cv2
 from skimage.draw import polygon
@@ -17,87 +18,90 @@ from startrails.ui.file import InputFile
 
 USE_GPU_IF_AVAILABLE = True
 
-SAHI_CONFIDENCE_THRESHOLD = 0.3
-SAHI_OVERLAP = 0.2
-
+PATCH_OVERLAP = 0.2
 STREAKS_MODEL_PATH = "../models/detectStreaks/streaks.pt"
+STREAKS_MODEL_OPENVINO_PATH = "../models/detectStreaks/streaks_openvino_model/"
 DETECT_BATCH_SIZE = 2
 ROI_SIZE = 512
 
 
 class DetectStreaks(Observable):
-    def __init__(self):
+    def __init__(self, useGPU=True):
         super().__init__()
-        pass
+        self.device = 'cuda:0' if USE_GPU_IF_AVAILABLE and useGPU and is_torch_cuda_available() else 'cpu'
 
-    def detectStreaks(self, srcFiles: List[InputFile]):
-        model = YOLO(STREAKS_MODEL_PATH, verbose=False)
+    def detectStreaks(self, srcFiles: List[InputFile], confThreshold, mergeMethod, mergeThreshold):
+        # Prefer openvino/fp16 model variant if device is cpu
+        if self.device == 'cpu':
+            model = YOLO(STREAKS_MODEL_OPENVINO_PATH, task="obb")
+        else:
+            model = YOLO(STREAKS_MODEL_PATH, verbose=False)
 
         def processFile(file: InputFile):
-            return self.detectStreaksInImage(model, file)
+            return self.detectStreaksInImage(model, file, confThreshold, mergeMethod, mergeThreshold)
 
         total = len(srcFiles)
         completed = 0
-        showIncrement = total // 20
+        showIncrement = total // 20 + 1
         jobLabel = "removeStreaks"
         self.startJob(jobLabel, len(srcFiles))
         with ThreadPoolExecutor(max_workers=DETECT_BATCH_SIZE) as executor:
             futures = {executor.submit(processFile, file): file for file in srcFiles}
             for future in as_completed(futures):
-                try:
-                    result = future.result()
-                    if completed % showIncrement == 0:
-                        self.updateJob(jobLabel, 1, result)
-                    else:
-                        self.updateJob(jobLabel, 1, None)
-                    completed += 1
-
-                except Exception as e:
-                    print(f"Error retrieving result: {e}")
+                result = future.result()
+                if completed % showIncrement == 0:
+                    self.updateJob(jobLabel, 1, result)
+                else:
+                    self.updateJob(jobLabel, 1, None)
+                completed += 1
 
     # This is faster than SAHI get_sliced_prediction because:
     # - Uses YOLO model batched processing
     # - Does not build / use expensive masks when not needed
-    def detectStreaksInImage(self, model, file: InputFile, postProcessMethod="NMS", postProcessMetric="IOU") -> InputFile:
-        img = cv2.imread(file.path)
 
-        # sliced predictions
-        sliceImageResult = getSlices(img, ROI_SIZE, ROI_SIZE, SAHI_OVERLAP, SAHI_OVERLAP)
-        images = []
-        for image in sliceImageResult.sliced_image_list:
-            images.append(image.image)
+    def detectStreaksInImage(self, model, file: InputFile, confThreshold: float, postProcessMethod: str, mergeThreshold: float) -> InputFile:
+        try:
+            img = cv2.imread(file.path)
 
-        yoloBatchResults = model(images, conf=SAHI_CONFIDENCE_THRESHOLD,
-                                 device='cuda:0' if USE_GPU_IF_AVAILABLE and is_torch_cuda_available() else 'cpu',
-                                 verbose=False)
-        sahiPredictions = []
-        objectPredictions = []
-        for i in range(len(sliceImageResult.sliced_image_list)):
-            sahiPrediction = yolo2sahi(yoloBatchResults[i], np.shape(
-                img), sliceImageResult.starting_pixels[i], postProcessMethod)
-            if not sahiPrediction is None and len(sahiPrediction) > 0:
-                sahiPredictions += sahiPrediction
+            # sliced predictions
+            sliceImageResult = getSlices(img, ROI_SIZE, ROI_SIZE, PATCH_OVERLAP, PATCH_OVERLAP)
+            images = []
+            for image in sliceImageResult.sliced_image_list:
+                images.append(image.image)
 
-        for sahiPrediction in sahiPredictions:
-            shiftedPrediction = sahiPrediction.get_shifted_object_prediction()
-            shiftedPrediction.obb = sahiPrediction.obb
-            objectPredictions.append(shiftedPrediction)
+            yoloBatchResults = model(images, conf=confThreshold, batch=len(images),
+                                     imgsz=ROI_SIZE, device=self.device, verbose=False)
+            sahiPredictions = []
+            objectPredictions = []
+            for i in range(len(sliceImageResult.sliced_image_list)):
+                sahiPrediction = yolo2sahi(yoloBatchResults[i], np.shape(
+                    img), sliceImageResult.starting_pixels[i], postProcessMethod)
+                if not sahiPrediction is None and len(sahiPrediction) > 0:
+                    sahiPredictions += sahiPrediction
 
-        # standard prediction
-        yoloStdResult = model([img], verbose=False)
-        sahiStdResult = yolo2sahi(yoloStdResult[0], np.shape(img), [0, 0], postProcessMethod)
-        objectPredictions += sahiStdResult
+            for sahiPrediction in sahiPredictions:
+                shiftedPrediction = sahiPrediction.get_shifted_object_prediction()
+                shiftedPrediction.obb = sahiPrediction.obb
+                objectPredictions.append(shiftedPrediction)
 
-        if postProcessMethod == "GREEDYNMM":
-            postprocess = GreedyNMMPostprocess(0.5, postProcessMetric, True)
-        elif postProcessMethod == "NMS":
-            postprocess = NMSPostprocess(0.5, postProcessMetric, True)
-        elif postProcessMethod == "NMM":
-            postprocess = NMMPostprocess(0.5, postProcessMetric, True)
+            # standard prediction
+            yoloStdResult = model([img], conf=confThreshold, device=self.device, verbose=False)
+            sahiStdResult = yolo2sahi(yoloStdResult[0], np.shape(img), [0, 0], postProcessMethod)
+            objectPredictions += sahiStdResult
 
-        # combine
-        processedObjectPredictions = postprocess(objectPredictions)
-        file.streaksMasks = processResults(processedObjectPredictions)
+            if postProcessMethod == "GREEDYNMM":
+                postprocess = GreedyNMMPostprocess(mergeThreshold, "IOS", True)
+            elif postProcessMethod == "NMS":
+                postprocess = NMSPostprocess(mergeThreshold, "IOU", True)
+            elif postProcessMethod == "NMM":
+                postprocess = NMMPostprocess(mergeThreshold, "IOS", True)
+
+            # combine
+            processedObjectPredictions = postprocess(objectPredictions)
+            file.streaksMasks = processResults(processedObjectPredictions)
+
+        except Exception as e:
+            traceback.print_exc()
 
         return file
 
@@ -174,17 +178,16 @@ def processResults(results: List[ObjectPrediction]):
     masks = []
     if len(results) > 0:
         for prediction in results:
-            if prediction.score.is_greater_than_threshold(SAHI_CONFIDENCE_THRESHOLD):
-                if hasattr(prediction, 'obb'):
-                    masks.append(np.array(prediction.obb).astype(int))
-                elif hasattr(prediction, 'mask') and prediction.mask is not None:
-                    imask = prediction.mask.bool_mask.astype(dtype=np.uint8)[:, :, np.newaxis]
-                    contours, _ = cv2.findContours(imask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                    for contour in contours:
-                        rect = cv2.minAreaRect(contour)
-                        box = cv2.boxPoints(rect).astype(int)
-                        masks.append(box)
-                else:
-                    print("can't process prediction")
+            if hasattr(prediction, 'obb'):
+                masks.append(np.array(prediction.obb).astype(int))
+            elif hasattr(prediction, 'mask') and prediction.mask is not None:
+                imask = prediction.mask.bool_mask.astype(dtype=np.uint8)[:, :, np.newaxis]
+                contours, _ = cv2.findContours(imask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                for contour in contours:
+                    rect = cv2.minAreaRect(contour)
+                    box = cv2.boxPoints(rect).astype(int)
+                    masks.append(box)
+            else:
+                print("can't process prediction")
 
     return masks

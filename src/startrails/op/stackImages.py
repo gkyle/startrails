@@ -145,11 +145,11 @@ class StackImages(Observable):
 
         availableBytes = 0
         if useGPU:
-            TARGET_UTILIZATION = 0.6
-            mempool = cupy.get_default_memory_pool()
-            mempool.free_all_blocks()
-
             try:
+                TARGET_UTILIZATION = 0.6
+                mempool = cupy.get_default_memory_pool()
+                mempool.free_all_blocks()
+
                 gpu = GPUtil.getGPUs()
                 availableBytes = gpu[0].memoryFree * 1024 * 1024  # MB -> Bytes
             except Exception as e:
