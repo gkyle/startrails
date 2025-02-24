@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfaceVJcVsa.ui'
+## Form generated from reading UI file 'interfacewmUbfW.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.4.2
 ##
@@ -131,8 +131,8 @@ class Ui_MainWindow(object):
 
         self.frame_4 = QFrame(self.toolbar)
         self.frame_4.setObjectName(u"frame_4")
-        self.frame_4.setMinimumSize(QSize(270, 0))
-        self.frame_4.setMaximumSize(QSize(270, 16777215))
+        self.frame_4.setMinimumSize(QSize(274, 0))
+        self.frame_4.setMaximumSize(QSize(274, 16777215))
         self.frame_4.setFrameShape(QFrame.NoFrame)
         self.frame_4.setFrameShadow(QFrame.Raised)
         self.horizontalLayout_7 = QHBoxLayout(self.frame_4)
@@ -183,7 +183,7 @@ class Ui_MainWindow(object):
 
         self.frame_right = QFrame(self.frame_app)
         self.frame_right.setObjectName(u"frame_right")
-        self.frame_right.setMaximumSize(QSize(300, 16777215))
+        self.frame_right.setMaximumSize(QSize(274, 16777215))
         self.frame_right.setFrameShape(QFrame.StyledPanel)
         self.frame_right.setFrameShadow(QFrame.Raised)
         self.verticalLayout_2 = QVBoxLayout(self.frame_right)
@@ -241,13 +241,17 @@ class Ui_MainWindow(object):
         self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
         self.pushButton_newProject = QPushButton(self.frame_5)
         self.pushButton_newProject.setObjectName(u"pushButton_newProject")
-        self.pushButton_newProject.setMinimumSize(QSize(124, 124))
-        self.pushButton_newProject.setMaximumSize(QSize(124, 124))
+        self.pushButton_newProject.setMinimumSize(QSize(124, 110))
+        self.pushButton_newProject.setMaximumSize(QSize(124, 110))
+        font5 = QFont()
+        font5.setPointSize(11)
+        font5.setBold(False)
+        self.pushButton_newProject.setFont(font5)
         self.pushButton_newProject.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/folder-plus.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 20px;\n"
+"padding-top: 14px;\n"
 "padding-bottom: 15px;\n"
 "background-origin: content")
         self.pushButton_newProject.setIconSize(QSize(120, 120))
@@ -258,13 +262,13 @@ class Ui_MainWindow(object):
 
         self.pushButton_openProject = QPushButton(self.frame_5)
         self.pushButton_openProject.setObjectName(u"pushButton_openProject")
-        self.pushButton_openProject.setMinimumSize(QSize(124, 124))
-        self.pushButton_openProject.setMaximumSize(QSize(124, 124))
+        self.pushButton_openProject.setMinimumSize(QSize(124, 110))
+        self.pushButton_openProject.setMaximumSize(QSize(124, 110))
         self.pushButton_openProject.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/folder.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 20px;\n"
+"padding-top: 14px;\n"
 "padding-bottom: 15px;\n"
 "background-origin: content")
 
@@ -291,17 +295,14 @@ class Ui_MainWindow(object):
         self.pushButton_stackImages = QPushButton(self.frame_7)
         self.pushButton_stackImages.setObjectName(u"pushButton_stackImages")
         self.pushButton_stackImages.setEnabled(False)
-        self.pushButton_stackImages.setMinimumSize(QSize(124, 124))
-        self.pushButton_stackImages.setMaximumSize(QSize(124, 124))
-        font5 = QFont()
-        font5.setPointSize(11)
-        font5.setBold(False)
+        self.pushButton_stackImages.setMinimumSize(QSize(124, 110))
+        self.pushButton_stackImages.setMaximumSize(QSize(124, 110))
         self.pushButton_stackImages.setFont(font5)
         self.pushButton_stackImages.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/layers.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 20px;\n"
+"padding-top: 14px;\n"
 "padding-bottom: 15px;\n"
 "background-origin: content")
         self.pushButton_stackImages.setIconSize(QSize(64, 64))
@@ -310,14 +311,14 @@ class Ui_MainWindow(object):
 
         self.pushButton_selectFiles = QPushButton(self.frame_7)
         self.pushButton_selectFiles.setObjectName(u"pushButton_selectFiles")
-        self.pushButton_selectFiles.setMinimumSize(QSize(124, 124))
-        self.pushButton_selectFiles.setMaximumSize(QSize(124, 124))
+        self.pushButton_selectFiles.setMinimumSize(QSize(124, 110))
+        self.pushButton_selectFiles.setMaximumSize(QSize(124, 110))
         self.pushButton_selectFiles.setFont(font5)
         self.pushButton_selectFiles.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/star.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 20px;\n"
+"padding-top: 14px;\n"
 "padding-bottom: 15px;\n"
 "background-origin: content")
 
@@ -344,14 +345,14 @@ class Ui_MainWindow(object):
         self.pushButton_removeStreaks = QPushButton(self.frame_8)
         self.pushButton_removeStreaks.setObjectName(u"pushButton_removeStreaks")
         self.pushButton_removeStreaks.setEnabled(False)
-        self.pushButton_removeStreaks.setMinimumSize(QSize(124, 124))
-        self.pushButton_removeStreaks.setMaximumSize(QSize(124, 124))
+        self.pushButton_removeStreaks.setMinimumSize(QSize(124, 110))
+        self.pushButton_removeStreaks.setMaximumSize(QSize(124, 110))
         self.pushButton_removeStreaks.setFont(font5)
         self.pushButton_removeStreaks.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/edit-3.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 20px;\n"
+"padding-top: 14px;\n"
 "padding-bottom: 15px;\n"
 "background-origin: content")
 
@@ -359,13 +360,13 @@ class Ui_MainWindow(object):
 
         self.pushButton_exportMasks = QPushButton(self.frame_8)
         self.pushButton_exportMasks.setObjectName(u"pushButton_exportMasks")
-        self.pushButton_exportMasks.setMinimumSize(QSize(124, 124))
-        self.pushButton_exportMasks.setMaximumSize(QSize(124, 124))
+        self.pushButton_exportMasks.setMinimumSize(QSize(124, 110))
+        self.pushButton_exportMasks.setMaximumSize(QSize(124, 110))
         self.pushButton_exportMasks.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/external-link.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 20px;\n"
+"padding-top: 14px;\n"
 "padding-bottom: 15px;\n"
 "background-origin: content")
 
@@ -373,8 +374,8 @@ class Ui_MainWindow(object):
 
         self.pushButton_exportTraining = QPushButton(self.frame_8)
         self.pushButton_exportTraining.setObjectName(u"pushButton_exportTraining")
-        self.pushButton_exportTraining.setMinimumSize(QSize(124, 124))
-        self.pushButton_exportTraining.setMaximumSize(QSize(124, 124))
+        self.pushButton_exportTraining.setMinimumSize(QSize(124, 110))
+        self.pushButton_exportTraining.setMaximumSize(QSize(124, 110))
         font6 = QFont()
         font6.setBold(False)
         self.pushButton_exportTraining.setFont(font6)
@@ -382,7 +383,7 @@ class Ui_MainWindow(object):
 "background-position: center top;\n"
 "background-image: url(:icons48/external-link.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 20px;\n"
+"padding-top: 14px;\n"
 "padding-bottom: 15px;\n"
 "background-origin: content")
 
@@ -409,14 +410,14 @@ class Ui_MainWindow(object):
         self.pushButton_fillGaps = QPushButton(self.frame_9)
         self.pushButton_fillGaps.setObjectName(u"pushButton_fillGaps")
         self.pushButton_fillGaps.setEnabled(False)
-        self.pushButton_fillGaps.setMinimumSize(QSize(124, 124))
-        self.pushButton_fillGaps.setMaximumSize(QSize(124, 124))
+        self.pushButton_fillGaps.setMinimumSize(QSize(124, 110))
+        self.pushButton_fillGaps.setMaximumSize(QSize(124, 110))
         self.pushButton_fillGaps.setFont(font5)
         self.pushButton_fillGaps.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/git-commit.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 20px;\n"
+"padding-top: 14px;\n"
 "padding-bottom: 15px;\n"
 "background-origin: content")
 
@@ -610,7 +611,7 @@ class Ui_MainWindow(object):
     # setupUi
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
+        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"StarStack AI", None))
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"StarStack AI", None))
         self.label_progressBar.setText("")
         self.label_imageName.setText("")
