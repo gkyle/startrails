@@ -561,6 +561,7 @@ background-origin: content</string>
                         </property>
                         <property name="font">
                          <font>
+                          <pointsize>11</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>
@@ -776,6 +777,7 @@ background-origin: content</string>
                         </property>
                         <property name="font">
                          <font>
+                          <pointsize>11</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>
@@ -809,6 +811,7 @@ background-origin: content</string>
                         </property>
                         <property name="font">
                          <font>
+                          <pointsize>11</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>

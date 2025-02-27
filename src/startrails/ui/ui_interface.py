@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfaceYIXVEv.ui'
+## Form generated from reading UI file 'interfaceuTzqnA.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.4.2
 ##
@@ -264,9 +264,7 @@ class Ui_MainWindow(object):
         self.pushButton_openProject.setObjectName(u"pushButton_openProject")
         self.pushButton_openProject.setMinimumSize(QSize(124, 110))
         self.pushButton_openProject.setMaximumSize(QSize(124, 110))
-        font6 = QFont()
-        font6.setBold(False)
-        self.pushButton_openProject.setFont(font6)
+        self.pushButton_openProject.setFont(font5)
         self.pushButton_openProject.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/folder.svg);\n"
@@ -365,7 +363,7 @@ class Ui_MainWindow(object):
         self.pushButton_exportMasks.setObjectName(u"pushButton_exportMasks")
         self.pushButton_exportMasks.setMinimumSize(QSize(124, 110))
         self.pushButton_exportMasks.setMaximumSize(QSize(124, 110))
-        self.pushButton_exportMasks.setFont(font6)
+        self.pushButton_exportMasks.setFont(font5)
         self.pushButton_exportMasks.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/external-link.svg);\n"
@@ -380,7 +378,7 @@ class Ui_MainWindow(object):
         self.pushButton_exportTraining.setObjectName(u"pushButton_exportTraining")
         self.pushButton_exportTraining.setMinimumSize(QSize(124, 110))
         self.pushButton_exportTraining.setMaximumSize(QSize(124, 110))
-        self.pushButton_exportTraining.setFont(font6)
+        self.pushButton_exportTraining.setFont(font5)
         self.pushButton_exportTraining.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/external-link.svg);\n"
@@ -465,10 +463,10 @@ class Ui_MainWindow(object):
         self.verticalLayout_9.setContentsMargins(6, 0, 6, 0)
         self.label_5 = QLabel(self.frame_outputFilesContainer)
         self.label_5.setObjectName(u"label_5")
-        font7 = QFont()
-        font7.setPointSize(12)
-        font7.setBold(True)
-        self.label_5.setFont(font7)
+        font6 = QFont()
+        font6.setPointSize(12)
+        font6.setBold(True)
+        self.label_5.setFont(font6)
 
         self.verticalLayout_9.addWidget(self.label_5)
 
@@ -550,7 +548,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_12.setContentsMargins(0, 0, 0, 0)
         self.label = QLabel(self.frame_10)
         self.label.setObjectName(u"label")
-        self.label.setFont(font7)
+        self.label.setFont(font6)
 
         self.horizontalLayout_12.addWidget(self.label)
 
