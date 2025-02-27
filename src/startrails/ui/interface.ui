@@ -559,6 +559,11 @@ background-origin: content</string>
                           <height>110</height>
                          </size>
                         </property>
+                        <property name="font">
+                         <font>
+                          <bold>false</bold>
+                         </font>
+                        </property>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
@@ -768,6 +773,11 @@ background-origin: content</string>
                           <width>124</width>
                           <height>110</height>
                          </size>
+                        </property>
+                        <property name="font">
+                         <font>
+                          <bold>false</bold>
+                         </font>
                         </property>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
@@ -1150,16 +1160,40 @@ background-origin: content</string>
               <number>0</number>
              </property>
              <item>
-              <widget class="QLabel" name="label">
-               <property name="font">
-                <font>
-                 <pointsize>12</pointsize>
-                 <bold>true</bold>
-                </font>
+              <widget class="QFrame" name="frame_10">
+               <property name="frameShape">
+                <enum>QFrame::NoFrame</enum>
                </property>
-               <property name="text">
-                <string>Input Files</string>
+               <property name="frameShadow">
+                <enum>QFrame::Raised</enum>
                </property>
+               <layout class="QHBoxLayout" name="horizontalLayout_12">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="label">
+                  <property name="font">
+                   <font>
+                    <pointsize>12</pointsize>
+                    <bold>true</bold>
+                   </font>
+                  </property>
+                  <property name="text">
+                   <string>Input Files</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </widget>
              </item>
              <item>

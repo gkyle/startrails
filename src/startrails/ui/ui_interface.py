@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfacewmUbfW.ui'
+## Form generated from reading UI file 'interfaceYIXVEv.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.4.2
 ##
@@ -264,6 +264,9 @@ class Ui_MainWindow(object):
         self.pushButton_openProject.setObjectName(u"pushButton_openProject")
         self.pushButton_openProject.setMinimumSize(QSize(124, 110))
         self.pushButton_openProject.setMaximumSize(QSize(124, 110))
+        font6 = QFont()
+        font6.setBold(False)
+        self.pushButton_openProject.setFont(font6)
         self.pushButton_openProject.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/folder.svg);\n"
@@ -362,6 +365,7 @@ class Ui_MainWindow(object):
         self.pushButton_exportMasks.setObjectName(u"pushButton_exportMasks")
         self.pushButton_exportMasks.setMinimumSize(QSize(124, 110))
         self.pushButton_exportMasks.setMaximumSize(QSize(124, 110))
+        self.pushButton_exportMasks.setFont(font6)
         self.pushButton_exportMasks.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:icons48/external-link.svg);\n"
@@ -376,8 +380,6 @@ class Ui_MainWindow(object):
         self.pushButton_exportTraining.setObjectName(u"pushButton_exportTraining")
         self.pushButton_exportTraining.setMinimumSize(QSize(124, 110))
         self.pushButton_exportTraining.setMaximumSize(QSize(124, 110))
-        font6 = QFont()
-        font6.setBold(False)
         self.pushButton_exportTraining.setFont(font6)
         self.pushButton_exportTraining.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
@@ -539,11 +541,21 @@ class Ui_MainWindow(object):
         self.verticalLayout_6.setObjectName(u"verticalLayout_6")
         self.verticalLayout_6.setSizeConstraint(QLayout.SetDefaultConstraint)
         self.verticalLayout_6.setContentsMargins(6, 0, 6, 0)
-        self.label = QLabel(self.frame_inputFilesContainer)
+        self.frame_10 = QFrame(self.frame_inputFilesContainer)
+        self.frame_10.setObjectName(u"frame_10")
+        self.frame_10.setFrameShape(QFrame.NoFrame)
+        self.frame_10.setFrameShadow(QFrame.Raised)
+        self.horizontalLayout_12 = QHBoxLayout(self.frame_10)
+        self.horizontalLayout_12.setObjectName(u"horizontalLayout_12")
+        self.horizontalLayout_12.setContentsMargins(0, 0, 0, 0)
+        self.label = QLabel(self.frame_10)
         self.label.setObjectName(u"label")
         self.label.setFont(font7)
 
-        self.verticalLayout_6.addWidget(self.label)
+        self.horizontalLayout_12.addWidget(self.label)
+
+
+        self.verticalLayout_6.addWidget(self.frame_10)
 
         self.scrollArea = QScrollArea(self.frame_inputFilesContainer)
         self.scrollArea.setObjectName(u"scrollArea")
