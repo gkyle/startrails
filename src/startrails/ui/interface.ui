@@ -1259,7 +1259,7 @@ background-origin: content</string>
                  <item alignment="Qt::AlignLeft">
                   <widget class="QFrame" name="frame_inputFiles">
                    <property name="sizePolicy">
-                    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                    <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
                      <horstretch>0</horstretch>
                      <verstretch>0</verstretch>
                     </sizepolicy>
@@ -1271,9 +1271,6 @@ background-origin: content</string>
                     <enum>QFrame::Raised</enum>
                    </property>
                    <layout class="QHBoxLayout" name="horizontalLayout_4">
-                    <property name="spacing">
-                     <number>5</number>
-                    </property>
                     <property name="leftMargin">
                      <number>0</number>
                     </property>

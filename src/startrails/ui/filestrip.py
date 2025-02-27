@@ -182,6 +182,8 @@ class FileButton(QPushButton):
         layout = QVBoxLayout(self)
         self.setSizePolicy(QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed))
         self.setFixedSize(QSize(140, 140))
+        layout.setContentsMargins(4, 9, 4, 9)
+        layout.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.iconLabel)
         layout.addWidget(textLabel)
 

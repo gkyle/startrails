@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfaceuTzqnA.ui'
+## Form generated from reading UI file 'interfacenEXnKo.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.4.2
 ##
@@ -578,12 +578,11 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
         self.frame_inputFiles = QFrame(self.frame_inputFiles_scroll)
         self.frame_inputFiles.setObjectName(u"frame_inputFiles")
-        sizePolicy1.setHeightForWidth(self.frame_inputFiles.sizePolicy().hasHeightForWidth())
-        self.frame_inputFiles.setSizePolicy(sizePolicy1)
+        sizePolicy.setHeightForWidth(self.frame_inputFiles.sizePolicy().hasHeightForWidth())
+        self.frame_inputFiles.setSizePolicy(sizePolicy)
         self.frame_inputFiles.setFrameShape(QFrame.NoFrame)
         self.frame_inputFiles.setFrameShadow(QFrame.Raised)
         self.horizontalLayout_4 = QHBoxLayout(self.frame_inputFiles)
-        self.horizontalLayout_4.setSpacing(5)
         self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
         self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.label_2 = QLabel(self.frame_inputFiles)
