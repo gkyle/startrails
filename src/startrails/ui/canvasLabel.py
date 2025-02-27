@@ -273,6 +273,7 @@ class CanvasLabel(QLabel):
             x: int = self.posX
             y: int = self.posY
             painter = QPainter(self)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform, True) # Note: Needed for antialising on Windows
             painter.drawPixmap(x, y, newPixmap)
 
             imgMousePos = self.translateAndScaleMousePoint(self.mouseX, self.mouseY, self.ratio)
