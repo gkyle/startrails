@@ -1,15 +1,21 @@
 from abc import abstractmethod
 import cv2
 import numpy
-import cupy as cp
+try:
+    import cupy as cp
+except:
+    pass
 from tqdm.auto import tqdm
 
 IMWRITE_OPTIONS = [cv2.IMWRITE_JPEG_QUALITY, 100]
 
 
 def imwrite(outfile, img, convertBGR=False):
-    if not isinstance(img, numpy.ndarray):  # convert cupy array to numpy
-        img = cp.asnumpy(img)
+    try:
+        if not isinstance(img, numpy.ndarray):  # convert cupy array to numpy
+            img = cp.asnumpy(img)
+    except:
+        pass
     if convertBGR:
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     cv2.imwrite(outfile, img, IMWRITE_OPTIONS)

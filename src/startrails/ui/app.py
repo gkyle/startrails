@@ -4,6 +4,10 @@ import jsonpickle
 import os
 
 import torch
+try:
+    import cupy
+except:
+    pass
 import GPUtil
 
 from startrails.ui.file import InputFile, OutputFile
@@ -126,7 +130,7 @@ class App:
 
     def getGPUStats(self):
         try:
-            if torch.cuda.is_available():
+            if torch.cuda.is_available() and cupy.is_available():
                 gpu = GPUtil.getGPUs()
                 return int(to_GB(gpu[0].memoryFree)), int(to_GB(gpu[0].memoryTotal))
         except Exception as e:

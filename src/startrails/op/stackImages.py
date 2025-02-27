@@ -8,7 +8,10 @@ from typing import List
 import cv2
 import psutil
 import numpy
-import cupy
+try:
+    import cupy
+except:
+    pass
 
 from startrails.lib.util import applyMask, imwrite, Observable
 from startrails.ui.file import InputFile, OutputFile
@@ -25,8 +28,11 @@ class StackImages(Observable):
         self.useGPU = False
 
         # Use cupy instead of numpy if CUDA is available.
-        if USE_GPU_IF_AVAILABLE and useGPU and cupy.is_available():
-            self.useGPU = True
+        try:
+            if USE_GPU_IF_AVAILABLE and useGPU and cupy.is_available():
+                self.useGPU = True
+        except:
+            pass
 
     def processBatch(self, inputImages: List[numpy.ndarray], outImage: numpy.ndarray, outfile: str) -> numpy.ndarray:
         if self.useGPU:
@@ -146,12 +152,13 @@ class StackImages(Observable):
         availableBytes = 0
         if useGPU:
             try:
-                TARGET_UTILIZATION = 0.6
-                mempool = cupy.get_default_memory_pool()
-                mempool.free_all_blocks()
+                if cupy.cuda.is_available():
+                    TARGET_UTILIZATION = 0.6
+                    mempool = cupy.get_default_memory_pool()
+                    mempool.free_all_blocks()
 
-                gpu = GPUtil.getGPUs()
-                availableBytes = gpu[0].memoryFree * 1024 * 1024  # MB -> Bytes
+                    gpu = GPUtil.getGPUs()
+                    availableBytes = gpu[0].memoryFree * 1024 * 1024  # MB -> Bytes
             except Exception as e:
                 pass
 
