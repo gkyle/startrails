@@ -1,0 +1,10 @@
+{
+    "py/object": "startrails.ui.project.Project",
+    "py/state": {
+        "rawInputFiles": [],
+        "outputFiles": [],
+        "selected": null,
+        "operations": {},
+        "projectFile": "projects/default_project.json"
+    }
+}

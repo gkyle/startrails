@@ -5,10 +5,11 @@ import cv2
 
 from startrails.lib.util import imwrite, Observable
 from startrails.models.fillGaps.model import UNet
-from startrails.ui.file import OutputFile
+from startrails.lib.file import OutputFile
 
 ROI_SIZE = 128
 
+MODEL_PATH = "models/fillGaps/gapfill.pt"
 
 class FillGaps(Observable):
     def __init__(self):
@@ -16,7 +17,7 @@ class FillGaps(Observable):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = UNet(in_channels=3, out_channels=4).to(self.device)
-        self.model.load_state_dict(torch.load("../models/fillGaps/gapfill.pt",
+        self.model.load_state_dict(torch.load(MODEL_PATH,
                                    map_location=self.device, weights_only=True))
         self.model.eval()
 

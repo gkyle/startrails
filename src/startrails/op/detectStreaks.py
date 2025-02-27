@@ -14,13 +14,13 @@ from sahi.slicing import slice_image
 from typing import List
 
 from startrails.lib.util import Observable
-from startrails.ui.file import InputFile
+from startrails.lib.file import InputFile
 
 USE_GPU_IF_AVAILABLE = True
 
 PATCH_OVERLAP = 0.2
-STREAKS_MODEL_PATH = "../models/detectStreaks/streaks.pt"
-STREAKS_MODEL_OPENVINO_PATH = "../models/detectStreaks/streaks_openvino_model/"
+STREAKS_MODEL_PATH = "models/detectStreaks/streaks.pt"
+STREAKS_MODEL_OPENVINO_PATH = "models/detectStreaks/streaks_openvino_model/"
 DETECT_BATCH_SIZE = 2
 ROI_SIZE = 512
 

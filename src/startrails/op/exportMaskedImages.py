@@ -4,7 +4,7 @@ from typing import List
 import cv2
 
 from startrails.lib.util import applyMask, imwrite, Observable
-from startrails.ui.file import InputFile
+from startrails.lib.file import InputFile
 
 
 class ExportMaskedImages(Observable):

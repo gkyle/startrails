@@ -1,4 +1,4 @@
-import time
+import sys
 from typing import List, Any, Dict
 import jsonpickle
 import os
@@ -10,7 +10,7 @@ except:
     pass
 import GPUtil
 
-from startrails.ui.file import InputFile, OutputFile
+from startrails.lib.file import InputFile, OutputFile
 from startrails.op.detectStreaks import DetectStreaks
 from startrails.op.fillGaps import FillGaps
 from startrails.op.exportMaskedImages import ExportMaskedImages
@@ -144,7 +144,7 @@ class App:
         except Exception as e:
             print(e)
             self.state = {
-                "projectFile": "default_project.json",
+                "projectFile": "projects/default_project.json",
             }
 
     def saveAppState(self):

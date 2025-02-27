@@ -6,7 +6,7 @@ import numpy as np
 from shapely import Point, Polygon
 
 from startrails.lib.util import Observable
-from startrails.ui.file import InputFile
+from startrails.lib.file import InputFile
 
 
 class FindBrightFrame(Observable):

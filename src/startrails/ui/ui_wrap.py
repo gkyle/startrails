@@ -4,7 +4,7 @@ from PySide6.QtCore import QThreadPool, QTimer, QPoint
 from PySide6.QtWidgets import QWidget, QFileDialog, QMainWindow, QDialog
 from functools import partial
 
-from startrails.ui.app import App
+from startrails.app import App
 from startrails.ui.dialog_detectStreaks import DetectStreaksDialog
 from startrails.ui.progress import ProgressBarUpdater
 from startrails.ui.signals import AsyncWorker, getSignals
@@ -12,7 +12,7 @@ from startrails.ui.filestrip import FileButton, FileStrip
 from startrails.ui.dialog_stackImages import FadeRadio, StackImagesDialog, StreaksRadio
 from startrails.ui.ui_interface import Ui_MainWindow
 from startrails.ui.canvasLabel import *
-from startrails.ui.file import File, InputFile, OutputFile
+from startrails.lib.file import File, InputFile, OutputFile
 
 
 class MainWindow(QMainWindow):
@@ -303,7 +303,7 @@ class Ui_AppWindow(Ui_MainWindow):
         file_path, _ = QFileDialog.getSaveFileName(
             None,
             "Create a New Project",
-            "new_project.project.json",
+            "projects/new_project.project.json",
             "Project Files (*.project.json)"
         )
 
@@ -312,7 +312,7 @@ class Ui_AppWindow(Ui_MainWindow):
             self.app.newProject(file_path)
 
     def doOpenProject(self):
-        fileNames, _ = QFileDialog.getOpenFileNames(filter="Project Files (*.project.json)")
+        fileNames, _ = QFileDialog.getOpenFileNames(dir="projects", filter="Project Files (*.project.json)")
         if fileNames:
             for filePath in fileNames:
                 self.app.loadProject(filePath)

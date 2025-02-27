@@ -8,7 +8,7 @@ import numpy as np
 from shapely.geometry import Polygon, box
 
 from startrails.lib.util import imwrite, Observable
-from startrails.ui.file import InputFile
+from startrails.lib.file import InputFile
 
 SIZE = 512  # Generated images will be 512x512
 MAX_STREAKLESS_ATTEMPTS = 20

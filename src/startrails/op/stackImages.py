@@ -14,7 +14,7 @@ except:
     pass
 
 from startrails.lib.util import applyMask, imwrite, Observable
-from startrails.ui.file import InputFile, OutputFile
+from startrails.lib.file import InputFile, OutputFile
 
 
 USE_GPU_IF_AVAILABLE = True

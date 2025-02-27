@@ -5,7 +5,7 @@ from PySide6.QtGui import (QPainter, QPaintEvent, QWheelEvent, QMouseEvent,
                            QPixmap, QColor, QPen, QPainterPath, QFont)
 from PySide6.QtWidgets import QLabel, QWidget
 
-from startrails.ui.file import File, InputFile, OutputFile
+from startrails.lib.file import File, InputFile, OutputFile
 from startrails.ui.signals import Signals, getSignals
 
 

@@ -6,7 +6,7 @@ from PySide6.QtCore import QObject, Qt, QSize, QPoint, Signal
 from PIL import Image
 from PIL.ImageQt import ImageQt
 
-from startrails.ui.file import File, InputFile
+from startrails.lib.file import File, InputFile
 from startrails.ui.signals import emitLater, getSignals
 
 
