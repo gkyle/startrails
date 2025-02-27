@@ -122,10 +122,13 @@ class IconLabel(QLabel):
 
     def setFile(self, file: File) -> None:
         self.file = file
-        image = Image.open(file.path)
-        image.thumbnail((128, 128))
-        qt_image = ImageQt(image)
-        self.pixmap = QPixmap.fromImage(qt_image)
+        try:
+            image = Image.open(file.path)
+            image.thumbnail((128, 128))
+            qt_image = ImageQt(image)
+            self.pixmap = QPixmap.fromImage(qt_image)
+        except:
+            pass
         self.updateIndicators()
 
     def updateIndicators(self):
