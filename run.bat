@@ -1,0 +1,3 @@
+@echo off
+echo Starting StarStack AI...
+uv run src/main.py
