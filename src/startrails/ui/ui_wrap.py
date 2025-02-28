@@ -220,7 +220,7 @@ class Ui_AppWindow(Ui_MainWindow):
             total = len(list(fileList))
             progressUpdater = ProgressBarUpdater(
                 self.progressBar, self.label_progressBar, total=total, desc="Finding Brightest:")
-            brightFile = self.app.doFindBrightFrame(x, y, progressUpdater.tick)
+            brightFile = self.app.doFindBrightFrame(x, y, file, progressUpdater.tick)
             if brightFile is not None:
                 self.signals.showFile.emit(brightFile)
 

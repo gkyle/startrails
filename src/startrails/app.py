@@ -60,8 +60,8 @@ class App:
         self.project.outputFiles = []
         self.saveProject()
 
-    def appendOutputFile(self, basename, path, operation):
-        file = OutputFile(basename, path, operation)
+    def appendOutputFile(self, basename, path, operation, fadeGradient=None) -> OutputFile:
+        file = OutputFile(basename, path, operation, fadeGradient=fadeGradient)
         self.project.outputFiles.append(file)
         self.saveProject()
         return file
@@ -82,7 +82,7 @@ class App:
         if fade:
             fadeGradient = StackImages.makeFadeGradient(len(filteredInputFiles), fadeAmount)
         basename = os.path.basename(filename)
-        file = self.appendOutputFile(basename, filename, "Stacked")
+        file = self.appendOutputFile(basename, filename, "Stacked", fadeGradient=fadeGradient)
         stackImages.addObserver(progressBar)
         stackImages.stack(filteredInputFiles, file, satellitesRemoved, fade,
                           fadeGradient=fadeGradient, batchSize=batchSize)
@@ -95,11 +95,11 @@ class App:
         detectStreaks.detectStreaks(self.getInputFileList(), confThreshold, mergeMethod, mergeThreshold)
         detectStreaks.removeObserver(progressBar)
 
-    def doFindBrightFrame(self, x, y, progressBar):
+    def doFindBrightFrame(self, x, y, basisFile: OutputFile, progressBar):
         filteredInputFiles = list(filter(lambda file: not file.excludeFromStack, self.project.rawInputFiles))
         findBrightFrame = FindBrightFrame()
         findBrightFrame.addObserver(progressBar)
-        file = findBrightFrame.findBrightFrame(filteredInputFiles, x, y)
+        file = findBrightFrame.findBrightFrame(filteredInputFiles, x, y, basisFile.fadeGradient)
         findBrightFrame.removeObserver(progressBar)
         return file
 

@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Tuple
 from PIL import Image
+import cv2
 import numpy as np
 from shapely import Point, Polygon
 
@@ -12,8 +13,8 @@ from startrails.lib.file import InputFile
 class FindBrightFrame(Observable):
 
     # enumerate files, finding the file containing the brightest pixel at the given coordinates
-    def findBrightFrame(self, srcFiles: List[InputFile], x, y) -> str:
-        def process_file(file: InputFile) -> Tuple[str, float]:
+    def findBrightFrame(self, srcFiles: List[InputFile], x, y, fadeGradient) -> str:
+        def process_file(file: InputFile, idx: int) -> Tuple[str, float]:
             # exclude masked areas
             for mask in file.streaksMasks + file.streaksManualMasks:
                 if len(mask) > 2:
@@ -25,10 +26,15 @@ class FindBrightFrame(Observable):
             img = Image.open(file.path)
             ws = img.width // r
             hs = img.height // r
-            img.draft('RGB', (ws, hs))
+            img.draft('BGR', (ws, hs))
 
             p = img.getpixel((x // r, y // r))
             mean = np.mean(np.array(p))
+
+            # approximate impact of fadeGradient
+            if not fadeGradient is None and fadeGradient[idx] != 1:
+                mean = mean * fadeGradient[idx]
+
             return file, mean
 
         brightest = None
@@ -38,7 +44,7 @@ class FindBrightFrame(Observable):
         r = 4
 
         with ThreadPoolExecutor() as executor:
-            futures = {executor.submit(process_file, file): file for file in srcFiles}
+            futures = {executor.submit(process_file, file, idx): file for idx, file in enumerate(srcFiles)}
             for future in as_completed(futures):
                 file, mean = future.result()
                 if mean > brightestValue:

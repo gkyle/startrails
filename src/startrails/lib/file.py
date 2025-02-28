@@ -31,9 +31,10 @@ class InputFile(File):
 
 class OutputFile(File):
 
-    def __init__(self, basename=None, path=None, operation=None):
+    def __init__(self, basename=None, path=None, operation=None, fadeGradient=None):
         super().__init__(basename, path)
         self.operation = operation
+        self.fadeGradient = fadeGradient
 
 
 class Operation(Enum):
