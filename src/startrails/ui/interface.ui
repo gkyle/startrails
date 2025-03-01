@@ -217,7 +217,7 @@
               <widget class="QLabel" name="label_imageName">
                <property name="font">
                 <font>
-                 <pointsize>14</pointsize>
+                 <pointsize>13</pointsize>
                 </font>
                </property>
                <property name="text">
@@ -432,6 +432,12 @@
                 </item>
                 <item alignment="Qt::AlignTop">
                  <widget class="QFrame" name="frame_operations">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="font">
                    <font>
                     <bold>true</bold>
@@ -463,7 +469,7 @@
                     <widget class="QLabel" name="label_operations">
                      <property name="font">
                       <font>
-                       <pointsize>14</pointsize>
+                       <pointsize>12</pointsize>
                        <bold>true</bold>
                       </font>
                      </property>
@@ -478,7 +484,7 @@
                    <item alignment="Qt::AlignLeft">
                     <widget class="QFrame" name="frame_5">
                      <property name="frameShape">
-                      <enum>QFrame::StyledPanel</enum>
+                      <enum>QFrame::NoFrame</enum>
                      </property>
                      <property name="frameShadow">
                       <enum>QFrame::Raised</enum>
@@ -503,29 +509,29 @@
                        <widget class="QPushButton" name="pushButton_newProject">
                         <property name="minimumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="maximumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="font">
                          <font>
-                          <pointsize>11</pointsize>
+                          <pointsize>10</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons48/folder-plus.svg);
+background-image: url(:icons32/folder-plus.svg);
 text-align: bottom;
-padding-top: 14px;
-padding-bottom: 15px;
+padding-top: 12px;
+padding-bottom: 12px;
 background-origin: content</string>
                         </property>
                         <property name="text">
@@ -549,29 +555,29 @@ background-origin: content</string>
                        <widget class="QPushButton" name="pushButton_openProject">
                         <property name="minimumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="maximumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="font">
                          <font>
-                          <pointsize>11</pointsize>
+                          <pointsize>10</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons48/folder.svg);
+background-image: url(:icons32/folder.svg);
 text-align: bottom;
-padding-top: 14px;
-padding-bottom: 15px;
+padding-top: 12px;
+padding-bottom: 12px;
 background-origin: content</string>
                         </property>
                         <property name="text">
@@ -592,7 +598,7 @@ background-origin: content</string>
                    <item alignment="Qt::AlignLeft">
                     <widget class="QFrame" name="frame_7">
                      <property name="frameShape">
-                      <enum>QFrame::StyledPanel</enum>
+                      <enum>QFrame::NoFrame</enum>
                      </property>
                      <property name="frameShadow">
                       <enum>QFrame::Raised</enum>
@@ -620,29 +626,29 @@ background-origin: content</string>
                         </property>
                         <property name="minimumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="maximumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="font">
                          <font>
-                          <pointsize>11</pointsize>
+                          <pointsize>10</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons48/layers.svg);
+background-image: url(:icons32/layers.svg);
 text-align: bottom;
-padding-top: 14px;
-padding-bottom: 15px;
+padding-top: 12px;
+padding-bottom: 12px;
 background-origin: content</string>
                         </property>
                         <property name="text">
@@ -660,29 +666,29 @@ background-origin: content</string>
                        <widget class="QPushButton" name="pushButton_selectFiles">
                         <property name="minimumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="maximumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="font">
                          <font>
-                          <pointsize>11</pointsize>
+                          <pointsize>10</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons48/star.svg);
+background-image: url(:icons32/star.svg);
 text-align: bottom;
-padding-top: 14px;
-padding-bottom: 15px;
+padding-top: 12px;
+padding-bottom: 12px;
 background-origin: content</string>
                         </property>
                         <property name="text">
@@ -703,7 +709,7 @@ background-origin: content</string>
                    <item alignment="Qt::AlignLeft">
                     <widget class="QFrame" name="frame_8">
                      <property name="frameShape">
-                      <enum>QFrame::StyledPanel</enum>
+                      <enum>QFrame::NoFrame</enum>
                      </property>
                      <property name="frameShadow">
                       <enum>QFrame::Raised</enum>
@@ -731,29 +737,29 @@ background-origin: content</string>
                         </property>
                         <property name="minimumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="maximumSize">
                          <size>
                           <width>124</width>
-                          <height>110</height>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="font">
                          <font>
-                          <pointsize>11</pointsize>
+                          <pointsize>10</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons48/edit-3.svg);
+background-image: url(:icons32/edit-3.svg);
 text-align: bottom;
-padding-top: 14px;
-padding-bottom: 15px;
+padding-top: 12px;
+padding-bottom: 12px;
 background-origin: content</string>
                         </property>
                         <property name="text">
@@ -765,29 +771,29 @@ background-origin: content</string>
                        <widget class="QPushButton" name="pushButton_exportMasks">
                         <property name="minimumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="maximumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="font">
                          <font>
-                          <pointsize>11</pointsize>
+                          <pointsize>10</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons48/external-link.svg);
+background-image: url(:icons32/external-link.svg);
 text-align: bottom;
-padding-top: 14px;
-padding-bottom: 15px;
+padding-top: 12px;
+padding-bottom: 12px;
 background-origin: content</string>
                         </property>
                         <property name="text">
@@ -799,29 +805,29 @@ background-origin: content</string>
                        <widget class="QPushButton" name="pushButton_exportTraining">
                         <property name="minimumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="maximumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="font">
                          <font>
-                          <pointsize>11</pointsize>
+                          <pointsize>10</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons48/external-link.svg);
+background-image: url(:icons32/external-link.svg);
 text-align: bottom;
-padding-top: 14px;
-padding-bottom: 15px;
+padding-top: 12px;
+padding-bottom: 12px;
 background-origin: content</string>
                         </property>
                         <property name="text">
@@ -841,8 +847,14 @@ background-origin: content</string>
                    </item>
                    <item alignment="Qt::AlignLeft">
                     <widget class="QFrame" name="frame_9">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
                      <property name="frameShape">
-                      <enum>QFrame::StyledPanel</enum>
+                      <enum>QFrame::NoFrame</enum>
                      </property>
                      <property name="frameShadow">
                       <enum>QFrame::Raised</enum>
@@ -870,29 +882,29 @@ background-origin: content</string>
                         </property>
                         <property name="minimumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="maximumSize">
                          <size>
-                          <width>124</width>
-                          <height>110</height>
+                          <width>110</width>
+                          <height>90</height>
                          </size>
                         </property>
                         <property name="font">
                          <font>
-                          <pointsize>11</pointsize>
+                          <pointsize>10</pointsize>
                           <bold>false</bold>
                          </font>
                         </property>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons48/git-commit.svg);
+background-image: url(:icons32/git-commit.svg);
 text-align: bottom;
-padding-top: 14px;
-padding-bottom: 15px;
+padding-top: 12px;
+padding-bottom: 12px;
 background-origin: content</string>
                         </property>
                         <property name="text">
@@ -1112,6 +1124,12 @@ background-origin: content</string>
           </item>
           <item>
            <widget class="QFrame" name="frame_divider">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>190</height>
+             </size>
+            </property>
             <property name="frameShape">
              <enum>QFrame::VLine</enum>
             </property>

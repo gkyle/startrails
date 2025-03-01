@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfacenEXnKo.ui'
+## Form generated from reading UI file 'interfaceHYarTJ.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.4.2
 ##
@@ -121,7 +121,7 @@ class Ui_MainWindow(object):
         self.label_imageName = QLabel(self.frame_3)
         self.label_imageName.setObjectName(u"label_imageName")
         font1 = QFont()
-        font1.setPointSize(14)
+        font1.setPointSize(13)
         self.label_imageName.setFont(font1)
 
         self.horizontalLayout_10.addWidget(self.label_imageName)
@@ -212,6 +212,11 @@ class Ui_MainWindow(object):
 
         self.frame_operations = QFrame(self.slide_menu)
         self.frame_operations.setObjectName(u"frame_operations")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.frame_operations.sizePolicy().hasHeightForWidth())
+        self.frame_operations.setSizePolicy(sizePolicy2)
         font3 = QFont()
         font3.setBold(True)
         self.frame_operations.setFont(font3)
@@ -224,7 +229,7 @@ class Ui_MainWindow(object):
         self.label_operations = QLabel(self.frame_operations)
         self.label_operations.setObjectName(u"label_operations")
         font4 = QFont()
-        font4.setPointSize(14)
+        font4.setPointSize(12)
         font4.setBold(True)
         self.label_operations.setFont(font4)
         self.label_operations.setLineWidth(0)
@@ -233,7 +238,7 @@ class Ui_MainWindow(object):
 
         self.frame_5 = QFrame(self.frame_operations)
         self.frame_5.setObjectName(u"frame_5")
-        self.frame_5.setFrameShape(QFrame.StyledPanel)
+        self.frame_5.setFrameShape(QFrame.NoFrame)
         self.frame_5.setFrameShadow(QFrame.Raised)
         self.gridLayout_2 = QGridLayout(self.frame_5)
         self.gridLayout_2.setSpacing(9)
@@ -241,18 +246,18 @@ class Ui_MainWindow(object):
         self.gridLayout_2.setContentsMargins(0, 0, 0, 0)
         self.pushButton_newProject = QPushButton(self.frame_5)
         self.pushButton_newProject.setObjectName(u"pushButton_newProject")
-        self.pushButton_newProject.setMinimumSize(QSize(124, 110))
-        self.pushButton_newProject.setMaximumSize(QSize(124, 110))
+        self.pushButton_newProject.setMinimumSize(QSize(110, 90))
+        self.pushButton_newProject.setMaximumSize(QSize(110, 90))
         font5 = QFont()
-        font5.setPointSize(11)
+        font5.setPointSize(10)
         font5.setBold(False)
         self.pushButton_newProject.setFont(font5)
         self.pushButton_newProject.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
-"background-image: url(:icons48/folder-plus.svg);\n"
+"background-image: url(:icons32/folder-plus.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 14px;\n"
-"padding-bottom: 15px;\n"
+"padding-top: 12px;\n"
+"padding-bottom: 12px;\n"
 "background-origin: content")
         self.pushButton_newProject.setIconSize(QSize(120, 120))
         self.pushButton_newProject.setCheckable(False)
@@ -262,15 +267,15 @@ class Ui_MainWindow(object):
 
         self.pushButton_openProject = QPushButton(self.frame_5)
         self.pushButton_openProject.setObjectName(u"pushButton_openProject")
-        self.pushButton_openProject.setMinimumSize(QSize(124, 110))
-        self.pushButton_openProject.setMaximumSize(QSize(124, 110))
+        self.pushButton_openProject.setMinimumSize(QSize(110, 90))
+        self.pushButton_openProject.setMaximumSize(QSize(110, 90))
         self.pushButton_openProject.setFont(font5)
         self.pushButton_openProject.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
-"background-image: url(:icons48/folder.svg);\n"
+"background-image: url(:icons32/folder.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 14px;\n"
-"padding-bottom: 15px;\n"
+"padding-top: 12px;\n"
+"padding-bottom: 12px;\n"
 "background-origin: content")
 
         self.gridLayout_2.addWidget(self.pushButton_openProject, 0, 1, 1, 1)
@@ -287,7 +292,7 @@ class Ui_MainWindow(object):
 
         self.frame_7 = QFrame(self.frame_operations)
         self.frame_7.setObjectName(u"frame_7")
-        self.frame_7.setFrameShape(QFrame.StyledPanel)
+        self.frame_7.setFrameShape(QFrame.NoFrame)
         self.frame_7.setFrameShadow(QFrame.Raised)
         self.gridLayout_4 = QGridLayout(self.frame_7)
         self.gridLayout_4.setSpacing(9)
@@ -296,15 +301,15 @@ class Ui_MainWindow(object):
         self.pushButton_stackImages = QPushButton(self.frame_7)
         self.pushButton_stackImages.setObjectName(u"pushButton_stackImages")
         self.pushButton_stackImages.setEnabled(False)
-        self.pushButton_stackImages.setMinimumSize(QSize(124, 110))
-        self.pushButton_stackImages.setMaximumSize(QSize(124, 110))
+        self.pushButton_stackImages.setMinimumSize(QSize(110, 90))
+        self.pushButton_stackImages.setMaximumSize(QSize(110, 90))
         self.pushButton_stackImages.setFont(font5)
         self.pushButton_stackImages.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
-"background-image: url(:icons48/layers.svg);\n"
+"background-image: url(:icons32/layers.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 14px;\n"
-"padding-bottom: 15px;\n"
+"padding-top: 12px;\n"
+"padding-bottom: 12px;\n"
 "background-origin: content")
         self.pushButton_stackImages.setIconSize(QSize(64, 64))
 
@@ -312,15 +317,15 @@ class Ui_MainWindow(object):
 
         self.pushButton_selectFiles = QPushButton(self.frame_7)
         self.pushButton_selectFiles.setObjectName(u"pushButton_selectFiles")
-        self.pushButton_selectFiles.setMinimumSize(QSize(124, 110))
-        self.pushButton_selectFiles.setMaximumSize(QSize(124, 110))
+        self.pushButton_selectFiles.setMinimumSize(QSize(110, 90))
+        self.pushButton_selectFiles.setMaximumSize(QSize(110, 90))
         self.pushButton_selectFiles.setFont(font5)
         self.pushButton_selectFiles.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
-"background-image: url(:icons48/star.svg);\n"
+"background-image: url(:icons32/star.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 14px;\n"
-"padding-bottom: 15px;\n"
+"padding-top: 12px;\n"
+"padding-bottom: 12px;\n"
 "background-origin: content")
 
         self.gridLayout_4.addWidget(self.pushButton_selectFiles, 0, 0, 1, 1)
@@ -337,7 +342,7 @@ class Ui_MainWindow(object):
 
         self.frame_8 = QFrame(self.frame_operations)
         self.frame_8.setObjectName(u"frame_8")
-        self.frame_8.setFrameShape(QFrame.StyledPanel)
+        self.frame_8.setFrameShape(QFrame.NoFrame)
         self.frame_8.setFrameShadow(QFrame.Raised)
         self.gridLayout_5 = QGridLayout(self.frame_8)
         self.gridLayout_5.setSpacing(9)
@@ -346,45 +351,45 @@ class Ui_MainWindow(object):
         self.pushButton_removeStreaks = QPushButton(self.frame_8)
         self.pushButton_removeStreaks.setObjectName(u"pushButton_removeStreaks")
         self.pushButton_removeStreaks.setEnabled(False)
-        self.pushButton_removeStreaks.setMinimumSize(QSize(124, 110))
-        self.pushButton_removeStreaks.setMaximumSize(QSize(124, 110))
+        self.pushButton_removeStreaks.setMinimumSize(QSize(110, 90))
+        self.pushButton_removeStreaks.setMaximumSize(QSize(124, 90))
         self.pushButton_removeStreaks.setFont(font5)
         self.pushButton_removeStreaks.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
-"background-image: url(:icons48/edit-3.svg);\n"
+"background-image: url(:icons32/edit-3.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 14px;\n"
-"padding-bottom: 15px;\n"
+"padding-top: 12px;\n"
+"padding-bottom: 12px;\n"
 "background-origin: content")
 
         self.gridLayout_5.addWidget(self.pushButton_removeStreaks, 0, 0, 1, 1)
 
         self.pushButton_exportMasks = QPushButton(self.frame_8)
         self.pushButton_exportMasks.setObjectName(u"pushButton_exportMasks")
-        self.pushButton_exportMasks.setMinimumSize(QSize(124, 110))
-        self.pushButton_exportMasks.setMaximumSize(QSize(124, 110))
+        self.pushButton_exportMasks.setMinimumSize(QSize(110, 90))
+        self.pushButton_exportMasks.setMaximumSize(QSize(110, 90))
         self.pushButton_exportMasks.setFont(font5)
         self.pushButton_exportMasks.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
-"background-image: url(:icons48/external-link.svg);\n"
+"background-image: url(:icons32/external-link.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 14px;\n"
-"padding-bottom: 15px;\n"
+"padding-top: 12px;\n"
+"padding-bottom: 12px;\n"
 "background-origin: content")
 
         self.gridLayout_5.addWidget(self.pushButton_exportMasks, 0, 1, 1, 1)
 
         self.pushButton_exportTraining = QPushButton(self.frame_8)
         self.pushButton_exportTraining.setObjectName(u"pushButton_exportTraining")
-        self.pushButton_exportTraining.setMinimumSize(QSize(124, 110))
-        self.pushButton_exportTraining.setMaximumSize(QSize(124, 110))
+        self.pushButton_exportTraining.setMinimumSize(QSize(110, 90))
+        self.pushButton_exportTraining.setMaximumSize(QSize(110, 90))
         self.pushButton_exportTraining.setFont(font5)
         self.pushButton_exportTraining.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
-"background-image: url(:icons48/external-link.svg);\n"
+"background-image: url(:icons32/external-link.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 14px;\n"
-"padding-bottom: 15px;\n"
+"padding-top: 12px;\n"
+"padding-bottom: 12px;\n"
 "background-origin: content")
 
         self.gridLayout_5.addWidget(self.pushButton_exportTraining, 1, 0, 1, 1)
@@ -401,7 +406,12 @@ class Ui_MainWindow(object):
 
         self.frame_9 = QFrame(self.frame_operations)
         self.frame_9.setObjectName(u"frame_9")
-        self.frame_9.setFrameShape(QFrame.StyledPanel)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.frame_9.sizePolicy().hasHeightForWidth())
+        self.frame_9.setSizePolicy(sizePolicy3)
+        self.frame_9.setFrameShape(QFrame.NoFrame)
         self.frame_9.setFrameShadow(QFrame.Raised)
         self.gridLayout_6 = QGridLayout(self.frame_9)
         self.gridLayout_6.setSpacing(9)
@@ -410,15 +420,15 @@ class Ui_MainWindow(object):
         self.pushButton_fillGaps = QPushButton(self.frame_9)
         self.pushButton_fillGaps.setObjectName(u"pushButton_fillGaps")
         self.pushButton_fillGaps.setEnabled(False)
-        self.pushButton_fillGaps.setMinimumSize(QSize(124, 110))
-        self.pushButton_fillGaps.setMaximumSize(QSize(124, 110))
+        self.pushButton_fillGaps.setMinimumSize(QSize(110, 90))
+        self.pushButton_fillGaps.setMaximumSize(QSize(110, 90))
         self.pushButton_fillGaps.setFont(font5)
         self.pushButton_fillGaps.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
-"background-image: url(:icons48/git-commit.svg);\n"
+"background-image: url(:icons32/git-commit.svg);\n"
 "text-align: bottom;\n"
-"padding-top: 14px;\n"
-"padding-bottom: 15px;\n"
+"padding-top: 12px;\n"
+"padding-bottom: 12px;\n"
 "background-origin: content")
 
         self.gridLayout_6.addWidget(self.pushButton_fillGaps, 0, 0, 1, 1)
@@ -463,20 +473,17 @@ class Ui_MainWindow(object):
         self.verticalLayout_9.setContentsMargins(6, 0, 6, 0)
         self.label_5 = QLabel(self.frame_outputFilesContainer)
         self.label_5.setObjectName(u"label_5")
-        font6 = QFont()
-        font6.setPointSize(12)
-        font6.setBold(True)
-        self.label_5.setFont(font6)
+        self.label_5.setFont(font4)
 
         self.verticalLayout_9.addWidget(self.label_5)
 
         self.scrollArea_2 = QScrollArea(self.frame_outputFilesContainer)
         self.scrollArea_2.setObjectName(u"scrollArea_2")
-        sizePolicy2 = QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.scrollArea_2.sizePolicy().hasHeightForWidth())
-        self.scrollArea_2.setSizePolicy(sizePolicy2)
+        sizePolicy4 = QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.scrollArea_2.sizePolicy().hasHeightForWidth())
+        self.scrollArea_2.setSizePolicy(sizePolicy4)
         self.scrollArea_2.setMinimumSize(QSize(158, 160))
         self.scrollArea_2.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scrollArea_2.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -518,6 +525,7 @@ class Ui_MainWindow(object):
 
         self.frame_divider = QFrame(self.frame_bottom)
         self.frame_divider.setObjectName(u"frame_divider")
+        self.frame_divider.setMaximumSize(QSize(16777215, 190))
         self.frame_divider.setFrameShape(QFrame.VLine)
         self.frame_divider.setFrameShadow(QFrame.Raised)
         self.frame_divider.setLineWidth(1)
@@ -526,11 +534,11 @@ class Ui_MainWindow(object):
 
         self.frame_inputFilesContainer = QFrame(self.frame_bottom)
         self.frame_inputFilesContainer.setObjectName(u"frame_inputFilesContainer")
-        sizePolicy3 = QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
-        sizePolicy3.setHorizontalStretch(100)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.frame_inputFilesContainer.sizePolicy().hasHeightForWidth())
-        self.frame_inputFilesContainer.setSizePolicy(sizePolicy3)
+        sizePolicy5 = QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
+        sizePolicy5.setHorizontalStretch(100)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.frame_inputFilesContainer.sizePolicy().hasHeightForWidth())
+        self.frame_inputFilesContainer.setSizePolicy(sizePolicy5)
         self.frame_inputFilesContainer.setMinimumSize(QSize(200, 196))
         self.frame_inputFilesContainer.setFrameShape(QFrame.NoFrame)
         self.frame_inputFilesContainer.setFrameShadow(QFrame.Raised)
@@ -548,7 +556,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_12.setContentsMargins(0, 0, 0, 0)
         self.label = QLabel(self.frame_10)
         self.label.setObjectName(u"label")
-        self.label.setFont(font6)
+        self.label.setFont(font4)
 
         self.horizontalLayout_12.addWidget(self.label)
 
@@ -557,11 +565,11 @@ class Ui_MainWindow(object):
 
         self.scrollArea = QScrollArea(self.frame_inputFilesContainer)
         self.scrollArea.setObjectName(u"scrollArea")
-        sizePolicy4 = QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
-        sizePolicy4.setHorizontalStretch(1)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.scrollArea.sizePolicy().hasHeightForWidth())
-        self.scrollArea.setSizePolicy(sizePolicy4)
+        sizePolicy6 = QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
+        sizePolicy6.setHorizontalStretch(1)
+        sizePolicy6.setVerticalStretch(0)
+        sizePolicy6.setHeightForWidth(self.scrollArea.sizePolicy().hasHeightForWidth())
+        self.scrollArea.setSizePolicy(sizePolicy6)
         self.scrollArea.setMinimumSize(QSize(300, 160))
         self.scrollArea.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.scrollArea.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
@@ -587,11 +595,8 @@ class Ui_MainWindow(object):
         self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.label_2 = QLabel(self.frame_inputFiles)
         self.label_2.setObjectName(u"label_2")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.label_2.sizePolicy().hasHeightForWidth())
-        self.label_2.setSizePolicy(sizePolicy5)
+        sizePolicy3.setHeightForWidth(self.label_2.sizePolicy().hasHeightForWidth())
+        self.label_2.setSizePolicy(sizePolicy3)
 
         self.horizontalLayout_4.addWidget(self.label_2)
 

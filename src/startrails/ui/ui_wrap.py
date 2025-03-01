@@ -67,13 +67,6 @@ class Ui_AppWindow(Ui_MainWindow):
         if settings is not None:
             self.persistentSettings = settings
 
-    def center(self):
-        screen = QGuiApplication.primaryScreen().geometry()
-        window_size = self.geometry()
-        x = (screen.width() - window_size.width()) // 2
-        y = (screen.height() - window_size.height()) // 2
-        self.move(QPoint(x, y))
-
     def setupUi(self, MainWindow):
         super().setupUi(MainWindow)
 
@@ -90,7 +83,10 @@ class Ui_AppWindow(Ui_MainWindow):
             else:
                 MainWindow.center()
         else:
-            MainWindow.resize(width*0.6, height*0.6)
+            if width > 2000 and height > 1200:
+                MainWindow.resize(width*0.6, height*0.6)
+            else:
+                MainWindow.resize(width*0.90, height*0.90)
             MainWindow.center()
 
         # Bind events
