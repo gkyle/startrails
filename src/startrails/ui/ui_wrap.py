@@ -28,7 +28,7 @@ class MainWindow(QMainWindow):
         self.timer.start(10000)
 
     def center(self):
-        screen = QGuiApplication.primaryScreen().geometry()
+        screen = QGuiApplication.primaryScreen().availableGeometry()
         window_size = self.geometry()
         x = (screen.width() - window_size.width()) // 2
         y = (screen.height() - window_size.height()) // 2
@@ -73,7 +73,7 @@ class Ui_AppWindow(Ui_MainWindow):
         MainWindow.setWindowTitle("StarStack AI")
 
         # Set window size
-        screen_resolution = QGuiApplication.primaryScreen().geometry()
+        screen_resolution = QGuiApplication.primaryScreen().availableGeometry()
         width = screen_resolution.width()
         height = screen_resolution.height()
         if "windowSize" in self.persistentSettings and self.persistentSettings["windowSize"] is not None:
