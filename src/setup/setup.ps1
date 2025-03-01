@@ -1,15 +1,15 @@
 try {
+    Set-ExecutionPolicy RemoteSigned -scope CurrentUser
     Write-Host "Checking for uv..."
     Invoke-Expression -Command "uv -V"
 } catch {
-    Set-ExecutionPolicy RemoteSigned -scope CurrentUser
     Invoke-Expression -Command  "irm https://astral.sh/uv/install.ps1 | iex"
     $env:PATH += ";$env:USERPROFILE\.local\bin"
 }
 
 $torch_variant = Invoke-Expression -Command "uv run src/setup/probeGPU.py"
 Write-Host "Installing torch variant: $torch_variant"
-if ($torch_variant.Length -eq 0) {
+if ($torch_variant.Length -eq 0 -or $torch_variant -Match "not found") {
     $torch_variant = "cpu"
 }
 if ($torch_variant -eq "cpu") {
