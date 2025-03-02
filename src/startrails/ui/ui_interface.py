@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfaceHYarTJ.ui'
+## Form generated from reading UI file 'interfacemtPuFH.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.4.2
 ##
@@ -184,8 +184,8 @@ class Ui_MainWindow(object):
         self.frame_right = QFrame(self.frame_app)
         self.frame_right.setObjectName(u"frame_right")
         self.frame_right.setMaximumSize(QSize(274, 16777215))
-        self.frame_right.setFrameShape(QFrame.StyledPanel)
-        self.frame_right.setFrameShadow(QFrame.Raised)
+        self.frame_right.setFrameShape(QFrame.NoFrame)
+        self.frame_right.setFrameShadow(QFrame.Plain)
         self.verticalLayout_2 = QVBoxLayout(self.frame_right)
         self.verticalLayout_2.setSpacing(0)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
@@ -455,7 +455,7 @@ class Ui_MainWindow(object):
         self.frame_bottom.setMinimumSize(QSize(0, 208))
         self.frame_bottom.setMaximumSize(QSize(16777215, 196))
         self.frame_bottom.setFrameShape(QFrame.NoFrame)
-        self.frame_bottom.setFrameShadow(QFrame.Raised)
+        self.frame_bottom.setFrameShadow(QFrame.Plain)
         self.horizontalLayout_3 = QHBoxLayout(self.frame_bottom)
         self.horizontalLayout_3.setSpacing(5)
         self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
