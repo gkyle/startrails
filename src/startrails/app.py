@@ -144,7 +144,7 @@ class App:
         except Exception as e:
             print(e)
             self.state = {
-                "projectFile": "projects/default_project.json",
+                "projectFile": "projects/default.project.json",
             }
 
     def saveAppState(self):
