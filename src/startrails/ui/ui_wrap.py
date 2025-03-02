@@ -1,7 +1,7 @@
 import os
 from PySide6.QtGui import (QPixmap, QGuiApplication)
 from PySide6.QtCore import QThreadPool, QTimer, QPoint
-from PySide6.QtWidgets import QWidget, QFileDialog, QMainWindow, QDialog
+from PySide6.QtWidgets import QWidget, QFileDialog, QMainWindow, QDialog, QApplication
 from functools import partial
 
 from startrails.app import App
@@ -188,6 +188,7 @@ class Ui_AppWindow(Ui_MainWindow):
                 raise ValueError("Unknown data type")
 
     def selectInputFiles(self, *, clear=True):
+        QApplication.processEvents()
         fileNames, _ = QFileDialog.getOpenFileNames(filter="Image Files (*.jpg *.jpeg *.tif *.tiff)")
         if fileNames:
             if clear:
@@ -296,6 +297,7 @@ class Ui_AppWindow(Ui_MainWindow):
         self.app.updateWindowSettings(self.persistentSettings)
 
     def doNewProject(self):
+        QApplication.processEvents()
         file_path, _ = QFileDialog.getSaveFileName(
             None,
             "Create a New Project",
@@ -311,9 +313,11 @@ class Ui_AppWindow(Ui_MainWindow):
             self.updateReadyStates()
 
     def doOpenProject(self):
-        fileNames, _ = QFileDialog.getOpenFileNames(dir="projects", filter="Project Files (*.project.json)")
-        if fileNames:
-            self.app.loadProject(fileNames[0])
+        QApplication.processEvents()
+        fileName, _ = QFileDialog.getOpenFileName(dir="projects", filter="Project Files (*.project.json)")
+        if fileName:
+            self.app.loadProject(fileName)
+            self.canvas_main.setFile(None)
             self.inputFileStrip.setFileList(self.app.getInputFileList())
             self.outputFileStrip.setFileList(self.app.getOutputFileList())
             self.updateReadyStates()

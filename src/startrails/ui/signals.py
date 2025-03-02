@@ -17,7 +17,6 @@ class AsyncWorker(QRunnable):
     def run(self):
         if not QThread.currentThread().isInterruptionRequested():
             self.work()
-            time.sleep(0.01)
 
 
 class Singleton(type):
