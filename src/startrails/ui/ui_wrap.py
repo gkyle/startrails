@@ -7,7 +7,7 @@ from functools import partial
 from startrails.app import App
 from startrails.ui.dialog_detectStreaks import DetectStreaksDialog
 from startrails.ui.progress import ProgressBarUpdater
-from startrails.ui.signals import AsyncWorker, getSignals
+from startrails.ui.signals import AsyncWorker, emitLater, getSignals
 from startrails.ui.filestrip import FileButton, FileStrip
 from startrails.ui.dialog_stackImages import FadeRadio, StackImagesDialog, StreaksRadio
 from startrails.ui.ui_interface import Ui_MainWindow
@@ -187,7 +187,7 @@ class Ui_AppWindow(Ui_MainWindow):
             else:
                 raise ValueError("Unknown data type")
 
-    def selectInputFiles(self, *, clear=False):
+    def selectInputFiles(self, *, clear=True):
         fileNames, _ = QFileDialog.getOpenFileNames(filter="Image Files (*.jpg *.jpeg *.tif *.tiff)")
         if fileNames:
             if clear:
@@ -304,17 +304,19 @@ class Ui_AppWindow(Ui_MainWindow):
         )
 
         if file_path:
-            print(file_path)
             self.app.newProject(file_path)
+            self.canvas_main.setFile(None)
+            self.inputFileStrip.setFileList(self.app.getInputFileList())
+            self.outputFileStrip.setFileList(self.app.getOutputFileList())
+            self.updateReadyStates()
 
     def doOpenProject(self):
         fileNames, _ = QFileDialog.getOpenFileNames(dir="projects", filter="Project Files (*.project.json)")
         if fileNames:
-            for filePath in fileNames:
-                self.app.loadProject(filePath)
-                self.inputFileStrip.setFileList(self.app.getInputFileList())
-                self.outputFileStrip.setFileList(self.app.getOutputFileList())
-        self.updateReadyStates()
+            self.app.loadProject(fileNames[0])
+            self.inputFileStrip.setFileList(self.app.getInputFileList())
+            self.outputFileStrip.setFileList(self.app.getOutputFileList())
+            self.updateReadyStates()
 
     def doExportMasks(self):
         def f(folderName):

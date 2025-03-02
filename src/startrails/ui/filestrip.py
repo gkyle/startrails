@@ -1,4 +1,5 @@
 from functools import partial
+import time
 from typing import Dict, List
 from PySide6.QtWidgets import QMenu, QPushButton, QLabel, QVBoxLayout, QFrame, QScrollArea, QSizePolicy
 from PySide6.QtGui import QPixmap, QColor, QIcon, QPaintEvent, QPainter, QPalette, QFontMetrics
@@ -63,6 +64,8 @@ class FileStrip:
                 if idx == 0:
                     doFocus = True
             doPriority = idx < 10 if self.maxVisibleButtons < 0 else idx < self.maxVisibleButtons
+            if idx == 10:  # insert a brief pause to enable the frame to render with full width buttons
+                time.sleep(0.5)
             self.makeFileButton(file, doFocus, doPriority)
 
         if self.maxVisibleButtons > 0:
