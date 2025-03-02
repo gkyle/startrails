@@ -9,6 +9,7 @@ dependencies = [
     "jsonpickle==4.0.1",
     "numpy",
     "opencv-python-headless>=4.11",
+    "openvino",
     "pillow",
     "psutil==6.1.1",
     "pyside6==6.8.2",
