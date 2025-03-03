@@ -8,8 +8,8 @@ from startrails.models.fillGaps.model import UNet
 from startrails.lib.file import OutputFile
 
 ROI_SIZE = 128
-
 MODEL_PATH = "models/fillGaps/gapfill.pt"
+
 
 class FillGaps(Observable):
     def __init__(self):
@@ -34,7 +34,7 @@ class FillGaps(Observable):
         full_image = np.zeros_like(input_full_image)
         full_mask = np.zeros_like(input_full_image)  # np.zeros((height, width))
 
-        self.startJob("fillGaps", (height // self.stride) * (width // self.stride))
+        self.startJob((height // self.stride) * (width // self.stride))
 
         # Patch-wise inference
         for y in range(0, height, self.stride):
@@ -70,6 +70,9 @@ class FillGaps(Observable):
 
             imwrite(fileFillGaps.path, full_image)
             imwrite(fileFillGapsMask.path, full_mask)
-            self.updateJob("fillGaps", (width // self.stride), fileFillGaps)
+            self.updateJob((width // self.stride), fileFillGaps)
+
+            if self.shouldInterrupt():
+                break
 
         return full_image, full_mask

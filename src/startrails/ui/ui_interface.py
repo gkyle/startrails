@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfacemtPuFH.ui'
+## Form generated from reading UI file 'interfacegjlNgQ.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.4.2
 ##
@@ -106,6 +106,13 @@ class Ui_MainWindow(object):
         self.progressBar.setValue(0)
 
         self.horizontalLayout_11.addWidget(self.progressBar)
+
+        self.pushButton_cancelOp = QPushButton(self.frame_2)
+        self.pushButton_cancelOp.setObjectName(u"pushButton_cancelOp")
+        self.pushButton_cancelOp.setMinimumSize(QSize(30, 0))
+        self.pushButton_cancelOp.setMaximumSize(QSize(30, 16777215))
+
+        self.horizontalLayout_11.addWidget(self.pushButton_cancelOp)
 
 
         self.gridLayout.addWidget(self.frame_2, 0, 2, 1, 1, Qt.AlignRight)
@@ -471,11 +478,23 @@ class Ui_MainWindow(object):
         self.verticalLayout_9 = QVBoxLayout(self.frame_outputFilesContainer)
         self.verticalLayout_9.setObjectName(u"verticalLayout_9")
         self.verticalLayout_9.setContentsMargins(6, 0, 6, 0)
-        self.label_5 = QLabel(self.frame_outputFilesContainer)
+        self.frame_11 = QFrame(self.frame_outputFilesContainer)
+        self.frame_11.setObjectName(u"frame_11")
+        self.frame_11.setMinimumSize(QSize(0, 20))
+        self.frame_11.setMaximumSize(QSize(16777215, 20))
+        self.frame_11.setFrameShape(QFrame.NoFrame)
+        self.frame_11.setFrameShadow(QFrame.Raised)
+        self.horizontalLayout_13 = QHBoxLayout(self.frame_11)
+        self.horizontalLayout_13.setObjectName(u"horizontalLayout_13")
+        self.horizontalLayout_13.setContentsMargins(0, 0, 0, 0)
+        self.label_5 = QLabel(self.frame_11)
         self.label_5.setObjectName(u"label_5")
         self.label_5.setFont(font4)
 
-        self.verticalLayout_9.addWidget(self.label_5)
+        self.horizontalLayout_13.addWidget(self.label_5)
+
+
+        self.verticalLayout_9.addWidget(self.frame_11)
 
         self.scrollArea_2 = QScrollArea(self.frame_outputFilesContainer)
         self.scrollArea_2.setObjectName(u"scrollArea_2")
@@ -549,6 +568,8 @@ class Ui_MainWindow(object):
         self.verticalLayout_6.setContentsMargins(6, 0, 6, 0)
         self.frame_10 = QFrame(self.frame_inputFilesContainer)
         self.frame_10.setObjectName(u"frame_10")
+        self.frame_10.setMinimumSize(QSize(0, 20))
+        self.frame_10.setMaximumSize(QSize(16777215, 20))
         self.frame_10.setFrameShape(QFrame.NoFrame)
         self.frame_10.setFrameShadow(QFrame.Raised)
         self.horizontalLayout_12 = QHBoxLayout(self.frame_10)
@@ -628,6 +649,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"StarStack AI", None))
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"StarStack AI", None))
         self.label_progressBar.setText("")
+        self.pushButton_cancelOp.setText(QCoreApplication.translate("MainWindow", u"X", None))
         self.label_imageName.setText("")
         self.label_cuda.setText(QCoreApplication.translate("MainWindow", u"<GPU Stats>", None))
         self.canvas_main.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))

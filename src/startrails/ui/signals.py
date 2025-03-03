@@ -1,11 +1,9 @@
 from functools import partial
 from PySide6.QtCore import QObject, Signal, QThreadPool, SignalInstance
 from PySide6.QtWidgets import QWidget, QPushButton, QFrame
+from PySide6.QtCore import QThread, QRunnable
 
 from startrails.lib.file import File
-
-import time
-from PySide6.QtCore import QThread, QRunnable
 
 
 class AsyncWorker(QRunnable):

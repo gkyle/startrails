@@ -2,7 +2,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Tuple
 from PIL import Image
-import cv2
 import numpy as np
 from shapely import Point, Polygon
 
@@ -39,8 +38,7 @@ class FindBrightFrame(Observable):
 
         brightest = None
         brightestValue = 0
-        jobLabel = "findBrightest"
-        self.startJob(jobLabel, len(srcFiles))
+        self.startJob(len(srcFiles))
         r = 4
 
         with ThreadPoolExecutor() as executor:
@@ -50,5 +48,7 @@ class FindBrightFrame(Observable):
                 if mean > brightestValue:
                     brightest = file
                     brightestValue = mean
-                self.updateJob(jobLabel, 1, None)
+                self.updateJob(1, None)
+                if self.shouldInterrupt():
+                    return None
         return brightest

@@ -36,6 +36,9 @@ class DetectStreaks(Observable):
             model = YOLO(STREAKS_MODEL_OPENVINO_PATH, task="obb")
         else:
             model = YOLO(STREAKS_MODEL_PATH, verbose=False)
+            # warm up
+            img = np.zeros((ROI_SIZE, ROI_SIZE, 3), dtype=np.uint8)
+            model(img, device=self.device, verbose=False)
 
         def processFile(file: InputFile):
             return self.detectStreaksInImage(model, file, confThreshold, mergeMethod, mergeThreshold)
@@ -43,17 +46,21 @@ class DetectStreaks(Observable):
         total = len(srcFiles)
         completed = 0
         showIncrement = total // 20 + 1
-        jobLabel = "removeStreaks"
-        self.startJob(jobLabel, len(srcFiles))
+        self.startJob(len(srcFiles))
         with ThreadPoolExecutor(max_workers=DETECT_BATCH_SIZE) as executor:
             futures = {executor.submit(processFile, file): file for file in srcFiles}
             for future in as_completed(futures):
                 result = future.result()
                 if completed % showIncrement == 0:
-                    self.updateJob(jobLabel, 1, result)
+                    self.updateJob(1, result)
                 else:
-                    self.updateJob(jobLabel, 1, None)
+                    self.updateJob(1, None)
                 completed += 1
+                if self.shouldInterrupt():
+                    for future in futures:
+                        future.cancel()
+                    executor.shutdown()
+                    break
 
     # This is faster than SAHI get_sliced_prediction because:
     # - Uses YOLO model batched processing

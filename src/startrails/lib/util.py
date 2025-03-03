@@ -1,11 +1,9 @@
-from abc import abstractmethod
 import cv2
 import numpy
 try:
     import cupy as cp
 except:
     pass
-from tqdm.auto import tqdm
 
 IMWRITE_OPTIONS = [cv2.IMWRITE_JPEG_QUALITY, 100]
 
@@ -27,58 +25,48 @@ def applyMask(image, masks):
     return image
 
 
+class Job:
+    def __init__(self, total):
+        self.total = total
+        self.count = 0
+        self.done = False
+        self.interrupt = False
+
+
 class Observable():
-    jobs = {}
-    observers = []
+    def __init__(self):
+        self.job: Job = None
+        self.observers = []
 
-    def startJob(self, label, total):
-        self.jobs[label] = {
-            "total": total,
-            "count": 0,
-            "done": False
-        }
-        self.notifyObservers(label)
+    def startJob(self, total):
+        self.job = Job(total)
+        self.notifyObservers()
 
-    def updateJob(self, label, increment, data=None):
-        self.jobs[label]["count"] += increment
-        if self.jobs[label]["count"] >= self.jobs[label]["total"]:
-            self.jobs[label]["done"] = True
+    def updateJob(self, increment, data=None):
+        if not self.job is None:
+            self.job.count += increment
+            if self.job.count >= self.job.total:
+                self.job.done = True
 
-        self.notifyObservers(label, increment, data)
+        self.notifyObservers(increment, data)
 
-    def notifyObservers(self, label, increment=0, data=None):
+    def notifyObservers(self, increment=0, data=None):
         for observer in self.observers:
             observer(
-                self.jobs[label]["total"],
+                self.job.total,
                 increment,
-                self.jobs[label]["count"],
-                self.jobs[label]["done"],
+                self.job.count,
+                self.job.done,
                 data)
+
+    def requestInterrupt(self):
+        self.job.interrupt = True
+
+    def shouldInterrupt(self):
+        return self.job.interrupt
 
     def addObserver(self, observer):
         self.observers.append(observer)
 
     def removeObserver(self, observer):
         self.observers.remove(observer)
-
-
-class ProgressBar:
-    @abstractmethod
-    def update(self, total, increment, count, done, _):
-        pass
-
-
-class CmdProgressBar(ProgressBar):
-    pbar = None
-    label = None
-
-    def __init__(self, label):
-        self.label = label
-
-    def update(self, total, increment, count, done, _):
-        if self.pbar is None:
-            self.pbar = tqdm(desc=self.label, total=total)
-        self.pbar.update(increment)
-        if done:
-            self.pbar.close()
-            self.pbar = None

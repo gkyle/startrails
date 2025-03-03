@@ -4,6 +4,8 @@ import jsonpickle
 import os
 
 import torch
+
+from startrails.lib.util import Observable
 try:
     import cupy
 except:
@@ -31,6 +33,7 @@ class App:
         self.loadAppState()
         self.loadProject(self.state["projectFile"])
         self.loadAppState()
+        self.activeOperation: Observable = None
 
     def getInputFileList(self) -> List[InputFile]:
         return self.project.rawInputFiles
@@ -84,6 +87,7 @@ class App:
         basename = os.path.basename(filename)
         file = self.appendOutputFile(basename, filename, "Stacked", fadeGradient=fadeGradient)
         stackImages.addObserver(progressBar)
+        self.activeOperation = stackImages
         stackImages.stack(filteredInputFiles, file, satellitesRemoved, fade,
                           fadeGradient=fadeGradient, batchSize=batchSize)
         stackImages.removeObserver(progressBar)
@@ -92,6 +96,7 @@ class App:
     def doDetectStreaks(self, progressBar, useGPU, confThreshold, mergeMethod, mergeThreshold):
         detectStreaks = DetectStreaks(useGPU)
         detectStreaks.addObserver(progressBar)
+        self.activeOperation = detectStreaks
         detectStreaks.detectStreaks(self.getInputFileList(), confThreshold, mergeMethod, mergeThreshold)
         detectStreaks.removeObserver(progressBar)
 
@@ -99,6 +104,7 @@ class App:
         filteredInputFiles = list(filter(lambda file: not file.excludeFromStack, self.project.rawInputFiles))
         findBrightFrame = FindBrightFrame()
         findBrightFrame.addObserver(progressBar)
+        self.activeOperation = findBrightFrame
         file = findBrightFrame.findBrightFrame(filteredInputFiles, x, y, basisFile.fadeGradient)
         findBrightFrame.removeObserver(progressBar)
         return file
@@ -124,9 +130,14 @@ class App:
             os.path.basename(fileNameFillGapsMask), fileNameFillGapsMask, "FillGapsMask")
         fileFillGaps = self.appendOutputFile(
             os.path.basename(filenameFillGaps), filenameFillGaps, "FillGaps")
+        self.activeOperation = fillGaps
         fillGaps.fillGaps(file, fileFillGaps, fileFillGapsMask)
         fillGaps.removeObserver(progressBar)
         return fileFillGaps
+
+    def doInterruptOperation(self):
+        if self.activeOperation:
+            self.activeOperation.requestInterrupt()
 
     def getGPUStats(self):
         try:

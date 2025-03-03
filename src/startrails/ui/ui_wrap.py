@@ -7,7 +7,7 @@ from functools import partial
 from startrails.app import App
 from startrails.ui.dialog_detectStreaks import DetectStreaksDialog
 from startrails.ui.progress import ProgressBarUpdater
-from startrails.ui.signals import AsyncWorker, emitLater, getSignals
+from startrails.ui.signals import AsyncWorker, getSignals
 from startrails.ui.filestrip import FileButton, FileStrip
 from startrails.ui.dialog_stackImages import FadeRadio, StackImagesDialog, StreaksRadio
 from startrails.ui.ui_interface import Ui_MainWindow
@@ -43,6 +43,7 @@ class MainWindow(QMainWindow):
         return super().moveEvent(event)
 
     def closeEvent(self, event):
+        self.ui.doCancelOp()
         self.timer.stop()
         event.accept()
 
@@ -99,6 +100,7 @@ class Ui_AppWindow(Ui_MainWindow):
         self.pushButton_exportMasks.clicked.connect(self.doExportMasks)
         self.pushButton_exportTraining.clicked.connect(self.doExportTrainingStreaks)
         self.pushButton_fillGaps.clicked.connect(self.doFillGaps)
+        self.pushButton_cancelOp.clicked.connect(self.doCancelOp)
 
         self.signals = getSignals()
         self.signals.startProgress.connect(self.slotStartProgress)
@@ -331,8 +333,11 @@ class Ui_AppWindow(Ui_MainWindow):
                 self.app.doExportMaskedImages(folderName, progressUpdater.tick)
 
         folderName = QFileDialog.getExistingDirectory(caption="Choose folder to save mask files")
-        worker = AsyncWorker(partial(f, folderName))
+        worker = AsyncWorker(partial(f, folderName), True)
         self.op_queue.start(worker)
+
+    def doCancelOp(self):
+        self.app.doInterruptOperation()
 
 
 def replaceWidget(placeHolder: QWidget, newWidget: QWidget):

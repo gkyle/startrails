@@ -65,8 +65,7 @@ class StackImages(Observable):
         semaphore = Semaphore(batchSize*2)
 
         with ThreadPoolExecutor() as executor:
-            jobLabel = "stack"
-            self.startJob(jobLabel, len(srcFiles))
+            self.startJob(len(srcFiles))
             futures = []
             completedCount = 0
             targetCount = len(srcFiles)
@@ -90,14 +89,20 @@ class StackImages(Observable):
 
                     if completedCount % batchSize == 0:
                         outImg = self.processBatch(self.batch, outImg, outfile.path)
-                        self.updateJob(jobLabel, len(self.batch), outfile)
+                        self.updateJob(len(self.batch), outfile)
                         self.batch.clear()
+
+                if self.shouldInterrupt():
+                    for future in futures:
+                        future.cancel()
+                    executor.shutdown()
+                    break
 
                 time.sleep(0.01)
 
             if self.batch:
                 outImg = self.processBatch(self.batch, outImg, outfile.path)
-                self.updateJob(jobLabel, len(self.batch), outfile)
+                self.updateJob(len(self.batch), outfile)
 
             if self.useGPU:
                 cupy.get_default_memory_pool().free_all_blocks()
