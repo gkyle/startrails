@@ -1,5 +1,5 @@
 from functools import partial
-from PySide6.QtCore import QObject, Signal, QThreadPool, SignalInstance
+from PySide6.QtCore import QObject, Signal, QThreadPool, QEvent
 from PySide6.QtWidgets import QWidget, QPushButton, QFrame
 from PySide6.QtCore import QThread, QRunnable
 
@@ -47,6 +47,9 @@ class Signals(QObject):
 
     removeFile: Signal = Signal(File, QPushButton)
     excludeFile: Signal = Signal(File, QPushButton)
+
+    windowResized: Signal = Signal(QEvent)
+    windowMoved: Signal = Signal(QEvent)
 
 
 lowpri_threadpool = QThreadPool()

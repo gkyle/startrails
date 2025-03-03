@@ -7,7 +7,7 @@ from functools import partial
 from startrails.app import App
 from startrails.ui.dialog_detectStreaks import DetectStreaksDialog
 from startrails.ui.progress import ProgressBarUpdater
-from startrails.ui.signals import AsyncWorker, getSignals
+from startrails.ui.signals import AsyncWorker, emitLater, getSignals
 from startrails.ui.filestrip import FileButton, FileStrip
 from startrails.ui.dialog_stackImages import FadeRadio, StackImagesDialog, StreaksRadio
 from startrails.ui.ui_interface import Ui_MainWindow
@@ -35,11 +35,11 @@ class MainWindow(QMainWindow):
         self.move(QPoint(x, y))
 
     def resizeEvent(self, event):
-        self.ui.observeResizeEvent(event)
+        self.ui.signals.windowResized.emit(event)
         return super().resizeEvent(event)
 
     def moveEvent(self, event):
-        self.ui.observeMoveEvent(event)
+        self.ui.signals.windowMoved.emit(event)
         return super().moveEvent(event)
 
     def closeEvent(self, event):
@@ -112,6 +112,8 @@ class Ui_AppWindow(Ui_MainWindow):
         self.signals.updateFileButton.connect(self.updateReadyStates)
         self.signals.findBrightestFrame.connect(self.doFindBrightFrame)
         self.signals.updateGPUStats.connect(self.slotUpdateGPUStats)
+        self.signals.windowResized.connect(self.observeResizeEvent)
+        self.signals.windowMoved.connect(self.observeMoveEvent)
 
         # Replace placeholders
         self.canvas_main: CanvasLabel = replaceWidget(

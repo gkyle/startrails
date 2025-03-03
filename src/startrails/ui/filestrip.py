@@ -10,6 +10,11 @@ from PIL.ImageQt import ImageQt
 from startrails.lib.file import File, InputFile
 from startrails.ui.signals import emitLater, getSignals
 
+FILESTRIP_CONTAINER_HEIGHT = 154
+FILESTRIP_SCROLL_HEIGHT = 125
+FILE_BUTTON_SIZE = 100
+FILE_IMAGE_SIZE = 88
+
 
 class FileStrip:
 
@@ -24,6 +29,11 @@ class FileStrip:
         self.scroll = self.frameContainer.findChildren(QScrollArea)[0]
         self.scroll.horizontalScrollBar().valueChanged.connect(partial(self.slotUpdateThumbnails, self.frame))
         self.signals.updateThumbnail.connect(self.slotUpdateThumbnail)
+
+        self.frameContainer.setMinimumSize(QSize(FILE_BUTTON_SIZE+8, FILESTRIP_CONTAINER_HEIGHT))
+        self.frameContainer.setMaximumSize(QSize(16777215, FILESTRIP_CONTAINER_HEIGHT))
+        self.scroll.setMinimumSize(QSize(FILE_BUTTON_SIZE+8, FILESTRIP_SCROLL_HEIGHT))
+        self.scroll.setMaximumSize(QSize(16777215, FILESTRIP_SCROLL_HEIGHT))
 
         self.signals.updateFileButton.connect(self.update)
         self.signals.focusFile.connect(self.focusFile)
@@ -79,7 +89,7 @@ class FileStrip:
         c = len(self.fileList)
         if c > self.maxVisibleButtons:
             c = self.maxVisibleButtons
-        self.frameContainer.setMinimumSize(QSize(c*160, 196))
+        self.frameContainer.setMinimumSize(QSize(c*(FILE_BUTTON_SIZE+8), FILESTRIP_CONTAINER_HEIGHT))
 
     def focusFile(self, file: File):
         if file in self.buttons:
@@ -115,11 +125,11 @@ class IconLabel(QLabel):
         self.hasAutoMasks = False
         self.hasManualMasks = False
         self.isExcluded = False
-        self.setFixedSize(QSize(128, 128))
+        self.setFixedSize(QSize(FILE_IMAGE_SIZE, FILE_IMAGE_SIZE))
         if not self.file is None:
             self.pixmap = QPixmap(file.path)
         else:
-            self.pixmap = QPixmap(128, 128)
+            self.pixmap = QPixmap(FILE_IMAGE_SIZE, FILE_IMAGE_SIZE)
             self.pixmap.fill(self.palette().color(QPalette.Window))
         self.setAlignment(Qt.AlignCenter)
 
@@ -127,7 +137,7 @@ class IconLabel(QLabel):
         self.file = file
         try:
             image = Image.open(file.path)
-            image.thumbnail((128, 128))
+            image.thumbnail((FILE_IMAGE_SIZE, FILE_IMAGE_SIZE))
             qt_image = ImageQt(image)
             self.pixmap = QPixmap.fromImage(qt_image)
         except:
@@ -145,7 +155,7 @@ class IconLabel(QLabel):
     def drawIndicator(self, painter: QPainter, color: QColor, offset: int):
         painter.setBrush(color)
         painter.setPen(color)
-        painter.drawEllipse(128 - 15-offset, 5, 8, 8)
+        painter.drawEllipse(FILE_IMAGE_SIZE - 15-offset, 5, 8, 8)
         offset += 12
         return offset
 
@@ -173,18 +183,18 @@ class FileButton(QPushButton):
 
         self.iconLabel = IconLabel()
         self.objectName = file.basename
-        placeHolder = QPixmap(128, 128)
+        placeHolder = QPixmap(FILE_IMAGE_SIZE, FILE_IMAGE_SIZE)
         placeHolder.fill(QColor(0, 0, 0, 0))
 
         textLabel = QLabel(file.basename)
         textLabel.setAlignment(Qt.AlignCenter)
         metrics = QFontMetrics(textLabel.font())
-        clippedText = metrics.elidedText(file.basename, Qt.TextElideMode.ElideMiddle, 128)
+        clippedText = metrics.elidedText(file.basename, Qt.TextElideMode.ElideMiddle, FILE_IMAGE_SIZE)
         textLabel.setText(clippedText)
 
         layout = QVBoxLayout(self)
         self.setSizePolicy(QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed))
-        self.setFixedSize(QSize(140, 140))
+        self.setFixedSize(QSize(FILE_BUTTON_SIZE, FILE_BUTTON_SIZE))
         layout.setContentsMargins(4, 9, 4, 9)
         layout.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.iconLabel)
