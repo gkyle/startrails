@@ -356,7 +356,7 @@
                 </font>
                </property>
                <property name="text">
-                <string>TextLabel</string>
+                <string>Canvas Place Holder</string>
                </property>
                <property name="alignment">
                 <set>Qt::AlignCenter</set>
@@ -370,7 +370,7 @@
            <widget class="QFrame" name="frame_right">
             <property name="maximumSize">
              <size>
-              <width>274</width>
+              <width>244</width>
               <height>16777215</height>
              </size>
             </property>
@@ -400,13 +400,13 @@
               <widget class="QFrame" name="slide_menu">
                <property name="minimumSize">
                 <size>
-                 <width>274</width>
+                 <width>244</width>
                  <height>0</height>
                 </size>
                </property>
                <property name="maximumSize">
                 <size>
-                 <width>274</width>
+                 <width>244</width>
                  <height>16777215</height>
                 </size>
                </property>
@@ -432,23 +432,6 @@
                 <property name="bottomMargin">
                  <number>0</number>
                 </property>
-                <item>
-                 <widget class="QFrame" name="frame_6">
-                  <property name="maximumSize">
-                   <size>
-                    <width>16777215</width>
-                    <height>10</height>
-                   </size>
-                  </property>
-                  <property name="frameShape">
-                   <enum>QFrame::NoFrame</enum>
-                  </property>
-                  <property name="frameShadow">
-                   <enum>QFrame::Raised</enum>
-                  </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_8"/>
-                 </widget>
-                </item>
                 <item alignment="Qt::AlignTop">
                  <widget class="QFrame" name="frame_operations">
                   <property name="sizePolicy">
@@ -1030,7 +1013,7 @@ background-origin: content</string>
              <property name="bottomMargin">
               <number>0</number>
              </property>
-             <item>
+             <item alignment="Qt::AlignLeft">
               <widget class="QFrame" name="frame_11">
                <property name="minimumSize">
                 <size>
@@ -1073,6 +1056,13 @@ background-origin: content</string>
                   </property>
                   <property name="text">
                    <string>Output Files</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_outputFiles_count">
+                  <property name="text">
+                   <string/>
                   </property>
                  </widget>
                 </item>
@@ -1241,7 +1231,7 @@ background-origin: content</string>
              <property name="bottomMargin">
               <number>0</number>
              </property>
-             <item>
+             <item alignment="Qt::AlignLeft">
               <widget class="QFrame" name="frame_10">
                <property name="minimumSize">
                 <size>
@@ -1284,6 +1274,13 @@ background-origin: content</string>
                   </property>
                   <property name="text">
                    <string>Input Files</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_inputFiles_count">
+                  <property name="text">
+                   <string/>
                   </property>
                  </widget>
                 </item>

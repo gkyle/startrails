@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfaceaNLErM.ui'
+## Form generated from reading UI file 'interfacelCVlXo.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.4.2
 ##
@@ -190,7 +190,7 @@ class Ui_MainWindow(object):
 
         self.frame_right = QFrame(self.frame_app)
         self.frame_right.setObjectName(u"frame_right")
-        self.frame_right.setMaximumSize(QSize(274, 16777215))
+        self.frame_right.setMaximumSize(QSize(244, 16777215))
         self.frame_right.setFrameShape(QFrame.NoFrame)
         self.frame_right.setFrameShadow(QFrame.Plain)
         self.verticalLayout_2 = QVBoxLayout(self.frame_right)
@@ -199,24 +199,14 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
         self.slide_menu = QFrame(self.frame_right)
         self.slide_menu.setObjectName(u"slide_menu")
-        self.slide_menu.setMinimumSize(QSize(274, 0))
-        self.slide_menu.setMaximumSize(QSize(274, 16777215))
+        self.slide_menu.setMinimumSize(QSize(244, 0))
+        self.slide_menu.setMaximumSize(QSize(244, 16777215))
         self.slide_menu.setFrameShape(QFrame.NoFrame)
         self.slide_menu.setFrameShadow(QFrame.Raised)
         self.verticalLayout_3 = QVBoxLayout(self.slide_menu)
         self.verticalLayout_3.setSpacing(0)
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
         self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.frame_6 = QFrame(self.slide_menu)
-        self.frame_6.setObjectName(u"frame_6")
-        self.frame_6.setMaximumSize(QSize(16777215, 10))
-        self.frame_6.setFrameShape(QFrame.NoFrame)
-        self.frame_6.setFrameShadow(QFrame.Raised)
-        self.verticalLayout_8 = QVBoxLayout(self.frame_6)
-        self.verticalLayout_8.setObjectName(u"verticalLayout_8")
-
-        self.verticalLayout_3.addWidget(self.frame_6)
-
         self.frame_operations = QFrame(self.slide_menu)
         self.frame_operations.setObjectName(u"frame_operations")
         sizePolicy2 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
@@ -495,8 +485,13 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_13.addWidget(self.label_5)
 
+        self.label_outputFiles_count = QLabel(self.frame_11)
+        self.label_outputFiles_count.setObjectName(u"label_outputFiles_count")
 
-        self.verticalLayout_9.addWidget(self.frame_11)
+        self.horizontalLayout_13.addWidget(self.label_outputFiles_count)
+
+
+        self.verticalLayout_9.addWidget(self.frame_11, 0, Qt.AlignLeft)
 
         self.scrollArea = QScrollArea(self.frame_outputFilesContainer)
         self.scrollArea.setObjectName(u"scrollArea")
@@ -583,8 +578,13 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_12.addWidget(self.label)
 
+        self.label_inputFiles_count = QLabel(self.frame_10)
+        self.label_inputFiles_count.setObjectName(u"label_inputFiles_count")
 
-        self.verticalLayout_6.addWidget(self.frame_10)
+        self.horizontalLayout_12.addWidget(self.label_inputFiles_count)
+
+
+        self.verticalLayout_6.addWidget(self.frame_10, 0, Qt.AlignLeft)
 
         self.scrollArea1 = QScrollArea(self.frame_inputFilesContainer)
         self.scrollArea1.setObjectName(u"scrollArea1")
@@ -650,7 +650,7 @@ class Ui_MainWindow(object):
         self.pushButton_cancelOp.setText(QCoreApplication.translate("MainWindow", u"X", None))
         self.label_imageName.setText("")
         self.label_cuda.setText(QCoreApplication.translate("MainWindow", u"<GPU Stats>", None))
-        self.canvas_main.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
+        self.canvas_main.setText(QCoreApplication.translate("MainWindow", u"Canvas Place Holder", None))
         self.label_operations.setText(QCoreApplication.translate("MainWindow", u"Operations", None))
         self.pushButton_newProject.setText(QCoreApplication.translate("MainWindow", u"New Project", None))
         self.pushButton_openProject.setText(QCoreApplication.translate("MainWindow", u"Open Project", None))
@@ -661,8 +661,10 @@ class Ui_MainWindow(object):
         self.pushButton_exportTraining.setText(QCoreApplication.translate("MainWindow", u"Export Training", None))
         self.pushButton_fillGaps.setText(QCoreApplication.translate("MainWindow", u"Fill Gaps", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Output Files", None))
+        self.label_outputFiles_count.setText("")
         self.label_7.setText("")
         self.label.setText(QCoreApplication.translate("MainWindow", u"Input Files", None))
+        self.label_inputFiles_count.setText("")
         self.label_2.setText("")
     # retranslateUi
 

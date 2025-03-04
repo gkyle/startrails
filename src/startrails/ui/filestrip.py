@@ -1,8 +1,8 @@
 from functools import partial
 import time
 from typing import Dict, List
-from PySide6.QtWidgets import QMenu, QPushButton, QLabel, QVBoxLayout, QFrame, QScrollArea, QSizePolicy, QApplication
-from PySide6.QtGui import QPixmap, QColor, QIcon, QPaintEvent, QPainter, QPalette, QFontMetrics
+from PySide6.QtWidgets import QMenu, QPushButton, QLabel, QVBoxLayout, QFrame, QScrollArea, QSizePolicy, QApplication, QMessageBox
+from PySide6.QtGui import QPixmap, QColor, QIcon, QPaintEvent, QPainter, QPalette, QFontMetrics, QFont
 from PySide6.QtCore import QObject, Qt, QSize, QPoint, Signal
 from PIL import Image
 from PIL.ImageQt import ImageQt
@@ -34,6 +34,7 @@ class FileStrip:
         self.frameContainer.setMaximumSize(QSize(16777215, FILESTRIP_CONTAINER_HEIGHT))
         self.scroll.setMinimumSize(QSize(FILE_BUTTON_SIZE+8, FILESTRIP_SCROLL_HEIGHT))
         self.scroll.setMaximumSize(QSize(16777215, FILESTRIP_SCROLL_HEIGHT))
+        self.fileCountLabel = self.frameContainer.findChildren(QLabel)[1]
 
         self.signals.updateFileButton.connect(self.update)
         self.signals.focusFile.connect(self.focusFile)
@@ -64,6 +65,8 @@ class FileStrip:
         for child in self.frame.findChildren(QPushButton):
             child.setParent(None)
             child.deleteLater()
+
+        self.fileCountLabel.setText(f"({len(self.fileList)})")
 
         for idx, file in enumerate(self.fileList):
             doFocus = False
@@ -188,6 +191,7 @@ class FileButton(QPushButton):
 
         textLabel = QLabel(file.basename)
         textLabel.setAlignment(Qt.AlignCenter)
+        textLabel.setFont(QFont("Arial", 9))
         metrics = QFontMetrics(textLabel.font())
         clippedText = metrics.elidedText(file.basename, Qt.TextElideMode.ElideMiddle, FILE_IMAGE_SIZE)
         textLabel.setText(clippedText)
