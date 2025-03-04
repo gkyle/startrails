@@ -14,12 +14,11 @@ class ExportMaskedImages(Observable):
             self.exportMaskedImage(file, outputDir)
 
         with ThreadPoolExecutor() as executor:
-            jobLabel = "exportMaskedImages"
-            self.startJob(jobLabel, len(srcFiles))
+            self.startJob(len(srcFiles))
             futures = {executor.submit(process_file, file): file for file in srcFiles}
             for future in as_completed(futures):
                 future.result()
-                self.updateJob(jobLabel, 1)
+                self.updateJob(1)
 
     def exportMaskedImage(self, file: InputFile, outputDir):
         masks = file.streaksMasks + file.streaksManualMasks

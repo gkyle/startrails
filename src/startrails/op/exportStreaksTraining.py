@@ -25,12 +25,11 @@ class ExportStreaksDetectTraining(Observable):
             exportRandomStreaklessCrops(file, outputDir, count)
 
         with ThreadPoolExecutor() as executor:
-            jobLabel = "exportStreakTraining"
-            self.startJob(jobLabel, len(srcFiles))
+            self.startJob(len(srcFiles))
             futures = {executor.submit(process_file, file): file for file in srcFiles}
             for future in as_completed(futures):
                 future.result()
-                self.updateJob(jobLabel, 1)
+                self.updateJob(1)
 
     def exportCroppedAndLabeledStreaks(self, file: InputFile, outputDir: str) -> int:
         if len(file.streaksManualMasks) == 0:
