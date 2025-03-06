@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfacelCVlXo.ui'
+## Form generated from reading UI file 'interfaceJVUWwW.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.4.2
 ##
@@ -138,8 +138,8 @@ class Ui_MainWindow(object):
 
         self.frame_4 = QFrame(self.toolbar)
         self.frame_4.setObjectName(u"frame_4")
-        self.frame_4.setMinimumSize(QSize(274, 0))
-        self.frame_4.setMaximumSize(QSize(274, 16777215))
+        self.frame_4.setMinimumSize(QSize(244, 0))
+        self.frame_4.setMaximumSize(QSize(244, 16777215))
         self.frame_4.setFrameShape(QFrame.NoFrame)
         self.frame_4.setFrameShadow(QFrame.Raised)
         self.horizontalLayout_7 = QHBoxLayout(self.frame_4)
@@ -521,7 +521,7 @@ class Ui_MainWindow(object):
         self.frame_outputFiles.setFrameShape(QFrame.NoFrame)
         self.frame_outputFiles.setFrameShadow(QFrame.Raised)
         self.horizontalLayout_2 = QHBoxLayout(self.frame_outputFiles)
-        self.horizontalLayout_2.setSpacing(5)
+        self.horizontalLayout_2.setSpacing(2)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
         self.label_7 = QLabel(self.frame_outputFiles)
@@ -611,7 +611,7 @@ class Ui_MainWindow(object):
         self.frame_inputFiles.setFrameShape(QFrame.NoFrame)
         self.frame_inputFiles.setFrameShadow(QFrame.Raised)
         self.horizontalLayout_4 = QHBoxLayout(self.frame_inputFiles)
-        self.horizontalLayout_4.setSpacing(5)
+        self.horizontalLayout_4.setSpacing(2)
         self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
         self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.label_2 = QLabel(self.frame_inputFiles)
