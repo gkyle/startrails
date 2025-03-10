@@ -18,6 +18,7 @@ from startrails.lib.file import InputFile, OutputFile
 
 
 USE_GPU_IF_AVAILABLE = True
+MAX_BATCH_SIZE = 16
 
 
 class StackImages(Observable):
@@ -158,7 +159,7 @@ class StackImages(Observable):
         if useGPU:
             try:
                 if cupy.cuda.is_available():
-                    TARGET_UTILIZATION = 0.6
+                    targetUtilization = 0.6
                     mempool = cupy.get_default_memory_pool()
                     mempool.free_all_blocks()
 
@@ -170,13 +171,15 @@ class StackImages(Observable):
         # Fall back to RAM if GPU unavailable
         if availableBytes == 0:
             useGPU = False
-            TARGET_UTILIZATION = 0.2
+            targetUtilization = 0.2
             memory = psutil.virtual_memory()
             availableBytes = memory.available
 
-        availableImages = availableBytes * TARGET_UTILIZATION // bPerImage
+        availableImages = availableBytes * targetUtilization // bPerImage
 
         # Number of images in memory = 4 * batchSize + 2. (This calculation is accurate for GPU. We use additional RAM in both cases)
         suggestedBatchSize = int((availableImages - 2) // 4)
+        if suggestedBatchSize > MAX_BATCH_SIZE:
+            suggestedBatchSize = MAX_BATCH_SIZE
         expectedMemoryUsed = int(((suggestedBatchSize*4+2) * bPerImage))
         return suggestedBatchSize, expectedMemoryUsed, useGPU
