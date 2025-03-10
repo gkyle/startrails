@@ -133,6 +133,8 @@ class App:
         self.activeOperation = fillGaps
         fillGaps.fillGaps(file, fileFillGaps, fileFillGapsMask)
         fillGaps.removeObserver(progressBar)
+        fileFillGaps.fadeGradient = file.fadeGradient
+        fileFillGapsMask.fadeGradient = file.fadeGradient
         return fileFillGaps
 
     def doInterruptOperation(self):
