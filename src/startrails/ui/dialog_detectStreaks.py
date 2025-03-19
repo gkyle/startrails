@@ -34,12 +34,13 @@ class UI_DetectStreaksDialog(Ui_Dialog_DetectStreaks):
         self.radioButton_merge_nms.setChecked(True)
 
         self.getPreferredDevice()
+        self.checkBox_useGPU.stateChanged.connect(self.onChangedCheckGPU)
 
     def onClickedMerge(self, id):
         button_id = self.radio_group_merge.id(self.radio_group_merge.checkedButton())
 
     def onChangedCheckGPU(self, checked):
-        self.getPreferredDevice(checked)
+        self.useGPU = checked
 
     def getPreferredDevice(self, useGPU=True):
         _, _1, gpuAvailable = \
