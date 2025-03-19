@@ -124,12 +124,12 @@ class App:
     def doFillGaps(self, file: OutputFile, progressBar):
         fillGaps = FillGaps()
         fillGaps.addObserver(progressBar)
-        filenameFillGaps = file.path.replace("stacked-", "fillgaps-")
-        fileNameFillGapsMask = file.path.replace("stacked-", "fillgaps_mask-")
-        fileFillGapsMask = self.appendOutputFile(
-            os.path.basename(fileNameFillGapsMask), fileNameFillGapsMask, "FillGapsMask")
+        outDir = self.project.projectFile.replace(".json", "")
+        filenameFillGaps, fileNameFillGapsMask = FillGaps.suggestOutFileName(file, outDir)
         fileFillGaps = self.appendOutputFile(
             os.path.basename(filenameFillGaps), filenameFillGaps, "FillGaps")
+        fileFillGapsMask = self.appendOutputFile(
+            os.path.basename(fileNameFillGapsMask), fileNameFillGapsMask, "FillGapsMask")
         self.activeOperation = fillGaps
         fillGaps.fillGaps(file, fileFillGaps, fileFillGapsMask)
         fillGaps.removeObserver(progressBar)

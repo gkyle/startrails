@@ -1,3 +1,5 @@
+from datetime import datetime
+import os
 import torch
 import numpy as np
 from torchvision.transforms import ToTensor
@@ -5,7 +7,7 @@ import cv2
 
 from startrails.lib.util import imwrite, Observable
 from startrails.models.fillGaps.model import UNet
-from startrails.lib.file import OutputFile
+from startrails.lib.file import OutputFile, InputFile
 
 ROI_SIZE = 128
 MODEL_PATH = "models/fillGaps/gapfill.pt"
@@ -42,24 +44,21 @@ class FillGaps(Observable):
 
                 # Extract the patch from the large image
                 patch = input_full_image[y:y + self.patch_size[0], x:x + self.patch_size[1]]
-                patch_tensor = ToTensor()(patch)
-                patch_tensor = patch_tensor.unsqueeze(0).to(self.device)
+                patch_tensor = transform(patch).unsqueeze(0).to(self.device)
 
                 # Run inference on the patch
                 with torch.no_grad():
                     output, output_mask = self.model(patch_tensor)
 
                 # Convert output to numpy array and back to the original shape
-                output = output[0].cpu().numpy()  # Remove batch dim and convert to NumPy
-                output = np.transpose(output, (1, 2, 0))  # Change shape from (C, H, W) to (H, W, C)
-                output = np.clip(output, 0, 1)  # Ensure pixel values are within [0, 1]
-                output = (output * 255).astype(np.uint8)  # Convert to 8-bit RGB format
+                output = untransform(output[0])
 
                 # Convert mask
-                threshold_value = 32
+                threshold_value = 64
                 mask = np.where((output_mask[0].cpu().numpy() * 255).astype(np.uint8)
                                 > threshold_value, 255, 0).astype(np.uint8)
 
+                # Apply mask
                 merged = output.copy()
                 merged[mask == 0] = patch[mask == 0]
                 merged[mask == 255] = output[mask == 255]
@@ -76,3 +75,26 @@ class FillGaps(Observable):
                 break
 
         return full_image, full_mask
+
+    def suggestOutFileName(file: InputFile, outDir: str):
+        fileName = os.path.basename(file.path)
+        baseName, extension = os.path.splitext(fileName)
+        ts = datetime.now().strftime("%Y-%m-%d-%H-%M")
+        return [
+            "{}/fillgaps-{}-{}{}".format(outDir, baseName, ts, extension),
+            "{}/fillgaps_mask-{}-{}{}".format(outDir, baseName, ts, extension),
+        ]
+
+
+# Convert 8bit image to tensor (C, H, W) [-1,1]
+def transform(img):
+    imgTensor = ToTensor()(img)
+    imgTensor = (imgTensor * 2) - 1
+    return imgTensor
+
+
+# Convert image tensor to 8bit image (H, W, C) [0,255]
+def untransform(imgTensor):
+    img = np.transpose(imgTensor.cpu().numpy(), (1, 2, 0))
+    img = ((img + 1) * 127.5).astype(np.uint8)
+    return img
