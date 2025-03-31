@@ -1,6 +1,6 @@
 import sys
 from PySide6.QtWidgets import QApplication
-from startrails.ui.ui_wrap import *
+from startrails.ui.ui_wrap import MainWindow, App
 from PySide6.QtGui import QPalette, QColor
 
 

@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 from PySide6.QtGui import (QPixmap, QGuiApplication)
 from PySide6.QtCore import QThreadPool, QTimer, QPoint
 from PySide6.QtWidgets import QWidget, QFileDialog, QMainWindow, QDialog, QApplication
@@ -11,7 +12,7 @@ from startrails.ui.signals import AsyncWorker, emitLater, getSignals
 from startrails.ui.filestrip import FileButton, FileStrip
 from startrails.ui.dialog_stackImages import FadeRadio, StackImagesDialog, StreaksRadio
 from startrails.ui.ui_interface import Ui_MainWindow
-from startrails.ui.canvasLabel import *
+from startrails.ui.canvasLabel import CanvasLabel
 from startrails.lib.file import File, InputFile, OutputFile
 
 

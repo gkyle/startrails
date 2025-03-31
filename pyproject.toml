@@ -5,6 +5,7 @@ description = "startrails"
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
+    "deferred-import>=0.1.0",
     "gputil==1.4.0",
     "jsonpickle==4.0.1",
     "numpy",

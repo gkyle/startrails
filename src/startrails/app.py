@@ -3,18 +3,19 @@ from typing import List, Any, Dict
 import jsonpickle
 import os
 
-import torch
+# Use deferred loading for torch and modules that use torch to reduce startup latency.
+from deferred_import import deferred_import
+torch = deferred_import('torch')
+DetectStreaks = deferred_import('startrails.op.detectStreaks').DetectStreaks
+FillGaps = deferred_import('startrails.op.fillGaps').FillGaps
 
-from startrails.lib.util import Observable
 try:
     import cupy
 except:
     pass
 import GPUtil
-
 from startrails.lib.file import InputFile, OutputFile
-from startrails.op.detectStreaks import DetectStreaks
-from startrails.op.fillGaps import FillGaps
+from startrails.lib.util import Observable
 from startrails.op.exportMaskedImages import ExportMaskedImages
 from startrails.op.exportStreaksTraining import ExportStreaksDetectTraining
 from startrails.op.findBrightFrame import FindBrightFrame
