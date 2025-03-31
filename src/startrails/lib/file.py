@@ -17,6 +17,7 @@ class File(Unpickle):
         super().__init__()
         self.basename = basename
         self.path = path
+        self.timestamp = 0
 
 
 class InputFile(File):

@@ -202,6 +202,7 @@ class Ui_AppWindow(Ui_MainWindow):
             for filepath in fileNames:
                 basename = os.path.basename(filepath)
                 self.app.appendInputFile(basename, filepath)
+            self.app.sortInputFiles()
             self.inputFileStrip.setFileList(self.app.getInputFileList())
 
         self.pushButton_stackImages.setEnabled(len(self.app.getInputFileList()) > 0)

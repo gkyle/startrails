@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
     "deferred-import>=0.1.0",
+    "exif>=1.6.1",
     "gputil==1.4.0",
     "jsonpickle==4.0.1",
     "numpy",
