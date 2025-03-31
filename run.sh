@@ -21,5 +21,5 @@ fi;
 uv sync --extra $torch_variant
 
 # Run
-echo "Starting StarStack AI..."
+echo "Starting StarTrails AI..."
 uv run src/main.py

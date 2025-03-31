@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>StarStack AI</string>
+   <string>StarTrails AI</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="sizePolicy">
@@ -144,7 +144,7 @@
                 </font>
                </property>
                <property name="text">
-                <string>StarStack AI</string>
+                <string>StarTrails AI</string>
                </property>
               </widget>
              </item>

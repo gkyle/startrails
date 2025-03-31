@@ -72,7 +72,7 @@ class Ui_AppWindow(Ui_MainWindow):
     def setupUi(self, MainWindow):
         super().setupUi(MainWindow)
 
-        MainWindow.setWindowTitle("StarStack AI")
+        MainWindow.setWindowTitle("StarTrails AI")
 
         # Set window size
         screen_resolution = QGuiApplication.primaryScreen().availableGeometry()

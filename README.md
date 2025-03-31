@@ -1,8 +1,8 @@
-# StarStack AI
+# StarTrails AI
 
 ## Overview
 
-StarStack AI is an opensource tool for creating star trail images that automates the laborious process using Machine Learning.
+StarTrails AI is an opensource tool for creating star trail images that automates the laborious process using Machine Learning.
 
 These days, it's hard to take an image of the night sky without capturing airplane and satellite streaks. These are lines that appear in night sky images as a result of light emitting from or reflecting off airplanes, satellites or space debris. These streaks leave a visible path in the captured image during long-exposure photography.
 
@@ -82,7 +82,7 @@ Star trail images are created by "stacking" a series of night sky images taken o
 
 If an input image contains an unwanted region (eg. a satellite crosses a portion of the sky, leaving a bright streak), the region can be "blacked out" by drawing a black rectangle over it. When we stack the images, some other images in the stack will have brighter pixels in that region that will be included in the final "stacked" image. This is a process that can be done manually before stacking with other star trail stacking tools.
 
-StarStack AI uses an object detection model to automatically identify streaks in the input images, then blacks out those streaks before composing the stack.
+StarTrails AI uses an object detection model to automatically identify streaks in the input images, then blacks out those streaks before composing the stack.
 
 ## Can I train my own model? Can I contribute?
 
