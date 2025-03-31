@@ -52,19 +52,7 @@ Gaps             |  Gaps Filled
 
 Clone this repository or [download the zip](https://github.com/gkyle/startrails/archive/refs/heads/main.zip) and uncompress on your system.
 
-Navigate to the download location run the appropriate setup command for your operating system.
-
-For Linux and macOS:
-
-`setup.sh`
-
-For Windows, run:
-
-`setup.bat`
-
-Setup will create a sandboxed virtual Python environment and download required packages. It will attempt to determine if a CUDA-compatible GPU is available on your system. At this time, Nvidia GPUs are supported. The [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) must be installed. If drivers or CUDA toolkit installation change after install, re-run the setup command.
-
-After setup is complete, use the appropriate run command:
+Navigate to the download location run the appropriate command for your operating system.
 
 On Linux and macOS:
 
@@ -73,6 +61,8 @@ On Linux and macOS:
 On Windows:
 
 `run.bat`
+
+Setup will create a sandboxed virtual Python environment and download required packages. It will attempt to determine if a CUDA-compatible GPU is available on your system. At this time, Nvidia GPUs are supported. The [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) must be installed. If drivers or CUDA toolkit installation change after install, changes will be detected the next time the command is run.
 
 Note: Removing streaks is not a fast operation. It can take a few seconds per image, so removing streaks from a stack of hundreds of images will take several minutes. Running with a GPU greatly improves performance.
 
