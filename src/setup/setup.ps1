@@ -8,7 +8,7 @@ try {
 }
 
 $torch_variant = Invoke-Expression -Command "uv run src/setup/probeGPU.py"
-Write-Host "Installing torch variant: $torch_variant"
+Write-Host "Using torch variant: $torch_variant"
 if ($torch_variant.Length -eq 0 -or $torch_variant -Match "not found") {
     $torch_variant = "cpu"
 }
@@ -17,8 +17,3 @@ if ($torch_variant -eq "cpu") {
 }
 
 Invoke-Expression -Command "uv sync --extra $torch_variant"
-
-Write-Host "Installation complete. You can now run the app with run.bat"
-Write-Host ""
-Write-Host "Press Enter to continue..."
-Read-Host

@@ -1,1 +1,0 @@
-powershell -c "src/setup/setup.ps1"
