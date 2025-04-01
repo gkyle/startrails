@@ -6,8 +6,8 @@ import exif
 # Use deferred loading for torch and modules that use torch to reduce startup latency.
 from deferred_import import deferred_import
 torch = deferred_import('torch')
-DetectStreaks = deferred_import('startrails.op.detectStreaks').DetectStreaks
-FillGaps = deferred_import('startrails.op.fillGaps').FillGaps
+dsm = deferred_import('startrails.op.detectStreaks')
+fgm = deferred_import('startrails.op.fillGaps')
 
 try:
     import cupy
@@ -102,7 +102,7 @@ class App:
         return file
 
     def doDetectStreaks(self, progressBar, useGPU, confThreshold, mergeMethod, mergeThreshold):
-        detectStreaks = DetectStreaks(useGPU)
+        detectStreaks = dsm.DetectStreaks(useGPU)
         detectStreaks.addObserver(progressBar)
         self.activeOperation = detectStreaks
         detectStreaks.detectStreaks(self.getInputFileList(), confThreshold, mergeMethod, mergeThreshold)
@@ -130,10 +130,10 @@ class App:
         exportMaskedImages.removeObserver(progressBar)
 
     def doFillGaps(self, file: OutputFile, progressBar):
-        fillGaps = FillGaps()
+        fillGaps = fgm.FillGaps()
         fillGaps.addObserver(progressBar)
         outDir = self.project.projectFile.replace(".json", "")
-        filenameFillGaps, fileNameFillGapsMask = FillGaps.suggestOutFileName(file, outDir)
+        filenameFillGaps, fileNameFillGapsMask = fgm.FillGaps.suggestOutFileName(file, outDir)
         fileFillGaps = self.appendOutputFile(
             os.path.basename(filenameFillGaps), filenameFillGaps, "FillGaps")
         fileFillGapsMask = self.appendOutputFile(
