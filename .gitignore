@@ -214,5 +214,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Startrails
 projects/
 app.json
