@@ -1,7 +1,6 @@
 from typing import List, Any, Dict
 import jsonpickle
 import os
-import exif
 
 # Use deferred loading for torch and modules that use torch to reduce startup latency.
 from deferred_import import deferred_import
@@ -45,15 +44,12 @@ class App:
 
     def appendInputFile(self, basename: str, path: str) -> InputFile:
         file = InputFile(basename, path)
-        exifImg = exif.Image(file.path)
-        if exifImg.has_exif:
-            file.datetime = exifImg.datetime
         self.project.rawInputFiles.append(file)
         self.saveProject()
         return file
 
     def sortInputFiles(self) -> None:
-        self.project.rawInputFiles.sort(key=lambda file: file.datetime)
+        self.project.rawInputFiles.sort(key=lambda file: file.basename)
         self.saveProject()
 
     def removeInputFile(self, file: InputFile) -> None:
