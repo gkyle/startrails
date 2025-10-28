@@ -1,4 +1,4 @@
-path: ../code/startrails/data/512
+path: ../data/512 # Path is relative to "datasets_dir" in ~/.config/Ultralytics/settings.json
 train: 'train'
 val: 'validation'
  
