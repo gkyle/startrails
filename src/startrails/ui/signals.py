@@ -42,6 +42,7 @@ class Signals(QObject):
     focusFile: Signal = Signal(File)
     updateThumbnails: Signal = Signal(QWidget)
     updateThumbnail: Signal = Signal(QFrame, QWidget)
+    loadThumbnailsAsync: Signal = Signal(QFrame)  # New signal for lazy thumbnail loading
     drawInputFileList: Signal = Signal(File)
     drawOutputFileList: Signal = Signal(File)
 
