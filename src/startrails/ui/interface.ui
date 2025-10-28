@@ -27,7 +27,90 @@
     </sizepolicy>
    </property>
    <property name="styleSheet">
-    <string notr="true"/>
+    <string notr="true">QWidget {
+    background-color: #444444;
+    color: #ffffff;
+}
+
+QFrame {
+    background-color: #444444;
+    color: #ffffff;
+}
+
+QLabel {
+    background-color: transparent;
+    color: #ffffff;
+}
+
+QPushButton {
+    background-color: #555555;
+    color: #ffffff;
+    border: 1px solid #666666;
+    padding: 4px;
+    border-radius: 2px;
+}
+
+QPushButton:hover {
+    background-color: #666666;
+}
+
+QPushButton:pressed {
+    background-color: #333333;
+}
+
+QPushButton:disabled {
+    background-color: #3a3a3a;
+    color: #888888;
+}
+
+QProgressBar {
+    background-color: #333333;
+    border: 1px solid #555555;
+    border-radius: 2px;
+    color: #ffffff;
+}
+
+QProgressBar::chunk {
+    background-color: #0078d4;
+    border-radius: 2px;
+}
+
+QScrollArea {
+    background-color: #444444;
+    border: 1px solid #555555;
+}
+
+QScrollBar:vertical {
+    background-color: #333333;
+    width: 12px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #555555;
+    border-radius: 6px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #666666;
+}
+
+QScrollBar:horizontal {
+    background-color: #333333;
+    height: 12px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #555555;
+    border-radius: 6px;
+    min-width: 20px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #666666;
+}</string>
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0">
     <property name="spacing">
@@ -530,9 +613,9 @@
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons32/folder-plus.svg);
+background-image: url(:folder-plus.svg);
 text-align: bottom;
-padding-top: 12px;
+padding-top: 14px;
 padding-bottom: 12px;
 background-origin: content</string>
                         </property>
@@ -576,9 +659,9 @@ background-origin: content</string>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons32/folder.svg);
+background-image: url(:folder.svg);
 text-align: bottom;
-padding-top: 12px;
+padding-top: 14px;
 padding-bottom: 12px;
 background-origin: content</string>
                         </property>
@@ -647,9 +730,9 @@ background-origin: content</string>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons32/layers.svg);
+background-image: url(:layers.svg);
 text-align: bottom;
-padding-top: 12px;
+padding-top: 14px;
 padding-bottom: 12px;
 background-origin: content</string>
                         </property>
@@ -687,14 +770,14 @@ background-origin: content</string>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons32/star.svg);
+background-image: url(:star.svg);
 text-align: bottom;
-padding-top: 12px;
+padding-top: 14px;
 padding-bottom: 12px;
 background-origin: content</string>
                         </property>
                         <property name="text">
-                         <string>Add Star Frames</string>
+                         <string>Add Star Images</string>
                         </property>
                        </widget>
                       </item>
@@ -758,9 +841,9 @@ background-origin: content</string>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons32/edit-3.svg);
+background-image: url(:edit-3.svg);
 text-align: bottom;
-padding-top: 12px;
+padding-top: 14px;
 padding-bottom: 12px;
 background-origin: content</string>
                         </property>
@@ -792,9 +875,9 @@ background-origin: content</string>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons32/external-link.svg);
+background-image: url(:external-link.svg);
 text-align: bottom;
-padding-top: 12px;
+padding-top: 14px;
 padding-bottom: 12px;
 background-origin: content</string>
                         </property>
@@ -826,9 +909,9 @@ background-origin: content</string>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons32/external-link.svg);
+background-image: url(:external-link.svg);
 text-align: bottom;
-padding-top: 12px;
+padding-top: 14px;
 padding-bottom: 12px;
 background-origin: content</string>
                         </property>
@@ -903,9 +986,9 @@ background-origin: content</string>
                         <property name="styleSheet">
                          <string notr="true">background-repeat: no-repeat;
 background-position: center top;
-background-image: url(:icons32/git-commit.svg);
+background-image: url(:git-commit.svg);
 text-align: bottom;
-padding-top: 12px;
+padding-top: 14px;
 padding-bottom: 12px;
 background-origin: content</string>
                         </property>
@@ -1101,7 +1184,7 @@ background-origin: content</string>
                   <x>0</x>
                   <y>0</y>
                   <width>156</width>
-                  <height>124</height>
+                  <height>126</height>
                  </rect>
                 </property>
                 <property name="sizePolicy">
@@ -1319,7 +1402,7 @@ background-origin: content</string>
                   <x>0</x>
                   <y>0</y>
                   <width>1413</width>
-                  <height>124</height>
+                  <height>126</height>
                  </rect>
                 </property>
                 <property name="sizePolicy">
@@ -1401,7 +1484,7 @@ background-origin: content</string>
   </widget>
  </widget>
  <resources>
-  <include location="icons.qrc"/>
+  <include location="icons_darktheme/icons_darktheme.qrc"/>
  </resources>
  <connections/>
 </ui>
