@@ -27,7 +27,9 @@ class FillGaps(Observable):
         self.stride = int(ROI_SIZE*0.75)
 
     def fillGaps(self, file: OutputFile, fileFillGaps: OutputFile, fileFillGapsMask: OutputFile):
-        input_full_image = cv2.imread(file.path)
+        input_full_image = cv2.imread(file.path, cv2.IMREAD_UNCHANGED)
+        input_dtype = input_full_image.dtype
+        input_depth = 255 if input_dtype == np.uint8 else 65535
 
         # Get dimensions of the large image
         height, width, _ = input_full_image.shape
@@ -44,24 +46,24 @@ class FillGaps(Observable):
 
                 # Extract the patch from the large image
                 patch = input_full_image[y:y + self.patch_size[0], x:x + self.patch_size[1]]
-                patch_tensor = transform(patch).unsqueeze(0).to(self.device)
+                patch_tensor = transform(patch, input_dtype).unsqueeze(0).to(self.device)
 
                 # Run inference on the patch
                 with torch.no_grad():
                     output, output_mask = self.model(patch_tensor)
 
                 # Convert output to numpy array and back to the original shape
-                output = untransform(output[0])
+                output = untransform(output[0], input_dtype)
 
                 # Convert mask
-                threshold_value = 64
-                mask = np.where((output_mask[0].cpu().numpy() * 255).astype(np.uint8)
-                                > threshold_value, 255, 0).astype(np.uint8)
+                threshold_value = 64 if input_depth == 255 else 16384
+                mask = np.where((output_mask[0].cpu().numpy() * input_depth).astype(input_dtype)
+                                > threshold_value, input_depth, 0).astype(input_dtype)
 
                 # Apply mask
                 merged = output.copy()
                 merged[mask == 0] = patch[mask == 0]
-                merged[mask == 255] = output[mask == 255]
+                merged[mask == input_depth] = output[mask == input_depth]
                 fmask = np.stack((mask,) * 3, axis=-1)
 
                 full_image[y:y + self.patch_size[0], x:x + self.patch_size[1]] = merged
@@ -86,15 +88,23 @@ class FillGaps(Observable):
         ]
 
 
-# Convert 8bit image to tensor (C, H, W) [-1,1]
-def transform(img):
-    imgTensor = ToTensor()(img)
+# Convert image to tensor (C, H, W) [-1,1]
+def transform(img, dtype=np.uint8):
+    dtype = img.dtype
+    imgTensor = torch.from_numpy(np.transpose(img, (2, 0, 1))).float()
+    if dtype == np.uint8:
+        imgTensor = imgTensor / 255.0
+    else:
+        imgTensor = imgTensor / 65535.0
     imgTensor = (imgTensor * 2) - 1
     return imgTensor
 
 
-# Convert image tensor to 8bit image (H, W, C) [0,255]
-def untransform(imgTensor):
+# Convert image tensor to image eg. (H, W, C) [0,255]
+def untransform(imgTensor, dtype=np.uint8):
     img = np.transpose(imgTensor.cpu().numpy(), (1, 2, 0))
-    img = ((img + 1) * 127.5).astype(np.uint8)
+    if dtype == np.uint8:
+        img = ((img + 1) * 0.5 * 255).astype(np.uint8)
+    else:
+        img = ((img + 1) * 0.5 * 65535).astype(np.uint16)
     return img

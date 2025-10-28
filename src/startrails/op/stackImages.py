@@ -42,7 +42,7 @@ class StackImages(Observable):
             np = numpy
 
         if outImage is None:
-            outImage = np.zeros(np.shape(inputImages[0]), dtype=np.uint8)
+            outImage = np.zeros(np.shape(inputImages[0]), dtype=inputImages[0].dtype)
 
         images = outImage.reshape((1, ) + outImage.shape)
         for img in inputImages:
@@ -114,7 +114,7 @@ class StackImages(Observable):
         else:
             np = numpy
 
-        img = cv2.imread(file.path)
+        img = cv2.imread(file.path, cv2.IMREAD_UNCHANGED)
         masks = None
         if applyMasks:
             masks = file.streaksMasks + file.streaksManualMasks
