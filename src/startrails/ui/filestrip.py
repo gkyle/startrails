@@ -3,7 +3,7 @@ import time
 from typing import Dict, List
 from PySide6.QtWidgets import QMenu, QPushButton, QLabel, QVBoxLayout, QFrame, QScrollArea, QSizePolicy, QApplication, QMessageBox
 from PySide6.QtGui import QPixmap, QColor, QIcon, QPaintEvent, QPainter, QPalette, QFontMetrics, QFont
-from PySide6.QtCore import QObject, Qt, QSize, QPoint, Signal
+from PySide6.QtCore import QObject, Qt, QSize, QPoint, Signal, QTimer
 from PIL import Image
 from PIL.ImageQt import ImageQt
 
@@ -29,6 +29,7 @@ class FileStrip:
         self.scroll = self.frameContainer.findChildren(QScrollArea)[0]
         self.scroll.horizontalScrollBar().valueChanged.connect(partial(self.slotUpdateThumbnails, self.frame))
         self.signals.updateThumbnail.connect(self.slotUpdateThumbnail)
+        self.signals.loadThumbnailsAsync.connect(self.loadThumbnailsAsync)
 
         self.frameContainer.setMinimumSize(QSize(FILE_BUTTON_SIZE+8, FILESTRIP_CONTAINER_HEIGHT))
         self.frameContainer.setMaximumSize(QSize(16777215, FILESTRIP_CONTAINER_HEIGHT))
@@ -42,6 +43,8 @@ class FileStrip:
         redrawSignal.connect(self.drawFileList)
 
         self.drawFileList()
+        if len(self.fileList) > 0:
+            self.scheduleThumbnailLoading()
 
     def removeButton(self, file: File):
         button = self.buttons.pop(file)
@@ -57,6 +60,8 @@ class FileStrip:
     def setFileList(self, fileList: List[File]):
         self.fileList = fileList
         self.drawFileList()
+        if len(self.fileList) > 0:
+            self.scheduleThumbnailLoading()
 
     def drawFileList(self, focusOnFile: File = None):
         for child in self.frame.findChildren(QLabel):
@@ -113,12 +118,31 @@ class FileStrip:
     def slotUpdateThumbnails(self, frame, _=None):
         if frame == self.frame:
             for child in frame.findChildren(FileButton):
-                if child.isVisible() and not child.renderedThumbnail and not child.visibleRegion().isEmpty():
-                    emitLater(self.signals.updateThumbnail.emit, frame, child)
+                if self._isButtonVisible(child) and not child.iconLabel.thumbnailLoaded:
+                    emitLater(self._loadButtonThumbnail, child, priority=5)
 
     def slotUpdateThumbnail(self, frame, button):
         if frame == self.frame:
             button.showEvent(None)
+
+    def loadThumbnailsAsync(self, frame):
+        # Load thumbnails for visible buttons
+        if frame == self.frame:
+            all_buttons = frame.findChildren(FileButton)
+            visible_buttons = [child for child in all_buttons if self._isButtonVisible(child)]
+
+            for button in visible_buttons:
+                emitLater(self._loadButtonThumbnail, button, priority=5)
+
+    def _loadButtonThumbnail(self, button):
+        button.showEvent(None)
+        button.loadThumbnailAsync()
+
+    def _isButtonVisible(self, button):
+        return button.isVisible() and not button.iconLabel.visibleRegion().isEmpty()
+
+    def scheduleThumbnailLoading(self):
+        QTimer.singleShot(100, lambda: self.signals.loadThumbnailsAsync.emit(self.frame))
 
 
 class IconLabel(QLabel):
@@ -128,24 +152,32 @@ class IconLabel(QLabel):
         self.hasAutoMasks = False
         self.hasManualMasks = False
         self.isExcluded = False
+        self.thumbnailLoaded = False
         self.setFixedSize(QSize(FILE_IMAGE_SIZE, FILE_IMAGE_SIZE))
-        if not self.file is None:
-            self.pixmap = QPixmap(file.path)
-        else:
-            self.pixmap = QPixmap(FILE_IMAGE_SIZE, FILE_IMAGE_SIZE)
-            self.pixmap.fill(self.palette().color(QPalette.Window))
+
+        # Always start with placeholder and lazy-load the thumbnail.
+        self.pixmap = QPixmap(FILE_IMAGE_SIZE, FILE_IMAGE_SIZE)
+        self.pixmap.fill(self.palette().color(QPalette.Window))
         self.setAlignment(Qt.AlignCenter)
 
     def setFile(self, file: File) -> None:
         self.file = file
+        self.loadThumbnail()
+        self.updateIndicators()
+
+    def loadThumbnail(self) -> None:
+        if self.file is None or self.thumbnailLoaded:
+            return
+
         try:
-            image = Image.open(file.path)
+            image = Image.open(self.file.path)
             image.thumbnail((FILE_IMAGE_SIZE, FILE_IMAGE_SIZE))
             qt_image = ImageQt(image)
             self.pixmap = QPixmap.fromImage(qt_image)
+            self.thumbnailLoaded = True
+            self.repaint()
         except:
             pass
-        self.updateIndicators()
 
     def updateIndicators(self):
         if isinstance(self.file, InputFile):
@@ -182,7 +214,6 @@ class FileButton(QPushButton):
         super().__init__()
         self.file = file
         self.signals = signals
-        self.renderedThumbnail = False
 
         self.iconLabel = IconLabel()
         self.objectName = file.basename
@@ -229,10 +260,10 @@ class FileButton(QPushButton):
             return super().mousePressEvent(e)
 
     def maybeDeferredRenderThumbnail(self, forceFocus=False):
-
-        if self.isVisible() and not self.renderedThumbnail and not self.iconLabel.visibleRegion().isEmpty():
-            self.iconLabel.setFile(self.file)
-            self.renderedThumbnail = True
+        if self.isVisible() and not self.iconLabel.visibleRegion().isEmpty():
+            # Set file association but defer thumbnail loading
+            self.iconLabel.file = self.file
+            self.iconLabel.updateIndicators()
 
             # focus first instance in list once it is available
             if forceFocus:
@@ -241,6 +272,11 @@ class FileButton(QPushButton):
 
             return True
         return False
+
+    def loadThumbnailAsync(self):
+        if self.isVisible() and not self.iconLabel.visibleRegion().isEmpty():
+            if not self.iconLabel.thumbnailLoaded:
+                self.iconLabel.loadThumbnail()
 
     def updateIndicators(self):
         self.iconLabel.updateIndicators()
