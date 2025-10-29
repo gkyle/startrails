@@ -1,26 +1,25 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-# Form generated from reading UI file 'interfaceJVUWwW.ui'
+## Form generated from reading UI file 'interfacekGqClI.ui'
 ##
-# Created by: Qt User Interface Compiler version 6.4.2
+## Created by: Qt User Interface Compiler version 6.4.2
 ##
-# WARNING! All changes made in this file will be lost when recompiling UI file!
+## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-                            QMetaObject, QObject, QPoint, QRect,
-                            QSize, QTime, QUrl, Qt)
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
 from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-                           QFont, QFontDatabase, QGradient, QIcon,
-                           QImage, QKeySequence, QLinearGradient, QPainter,
-                           QPalette, QPixmap, QRadialGradient, QTransform)
+    QFont, QFontDatabase, QGradient, QIcon,
+    QImage, QKeySequence, QLinearGradient, QPainter,
+    QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QAbstractScrollArea, QApplication, QFrame, QGridLayout,
-                               QHBoxLayout, QLabel, QLayout, QMainWindow,
-                               QProgressBar, QPushButton, QScrollArea, QSizePolicy,
-                               QVBoxLayout, QWidget)
-import icons_rc
-
+    QHBoxLayout, QLabel, QLayout, QMainWindow,
+    QProgressBar, QPushButton, QScrollArea, QSizePolicy,
+    QVBoxLayout, QWidget)
+import icons_darktheme_rc
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -35,7 +34,91 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.centralwidget.sizePolicy().hasHeightForWidth())
         self.centralwidget.setSizePolicy(sizePolicy)
-        self.centralwidget.setStyleSheet(u"")
+        self.centralwidget.setStyleSheet(u"QWidget {\n"
+"    background-color: #444444;\n"
+"    color: #ffffff;\n"
+"}\n"
+"\n"
+"QFrame {\n"
+"    background-color: #444444;\n"
+"    color: #ffffff;\n"
+"}\n"
+"\n"
+"QLabel {\n"
+"    background-color: transparent;\n"
+"    color: #ffffff;\n"
+"}\n"
+"\n"
+"QPushButton {\n"
+"    background-color: #555555;\n"
+"    color: #ffffff;\n"
+"    border: 1px solid #666666;\n"
+"    padding: 4px;\n"
+"    border-radius: 2px;\n"
+"}\n"
+"\n"
+"QPushButton:hover {\n"
+"    background-color: #666666;\n"
+"}\n"
+"\n"
+"QPushButton:pressed {\n"
+"    background-color: #333333;\n"
+"}\n"
+"\n"
+"QPushButton:disabled {\n"
+"    background-color: #3a3a3a;\n"
+"    color: #888888;\n"
+"}\n"
+"\n"
+"QProgressBar {\n"
+"    background-color: #333333;\n"
+"    border: 1px solid #555555;\n"
+"    border-radius: 2px;\n"
+"    color: #ffffff;\n"
+"}\n"
+"\n"
+"QProgressBar::chunk {\n"
+"    background-color: #0078d4;\n"
+"    border-radius: 2px;\n"
+"}\n"
+"\n"
+"QScrollArea {\n"
+"    background-color: #444444;\n"
+"    border: 1px solid #555555;\n"
+"}\n"
+"\n"
+"QScrollB"
+                        "ar:vertical {\n"
+"    background-color: #333333;\n"
+"    width: 12px;\n"
+"    border-radius: 6px;\n"
+"}\n"
+"\n"
+"QScrollBar::handle:vertical {\n"
+"    background-color: #555555;\n"
+"    border-radius: 6px;\n"
+"    min-height: 20px;\n"
+"}\n"
+"\n"
+"QScrollBar::handle:vertical:hover {\n"
+"    background-color: #666666;\n"
+"}\n"
+"\n"
+"QScrollBar:horizontal {\n"
+"    background-color: #333333;\n"
+"    height: 12px;\n"
+"    border-radius: 6px;\n"
+"}\n"
+"\n"
+"QScrollBar::handle:horizontal {\n"
+"    background-color: #555555;\n"
+"    border-radius: 6px;\n"
+"    min-width: 20px;\n"
+"}\n"
+"\n"
+"QScrollBar::handle:horizontal:hover {\n"
+"    background-color: #666666;\n"
+"}")
         self.horizontalLayout_5 = QHBoxLayout(self.centralwidget)
         self.horizontalLayout_5.setSpacing(0)
         self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
@@ -83,6 +166,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_9.addWidget(self.label_4)
 
+
         self.gridLayout.addWidget(self.frame, 0, 0, 1, 1)
 
         self.frame_2 = QFrame(self.toolbar)
@@ -114,6 +198,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_11.addWidget(self.pushButton_cancelOp)
 
+
         self.gridLayout.addWidget(self.frame_2, 0, 2, 1, 1, Qt.AlignRight)
 
         self.frame_3 = QFrame(self.toolbar)
@@ -132,6 +217,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_10.addWidget(self.label_imageName)
 
+
         self.gridLayout.addWidget(self.frame_3, 0, 1, 1, 1)
 
         self.frame_4 = QFrame(self.toolbar)
@@ -149,7 +235,9 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_7.addWidget(self.label_cuda)
 
+
         self.gridLayout.addWidget(self.frame_4, 0, 3, 1, 1)
+
 
         self.verticalLayout_5.addWidget(self.toolbar)
 
@@ -179,7 +267,8 @@ class Ui_MainWindow(object):
         self.canvas_main.setFont(font2)
         self.canvas_main.setAlignment(Qt.AlignCenter)
 
-        self.verticalLayout.addWidget(self.canvas_main, 0, Qt.AlignHCenter | Qt.AlignVCenter)
+        self.verticalLayout.addWidget(self.canvas_main, 0, Qt.AlignHCenter|Qt.AlignVCenter)
+
 
         self.horizontalLayout_6.addWidget(self.frame_main)
 
@@ -245,17 +334,17 @@ class Ui_MainWindow(object):
         font5.setBold(False)
         self.pushButton_newProject.setFont(font5)
         self.pushButton_newProject.setStyleSheet(u"background-repeat: no-repeat;\n"
-                                                 "background-position: center top;\n"
-                                                 "background-image: url(:icons32/folder-plus.svg);\n"
-                                                 "text-align: bottom;\n"
-                                                 "padding-top: 12px;\n"
-                                                 "padding-bottom: 12px;\n"
-                                                 "background-origin: content")
+"background-position: center top;\n"
+"background-image: url(:folder-plus.svg);\n"
+"text-align: bottom;\n"
+"padding-top: 14px;\n"
+"padding-bottom: 12px;\n"
+"background-origin: content")
         self.pushButton_newProject.setIconSize(QSize(120, 120))
         self.pushButton_newProject.setCheckable(False)
         self.pushButton_newProject.setChecked(False)
 
-        self.gridLayout_2.addWidget(self.pushButton_newProject, 0, 0, 1, 1, Qt.AlignLeft | Qt.AlignBottom)
+        self.gridLayout_2.addWidget(self.pushButton_newProject, 0, 0, 1, 1, Qt.AlignLeft|Qt.AlignBottom)
 
         self.pushButton_openProject = QPushButton(self.frame_5)
         self.pushButton_openProject.setObjectName(u"pushButton_openProject")
@@ -263,14 +352,15 @@ class Ui_MainWindow(object):
         self.pushButton_openProject.setMaximumSize(QSize(110, 90))
         self.pushButton_openProject.setFont(font5)
         self.pushButton_openProject.setStyleSheet(u"background-repeat: no-repeat;\n"
-                                                  "background-position: center top;\n"
-                                                  "background-image: url(:icons32/folder.svg);\n"
-                                                  "text-align: bottom;\n"
-                                                  "padding-top: 12px;\n"
-                                                  "padding-bottom: 12px;\n"
-                                                  "background-origin: content")
+"background-position: center top;\n"
+"background-image: url(:folder.svg);\n"
+"text-align: bottom;\n"
+"padding-top: 14px;\n"
+"padding-bottom: 12px;\n"
+"background-origin: content")
 
         self.gridLayout_2.addWidget(self.pushButton_openProject, 0, 1, 1, 1)
+
 
         self.verticalLayout_4.addWidget(self.frame_5, 0, Qt.AlignLeft)
 
@@ -296,12 +386,12 @@ class Ui_MainWindow(object):
         self.pushButton_stackImages.setMaximumSize(QSize(110, 90))
         self.pushButton_stackImages.setFont(font5)
         self.pushButton_stackImages.setStyleSheet(u"background-repeat: no-repeat;\n"
-                                                  "background-position: center top;\n"
-                                                  "background-image: url(:icons32/layers.svg);\n"
-                                                  "text-align: bottom;\n"
-                                                  "padding-top: 12px;\n"
-                                                  "padding-bottom: 12px;\n"
-                                                  "background-origin: content")
+"background-position: center top;\n"
+"background-image: url(:layers.svg);\n"
+"text-align: bottom;\n"
+"padding-top: 14px;\n"
+"padding-bottom: 12px;\n"
+"background-origin: content")
         self.pushButton_stackImages.setIconSize(QSize(64, 64))
 
         self.gridLayout_4.addWidget(self.pushButton_stackImages, 0, 1, 1, 1)
@@ -312,14 +402,15 @@ class Ui_MainWindow(object):
         self.pushButton_selectFiles.setMaximumSize(QSize(110, 90))
         self.pushButton_selectFiles.setFont(font5)
         self.pushButton_selectFiles.setStyleSheet(u"background-repeat: no-repeat;\n"
-                                                  "background-position: center top;\n"
-                                                  "background-image: url(:icons32/star.svg);\n"
-                                                  "text-align: bottom;\n"
-                                                  "padding-top: 12px;\n"
-                                                  "padding-bottom: 12px;\n"
-                                                  "background-origin: content")
+"background-position: center top;\n"
+"background-image: url(:star.svg);\n"
+"text-align: bottom;\n"
+"padding-top: 14px;\n"
+"padding-bottom: 12px;\n"
+"background-origin: content")
 
         self.gridLayout_4.addWidget(self.pushButton_selectFiles, 0, 0, 1, 1)
+
 
         self.verticalLayout_4.addWidget(self.frame_7, 0, Qt.AlignLeft)
 
@@ -345,12 +436,12 @@ class Ui_MainWindow(object):
         self.pushButton_removeStreaks.setMaximumSize(QSize(124, 90))
         self.pushButton_removeStreaks.setFont(font5)
         self.pushButton_removeStreaks.setStyleSheet(u"background-repeat: no-repeat;\n"
-                                                    "background-position: center top;\n"
-                                                    "background-image: url(:icons32/edit-3.svg);\n"
-                                                    "text-align: bottom;\n"
-                                                    "padding-top: 12px;\n"
-                                                    "padding-bottom: 12px;\n"
-                                                    "background-origin: content")
+"background-position: center top;\n"
+"background-image: url(:edit-3.svg);\n"
+"text-align: bottom;\n"
+"padding-top: 14px;\n"
+"padding-bottom: 12px;\n"
+"background-origin: content")
 
         self.gridLayout_5.addWidget(self.pushButton_removeStreaks, 0, 0, 1, 1)
 
@@ -360,12 +451,12 @@ class Ui_MainWindow(object):
         self.pushButton_exportMasks.setMaximumSize(QSize(110, 90))
         self.pushButton_exportMasks.setFont(font5)
         self.pushButton_exportMasks.setStyleSheet(u"background-repeat: no-repeat;\n"
-                                                  "background-position: center top;\n"
-                                                  "background-image: url(:icons32/external-link.svg);\n"
-                                                  "text-align: bottom;\n"
-                                                  "padding-top: 12px;\n"
-                                                  "padding-bottom: 12px;\n"
-                                                  "background-origin: content")
+"background-position: center top;\n"
+"background-image: url(:external-link.svg);\n"
+"text-align: bottom;\n"
+"padding-top: 14px;\n"
+"padding-bottom: 12px;\n"
+"background-origin: content")
 
         self.gridLayout_5.addWidget(self.pushButton_exportMasks, 0, 1, 1, 1)
 
@@ -375,14 +466,15 @@ class Ui_MainWindow(object):
         self.pushButton_exportTraining.setMaximumSize(QSize(110, 90))
         self.pushButton_exportTraining.setFont(font5)
         self.pushButton_exportTraining.setStyleSheet(u"background-repeat: no-repeat;\n"
-                                                     "background-position: center top;\n"
-                                                     "background-image: url(:icons32/external-link.svg);\n"
-                                                     "text-align: bottom;\n"
-                                                     "padding-top: 12px;\n"
-                                                     "padding-bottom: 12px;\n"
-                                                     "background-origin: content")
+"background-position: center top;\n"
+"background-image: url(:external-link.svg);\n"
+"text-align: bottom;\n"
+"padding-top: 14px;\n"
+"padding-bottom: 12px;\n"
+"background-origin: content")
 
         self.gridLayout_5.addWidget(self.pushButton_exportTraining, 1, 0, 1, 1)
+
 
         self.verticalLayout_4.addWidget(self.frame_8, 0, Qt.AlignLeft)
 
@@ -413,22 +505,27 @@ class Ui_MainWindow(object):
         self.pushButton_fillGaps.setMaximumSize(QSize(110, 90))
         self.pushButton_fillGaps.setFont(font5)
         self.pushButton_fillGaps.setStyleSheet(u"background-repeat: no-repeat;\n"
-                                               "background-position: center top;\n"
-                                               "background-image: url(:icons32/git-commit.svg);\n"
-                                               "text-align: bottom;\n"
-                                               "padding-top: 12px;\n"
-                                               "padding-bottom: 12px;\n"
-                                               "background-origin: content")
+"background-position: center top;\n"
+"background-image: url(:git-commit.svg);\n"
+"text-align: bottom;\n"
+"padding-top: 14px;\n"
+"padding-bottom: 12px;\n"
+"background-origin: content")
 
         self.gridLayout_6.addWidget(self.pushButton_fillGaps, 0, 0, 1, 1)
 
+
         self.verticalLayout_4.addWidget(self.frame_9, 0, Qt.AlignLeft)
+
 
         self.verticalLayout_3.addWidget(self.frame_operations, 0, Qt.AlignTop)
 
+
         self.verticalLayout_2.addWidget(self.slide_menu)
 
+
         self.horizontalLayout_6.addWidget(self.frame_right)
+
 
         self.verticalLayout_5.addWidget(self.frame_app)
 
@@ -477,6 +574,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_13.addWidget(self.label_outputFiles_count)
 
+
         self.verticalLayout_9.addWidget(self.frame_11, 0, Qt.AlignLeft)
 
         self.scrollArea = QScrollArea(self.frame_outputFilesContainer)
@@ -493,7 +591,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.frame_outputFiles_scroll = QWidget()
         self.frame_outputFiles_scroll.setObjectName(u"frame_outputFiles_scroll")
-        self.frame_outputFiles_scroll.setGeometry(QRect(0, 0, 156, 124))
+        self.frame_outputFiles_scroll.setGeometry(QRect(0, 0, 156, 126))
         sizePolicy1.setHeightForWidth(self.frame_outputFiles_scroll.sizePolicy().hasHeightForWidth())
         self.frame_outputFiles_scroll.setSizePolicy(sizePolicy1)
         self.horizontalLayout = QHBoxLayout(self.frame_outputFiles_scroll)
@@ -515,11 +613,13 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_2.addWidget(self.label_7)
 
+
         self.horizontalLayout.addWidget(self.frame_outputFiles)
 
         self.scrollArea.setWidget(self.frame_outputFiles_scroll)
 
         self.verticalLayout_9.addWidget(self.scrollArea)
+
 
         self.horizontalLayout_3.addWidget(self.frame_outputFilesContainer, 0, Qt.AlignTop)
 
@@ -567,6 +667,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_12.addWidget(self.label_inputFiles_count)
 
+
         self.verticalLayout_6.addWidget(self.frame_10, 0, Qt.AlignLeft)
 
         self.scrollArea1 = QScrollArea(self.frame_inputFilesContainer)
@@ -580,7 +681,7 @@ class Ui_MainWindow(object):
         self.scrollArea1.setWidgetResizable(True)
         self.frame_inputFiles_scroll = QWidget()
         self.frame_inputFiles_scroll.setObjectName(u"frame_inputFiles_scroll")
-        self.frame_inputFiles_scroll.setGeometry(QRect(0, 0, 1413, 124))
+        self.frame_inputFiles_scroll.setGeometry(QRect(0, 0, 1413, 126))
         sizePolicy1.setHeightForWidth(self.frame_inputFiles_scroll.sizePolicy().hasHeightForWidth())
         self.frame_inputFiles_scroll.setSizePolicy(sizePolicy1)
         self.horizontalLayout1 = QHBoxLayout(self.frame_inputFiles_scroll)
@@ -602,17 +703,20 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_4.addWidget(self.label_2)
 
+
         self.horizontalLayout1.addWidget(self.frame_inputFiles)
 
         self.scrollArea1.setWidget(self.frame_inputFiles_scroll)
 
         self.verticalLayout_6.addWidget(self.scrollArea1)
 
+
         self.horizontalLayout_3.addWidget(self.frame_inputFilesContainer, 0, Qt.AlignTop)
 
         self.horizontalLayout_3.setStretch(0, 1)
 
         self.verticalLayout_5.addWidget(self.frame_bottom)
+
 
         self.horizontalLayout_5.addWidget(self.vframe)
 
@@ -635,7 +739,7 @@ class Ui_MainWindow(object):
         self.pushButton_newProject.setText(QCoreApplication.translate("MainWindow", u"New Project", None))
         self.pushButton_openProject.setText(QCoreApplication.translate("MainWindow", u"Open Project", None))
         self.pushButton_stackImages.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))
-        self.pushButton_selectFiles.setText(QCoreApplication.translate("MainWindow", u"Add Star Frames", None))
+        self.pushButton_selectFiles.setText(QCoreApplication.translate("MainWindow", u"Add Star Images", None))
         self.pushButton_removeStreaks.setText(QCoreApplication.translate("MainWindow", u"Detect Streaks", None))
         self.pushButton_exportMasks.setText(QCoreApplication.translate("MainWindow", u"Export Masks", None))
         self.pushButton_exportTraining.setText(QCoreApplication.translate("MainWindow", u"Export Training", None))
@@ -647,3 +751,4 @@ class Ui_MainWindow(object):
         self.label_inputFiles_count.setText("")
         self.label_2.setText("")
     # retranslateUi
+

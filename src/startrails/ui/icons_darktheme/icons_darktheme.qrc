@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE RCC>
+<RCC>
+  <qresource>
+    <file>layers.svg</file>
+    <file>external-link.svg</file>
+    <file>folder-plus.svg</file>
+    <file>git-commit.svg</file>
+    <file>edit-3.svg</file>
+    <file>star.svg</file>
+    <file>folder.svg</file>
+  </qresource>
+</RCC>

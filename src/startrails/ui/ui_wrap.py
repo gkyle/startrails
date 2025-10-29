@@ -75,7 +75,6 @@ class Ui_AppWindow(Ui_MainWindow):
         MainWindow.center()
 
         # Bind events
-        self.frame_main.setStyleSheet("background-color:gray;")
         self.pushButton_newProject.clicked.connect(self.doNewProject)
         self.pushButton_openProject.clicked.connect(self.doOpenProject)
         self.pushButton_selectFiles.clicked.connect(self.selectInputFiles)
