@@ -26,9 +26,13 @@ class FileStrip:
         self.fileList = fileList
         self.maxVisibleButtons = maxVisibleButtons
 
+        # Debounce timer for scroll events
+        self.scrollDebounceTimer = QTimer()
+        self.scrollDebounceTimer.setSingleShot(True)
+        self.scrollDebounceTimer.timeout.connect(lambda: self.scheduleThumbnailLoading())
+
         self.scroll = self.frameContainer.findChildren(QScrollArea)[0]
-        self.scroll.horizontalScrollBar().valueChanged.connect(partial(self.slotUpdateThumbnails, self.frame))
-        self.signals.updateThumbnail.connect(self.slotUpdateThumbnail)
+        self.scroll.horizontalScrollBar().valueChanged.connect(partial(self.slotScrollbarChanged, self.frame))
         self.signals.loadThumbnailsAsync.connect(self.loadThumbnailsAsync)
 
         self.frameContainer.setMinimumSize(QSize(FILE_BUTTON_SIZE+8, FILESTRIP_CONTAINER_HEIGHT))
@@ -115,15 +119,10 @@ class FileStrip:
             self.frame.layout().activate()
             self.frame.updateGeometry()
 
-    def slotUpdateThumbnails(self, frame, _=None):
+    def slotScrollbarChanged(self, frame, _=None):
         if frame == self.frame:
-            for child in frame.findChildren(FileButton):
-                if self._isButtonVisible(child) and not child.iconLabel.thumbnailLoaded:
-                    emitLater(self._loadButtonThumbnail, child, priority=5)
-
-    def slotUpdateThumbnail(self, frame, button):
-        if frame == self.frame:
-            button.showEvent(None)
+            # Only trigger thumbnail loading after scrolling has settled for 100ms
+            self.scrollDebounceTimer.start(100)
 
     def loadThumbnailsAsync(self, frame):
         # Load thumbnails for visible buttons
@@ -135,8 +134,7 @@ class FileStrip:
                 emitLater(self._loadButtonThumbnail, button, priority=5)
 
     def _loadButtonThumbnail(self, button):
-        button.showEvent(None)
-        button.loadThumbnailAsync()
+        button.maybeDeferredRenderThumbnail()
 
     def _isButtonVisible(self, button):
         return button.isVisible() and not button.iconLabel.visibleRegion().isEmpty()
@@ -157,7 +155,7 @@ class IconLabel(QLabel):
 
         # Always start with placeholder and lazy-load the thumbnail.
         self.pixmap = QPixmap(FILE_IMAGE_SIZE, FILE_IMAGE_SIZE)
-        self.pixmap.fill(self.palette().color(QPalette.Window))
+        self.pixmap.fill(QColor("#444444"))
         self.setAlignment(Qt.AlignCenter)
 
     def setFile(self, file: File) -> None:
@@ -265,6 +263,9 @@ class FileButton(QPushButton):
             self.iconLabel.file = self.file
             self.iconLabel.updateIndicators()
 
+            if not self.iconLabel.thumbnailLoaded:
+                self.iconLabel.loadThumbnail()
+
             # focus first instance in list once it is available
             if forceFocus:
                 self.click()
@@ -273,17 +274,8 @@ class FileButton(QPushButton):
             return True
         return False
 
-    def loadThumbnailAsync(self):
-        if self.isVisible() and not self.iconLabel.visibleRegion().isEmpty():
-            if not self.iconLabel.thumbnailLoaded:
-                self.iconLabel.loadThumbnail()
-
     def updateIndicators(self):
         self.iconLabel.updateIndicators()
-
-    def showEvent(self, event):
-        self.maybeDeferredRenderThumbnail()
-        return super().showEvent(event)
 
     def action_remove(self):
         self.signals.removeFile.emit(self.file, self)
