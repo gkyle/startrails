@@ -76,6 +76,6 @@ StarTrails AI uses an object detection model to automatically identify streaks i
 
 ## Can I train my own model? Can I contribute?
 
-Yes and yes. I've included the [dataset](https://github.com/gkyle/startrails/tree/main/data/512) that I used for training and notebooks for [working with labels and training here](https://github.com/gkyle/startrails/tree/main/training). Please feel free to make your own models.
+Yes and yes. I've included the [dataset](https://github.com/gkyle/startrails/releases/tag/training) that I used for training and notebooks for [working with labels and training here](https://github.com/gkyle/startrails/tree/main/training). Please feel free to make your own models.
 
 I would like to improve the diversity of the dataset in this repo and welcome contributions. Only the 512x512 crops are needed. You can export your manually-flagged streaks directly from the app.
