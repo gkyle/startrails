@@ -35,14 +35,6 @@ class MainWindow(QMainWindow):
         y = (screen.height() - window_size.height()) // 2
         self.move(QPoint(x, y))
 
-    def resizeEvent(self, event):
-        self.ui.signals.windowResized.emit(event)
-        return super().resizeEvent(event)
-
-    def moveEvent(self, event):
-        self.ui.signals.windowMoved.emit(event)
-        return super().moveEvent(event)
-
     def closeEvent(self, event):
         self.ui.doCancelOp()
         self.timer.stop()
@@ -78,18 +70,9 @@ class Ui_AppWindow(Ui_MainWindow):
         screen_resolution = QGuiApplication.primaryScreen().availableGeometry()
         width = screen_resolution.width()
         height = screen_resolution.height()
-        if "windowSize" in self.persistentSettings and self.persistentSettings["windowSize"] is not None:
-            MainWindow.resize(self.persistentSettings["windowSize"])
-            if "windowPosition" in self.persistentSettings:
-                MainWindow.move(self.persistentSettings["windowPosition"])
-            else:
-                MainWindow.center()
-        else:
-            if width > 2000 and height > 1200:
-                MainWindow.resize(width*0.6, height*0.6)
-            else:
-                MainWindow.resize(width*0.90, height*0.90)
-            MainWindow.center()
+
+        MainWindow.resize(width * 0.80, height * 0.90)
+        MainWindow.center()
 
         # Bind events
         self.frame_main.setStyleSheet("background-color:gray;")
@@ -113,8 +96,6 @@ class Ui_AppWindow(Ui_MainWindow):
         self.signals.updateFileButton.connect(self.updateReadyStates)
         self.signals.findBrightestFrame.connect(self.doFindBrightFrame)
         self.signals.updateGPUStats.connect(self.slotUpdateGPUStats)
-        self.signals.windowResized.connect(self.observeResizeEvent)
-        self.signals.windowMoved.connect(self.observeMoveEvent)
 
         # Replace placeholders
         self.canvas_main: CanvasLabel = replaceWidget(
@@ -294,13 +275,6 @@ class Ui_AppWindow(Ui_MainWindow):
             worker = AsyncWorker(partial(f, self.app.getInputFileList()))
             self.op_queue.start(worker)
 
-    def observeResizeEvent(self, event):
-        self.persistentSettings["windowSize"] = event.size()
-        self.app.updateWindowSettings(self.persistentSettings)
-
-    def observeMoveEvent(self, event):
-        self.persistentSettings["windowPosition"] = event.pos()
-        self.app.updateWindowSettings(self.persistentSettings)
 
     def doNewProject(self):
         QApplication.processEvents()
