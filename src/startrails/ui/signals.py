@@ -40,8 +40,6 @@ class Signals(QObject):
     makeButton: Signal = Signal(File, QWidget, int)
     addFileButton: Signal = Signal(QWidget, QPushButton, bool)
     focusFile: Signal = Signal(File)
-    updateThumbnails: Signal = Signal(QWidget)
-    updateThumbnail: Signal = Signal(QFrame, QWidget)
     loadThumbnailsAsync: Signal = Signal(QFrame)  # New signal for lazy thumbnail loading
     drawInputFileList: Signal = Signal(File)
     drawOutputFileList: Signal = Signal(File)
