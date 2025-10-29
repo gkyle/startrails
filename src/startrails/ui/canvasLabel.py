@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 import numpy as np
-from PySide6.QtCore import (Qt, QPointF)
+from PySide6.QtCore import (Qt, QPointF, QTimer)
 from PySide6.QtGui import (QPainter, QPaintEvent, QWheelEvent, QMouseEvent,
                            QPixmap, QColor, QPen, QPainterPath, QFont)
 from PySide6.QtWidgets import QLabel, QWidget
@@ -35,6 +35,16 @@ class CanvasLabel(QLabel):
         self.renderHeight: Optional[int] = None
         self.scale: Optional[float] = None
         self.ratio: Optional[float] = None
+
+        # Debounce timers for high-frequency events
+        self.wheelDebounceTimer = QTimer()
+        self.wheelDebounceTimer.setSingleShot(True)
+        self.wheelDebounceTimer.timeout.connect(self._debouncedWheelAction)
+        self.pendingWheelDelta = 0
+
+        self.mouseMoveDebounceTimer = QTimer()
+        self.mouseMoveDebounceTimer.setSingleShot(True)
+        self.mouseMoveDebounceTimer.timeout.connect(self._debouncedMouseMoveAction)
 
         self.setAlignment(Qt.AlignCenter)
         self.setFont(QFont("Arial", 20, QFont.Bold))
@@ -95,21 +105,23 @@ class CanvasLabel(QLabel):
             self.posX = (labelWidth - self.renderWidth) // 2
             self.posY = (labelHeight - self.renderHeight) // 2
 
-    def setZoom(self, dir: int, mouseX: int, mouseY: int) -> None:
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        # Note: This is an unusual kind of event that contains a relative delta. We're storing the value for the most recent event, but might need to aggregate.
+        self.pendingWheelDelta = event.angleDelta().y()
+        # Only trigger zoom/repaint after wheel events have settled for 5ms
+        self.wheelDebounceTimer.start(5)
+
+    def _debouncedWheelAction(self) -> None:
         old_zoom_factor = self.zoom_factor
-        if dir < 0:
+        if self.pendingWheelDelta < 0:
             self.zoom_factor /= 1.1
-        if dir > 0:
+        if self.pendingWheelDelta > 0:
             self.zoom_factor *= 1.1
 
         # Calculate the new position to keep the mouse position at the same place
-        self.posX = mouseX - (mouseX - self.posX) * (self.zoom_factor / old_zoom_factor)
-        self.posY = mouseY - (mouseY - self.posY) * (self.zoom_factor / old_zoom_factor)
+        self.posX = self.mouseX - (self.mouseX - self.posX) * (self.zoom_factor / old_zoom_factor)
+        self.posY = self.mouseY - (self.mouseY - self.posY) * (self.zoom_factor / old_zoom_factor)
         self.repaint()
-
-    def wheelEvent(self, event: QWheelEvent) -> None:
-        delta: int = event.angleDelta().y()
-        self.setZoom(delta, self.mouseX, self.mouseY)
 
     def checkMaskContains(self, masks, x, y):
         if self.scale is None:
@@ -211,6 +223,9 @@ class CanvasLabel(QLabel):
                 self.posX = ev.position().x() - self.dragX
                 self.posY = ev.position().y() - self.dragY
 
+        self.mouseMoveDebounceTimer.start(5)
+
+    def _debouncedMouseMoveAction(self) -> None:
         self.repaint()
 
     def mouseReleaseEvent(self, ev: QMouseEvent) -> None:
