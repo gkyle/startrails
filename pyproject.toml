@@ -1,15 +1,15 @@
 [project]
 name = "startrails"
-version = "0.1.0"
+version = "0.1.1"
 description = "startrails"
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
     "deferred-import>=0.1.0",
     "exif>=1.6.1",
-    "gputil==1.4.0",
     "jsonpickle==4.0.1",
     "numpy",
+    "nvidia-ml-py>=13.580.82",
     "opencv-python-headless>=4.11",
     "openvino",
     "pillow",
@@ -18,23 +18,25 @@ dependencies = [
     "sahi==0.11.20",
     "scikit-image>=0.25.2",
     "shapely==2.0.7",
+    "torch>=2.6.0",
+    "ultralytics==8.3.79",
     "tqdm",
 ]
 
 [project.optional-dependencies]
 cpu = [
   "torch>=2.6.0",
-  "ultralytics==8.3.79",
 ]
 cu118 = [
   "torch>=2.6.0",
   "cupy-cuda11x==13.3.0",
-  "ultralytics==8.3.79",
 ]
 cu124 = [
   "torch>=2.6.0",
   "cupy-cuda12x==13.3.0",
-  "ultralytics==8.3.79",
+]
+mps = [
+  "torch>=2.6.0",
 ]
 
 [tool.uv]
@@ -43,6 +45,7 @@ conflicts = [
     { extra = "cpu" },
     { extra = "cu118" },
     { extra = "cu124" },
+    { extra = "mps" },
   ],
 ]
 
@@ -51,6 +54,7 @@ torch = [
   { index = "pytorch-cpu", extra = "cpu" },
   { index = "pytorch-cu118", extra = "cu118" },
   { index = "pytorch-cu124", extra = "cu124" },
+  { index = "pytorch-cpu", extra = "mps" },
 ]
 
 [[tool.uv.index]]

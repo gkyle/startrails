@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfacekGqClI.ui'
+## Form generated from reading UI file 'interfacegkXsIZ.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.4.2
 ##
@@ -188,6 +188,7 @@ class Ui_MainWindow(object):
         self.progressBar.setMinimumSize(QSize(300, 0))
         self.progressBar.setMaximumSize(QSize(300, 16777215))
         self.progressBar.setValue(0)
+        self.progressBar.setAlignment(Qt.AlignCenter)
 
         self.horizontalLayout_11.addWidget(self.progressBar)
 
@@ -229,11 +230,93 @@ class Ui_MainWindow(object):
         self.horizontalLayout_7 = QHBoxLayout(self.frame_4)
         self.horizontalLayout_7.setSpacing(6)
         self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
-        self.horizontalLayout_7.setContentsMargins(9, -1, 0, -1)
-        self.label_cuda = QLabel(self.frame_4)
-        self.label_cuda.setObjectName(u"label_cuda")
+        self.horizontalLayout_7.setContentsMargins(9, 5, 0, 5)
+        self.frame_gpu = QFrame(self.frame_4)
+        self.frame_gpu.setObjectName(u"frame_gpu")
+        self.frame_gpu.setStyleSheet(u"")
+        self.frame_gpu.setFrameShape(QFrame.NoFrame)
+        self.frame_gpu.setFrameShadow(QFrame.Raised)
+        self.verticalLayout_15 = QVBoxLayout(self.frame_gpu)
+        self.verticalLayout_15.setObjectName(u"verticalLayout_15")
+        self.verticalLayout_15.setContentsMargins(0, 0, 0, 0)
+        self.frame_gpu_label = QFrame(self.frame_gpu)
+        self.frame_gpu_label.setObjectName(u"frame_gpu_label")
+        self.frame_gpu_label.setMinimumSize(QSize(0, 0))
+        self.frame_gpu_label.setFrameShape(QFrame.StyledPanel)
+        self.frame_gpu_label.setFrameShadow(QFrame.Raised)
+        self.verticalLayout_7 = QVBoxLayout(self.frame_gpu_label)
+        self.verticalLayout_7.setObjectName(u"verticalLayout_7")
+        self.label_gpu = QLabel(self.frame_gpu_label)
+        self.label_gpu.setObjectName(u"label_gpu")
 
-        self.horizontalLayout_7.addWidget(self.label_cuda)
+        self.verticalLayout_7.addWidget(self.label_gpu)
+
+
+        self.verticalLayout_15.addWidget(self.frame_gpu_label)
+
+        self.frame_gpu_util = QFrame(self.frame_gpu)
+        self.frame_gpu_util.setObjectName(u"frame_gpu_util")
+        self.frame_gpu_util.setFrameShape(QFrame.NoFrame)
+        self.frame_gpu_util.setFrameShadow(QFrame.Raised)
+        self.horizontalLayout_19 = QHBoxLayout(self.frame_gpu_util)
+        self.horizontalLayout_19.setObjectName(u"horizontalLayout_19")
+        self.horizontalLayout_19.setContentsMargins(0, 0, 0, 0)
+        self.progressBar_gpu_util = QProgressBar(self.frame_gpu_util)
+        self.progressBar_gpu_util.setObjectName(u"progressBar_gpu_util")
+        font2 = QFont()
+        font2.setPointSize(8)
+        self.progressBar_gpu_util.setFont(font2)
+        self.progressBar_gpu_util.setStyleSheet(u"QProgressBar {\n"
+"            border: 2px solid grey;\n"
+"            border-radius: 5px;\n"
+"        }\n"
+"\n"
+"        QProgressBar::chunk {\n"
+"            background-color: green;\n"
+"            width: 20px;\n"
+"        }")
+        self.progressBar_gpu_util.setValue(0)
+        self.progressBar_gpu_util.setAlignment(Qt.AlignCenter)
+        self.progressBar_gpu_util.setTextVisible(True)
+        self.progressBar_gpu_util.setInvertedAppearance(False)
+        self.progressBar_gpu_util.setTextDirection(QProgressBar.TopToBottom)
+
+        self.horizontalLayout_19.addWidget(self.progressBar_gpu_util)
+
+
+        self.verticalLayout_15.addWidget(self.frame_gpu_util)
+
+        self.frame_gpu_mem = QFrame(self.frame_gpu)
+        self.frame_gpu_mem.setObjectName(u"frame_gpu_mem")
+        self.frame_gpu_mem.setFrameShape(QFrame.NoFrame)
+        self.frame_gpu_mem.setFrameShadow(QFrame.Raised)
+        self.horizontalLayout_18 = QHBoxLayout(self.frame_gpu_mem)
+        self.horizontalLayout_18.setObjectName(u"horizontalLayout_18")
+        self.horizontalLayout_18.setContentsMargins(0, 0, 0, 0)
+        self.progressBar_gpu_mem = QProgressBar(self.frame_gpu_mem)
+        self.progressBar_gpu_mem.setObjectName(u"progressBar_gpu_mem")
+        self.progressBar_gpu_mem.setFont(font2)
+        self.progressBar_gpu_mem.setStyleSheet(u"QProgressBar {\n"
+"            border: 2px solid grey;\n"
+"            border-radius: 5px;\n"
+"        }\n"
+"\n"
+"        QProgressBar::chunk {\n"
+"            background-color: green;\n"
+"            width: 20px;\n"
+"        }")
+        self.progressBar_gpu_mem.setValue(0)
+        self.progressBar_gpu_mem.setAlignment(Qt.AlignCenter)
+        self.progressBar_gpu_mem.setTextVisible(True)
+        self.progressBar_gpu_mem.setInvertedAppearance(False)
+
+        self.horizontalLayout_18.addWidget(self.progressBar_gpu_mem)
+
+
+        self.verticalLayout_15.addWidget(self.frame_gpu_mem)
+
+
+        self.horizontalLayout_7.addWidget(self.frame_gpu)
 
 
         self.gridLayout.addWidget(self.frame_4, 0, 3, 1, 1)
@@ -261,10 +344,10 @@ class Ui_MainWindow(object):
         self.canvas_main = QLabel(self.frame_main)
         self.canvas_main.setObjectName(u"canvas_main")
         self.canvas_main.setMinimumSize(QSize(600, 600))
-        font2 = QFont()
-        font2.setPointSize(20)
-        font2.setBold(True)
-        self.canvas_main.setFont(font2)
+        font3 = QFont()
+        font3.setPointSize(20)
+        font3.setBold(True)
+        self.canvas_main.setFont(font3)
         self.canvas_main.setAlignment(Qt.AlignCenter)
 
         self.verticalLayout.addWidget(self.canvas_main, 0, Qt.AlignHCenter|Qt.AlignVCenter)
@@ -298,9 +381,9 @@ class Ui_MainWindow(object):
         sizePolicy2.setVerticalStretch(0)
         sizePolicy2.setHeightForWidth(self.frame_operations.sizePolicy().hasHeightForWidth())
         self.frame_operations.setSizePolicy(sizePolicy2)
-        font3 = QFont()
-        font3.setBold(True)
-        self.frame_operations.setFont(font3)
+        font4 = QFont()
+        font4.setBold(True)
+        self.frame_operations.setFont(font4)
         self.frame_operations.setFrameShape(QFrame.NoFrame)
         self.frame_operations.setFrameShadow(QFrame.Raised)
         self.verticalLayout_4 = QVBoxLayout(self.frame_operations)
@@ -309,10 +392,10 @@ class Ui_MainWindow(object):
         self.verticalLayout_4.setContentsMargins(8, 0, 8, 0)
         self.label_operations = QLabel(self.frame_operations)
         self.label_operations.setObjectName(u"label_operations")
-        font4 = QFont()
-        font4.setPointSize(12)
-        font4.setBold(True)
-        self.label_operations.setFont(font4)
+        font5 = QFont()
+        font5.setPointSize(12)
+        font5.setBold(True)
+        self.label_operations.setFont(font5)
         self.label_operations.setLineWidth(0)
 
         self.verticalLayout_4.addWidget(self.label_operations, 0, Qt.AlignTop)
@@ -329,10 +412,10 @@ class Ui_MainWindow(object):
         self.pushButton_newProject.setObjectName(u"pushButton_newProject")
         self.pushButton_newProject.setMinimumSize(QSize(110, 90))
         self.pushButton_newProject.setMaximumSize(QSize(110, 90))
-        font5 = QFont()
-        font5.setPointSize(10)
-        font5.setBold(False)
-        self.pushButton_newProject.setFont(font5)
+        font6 = QFont()
+        font6.setPointSize(10)
+        font6.setBold(False)
+        self.pushButton_newProject.setFont(font6)
         self.pushButton_newProject.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:folder-plus.svg);\n"
@@ -350,7 +433,7 @@ class Ui_MainWindow(object):
         self.pushButton_openProject.setObjectName(u"pushButton_openProject")
         self.pushButton_openProject.setMinimumSize(QSize(110, 90))
         self.pushButton_openProject.setMaximumSize(QSize(110, 90))
-        self.pushButton_openProject.setFont(font5)
+        self.pushButton_openProject.setFont(font6)
         self.pushButton_openProject.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:folder.svg);\n"
@@ -384,7 +467,7 @@ class Ui_MainWindow(object):
         self.pushButton_stackImages.setEnabled(False)
         self.pushButton_stackImages.setMinimumSize(QSize(110, 90))
         self.pushButton_stackImages.setMaximumSize(QSize(110, 90))
-        self.pushButton_stackImages.setFont(font5)
+        self.pushButton_stackImages.setFont(font6)
         self.pushButton_stackImages.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:layers.svg);\n"
@@ -400,7 +483,7 @@ class Ui_MainWindow(object):
         self.pushButton_selectFiles.setObjectName(u"pushButton_selectFiles")
         self.pushButton_selectFiles.setMinimumSize(QSize(110, 90))
         self.pushButton_selectFiles.setMaximumSize(QSize(110, 90))
-        self.pushButton_selectFiles.setFont(font5)
+        self.pushButton_selectFiles.setFont(font6)
         self.pushButton_selectFiles.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:star.svg);\n"
@@ -434,7 +517,7 @@ class Ui_MainWindow(object):
         self.pushButton_removeStreaks.setEnabled(False)
         self.pushButton_removeStreaks.setMinimumSize(QSize(110, 90))
         self.pushButton_removeStreaks.setMaximumSize(QSize(124, 90))
-        self.pushButton_removeStreaks.setFont(font5)
+        self.pushButton_removeStreaks.setFont(font6)
         self.pushButton_removeStreaks.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:edit-3.svg);\n"
@@ -449,7 +532,7 @@ class Ui_MainWindow(object):
         self.pushButton_exportMasks.setObjectName(u"pushButton_exportMasks")
         self.pushButton_exportMasks.setMinimumSize(QSize(110, 90))
         self.pushButton_exportMasks.setMaximumSize(QSize(110, 90))
-        self.pushButton_exportMasks.setFont(font5)
+        self.pushButton_exportMasks.setFont(font6)
         self.pushButton_exportMasks.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:external-link.svg);\n"
@@ -464,7 +547,7 @@ class Ui_MainWindow(object):
         self.pushButton_exportTraining.setObjectName(u"pushButton_exportTraining")
         self.pushButton_exportTraining.setMinimumSize(QSize(110, 90))
         self.pushButton_exportTraining.setMaximumSize(QSize(110, 90))
-        self.pushButton_exportTraining.setFont(font5)
+        self.pushButton_exportTraining.setFont(font6)
         self.pushButton_exportTraining.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:external-link.svg);\n"
@@ -503,7 +586,7 @@ class Ui_MainWindow(object):
         self.pushButton_fillGaps.setEnabled(False)
         self.pushButton_fillGaps.setMinimumSize(QSize(110, 90))
         self.pushButton_fillGaps.setMaximumSize(QSize(110, 90))
-        self.pushButton_fillGaps.setFont(font5)
+        self.pushButton_fillGaps.setFont(font6)
         self.pushButton_fillGaps.setStyleSheet(u"background-repeat: no-repeat;\n"
 "background-position: center top;\n"
 "background-image: url(:git-commit.svg);\n"
@@ -565,7 +648,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_13.setContentsMargins(0, 0, 0, 0)
         self.label_5 = QLabel(self.frame_11)
         self.label_5.setObjectName(u"label_5")
-        self.label_5.setFont(font4)
+        self.label_5.setFont(font5)
 
         self.horizontalLayout_13.addWidget(self.label_5)
 
@@ -658,7 +741,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_12.setContentsMargins(0, 0, 0, 0)
         self.label = QLabel(self.frame_10)
         self.label.setObjectName(u"label")
-        self.label.setFont(font4)
+        self.label.setFont(font5)
 
         self.horizontalLayout_12.addWidget(self.label)
 
@@ -733,7 +816,7 @@ class Ui_MainWindow(object):
         self.label_progressBar.setText("")
         self.pushButton_cancelOp.setText(QCoreApplication.translate("MainWindow", u"X", None))
         self.label_imageName.setText("")
-        self.label_cuda.setText(QCoreApplication.translate("MainWindow", u"<GPU Stats>", None))
+        self.label_gpu.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
         self.canvas_main.setText(QCoreApplication.translate("MainWindow", u"Canvas Place Holder", None))
         self.label_operations.setText(QCoreApplication.translate("MainWindow", u"Operations", None))
         self.pushButton_newProject.setText(QCoreApplication.translate("MainWindow", u"New Project", None))

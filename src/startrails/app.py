@@ -12,7 +12,6 @@ try:
     import cupy
 except:
     pass
-import GPUtil
 from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.util import Observable
 from startrails.op.exportMaskedImages import ExportMaskedImages
@@ -20,6 +19,7 @@ from startrails.op.exportStreaksTraining import ExportStreaksDetectTraining
 from startrails.op.findBrightFrame import FindBrightFrame
 from startrails.op.stackImages import StackImages
 from startrails.ui.project import Project
+from startrails.lib.gpu import GPUInfo
 
 
 class App:
@@ -34,6 +34,7 @@ class App:
         self.loadProject(self.state["projectFile"])
         self.loadAppState()
         self.activeOperation: Observable = None
+        self.gpuInfo = GPUInfo()
 
     def getInputFileList(self) -> List[InputFile]:
         return self.project.rawInputFiles
@@ -145,15 +146,6 @@ class App:
         if self.activeOperation:
             self.activeOperation.requestInterrupt()
 
-    def getGPUStats(self):
-        try:
-            if torch.cuda.is_available() and cupy.is_available():
-                gpu = GPUtil.getGPUs()
-                return int(to_GB(gpu[0].memoryFree)), int(to_GB(gpu[0].memoryTotal))
-        except Exception as e:
-            pass
-        return None
-
     def loadAppState(self):
         try:
             with open(self.stateFile, "r") as f:
@@ -199,8 +191,5 @@ class App:
         self.saveProject()
 
     def stackSuggestBatchSize(self, file: InputFile, useGPU=True):
-        return StackImages.suggestBatchSize(file.path, useGPU=useGPU)
+        return StackImages.suggestBatchSize(file.path, gpuInfo=self.gpuInfo, useGPU=useGPU)
 
-
-def to_GB(bytes):
-    return bytes / (1024)

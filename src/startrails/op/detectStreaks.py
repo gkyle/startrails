@@ -5,6 +5,7 @@ import cv2
 from skimage.draw import polygon
 import numpy as np
 
+import torch
 from ultralytics import YOLO
 from ultralytics.utils import ThreadingLocked
 from sahi.utils.torch import is_torch_cuda_available
@@ -29,7 +30,15 @@ ROI_SIZE = 512
 class DetectStreaks(Observable):
     def __init__(self, useGPU=True):
         super().__init__()
-        self.device = 'cuda:0' if USE_GPU_IF_AVAILABLE and useGPU and is_torch_cuda_available() else 'cpu'
+        if USE_GPU_IF_AVAILABLE and useGPU:
+            if torch.backends.mps.is_available():
+                self.device = 'mps'
+            elif is_torch_cuda_available():
+                self.device = 'cuda:0'
+            else:
+                self.device = 'cpu'
+        else:
+            self.device = 'cpu'
 
         # Prefer openvino/fp16 model variant if device is cpu
         if self.device == 'cpu':
