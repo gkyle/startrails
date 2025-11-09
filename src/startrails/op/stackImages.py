@@ -1,7 +1,6 @@
 from datetime import datetime
 import os
 import time
-import GPUtil
 from threading import Semaphore
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
@@ -15,6 +14,7 @@ except:
 
 from startrails.lib.util import applyMask, imwrite, Observable
 from startrails.lib.file import InputFile, OutputFile
+from startrails.lib.gpu import GPUInfo
 
 
 USE_GPU_IF_AVAILABLE = True
@@ -150,10 +150,10 @@ class StackImages(Observable):
         ts = datetime.now().strftime("%Y-%m-%d-%H-%M")
         return "{}/stacked-{}-{}{}".format(outDir, baseName, ts, extension)
 
-    def suggestBatchSize(path: str, useGPU=True):
-        img = cv2.imread(path)
+    def suggestBatchSize(path: str, gpuInfo: GPUInfo, useGPU=True):
+        img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
         h, w, c = numpy.shape(img)
-        bPerImage = h*w*c
+        bPerImage = h*w*c*img.dtype.itemsize
 
         availableBytes = 0
         if useGPU:
@@ -163,23 +163,28 @@ class StackImages(Observable):
                     mempool = cupy.get_default_memory_pool()
                     mempool.free_all_blocks()
 
-                    gpu = GPUtil.getGPUs()
-                    availableBytes = gpu[0].memoryFree * 1024 * 1024  # MB -> Bytes
+                    gpu_memory_available = gpuInfo.getGpuMemoryAvailable()
+                    if gpu_memory_available is None:
+                        availableBytes = 0
+                    else:
+                        availableBytes = gpu_memory_available * 1024 * 1024 * 1024
             except Exception as e:
                 pass
 
         # Fall back to RAM if GPU unavailable
         if availableBytes == 0:
             useGPU = False
-            targetUtilization = 0.2
+            targetUtilization = 0.4
             memory = psutil.virtual_memory()
             availableBytes = memory.available
 
         availableImages = availableBytes * targetUtilization // bPerImage
 
-        # Number of images in memory = 4 * batchSize + 2. (This calculation is accurate for GPU. We use additional RAM in both cases)
+        # Number of images in memory = 4 * batchSize + 2.
         suggestedBatchSize = int((availableImages - 2) // 4)
-        if suggestedBatchSize > MAX_BATCH_SIZE:
-            suggestedBatchSize = MAX_BATCH_SIZE
+        suggestedBatchSize = min(MAX_BATCH_SIZE, suggestedBatchSize)
+        if suggestedBatchSize < 1:
+            suggestedBatchSize = 1
+
         expectedMemoryUsed = int(((suggestedBatchSize*4+2) * bPerImage))
         return suggestedBatchSize, expectedMemoryUsed, useGPU

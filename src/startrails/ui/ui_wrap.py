@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 from PySide6.QtGui import (QPixmap, QGuiApplication)
-from PySide6.QtCore import QThreadPool, QTimer, QPoint
+from PySide6.QtCore import QThreadPool, QTimer, QPoint, Qt
 from PySide6.QtWidgets import QWidget, QFileDialog, QMainWindow, QDialog, QApplication
 from functools import partial
 
@@ -78,7 +78,7 @@ class Ui_AppWindow(Ui_MainWindow):
         self.pushButton_newProject.clicked.connect(self.doNewProject)
         self.pushButton_openProject.clicked.connect(self.doOpenProject)
         self.pushButton_selectFiles.clicked.connect(self.selectInputFiles)
-        self.pushButton_stackImages.clicked.connect(partial(self.doStack))
+        self.pushButton_stackImages.clicked.connect(self.doStack)
         self.pushButton_removeStreaks.clicked.connect(self.doDetectStreaks)
         self.pushButton_exportMasks.clicked.connect(self.doExportMasks)
         self.pushButton_exportTraining.clicked.connect(self.doExportTrainingStreaks)
@@ -133,11 +133,39 @@ class Ui_AppWindow(Ui_MainWindow):
         self.pushButton_exportTraining.setEnabled(self.readyManualStreaksRemoved)
 
     def slotUpdateGPUStats(self):
-        cudaStats = self.app.getGPUStats()
-        if cudaStats is None:
-            self.label_cuda.setText("NO GPU")
-        else:
-            self.label_cuda.setText("GPU: Free: {}GB | Total: {}GB".format(*cudaStats))
+        gpu_data_available = self.app.gpuInfo.getGpuPresent()
+        if gpu_data_available:
+            self.frame_gpu_label.setVisible(False)
+            gpu_utilization = self.app.gpuInfo.getGpuUtilization()
+            if gpu_utilization is None:
+                self.frame_gpu_util.setVisible(False)
+            else:
+                self.frame_gpu_util.setVisible(True)
+                self.progressBar_gpu_util.setValue(gpu_utilization * 100)
+                self.progressBar_gpu_util.setFormat(
+                    "GPU: {:.0f}%".format(gpu_utilization * 100)
+                )
+
+            gpu_mem_total = self.app.gpuInfo.getGpuMemeoryTotal()
+            gpu_mem_available = self.app.gpuInfo.getGpuMemoryAvailable()
+            if gpu_mem_total is None:
+                self.frame_gpu_mem.setVisible(False)
+            else:
+                mem_util = (gpu_mem_total - gpu_mem_available) / gpu_mem_total
+                self.progressBar_gpu_mem.setValue(mem_util * 100)
+                self.progressBar_gpu_mem.setFormat(
+                    "GPU Mem: {:.0f}%  {:.1f}GB / {:.1f}GB".format(
+                        mem_util * 100, (gpu_mem_total - gpu_mem_available), gpu_mem_total
+                    )
+                )
+
+            gpu_data_available = (gpu_utilization is not None) or (gpu_mem_total is not None)
+
+        if not gpu_data_available:
+            self.frame_gpu_label.setVisible(True)
+            self.frame_gpu_util.setVisible(False)
+            self.frame_gpu_mem.setVisible(False)
+            self.label_gpu.setText("NO GPU")
 
     def slotUpdateFile(self, file: File):
         self.app.saveProject()
@@ -222,6 +250,7 @@ class Ui_AppWindow(Ui_MainWindow):
         self.op_queue.start(worker)
 
     def doStack(self, _=None):
+        QApplication.processEvents()
         dialog = StackImagesDialog(self.app, self.readyStreaksRemoved)
         result = dialog.exec()
         if result == QDialog.Accepted:
@@ -273,7 +302,6 @@ class Ui_AppWindow(Ui_MainWindow):
 
             worker = AsyncWorker(partial(f, self.app.getInputFileList()))
             self.op_queue.start(worker)
-
 
     def doNewProject(self):
         QApplication.processEvents()
