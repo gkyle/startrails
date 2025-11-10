@@ -4,6 +4,7 @@ from PySide6.QtGui import (QPixmap, QGuiApplication)
 from PySide6.QtCore import QThreadPool, QTimer, QPoint, Qt
 from PySide6.QtWidgets import QWidget, QFileDialog, QMainWindow, QDialog, QApplication
 from functools import partial
+import numpy as np
 
 from startrails.app import App
 from startrails.ui.dialog_detectStreaks import DetectStreaksDialog
@@ -26,7 +27,7 @@ class MainWindow(QMainWindow):
         # timer for updating GPU stats
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.ui.slotUpdateGPUStats)
-        self.timer.start(10000)
+        self.timer.start(5000)
 
     def center(self):
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -194,11 +195,14 @@ class Ui_AppWindow(Ui_MainWindow):
         progressUpdater.total = total
         progressUpdater.update(increment)
         if data is not None:
-            if isinstance(data, File):
+            if isinstance(data, np.ndarray):
+                # In-memory preview update
+                self.canvas_main.setFromNumpyArray(data, resetZoomAndPosition=False)
+            elif isinstance(data, File):
                 self.showFile(data)
                 self.inputFileStrip.update(data)
             else:
-                raise ValueError("Unknown data type")
+                raise ValueError(f"Unknown data type: {type(data)}")
 
     def selectInputFiles(self, *, clear=True):
         QApplication.processEvents()

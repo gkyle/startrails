@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 import numpy as np
 from PySide6.QtCore import (Qt, QPointF, QTimer)
 from PySide6.QtGui import (QPainter, QPaintEvent, QWheelEvent, QMouseEvent,
-                           QPixmap, QColor, QPen, QPainterPath, QFont)
+                           QPixmap, QColor, QPen, QPainterPath, QFont, QImage)
 from PySide6.QtWidgets import QLabel, QWidget
 
 from startrails.lib.file import File, InputFile, OutputFile
@@ -63,6 +63,26 @@ class CanvasLabel(QLabel):
                 self.setPixmap(newPixmap, True)
         else:
             self.setPixmap(QPixmap(), True)
+
+    def setFromNumpyArray(self, inputImage: np.ndarray, resetZoomAndPosition: bool = False) -> None:
+        if inputImage is None:
+            self.setPixmap(QPixmap(), True)
+            return
+            
+        img = inputImage.copy()
+        if img.dtype == np.uint16:
+            img = (img / 256).astype(np.uint8)
+        if img.shape[2] == 3:
+            img = img[:, :, ::-1]
+        if len(img.shape) == 2:
+            img = np.stack([img] * 3, axis=-1)
+        
+        height, width, channels = img.shape
+        img = np.ascontiguousarray(img)
+        bytesPerLine = channels * width
+        qimage = QImage(img.data, width, height, bytesPerLine, QImage.Format_RGB888)
+        pixmap = QPixmap.fromImage(qimage)
+        self.setPixmap(pixmap, doResetZoomAndPosition=resetZoomAndPosition)
 
     def setPixmap(self, pixmap: QPixmap, doResetZoomAndPosition: bool = True) -> None:
         self.pixmap = pixmap

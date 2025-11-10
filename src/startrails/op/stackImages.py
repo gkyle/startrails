@@ -22,7 +22,7 @@ MAX_BATCH_SIZE = 16
 
 
 class StackImages(Observable):
-    defaultBatchSize = 4  # Uses 1.4GB VRAM, but cupy may allocate more memory to the pool.
+    defaultBatchSize = 4
 
     def __init__(self, useGPU=True):
         super().__init__()
@@ -35,23 +35,31 @@ class StackImages(Observable):
         except:
             pass
 
-    def processBatch(self, inputImages: List[numpy.ndarray], outImage: numpy.ndarray, outfile: str) -> numpy.ndarray:
+    def processBatch(self, inputImages: List[numpy.ndarray], outImage: numpy.ndarray, outfile: str, writeToFile: bool = True) -> numpy.ndarray:
         if self.useGPU:
             np = cupy
+            # Transfer batch to GPU
+            inputImages = [np.asarray(img) for img in inputImages]
+            if outImage is not None:
+                outImage = np.asarray(outImage)
         else:
             np = numpy
 
         if outImage is None:
-            outImage = np.zeros(np.shape(inputImages[0]), dtype=inputImages[0].dtype)
-
-        images = outImage.reshape((1, ) + outImage.shape)
-        for img in inputImages:
-            images = np.append(images, img.reshape((1, ) + img.shape), axis=0)
-
-        imageStack = np.stack(np.array(images), axis=0)
+            imageStack = np.stack(inputImages, axis=0)
+        else:
+            imageStack = np.stack([outImage] + inputImages, axis=0)
+        
         imageMax = np.max(imageStack, axis=0)
 
-        imwrite(outfile, imageMax)
+        # Transfer back to CPU for writing
+        if self.useGPU:
+            imageMax = cupy.asnumpy(imageMax)
+            cupy.get_default_memory_pool().free_all_blocks()
+
+        if writeToFile:
+            imwrite(outfile, imageMax)
+            
         return imageMax
 
     def stack(self, srcFiles: List[InputFile], outfile: OutputFile, applyMasks=False, fade=False, fadeGradient=None, batchSize=None):
@@ -62,10 +70,11 @@ class StackImages(Observable):
         def processFile(file: InputFile, idx: int):
             return self.preprocessImage(file, applyMasks, fade, fadeGradient, idx)
 
+        max_workers = min(32, (os.cpu_count() or 1) + 4)
         # limit number of concurrent / results-waiting tasks so we don't blow up memory
         semaphore = Semaphore(batchSize*2)
 
-        with ThreadPoolExecutor() as executor:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             self.startJob(len(srcFiles))
             futures = []
             completedCount = 0
@@ -89,8 +98,10 @@ class StackImages(Observable):
                     semaphore.release()
 
                     if completedCount % batchSize == 0:
-                        outImg = self.processBatch(self.batch, outImg, outfile.path)
-                        self.updateJob(len(self.batch), outfile)
+                        shouldWrite = (completedCount % (batchSize * 8) == 0) or (completedCount == targetCount)
+                        outImg = self.processBatch(self.batch, outImg, outfile.path, writeToFile=shouldWrite)
+                        # Pass OutputFile when we write to disk, numpy array for in-memory preview
+                        self.updateJob(len(self.batch), outfile if shouldWrite else outImg)
                         self.batch.clear()
 
                 if self.shouldInterrupt():
@@ -102,19 +113,18 @@ class StackImages(Observable):
                 time.sleep(0.01)
 
             if self.batch:
-                outImg = self.processBatch(self.batch, outImg, outfile.path)
+                # Final batch always writes to disk
+                outImg = self.processBatch(self.batch, outImg, outfile.path, writeToFile=True)
                 self.updateJob(len(self.batch), outfile)
 
             if self.useGPU:
                 cupy.get_default_memory_pool().free_all_blocks()
 
     def preprocessImage(self, file: InputFile, applyMasks, fade, fadeGradient, idx):
-        if self.useGPU:
-            np = cupy
-        else:
-            np = numpy
-
         img = cv2.imread(file.path, cv2.IMREAD_UNCHANGED)
+        if img is None:
+            raise ValueError(f"Failed to load image: {file.path}")
+        
         masks = None
         if applyMasks:
             masks = file.streaksMasks + file.streaksManualMasks
@@ -127,7 +137,7 @@ class StackImages(Observable):
         if fade and fadeGradient[idx] != 1:
             img = cv2.addWeighted(img, fadeGradient[idx], img, 0, 0.0)
 
-        return idx, np.array(img)
+        return idx, img
 
     def makeFadeGradient(frameCount, fadeAmount=(0.0, 0.0)):
         fadeFrameStartCount = int(fadeAmount[0]*frameCount)
@@ -163,11 +173,11 @@ class StackImages(Observable):
                     mempool = cupy.get_default_memory_pool()
                     mempool.free_all_blocks()
 
-                    gpu_memory_available = gpuInfo.getGpuMemoryAvailable()
-                    if gpu_memory_available is None:
+                    gpuMemoryAvailable = gpuInfo.getGpuMemoryAvailable()
+                    if gpuMemoryAvailable is None:
                         availableBytes = 0
                     else:
-                        availableBytes = gpu_memory_available * 1024 * 1024 * 1024
+                        availableBytes = gpuMemoryAvailable * 1024 * 1024 * 1024
             except Exception as e:
                 pass
 
