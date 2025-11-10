@@ -23,7 +23,7 @@ USE_GPU_IF_AVAILABLE = True
 PATCH_OVERLAP = 0.2
 STREAKS_MODEL_PATH = "models/detectStreaks/streaks.pt"
 STREAKS_MODEL_OPENVINO_PATH = "models/detectStreaks/streaks_openvino_model/"
-DETECT_BATCH_SIZE = 2
+DETECT_BATCH_SIZE = 6
 ROI_SIZE = 512
 
 
@@ -83,12 +83,8 @@ class DetectStreaks(Observable):
     def detectStreaksInImage(self, file: InputFile, confThreshold: float, postProcessMethod: str, mergeThreshold: float) -> InputFile:
         try:
             img = cv2.imread(file.path)
-            # make a larger canvas to improve detection at edges
             BORDER = ROI_SIZE // 4
-            h, w, _ = np.shape(img)
-            canvas = np.zeros((h + BORDER*2, w + BORDER*2, 3), dtype=np.uint8)
-            canvas[BORDER:h + BORDER, BORDER:w + BORDER] = img
-            img = canvas
+            img = cv2.copyMakeBorder(img, BORDER, BORDER, BORDER, BORDER, cv2.BORDER_CONSTANT, value=[0, 0, 0])
 
             # sliced predictions
             sliceImageResult = getSlices(img, ROI_SIZE, ROI_SIZE, PATCH_OVERLAP, PATCH_OVERLAP)
@@ -111,7 +107,7 @@ class DetectStreaks(Observable):
                 objectPredictions.append(shiftedPrediction)
 
             # standard prediction, downscaled
-            imgsz = ROI_SIZE * 4
+            imgsz = ROI_SIZE * 3
             yoloStdResult = self.predict([img], conf=confThreshold, batchSize=1, imgsz=imgsz)
             sahiStdResult = yolo2sahi(yoloStdResult[0], np.shape(img), [0, 0], postProcessMethod)
             if len(sahiStdResult) > 0:
