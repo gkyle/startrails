@@ -96,6 +96,7 @@ class App:
         stackImages.stack(filteredInputFiles, file, satellitesRemoved, fade,
                           fadeGradient=fadeGradient, batchSize=batchSize)
         stackImages.removeObserver(progressBar)
+        self.saveProject()
         return file
 
     def doDetectStreaks(self, progressBar, useGPU, confThreshold, mergeMethod, mergeThreshold):
@@ -104,6 +105,7 @@ class App:
         self.activeOperation = detectStreaks
         detectStreaks.detectStreaks(self.getInputFileList(), confThreshold, mergeMethod, mergeThreshold)
         detectStreaks.removeObserver(progressBar)
+        self.saveProject()
 
     def doFindBrightFrame(self, x, y, basisFile: OutputFile, progressBar):
         filteredInputFiles = list(filter(lambda file: not file.excludeFromStack, self.project.rawInputFiles))
@@ -140,6 +142,7 @@ class App:
         fillGaps.removeObserver(progressBar)
         fileFillGaps.fadeGradient = file.fadeGradient
         fileFillGapsMask.fadeGradient = file.fadeGradient
+        self.saveProject()
         return fileFillGaps
 
     def doInterruptOperation(self):
