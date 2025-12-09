@@ -15,5 +15,6 @@ env.bak/
 venv.bak/
 
 # Startrails
+data/
 projects/
 app.json

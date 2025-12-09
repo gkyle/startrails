@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'interfacegkXsIZ.ui'
+## Form generated from reading UI file 'interface.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.4.2
+## Created by: Qt User Interface Compiler version 6.8.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -15,10 +15,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QAbstractScrollArea, QApplication, QFrame, QGridLayout,
-    QHBoxLayout, QLabel, QLayout, QMainWindow,
-    QProgressBar, QPushButton, QScrollArea, QSizePolicy,
-    QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractScrollArea, QApplication, QCheckBox, QFrame,
+    QGridLayout, QHBoxLayout, QLabel, QLayout,
+    QMainWindow, QProgressBar, QPushButton, QScrollArea,
+    QSizePolicy, QVBoxLayout, QWidget)
 import icons_darktheme_rc
 
 class Ui_MainWindow(object):
@@ -29,7 +29,7 @@ class Ui_MainWindow(object):
         MainWindow.setMinimumSize(QSize(300, 0))
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
-        sizePolicy = QSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.centralwidget.sizePolicy().hasHeightForWidth())
@@ -136,7 +136,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_5.setContentsMargins(0, 0, 0, 0)
         self.toolbar = QFrame(self.vframe)
         self.toolbar.setObjectName(u"toolbar")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         sizePolicy1.setHorizontalStretch(0)
         sizePolicy1.setVerticalStretch(0)
         sizePolicy1.setHeightForWidth(self.toolbar.sizePolicy().hasHeightForWidth())
@@ -376,7 +376,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.frame_operations = QFrame(self.slide_menu)
         self.frame_operations.setObjectName(u"frame_operations")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         sizePolicy2.setHorizontalStretch(0)
         sizePolicy2.setVerticalStretch(0)
         sizePolicy2.setHeightForWidth(self.frame_operations.sizePolicy().hasHeightForWidth())
@@ -449,8 +449,8 @@ class Ui_MainWindow(object):
 
         self.line_3 = QFrame(self.frame_operations)
         self.line_3.setObjectName(u"line_3")
-        self.line_3.setFrameShape(QFrame.HLine)
-        self.line_3.setFrameShadow(QFrame.Sunken)
+        self.line_3.setFrameShape(QFrame.Shape.HLine)
+        self.line_3.setFrameShadow(QFrame.Shadow.Sunken)
 
         self.verticalLayout_4.addWidget(self.line_3)
 
@@ -499,8 +499,8 @@ class Ui_MainWindow(object):
 
         self.line = QFrame(self.frame_operations)
         self.line.setObjectName(u"line")
-        self.line.setFrameShape(QFrame.HLine)
-        self.line.setFrameShadow(QFrame.Sunken)
+        self.line.setFrameShape(QFrame.Shape.HLine)
+        self.line.setFrameShadow(QFrame.Shadow.Sunken)
 
         self.verticalLayout_4.addWidget(self.line)
 
@@ -563,14 +563,14 @@ class Ui_MainWindow(object):
 
         self.line_2 = QFrame(self.frame_operations)
         self.line_2.setObjectName(u"line_2")
-        self.line_2.setFrameShape(QFrame.HLine)
-        self.line_2.setFrameShadow(QFrame.Sunken)
+        self.line_2.setFrameShape(QFrame.Shape.HLine)
+        self.line_2.setFrameShadow(QFrame.Shadow.Sunken)
 
         self.verticalLayout_4.addWidget(self.line_2)
 
         self.frame_9 = QFrame(self.frame_operations)
         self.frame_9.setObjectName(u"frame_9")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
         sizePolicy3.setHorizontalStretch(0)
         sizePolicy3.setVerticalStretch(0)
         sizePolicy3.setHeightForWidth(self.frame_9.sizePolicy().hasHeightForWidth())
@@ -602,6 +602,20 @@ class Ui_MainWindow(object):
 
 
         self.verticalLayout_3.addWidget(self.frame_operations, 0, Qt.AlignTop)
+
+        self.frame_6 = QFrame(self.slide_menu)
+        self.frame_6.setObjectName(u"frame_6")
+        self.frame_6.setFrameShape(QFrame.NoFrame)
+        self.frame_6.setFrameShadow(QFrame.Plain)
+        self.verticalLayout_8 = QVBoxLayout(self.frame_6)
+        self.verticalLayout_8.setObjectName(u"verticalLayout_8")
+        self.checkBox_showDeletedMasks = QCheckBox(self.frame_6)
+        self.checkBox_showDeletedMasks.setObjectName(u"checkBox_showDeletedMasks")
+
+        self.verticalLayout_8.addWidget(self.checkBox_showDeletedMasks)
+
+
+        self.verticalLayout_3.addWidget(self.frame_6, 0, Qt.AlignBottom)
 
 
         self.verticalLayout_2.addWidget(self.slide_menu)
@@ -662,7 +676,7 @@ class Ui_MainWindow(object):
 
         self.scrollArea = QScrollArea(self.frame_outputFilesContainer)
         self.scrollArea.setObjectName(u"scrollArea")
-        sizePolicy4 = QSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
         sizePolicy4.setHorizontalStretch(0)
         sizePolicy4.setVerticalStretch(0)
         sizePolicy4.setHeightForWidth(self.scrollArea.sizePolicy().hasHeightForWidth())
@@ -717,7 +731,7 @@ class Ui_MainWindow(object):
 
         self.frame_inputFilesContainer = QFrame(self.frame_bottom)
         self.frame_inputFilesContainer.setObjectName(u"frame_inputFilesContainer")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         sizePolicy5.setHorizontalStretch(100)
         sizePolicy5.setVerticalStretch(0)
         sizePolicy5.setHeightForWidth(self.frame_inputFilesContainer.sizePolicy().hasHeightForWidth())
@@ -827,6 +841,7 @@ class Ui_MainWindow(object):
         self.pushButton_exportMasks.setText(QCoreApplication.translate("MainWindow", u"Export Masks", None))
         self.pushButton_exportTraining.setText(QCoreApplication.translate("MainWindow", u"Export Training", None))
         self.pushButton_fillGaps.setText(QCoreApplication.translate("MainWindow", u"Fill Gaps", None))
+        self.checkBox_showDeletedMasks.setText(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Output Files", None))
         self.label_outputFiles_count.setText("")
         self.label_7.setText("")

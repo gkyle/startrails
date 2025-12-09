@@ -35,6 +35,7 @@ class CanvasLabel(QLabel):
         self.renderHeight: Optional[int] = None
         self.scale: Optional[float] = None
         self.ratio: Optional[float] = None
+        self.showDeletedMasks: bool = False
 
         # Debounce timers for high-frequency events
         self.wheelDebounceTimer = QTimer()
@@ -183,20 +184,20 @@ class CanvasLabel(QLabel):
             if self.scale is None:
                 return
 
+            # Delete mask
             if ev.modifiers() == Qt.ShiftModifier:
                 idx = self.checkMaskContains(self.file.streaksMasks, ev.position().x(), ev.position().y())
                 if idx is not None:
-                    self.file.streaksMasks.pop(idx)
+                    deletedMask = self.file.streaksMasks.pop(idx)
+                    self.file.streaksManualDeletedMasks.append(deletedMask)
                     self.repaint()
-                    if len(self.file.streaksMasks) == 0:
-                        self.signals.updateFile.emit(self.file)
+                    self.signals.updateFile.emit(self.file)
                 else:
                     idx = self.checkMaskContains(self.file.streaksManualMasks, ev.position().x(), ev.position().y())
                     if idx is not None:
                         self.file.streaksManualMasks.pop(idx)
                         self.repaint()
-                        if len(self.file.streaksManualMasks) == 0:
-                            self.signals.updateFile.emit(self.file)
+                        self.signals.updateFile.emit(self.file)
 
             else:
                 for mask in self.file.streaksMasks + self.file.streaksManualMasks:
@@ -321,6 +322,10 @@ class CanvasLabel(QLabel):
                 if self.file.streaksManualMasks is not None:
                     for mask in self.file.streaksManualMasks:
                         self.drawMask(mask, QColor(0, 255, 255, 255), self.scale, painter)
+
+                if self.showDeletedMasks and self.file.streaksManualDeletedMasks is not None:
+                    for mask in self.file.streaksManualDeletedMasks:
+                        self.drawMask(mask, QColor(255, 0, 0, 255), self.scale, painter)
 
                 if len(self.file.activeMaskPoints) > 0:
                     pen = QPen()

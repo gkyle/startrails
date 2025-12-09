@@ -223,6 +223,7 @@ QScrollBar::handle:horizontal:hover {
                <property name="font">
                 <font>
                  <pointsize>18</pointsize>
+                 <weight>75</weight>
                  <bold>true</bold>
                 </font>
                </property>
@@ -604,6 +605,7 @@ QScrollBar::handle:horizontal:hover {
                <property name="font">
                 <font>
                  <pointsize>20</pointsize>
+                 <weight>75</weight>
                  <bold>true</bold>
                 </font>
                </property>
@@ -694,6 +696,7 @@ QScrollBar::handle:horizontal:hover {
                   </property>
                   <property name="font">
                    <font>
+                    <weight>75</weight>
                     <bold>true</bold>
                    </font>
                   </property>
@@ -724,6 +727,7 @@ QScrollBar::handle:horizontal:hover {
                      <property name="font">
                       <font>
                        <pointsize>12</pointsize>
+                       <weight>75</weight>
                        <bold>true</bold>
                       </font>
                      </property>
@@ -776,6 +780,7 @@ QScrollBar::handle:horizontal:hover {
                         <property name="font">
                          <font>
                           <pointsize>10</pointsize>
+                          <weight>50</weight>
                           <bold>false</bold>
                          </font>
                         </property>
@@ -822,6 +827,7 @@ background-origin: content</string>
                         <property name="font">
                          <font>
                           <pointsize>10</pointsize>
+                          <weight>50</weight>
                           <bold>false</bold>
                          </font>
                         </property>
@@ -893,6 +899,7 @@ background-origin: content</string>
                         <property name="font">
                          <font>
                           <pointsize>10</pointsize>
+                          <weight>50</weight>
                           <bold>false</bold>
                          </font>
                         </property>
@@ -933,6 +940,7 @@ background-origin: content</string>
                         <property name="font">
                          <font>
                           <pointsize>10</pointsize>
+                          <weight>50</weight>
                           <bold>false</bold>
                          </font>
                         </property>
@@ -1004,6 +1012,7 @@ background-origin: content</string>
                         <property name="font">
                          <font>
                           <pointsize>10</pointsize>
+                          <weight>50</weight>
                           <bold>false</bold>
                          </font>
                         </property>
@@ -1038,6 +1047,7 @@ background-origin: content</string>
                         <property name="font">
                          <font>
                           <pointsize>10</pointsize>
+                          <weight>50</weight>
                           <bold>false</bold>
                          </font>
                         </property>
@@ -1072,6 +1082,7 @@ background-origin: content</string>
                         <property name="font">
                          <font>
                           <pointsize>10</pointsize>
+                          <weight>50</weight>
                           <bold>false</bold>
                          </font>
                         </property>
@@ -1149,6 +1160,7 @@ background-origin: content</string>
                         <property name="font">
                          <font>
                           <pointsize>10</pointsize>
+                          <weight>50</weight>
                           <bold>false</bold>
                          </font>
                         </property>
@@ -1167,6 +1179,25 @@ background-origin: content</string>
                        </widget>
                       </item>
                      </layout>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item alignment="Qt::AlignBottom">
+                 <widget class="QFrame" name="frame_6">
+                  <property name="frameShape">
+                   <enum>QFrame::NoFrame</enum>
+                  </property>
+                  <property name="frameShadow">
+                   <enum>QFrame::Plain</enum>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_8">
+                   <item>
+                    <widget class="QCheckBox" name="checkBox_showDeletedMasks">
+                     <property name="text">
+                      <string>Show Deleted Masks</string>
+                     </property>
                     </widget>
                    </item>
                   </layout>
@@ -1303,6 +1334,7 @@ background-origin: content</string>
                   <property name="font">
                    <font>
                     <pointsize>12</pointsize>
+                    <weight>75</weight>
                     <bold>true</bold>
                    </font>
                   </property>
@@ -1521,6 +1553,7 @@ background-origin: content</string>
                   <property name="font">
                    <font>
                     <pointsize>12</pointsize>
+                    <weight>75</weight>
                     <bold>true</bold>
                    </font>
                   </property>

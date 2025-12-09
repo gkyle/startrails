@@ -26,6 +26,7 @@ class InputFile(File):
         super().__init__(basename, path)
         self.streaksMasks = []
         self.streaksManualMasks = []
+        self.streaksManualDeletedMasks = []
         self.activeMaskPoints = []
         self.excludeFromStack = False
 

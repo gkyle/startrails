@@ -85,6 +85,8 @@ class Ui_AppWindow(Ui_MainWindow):
         self.pushButton_exportTraining.clicked.connect(self.doExportTrainingStreaks)
         self.pushButton_fillGaps.clicked.connect(self.doFillGaps)
         self.pushButton_cancelOp.clicked.connect(self.doCancelOp)
+        
+        self.checkBox_showDeletedMasks.stateChanged.connect(self.onShowDeletedMasksChanged)
 
         self.signals = getSignals()
         self.signals.startProgress.connect(self.slotStartProgress)
@@ -124,7 +126,7 @@ class Ui_AppWindow(Ui_MainWindow):
         for file in self.app.getInputFileList():
             if len(file.streaksMasks+file.streaksManualMasks) > 0:
                 self.readyStreaksRemoved = True
-            if len(file.streaksManualMasks) > 0:
+            if len(file.streaksManualMasks) > 0 or len(file.streaksManualDeletedMasks) > 0:
                 self.readyManualStreaksRemoved = True
                 break
 
@@ -132,6 +134,10 @@ class Ui_AppWindow(Ui_MainWindow):
         self.pushButton_removeStreaks.setEnabled(self.readyInputImages)
         self.pushButton_exportMasks.setEnabled(self.readyStreaksRemoved)
         self.pushButton_exportTraining.setEnabled(self.readyManualStreaksRemoved)
+
+    def onShowDeletedMasksChanged(self, state):
+        self.canvas_main.showDeletedMasks = bool(state)
+        self.canvas_main.repaint()
 
     def slotUpdateGPUStats(self):
         gpu_data_available = self.app.gpuInfo.getGpuPresent()
