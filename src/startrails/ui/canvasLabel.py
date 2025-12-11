@@ -69,7 +69,7 @@ class CanvasLabel(QLabel):
         if inputImage is None:
             self.setPixmap(QPixmap(), True)
             return
-            
+
         img = inputImage.copy()
         if img.dtype == np.uint16:
             img = (img / 256).astype(np.uint8)
@@ -77,7 +77,7 @@ class CanvasLabel(QLabel):
             img = img[:, :, ::-1]
         if len(img.shape) == 2:
             img = np.stack([img] * 3, axis=-1)
-        
+
         height, width, channels = img.shape
         img = np.ascontiguousarray(img)
         bytesPerLine = channels * width
@@ -144,6 +144,15 @@ class CanvasLabel(QLabel):
         self.posY = self.mouseY - (self.mouseY - self.posY) * (self.zoom_factor / old_zoom_factor)
         self.repaint()
 
+    @staticmethod
+    def moveMaskFromAutoToManual(mask, auto_masks_list, manual_masks_list):
+        for i, m in enumerate(auto_masks_list):
+            if np.array_equal(mask, m):
+                auto_masks_list.pop(i)
+                manual_masks_list.append(mask)
+                return True
+        return False
+
     def checkMaskContains(self, masks, x, y):
         if self.scale is None:
             return
@@ -164,7 +173,6 @@ class CanvasLabel(QLabel):
             self.dragX = ev.position().x() - self.posX
             self.dragY = ev.position().y() - self.posY
 
-            # TODO: Is this a reasonable way to end a polygon? Dblclick instead?
             if isinstance(self.file, InputFile):
                 if len(self.file.activeMaskPoints) > 0:
                     self.file.streaksManualMasks.append(np.array(self.file.activeMaskPoints).astype(np.int64))
@@ -199,6 +207,7 @@ class CanvasLabel(QLabel):
                         self.repaint()
                         self.signals.updateFile.emit(self.file)
 
+            # Edit mask
             else:
                 for mask in self.file.streaksMasks + self.file.streaksManualMasks:
                     polygon = self.translateAndScalePoints(mask, self.scale)
@@ -209,6 +218,12 @@ class CanvasLabel(QLabel):
                         if path.contains(QPointF(ev.x(), ev.y())):
                             self.selectedNub = (mask, idx, (point[0], point[1]))
                             self.draggingNub = True
+                            # If this was an auto-generated mask, switch it to manual
+                            self.moveMaskFromAutoToManual(
+                                mask,
+                                self.file.streaksMasks,
+                                self.file.streaksManualMasks,
+                            )
                             break
 
                     # mask
@@ -217,6 +232,10 @@ class CanvasLabel(QLabel):
                     if not self.draggingNub and path.contains(QPointF(ev.position().x(), ev.position().y())):
                         self.selectedMask = (mask, [point.copy() for point in mask])
                         self.draggingMask = True
+                        # If this was an auto-generated mask, switch it to manual
+                        self.moveMaskFromAutoToManual(
+                            mask, self.file.streaksMasks, self.file.streaksManualMasks
+                        )
                         break
 
     def mouseMoveEvent(self, ev: QMouseEvent) -> None:
