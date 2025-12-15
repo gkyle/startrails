@@ -28,9 +28,21 @@ Produce a composite image by taking the lightest pixels from each input image.
 
 <img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_stack.png" alt="Auto-detect streaks" width="100%"/>
 
-#### Manually flag unwanted regions
+#### Manually correct any issues
 
-The streak detection model isn't perfect. We may need to manually flag additional streaks or other unwanted areas from images. When viewing a stacked image, you can Shift-Click to search for the input image containing the brightest pixels at that location. You can then mark the unwanted region by drawing a polygon (Right-Click points outlining the region). The manually flagged region is indicated in blue.
+The streak detection model isn't perfect. You may need to manually flag additional streaks or make other corrections.
+
+#### Manually flagging undetected streaks
+
+Right click on the image to start drawing a polygon around the streak. Right-click to add more points. Left-click to complete the polygon. You can edit any polygon by dragging the points.
+
+#### Remove false postives
+
+To remove a bad detection, shift-click on the polygon.
+
+#### Finding images with undetected streaks
+
+When viewing a stacked image, you can shift-click to search for the input image containing the brightest pixels at that location.
 
 <img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_manually_flag_streaks.png" width="100%"/>
 
@@ -78,4 +90,9 @@ StarTrails AI uses an object detection model to automatically identify streaks i
 
 Yes and yes. I've included the [dataset](https://github.com/gkyle/startrails/releases/tag/training) that I used for training and notebooks for [working with labels and training here](https://github.com/gkyle/startrails/tree/main/training). Please feel free to make your own models.
 
-I would like to improve the diversity of the dataset in this repo and welcome contributions. Only the 512x512 crops are needed. You can export your manually-flagged streaks directly from the app.
+I would like to improve the diversity of the dataset in this repo and welcome contributions. Only the 512x512 crops are needed. You can export your manually added, deleted, and corrected streaks directly from the app:
+* After you have made corrections to all files in the project, click Export Training
+* Choose a folder to store the files
+* Zip up the contents of the folder in .zip file.
+* Create a new Issue with a title like "Training data". Describe the samples. Attach the .zip file. Max file size is 10MB. If the file is larger, please file the bug without the attachment and we can coordinate how to send your data.
+* Your data will be included in the next model update.
