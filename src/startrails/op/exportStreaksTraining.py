@@ -40,34 +40,46 @@ class ExportStreaksDetectTraining(Observable):
             return 0
 
         img = cv2.imread(file.path)
-        
+
         # Add border if requested (for deleted masks at edges)
+        border_offset = 0
         if addBorder:
             BORDER = ROI_SIZE // 4
+            border_offset = BORDER
             img = cv2.copyMakeBorder(img, BORDER, BORDER, BORDER, BORDER, 
                                     cv2.BORDER_CONSTANT, value=[0, 0, 0])
-        
+
         h, w, _ = np.shape(img)
         count = 0
         basename = os.path.basename(file.path)
         name, ext = os.path.splitext(basename)
 
         for idx, mask in enumerate(masks):
-            bbox = getBoundingBox(mask)
+            # Adjust mask coordinates for border offset
+            adjusted_mask = mask
+            if border_offset > 0:
+                adjusted_mask = [
+                    [point[0] + border_offset, point[1] + border_offset]
+                    for point in mask
+                ]
+
+            bbox = getBoundingBox(adjusted_mask)
             bbox_width = bbox[2] - bbox[0]
             bbox_height = bbox[3] - bbox[1]
 
             for idx_h in range(0, math.ceil(bbox_height/ROI_SIZE)):
                 for idx_w in range(0, math.ceil(bbox_width/ROI_SIZE)):
 
-                    centerPoint = getCenter(mask)
+                    centerPoint = getCenter(adjusted_mask)
                     if bbox_width > ROI_SIZE:
                         centerPoint[0] = bbox[0] + ROI_SIZE/2 + idx_w*ROI_SIZE
                     if bbox_height > ROI_SIZE:
                         centerPoint[1] = bbox[1] + ROI_SIZE/2 + idx_h*ROI_SIZE
                     centerPoint = recenter(centerPoint, ROI_SIZE, h, w)
 
-                    shapes, manualShapeCount = getLabelsInROI(file, centerPoint)
+                    shapes, manualShapeCount = getLabelsInROI(
+                        file, centerPoint, border_offset
+                    )
 
                     # Skip if no manual shapes and we're not exporting as negative
                     if not exportAsNegative and manualShapeCount == 0:
@@ -80,16 +92,26 @@ class ExportStreaksDetectTraining(Observable):
 
                     # Determine if this should be a positive (with labels) or negative example
                     hasActiveShapes = len(shapes) > 0
-                    
+
                     if hasActiveShapes:
                         # Export as positive example with labels
                         self._exportPositiveExample(roi, shapes, outputDir, name, ext, 
                                                    prefix, idx, idx_w, idx_h)
                     elif exportAsNegative:
                         # Export as negative example
-                        self._exportNegativeExample(roi, mask, centerPoint, outputDir, 
-                                                   name, ext, prefix, idx, idx_w, idx_h)
-                    
+                        self._exportNegativeExample(
+                            roi,
+                            adjusted_mask,
+                            centerPoint,
+                            outputDir,
+                            name,
+                            ext,
+                            prefix,
+                            idx,
+                            idx_w,
+                            idx_h,
+                        )
+
                     count += 1
 
         return count
@@ -118,8 +140,15 @@ class ExportStreaksDetectTraining(Observable):
         # Export labels
         lines = []
         for _, label in enumerate(shapes):
+            # Convert polygon to 4-point oriented bounding box
+            obb_points = self._polygonToOBB(label)
+
+            # Skip if polygon has fewer than 3 points (invalid polygon)
+            if obb_points is None:
+                continue
+
             line = ['0']
-            for point in label:
+            for point in obb_points:
                 line.append(point[0]/ROI_SIZE)
                 line.append(point[1]/ROI_SIZE)
             lines.append(" ".join(str(num) for num in line))
@@ -156,6 +185,40 @@ class ExportStreaksDetectTraining(Observable):
                 outputDir, prefix, name, idx, idx_w, idx_h, ext)
             imwrite(crop_image_filename, roi_copy)
 
+    def _polygonToOBB(self, polygon_points):
+        """Convert a polygon to a 4-point oriented bounding box."""
+        # Return None for polygons with fewer than 3 points (not valid polygons)
+        if len(polygon_points) < 3:
+            return None
+
+        if len(polygon_points) == 4:
+            return polygon_points[:4]  # Return first 4 points
+        elif len(polygon_points) == 3:
+            return polygon_points + [polygon_points[-1]]
+
+        # For 5+ points, compute minimum area oriented bounding box
+        try:
+            points_array = np.array(polygon_points, dtype=np.float32)
+
+            # Use cv2.minAreaRect to get the minimum area bounding rectangle
+            rect = cv2.minAreaRect(points_array)
+            box_points = cv2.boxPoints(rect)
+
+            # Convert to list format and ensure 4 points
+            obb_points = [[float(pt[0]), float(pt[1])] for pt in box_points]
+
+            return obb_points
+
+        except Exception as e:
+            print(f"Error computing OBB: {e}")
+            # Fallback: use axis-aligned bounding box
+            x_coords = [p[0] for p in polygon_points]
+            y_coords = [p[1] for p in polygon_points]
+            x_min, x_max = min(x_coords), max(x_coords)
+            y_min, y_max = min(y_coords), max(y_coords)
+
+            return [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
+
     def exportCroppedAndLabeledStreaks(self, file: InputFile, outputDir: str) -> int:
         return self._processMaskCrops(file, outputDir, file.streaksManualMasks, 
                                      "streaks", exportAsNegative=False)
@@ -177,7 +240,7 @@ def exportRandomStreaklessCrops(file: InputFile, outputDir: str, count: int):
         centerPoint = [np.random.randint(0, w), np.random.randint(0, h)]
         centerPoint = recenter(centerPoint, ROI_SIZE, h, w)
 
-        shapes, _ = getLabelsInROI(file, centerPoint)
+        shapes, _ = getLabelsInROI(file, centerPoint, 0)
 
         if len(shapes) == 0:
             roi = img[
@@ -194,7 +257,7 @@ def exportRandomStreaklessCrops(file: InputFile, outputDir: str, count: int):
 
 
 # Intersect labels with crop
-def getLabelsInROI(file: InputFile, centerPoint):
+def getLabelsInROI(file: InputFile, centerPoint, border_offset=0):
     shapes = []
     roi_box = box(0, 0, ROI_SIZE, ROI_SIZE)
     manualShapeCount = 0
@@ -207,10 +270,15 @@ def getLabelsInROI(file: InputFile, centerPoint):
             points = imask
             shifted_points = []
             for point in points:
-                shifted_points.append([
-                    point[0] - centerPoint[0]+ROI_SIZE/2,
-                    point[1] - centerPoint[1]+ROI_SIZE/2
-                ])
+                # Apply border offset to mask coordinates
+                adjusted_x = point[0] + border_offset
+                adjusted_y = point[1] + border_offset
+                shifted_points.append(
+                    [
+                        adjusted_x - centerPoint[0] + ROI_SIZE / 2,
+                        adjusted_y - centerPoint[1] + ROI_SIZE / 2,
+                    ]
+                )
 
             try:
                 uncropped_polygon = Polygon(shifted_points)

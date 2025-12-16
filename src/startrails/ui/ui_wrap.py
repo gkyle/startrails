@@ -2,7 +2,14 @@ import os
 from typing import Optional
 from PySide6.QtGui import (QPixmap, QGuiApplication)
 from PySide6.QtCore import QThreadPool, QTimer, QPoint, Qt
-from PySide6.QtWidgets import QWidget, QFileDialog, QMainWindow, QDialog, QApplication
+from PySide6.QtWidgets import (
+    QWidget,
+    QFileDialog,
+    QMainWindow,
+    QDialog,
+    QApplication,
+    QMessageBox,
+)
 from functools import partial
 import numpy as np
 
@@ -85,7 +92,7 @@ class Ui_AppWindow(Ui_MainWindow):
         self.pushButton_exportTraining.clicked.connect(self.doExportTrainingStreaks)
         self.pushButton_fillGaps.clicked.connect(self.doFillGaps)
         self.pushButton_cancelOp.clicked.connect(self.doCancelOp)
-        
+
         self.checkBox_showDeletedMasks.stateChanged.connect(self.onShowDeletedMasksChanged)
 
         self.signals = getSignals()
@@ -211,7 +218,21 @@ class Ui_AppWindow(Ui_MainWindow):
                 raise ValueError(f"Unknown data type: {type(data)}")
 
     def selectInputFiles(self, *, clear=True):
+
         QApplication.processEvents()
+
+        # Check if there are existing files and ask user whether to clear them
+        existing_files = self.app.getInputFileList()
+        if existing_files and clear:
+            reply = QMessageBox.question(
+                None,
+                "Clear existing files?",
+                f"There are {len(existing_files)} files already loaded.\n\nDo you want to clear existing files before adding new ones?",
+                QMessageBox.StandardButton.Yes,
+                QMessageBox.StandardButton.No,
+            )
+            clear = reply == QMessageBox.StandardButton.Yes
+
         fileNames, _ = QFileDialog.getOpenFileNames(filter="Image Files (*.jpg *.jpeg *.tif *.tiff)")
         if fileNames:
             if clear:
@@ -282,6 +303,18 @@ class Ui_AppWindow(Ui_MainWindow):
             self.op_queue.start(worker)
 
     def doExportTrainingStreaks(self):
+
+        reply = QMessageBox.question(
+            None,
+            "Export training data",
+            f"This process will export manually labeled streaks, deleted streaks, and random negative examples as training data as 512x512px cropped training images and labels. You can share these samples with the project or use them to train your own models.\n\nContinue?",
+            QMessageBox.StandardButton.Yes,
+            QMessageBox.StandardButton.No,
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
         def f(folderName):
             if folderName:
                 total = len(list(self.app.getInputFileList()))
