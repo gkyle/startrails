@@ -51,7 +51,9 @@ if __name__ == "__main__":
         cuda_version = get_cuda_version()
         if not cuda_version is None:
             cuda_version = int(float(cuda_version))
-            if cuda_version == 12:
+            if cuda_version == 13:
+                print("cu133",end="")
+            elif cuda_version == 12:
                 print("cu124",end="")
             elif cuda_version == 11:
                 print("cu118",end="")
@@ -59,4 +61,3 @@ if __name__ == "__main__":
                 print("cpu",end="")
         else:
             print("cpu",end="")
-
