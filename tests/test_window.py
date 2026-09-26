@@ -108,6 +108,21 @@ class WindowTests(unittest.TestCase):
         self.assertEqual(observed_threads, [QT_APP.thread()])
         self.assertTrue(self.ui.pushButton_exportMasks.isEnabled())
 
+    def test_detection_completion_refreshes_files_without_previews(self):
+        files = [InputFile(str(i), f"missing-{i}") for i in range(25)]
+        self.app.inputs = files
+        self.ui.slotRefreshInputs()
+        def worker():
+            for file in files:
+                file.streaksMasks.append([])
+            self.ui.signals.refreshReadiness.emit()
+        self.ui.op_queue.start(ui_wrap.AsyncWorker(worker))
+        self.assertTrue(self.ui.op_queue.waitForDone(3000))
+        QT_APP.processEvents()
+        self.assertEqual(len(self.ui.inputFiles.model.mask_files), 25)
+        self.assertEqual(self.ui.inputFiles.model.index(24, 1).data(), "A:1")
+        self.assertTrue(self.ui.sidebar.stack.values()["streaksRemoved"])
+
     def test_preview_and_deleted_masks_control(self):
         import numpy as np
         self.ui.checkBox_showDeletedMasks.setChecked(True)

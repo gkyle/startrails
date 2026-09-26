@@ -114,7 +114,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.signals.updateFile.connect(self.slotUpdateFile)
         self.signals.showFile.connect(self.showFile)
         self.signals.updateFileButton.connect(self.slotFileIndicators)
-        self.signals.refreshReadiness.connect(self.updateReadyStates)
+        self.signals.refreshReadiness.connect(self.slotRefreshReadiness)
         self.signals.drawInputFileList.connect(self.slotRefreshInputs)
         self.signals.drawOutputFileList.connect(self.slotRefreshOutputs)
         self.signals.findBrightestFrame.connect(self.doFindBrightFrame)
@@ -184,6 +184,12 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     def slotFileIndicators(self, file):
         self.inputFiles.model.update_file(file)
         self.outputFiles.model.update_file(file)
+
+    @Slot()
+    def slotRefreshReadiness(self):
+        # Detection sends a preview only for every twentieth file. Reconcile all
+        # metadata once at completion, without changing those preview events.
+        self.inputFiles.model.refresh_annotations()
 
     def onShowDeletedMasksChanged(self, state):
         self.canvas_main.showDeletedMasks = bool(state)

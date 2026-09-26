@@ -99,6 +99,16 @@ class FileModel(QAbstractTableModel):
                               [Qt.DisplayRole, Qt.ToolTipRole, Qt.AccessibleTextRole])
         self.summaryChanged.emit()
 
+    def refresh_annotations(self):
+        """Reconcile completion state for files omitted from sampled previews."""
+        for row, file in enumerate(self.files):
+            previous = self._states.get(file)
+            self._record(file)
+            if previous != self._states.get(file):
+                self.dataChanged.emit(self.index(row, 0), self.index(row, 1),
+                                      [Qt.DisplayRole, Qt.ToolTipRole, Qt.AccessibleTextRole])
+        self.summaryChanged.emit()
+
     def remove_file(self, file):
         row = self._rows.get(file)
         if row is None:
