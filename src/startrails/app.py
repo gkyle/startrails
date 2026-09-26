@@ -49,6 +49,14 @@ class App:
         self.saveProject()
         return file
 
+    def addInputFiles(self, paths: List[str], clear: bool = False) -> None:
+        """Import one selection and persist once, keeping existing file objects."""
+        added = [InputFile(os.path.basename(path), path) for path in sorted(paths)]
+        if clear:
+            self.project.rawInputFiles = []
+        self.project.rawInputFiles.extend(added)
+        self.sortInputFiles()
+
     def sortInputFiles(self) -> None:
         self.project.rawInputFiles.sort(key=lambda file: file.basename)
         self.saveProject()

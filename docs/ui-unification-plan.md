@@ -172,7 +172,7 @@ Acceptance: forms open in Designer, regenerate cleanly, and instantiate without 
 - [ ] Implement add, preview, remove, include/exclude, and identity-safe focus.
 - [x] Keep file interactions to single-file selection/actions; add no search, filters, or bulk controls.
 - [ ] Replace button-dependent remove/exclude bindings with file-based actions; adapt callers together at integration.
-- [ ] Measure import/persistence and frequent update costs; address demonstrated large-list bottlenecks within scope.
+- [x] Measure import/persistence and frequent update costs; address demonstrated large-list bottlenecks within scope.
 
 Acceptance: 1,000 and 5,000 synthetic file records render with no thumbnails or per-row widgets; duplicate basenames, targeted annotation changes, empty lists, and removals behave correctly.
 
@@ -242,3 +242,4 @@ Use lightweight Qt checks with fake file records and fake operation callbacks fo
 | 2026-09-26 | T1 | Baseline recorded; four isolated Qt contract tests pass. Image name stays in the existing header. |
 | 2026-09-26 | T2 | Added Designer forms, controllers, and deterministic generation; eight checks pass, including settings defaults, CPU fallback, collapse retention, and numeric validation. |
 | 2026-09-26 | T3 | Model/view checks: 1,000 rows 16 ms; 5,000 rows 46 ms; targeted focus/update 6?8 ms; 19 widgets at both sizes. Twelve checks pass. |
+| 2026-09-26 | T3 | Real 1,000-image-path benchmark: per-file saves 23.018 s / 1,001 saves; batched import 0.045 s / one save. Verified append identity, annotations/exclusions after reopening, and replacement. UI wiring follows. |
