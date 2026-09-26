@@ -22,7 +22,28 @@ class Ui_FillSettings(object):
     def setupUi(self, fillSettings):
         if not fillSettings.objectName():
             fillSettings.setObjectName(u"fillSettings")
+        fillSettings.setStyleSheet(u"QLabel#target {\n"
+"    font-size: 12px;\n"
+"    color: #475569;\n"
+"}\n"
+"QPushButton#run {\n"
+"    font-weight: bold;\n"
+"    background-color: #0284c7;\n"
+"    color: #ffffff;\n"
+"    padding: 7px 12px;\n"
+"    border-radius: 6px;\n"
+"    font-size: 13px;\n"
+"    border: none;\n"
+"}\n"
+"QPushButton#run:hover {\n"
+"    background-color: #0369a1;\n"
+"}\n"
+"QPushButton#run:disabled {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #94a3b8;\n"
+"}")
         self.layout = QVBoxLayout(fillSettings)
+        self.layout.setSpacing(8)
         self.layout.setObjectName(u"layout")
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.target = QLabel(fillSettings)
@@ -33,6 +54,7 @@ class Ui_FillSettings(object):
 
         self.run = QPushButton(fillSettings)
         self.run.setObjectName(u"run")
+        self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.run.setEnabled(False)
 
         self.layout.addWidget(self.run)

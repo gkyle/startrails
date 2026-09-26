@@ -2,35 +2,218 @@
 <ui version="4.0">
  <class>StepCard</class>
  <widget class="QFrame" name="stepCard">
-  <property name="styleSheet"><string notr="true">QFrame#stepCard { border: 1px solid palette(mid); border-radius: 8px; }
-QLabel#number { background: palette(highlight); color: palette(highlighted-text); border-radius: 14px; font-weight: bold; }
-QToolButton#toggle { border: none; text-align: left; padding: 6px; font-weight: bold; }
-QToolButton#toggle:hover { background: palette(alternate-base); }
-QToolButton#toggle:focus { border: 1px solid palette(highlight); }</string></property>
+  <property name="styleSheet">
+   <string notr="true">QFrame#stepCard {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+QFrame#stepCard:hover {
+    border-color: #cbd5e1;
+}
+QLabel#number {
+    background-color: #0284c7;
+    color: #ffffff;
+    border-radius: 15px;
+    font-weight: bold;
+    font-size: 13px;
+}
+QPushButton#toggle {
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: 0px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #0f172a;
+}
+QLabel#subtitle {
+    font-size: 10px;
+    color: #64748b;
+}
+QLabel#statusBadge {
+    background-color: #e0f2fe;
+    color: #0284c7;
+    border-radius: 9px;
+    font-weight: 600;
+    font-size: 10px;
+    padding: 2px 8px;
+    font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
+}
+QLabel#chevron {
+    font-size: 9px;
+    font-weight: bold;
+    color: #64748b;
+    font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
+}
+QWidget#body {
+    border-top: 1px solid #f1f5f9;
+    background: transparent;
+}</string>
+  </property>
   <layout class="QVBoxLayout" name="cardLayout">
-   <property name="spacing"><number>6</number></property>
-   <item><layout class="QHBoxLayout" name="headerLayout">
-    <item><widget class="QLabel" name="number">
-     <property name="minimumSize"><size><width>28</width><height>28</height></size></property>
-     <property name="maximumSize"><size><width>28</width><height>28</height></size></property>
-     <property name="alignment"><set>Qt::AlignCenter</set></property>
-     <property name="text"><string>1</string></property>
-    </widget></item>
-    <item><widget class="QToolButton" name="toggle">
-     <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Preferred"><horstretch>1</horstretch><verstretch>0</verstretch></sizepolicy></property>
-     <property name="text"><string>Step</string></property>
-     <property name="checkable"><bool>true</bool></property>
-     <property name="toolButtonStyle"><enum>Qt::ToolButtonTextBesideIcon</enum></property>
-     <property name="arrowType"><enum>Qt::RightArrow</enum></property>
-    </widget></item>
-   </layout></item>
-   <item><widget class="QLabel" name="subtitle">
-    <property name="text"><string>Ready</string></property>
-    <property name="wordWrap"><bool>true</bool></property>
-   </widget></item>
-   <item><widget class="QWidget" name="body"><layout class="QVBoxLayout" name="contentLayout">
-    <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>4</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
-   </layout></widget></item>
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QWidget" name="headerWidget" native="true">
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <layout class="QHBoxLayout" name="headerLayout">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <property name="leftMargin">
+       <number>8</number>
+      </property>
+      <property name="topMargin">
+       <number>8</number>
+      </property>
+      <property name="rightMargin">
+       <number>8</number>
+      </property>
+      <property name="bottomMargin">
+       <number>8</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="number">
+        <property name="minimumSize">
+         <size>
+          <width>30</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>30</width>
+          <height>30</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>1</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="textColumn">
+        <property name="spacing">
+         <number>2</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="toggle">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+            <horstretch>1</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Step Title</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="subtitle">
+          <property name="text">
+           <string>Ready</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="statusBadge">
+        <property name="text">
+         <string>✓ Ready</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="chevron">
+        <property name="minimumSize">
+         <size>
+          <width>14</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>14</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>▶</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="body" native="true">
+     <layout class="QVBoxLayout" name="contentLayout">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>10</number>
+      </property>
+      <property name="topMargin">
+       <number>8</number>
+      </property>
+      <property name="rightMargin">
+       <number>10</number>
+      </property>
+      <property name="bottomMargin">
+       <number>10</number>
+      </property>
+     </layout>
+    </widget>
+   </item>
   </layout>
  </widget>
  <resources/>

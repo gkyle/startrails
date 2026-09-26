@@ -1,9 +1,119 @@
 """Metadata-only file views. No image decoding or widget allocation per row."""
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal, QSignalBlocker
-from PySide6.QtWidgets import QFrame, QHeaderView, QMenu
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QRect, QSize, Qt, Signal, QSignalBlocker
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
+from PySide6.QtWidgets import QFrame, QHeaderView, QMenu, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QWidget
 
 from startrails.lib.file import File, InputFile
+from .icons import create_doc_icon, create_star_icon
 from .ui_file_manager import Ui_FileSection
+
+
+class AnnotationBadgeDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.doc_icon = create_doc_icon(QColor("#64748b"), 14)
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        return QSize(size.width(), max(24, size.height()))
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        is_selected = bool(option.state & QStyle.State_Selected)
+        is_hovered = bool(option.state & QStyle.State_MouseOver)
+
+        if is_selected:
+            painter.fillRect(option.rect, QColor("#eff6ff"))
+        elif is_hovered:
+            painter.fillRect(option.rect, QColor("#f8fafc"))
+
+        file = index.data(Qt.UserRole)
+        col = index.column()
+
+        if col == 0:
+            icon_rect = QRect(option.rect.left() + 4, option.rect.top() + (option.rect.height() - 14) // 2, 14, 14)
+            self.doc_icon.paint(painter, icon_rect)
+
+            text_rect = QRect(option.rect.left() + 24, option.rect.top(), option.rect.width() - 28, option.rect.height())
+            text = index.data(Qt.DisplayRole) or ""
+            font = QFont("Segoe UI", 9)
+            if is_selected:
+                font.setWeight(QFont.DemiBold)
+                painter.setPen(QColor("#1d4ed8"))
+            else:
+                painter.setPen(QColor("#0f172a"))
+            painter.setFont(font)
+            metrics = painter.fontMetrics()
+            elided = metrics.elidedText(text, Qt.ElideMiddle, text_rect.width())
+            painter.drawText(text_rect, Qt.AlignVCenter | Qt.AlignLeft, elided)
+
+        elif col == 1:
+            if isinstance(file, InputFile):
+                model = index.model()
+                states = getattr(model, "_states", {})
+                auto, manual, deleted, excluded = states.get(file, (0, 0, 0, False))
+
+                badges = []
+                if auto:
+                    badges.append((f"Auto: {auto}", QColor("#dcfce7"), QColor("#15803d"), QColor("#bbf7d0")))
+                if manual:
+                    badges.append((f"Manual: {manual}", QColor("#e0f2fe"), QColor("#0284c7"), QColor("#bae6fd")))
+                if deleted:
+                    badges.append((f"Deleted: {deleted}", QColor("#fef3c7"), QColor("#b45309"), QColor("#fde68a")))
+                if excluded:
+                    badges.append(("Excluded", QColor("#fee2e2"), QColor("#b91c1c"), QColor("#fecaca")))
+
+                if badges:
+                    x = option.rect.left() + 4
+                    badge_font = QFont("Segoe UI", 8)
+                    badge_font.setWeight(QFont.DemiBold)
+                    painter.setFont(badge_font)
+                    fm = painter.fontMetrics()
+                    badge_h = 16
+                    y = option.rect.top() + (option.rect.height() - badge_h) // 2
+
+                    for text, bg_col, text_col, border_col in badges:
+                        text_w = fm.horizontalAdvance(text)
+                        badge_w = text_w + 12
+                        if x + badge_w > option.rect.right() - 2:
+                            break
+                        pill_rect = QRect(x, y, badge_w, badge_h)
+                        painter.setPen(QPen(border_col, 1))
+                        painter.setBrush(QBrush(bg_col))
+                        painter.drawRoundedRect(pill_rect, 4, 4)
+
+                        painter.setPen(text_col)
+                        painter.drawText(pill_rect, Qt.AlignCenter, text)
+                        x += badge_w + 4
+                else:
+                    painter.setPen(QColor("#94a3b8"))
+                    painter.setFont(QFont("Segoe UI", 9))
+                    painter.drawText(option.rect, Qt.AlignVCenter | Qt.AlignLeft, "—")
+            else:
+                op_text = str(index.data(Qt.DisplayRole) or "")
+                badge_font = QFont("Segoe UI", 8)
+                badge_font.setWeight(QFont.DemiBold)
+                painter.setFont(badge_font)
+                fm = painter.fontMetrics()
+                badge_h = 16
+                y = option.rect.top() + (option.rect.height() - badge_h) // 2
+                badge_w = fm.horizontalAdvance(op_text) + 12
+                pill_rect = QRect(option.rect.left() + 4, y, badge_w, badge_h)
+                if op_text == "Stacked":
+                    bg_col, text_col, border_col = QColor("#eff6ff"), QColor("#1d4ed8"), QColor("#bfdbfe")
+                elif "FillGaps" in op_text:
+                    bg_col, text_col, border_col = QColor("#f3e8ff"), QColor("#6b21a8"), QColor("#e9d5ff")
+                else:
+                    bg_col, text_col, border_col = QColor("#f1f5f9"), QColor("#475569"), QColor("#e2e8f0")
+                painter.setPen(QPen(border_col, 1))
+                painter.setBrush(QBrush(bg_col))
+                painter.drawRoundedRect(pill_rect, 4, 4)
+                painter.setPen(text_col)
+                painter.drawText(pill_rect, Qt.AlignCenter, op_text)
+
+        painter.restore()
 
 
 class FileModel(QAbstractTableModel):
@@ -141,12 +251,21 @@ class FileSection(QFrame):
         self.ui.files.setAccessibleName(title)
         self.ui.add.setVisible(inputs)
         self.ui.exclude.setVisible(inputs)
+
+        if inputs:
+            self.ui.icon.setPixmap(create_star_icon(QColor("#0284c7"), 16).pixmap(16, 16))
+        else:
+            self.ui.icon.setPixmap(create_doc_icon(QColor("#16a34a"), 16).pixmap(16, 16))
+
         self.model = FileModel(self)
         self.ui.files.setModel(self.model)
+        self.delegate = AnnotationBadgeDelegate(self.ui.files)
+        self.ui.files.setItemDelegate(self.delegate)
         self.ui.files.header().setSectionResizeMode(0, QHeaderView.Stretch)
         self.ui.files.header().setSectionResizeMode(1, QHeaderView.Interactive)
         self.ui.files.header().resizeSection(1, 160)
         self.ui.toggle.toggled.connect(self.setExpanded)
+        self.ui.headerWidget.mousePressEvent = self._on_header_clicked
         self.ui.add.clicked.connect(self.addRequested.emit)
         self.ui.files.selectionModel().currentChanged.connect(self._selection_changed)
         self.ui.files.customContextMenuRequested.connect(self._context_menu)
@@ -156,9 +275,21 @@ class FileSection(QFrame):
         self.setExpanded(inputs)
         self._refresh()
 
+    def _on_header_clicked(self, event):
+        if event.button() == Qt.LeftButton:
+            if self.ui.add.isVisible():
+                add_pos = self.ui.add.mapFromGlobal(event.globalPosition().toPoint())
+                if self.ui.add.rect().contains(add_pos):
+                    return
+            self.ui.toggle.toggle()
+            event.accept()
+            return
+        super(QWidget, self.ui.headerWidget).mousePressEvent(event)
+
     def setExpanded(self, expanded):
-        self.ui.toggle.setChecked(expanded)
-        self.ui.toggle.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
+        with QSignalBlocker(self.ui.toggle):
+            self.ui.toggle.setChecked(expanded)
+        self.ui.chevron.setText("▼" if expanded else "▶")
         self.ui.body.setVisible(expanded)
 
     def current_file(self):

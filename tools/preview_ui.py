@@ -24,6 +24,12 @@ def main():
     parser.add_argument("--bottom", action="store_true")
     args = parser.parse_args()
     QT_APP.setStyle("Fusion")
+    from PySide6.QtGui import QFontDatabase, QFont
+    for font_file in ("segoeui.ttf", "seguisb.ttf", "seguisym.ttf", "arial.ttf"):
+        font_path = f"C:/Windows/Fonts/{font_file}"
+        if os.path.exists(font_path):
+            QFontDatabase.addApplicationFont(font_path)
+    QT_APP.setFont(QFont("Segoe UI", 9))
     QT_APP.styleHints().setColorScheme(Qt.ColorScheme.Dark if args.theme == "dark" else Qt.ColorScheme.Light)
     if args.theme == "dark":
         # Offscreen Qt has no OS theme provider; simulate the system's palette.

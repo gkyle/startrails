@@ -2,12 +2,91 @@
 <ui version="4.0">
  <class>ExportSettings</class>
  <widget class="QWidget" name="exportSettings">
+  <property name="styleSheet">
+   <string notr="true">QLabel#hint {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.4;
+}
+QPushButton#masks, QPushButton#training {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#masks:hover, QPushButton#training:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#masks:disabled, QPushButton#training:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}</string>
+  </property>
   <layout class="QVBoxLayout" name="layout">
-   <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
-   <item><widget class="QLabel" name="hint"><property name="text"><string>Export masks or manually reviewed training samples. These exports are optional.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
-   <item><widget class="QPushButton" name="masks"><property name="text"><string>Export Masks</string></property><property name="enabled"><bool>false</bool></property><property name="toolTip"><string>Requires automatic or manual streak masks.</string></property></widget></item>
-   <item><widget class="QPushButton" name="training"><property name="text"><string>Export Training</string></property><property name="enabled"><bool>false</bool></property><property name="toolTip"><string>Requires manually added or deleted streak masks.</string></property></widget></item>
+   <property name="spacing">
+    <number>6</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="hint">
+     <property name="text">
+      <string>Export masks or manually reviewed training samples. These exports are optional.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="masks">
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Export Masks</string>
+     </property>
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="toolTip">
+      <string>Requires automatic or manual streak masks.</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="training">
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Export Training</string>
+     </property>
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="toolTip">
+      <string>Requires manually added or deleted streak masks.</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
- <resources/><connections/>
+ <resources/>
+ <connections/>
 </ui>

@@ -14,21 +14,77 @@ class StepCard(QFrame):
         super().__init__(parent)
         self.ui = Ui_StepCard()
         self.ui.setupUi(self)
+        self._status = "ready"
         self.ui.toggle.setText(title)
         self.ui.toggle.setAccessibleName(title)
-        self.ui.number.setVisible(number is not None)
+        self.has_number = number is not None
+        self.ui.number.setVisible(self.has_number)
         self.ui.number.setText(str(number or ""))
+        if not self.has_number:
+            self.ui.statusBadge.setVisible(False)
         self.ui.contentLayout.addWidget(body)
         self.ui.toggle.toggled.connect(self.setExpanded)
+        self.ui.headerWidget.mousePressEvent = self._on_header_clicked
         self.setExpanded(expanded)
+        self._update_status_appearance()
+
+    def _on_header_clicked(self, event):
+        if event.button() == Qt.LeftButton:
+            self.ui.toggle.toggle()
+            event.accept()
+            return
+        super(QWidget, self.ui.headerWidget).mousePressEvent(event)
 
     def setExpanded(self, expanded):
-        self.ui.toggle.setChecked(expanded)
-        self.ui.toggle.setArrowType(Qt.DownArrow if expanded else Qt.RightArrow)
+        with QSignalBlocker(self.ui.toggle):
+            self.ui.toggle.setChecked(expanded)
+        self.ui.chevron.setText("▼" if expanded else "▶")
         self.ui.body.setVisible(expanded)
 
     def setSubtitle(self, text):
         self.ui.subtitle.setText(text)
+
+    def setStatus(self, status: str, subtitle: str | None = None):
+        self._status = status
+        if subtitle is not None:
+            self.ui.subtitle.setText(subtitle)
+        self._update_status_appearance()
+
+    def _update_status_appearance(self):
+        if not getattr(self, "has_number", True) or not self.ui.number.text():
+            return
+        if self._status == "done":
+            self.ui.statusBadge.setVisible(True)
+            self.ui.statusBadge.setText("✓ Done")
+            self.ui.statusBadge.setStyleSheet(
+                "background-color: #dcfce7; color: #15803d; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
+            )
+            self.ui.number.setStyleSheet(
+                "background-color: #1e293b; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
+            )
+        elif self._status == "running":
+            self.ui.statusBadge.setVisible(True)
+            self.ui.statusBadge.setText("⏳ Running")
+            self.ui.statusBadge.setStyleSheet(
+                "background-color: #fef3c7; color: #b45309; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
+            )
+            self.ui.number.setStyleSheet(
+                "background-color: #b45309; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
+            )
+        elif self._status == "locked":
+            self.ui.statusBadge.setVisible(False)
+            self.ui.number.setStyleSheet(
+                "background-color: #94a3b8; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
+            )
+        else:  # "ready"
+            self.ui.statusBadge.setVisible(True)
+            self.ui.statusBadge.setText("✓ Ready")
+            self.ui.statusBadge.setStyleSheet(
+                "background-color: #e0f2fe; color: #0284c7; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
+            )
+            self.ui.number.setStyleSheet(
+                "background-color: #0284c7; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
+            )
 
 
 class DetectSettings(QWidget):
