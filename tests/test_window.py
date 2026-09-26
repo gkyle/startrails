@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 from types import SimpleNamespace
 from unittest.mock import patch
 from PySide6.QtCore import QCoreApplication, QEvent, Qt, QPoint, QPointF
-from PySide6.QtGui import QPixmap, QMouseEvent
+from PySide6.QtGui import QPixmap, QMouseEvent, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QWidget
 from test_ui_contract import ui_wrap
@@ -73,6 +73,15 @@ class WindowTests(unittest.TestCase):
         # Canonical toolbar from efb6681: includes every widget/property/layout.
         self.assertEqual(hashlib.sha256(canonical.encode()).hexdigest(),
                          "d34fd643d1ffb93972001a1be7aa30eac07557d7309482436c732928f47b441e")
+
+    def test_designer_forms_load(self):
+        from PySide6.QtUiTools import QUiLoader
+        loader = QUiLoader()
+        directory = Path(__file__).resolve().parents[1] / "src/startrails/ui"
+        for path in directory.glob("*.ui"):
+            widget = loader.load(str(path))
+            self.assertIsNotNone(widget, f"{path.name}: {loader.errorString()}")
+            widget.deleteLater()
 
     def test_annotation_removal_exclusion_and_focus(self):
         first = InputFile("same.jpg", "a/same.jpg")
@@ -175,6 +184,46 @@ class WindowTests(unittest.TestCase):
         toggle.setFocus()
         QTest.keyClick(toggle, Qt.Key_Space)
         self.assertTrue(toggle.isChecked())
+
+    def test_canvas_zoom_pan_and_brightest_frame_dispatch(self):
+        file = InputFile("input", "input")
+        stacked = OutputFile("stacked", "stacked", "Stacked")
+        self.app.inputs = [file]
+        self.app.outputs = [stacked]
+        self.ui.slotRefreshInputs()
+        self.ui.slotRefreshOutputs(stacked)
+        canvas = self.ui.canvas_main
+        pixmap = QPixmap(512, 512)
+        pixmap.fill(Qt.black)
+        canvas.setPixmap(pixmap)
+        QT_APP.processEvents()
+        local = QPoint(round(canvas.posX + 200 * canvas.scale), round(canvas.posY + 200 * canvas.scale))
+        calls = []
+        self.app.doFindBrightFrame = lambda x, y, basis, tick: calls.append((x, y, basis)) or file
+        with patch.object(ui_wrap, "ProgressBarUpdater", return_value=SimpleNamespace(tick=lambda: None)):
+            QTest.mouseClick(canvas, Qt.LeftButton, Qt.ShiftModifier, local)
+            self.assertTrue(self.ui.op_queue.waitForDone(3000))
+        QT_APP.processEvents()
+        self.assertEqual(len(calls), 1)
+        self.assertIs(calls[0][2], stacked)
+        self.assertLessEqual(abs(calls[0][0] - 200), 1)
+        self.assertIs(self.ui.currentFile, file)
+        self.assertIs(self.ui.inputFiles.current_file(), file)
+
+        wheel = QWheelEvent(QPointF(local), QPointF(canvas.mapToGlobal(local)), QPoint(), QPoint(0, 120),
+                            Qt.NoButton, Qt.NoModifier, Qt.NoScrollPhase, False)
+        QApplication.sendEvent(canvas, wheel)
+        QTest.qWait(15)
+        self.assertGreater(canvas.zoom_factor, 1)
+        previous = canvas.posX, canvas.posY
+        end = local + QPoint(20, 30)
+        QTest.mousePress(canvas, Qt.LeftButton, pos=local)
+        move = QMouseEvent(QEvent.MouseMove, QPointF(end), QPointF(canvas.mapToGlobal(end)), Qt.NoButton, Qt.LeftButton, Qt.NoModifier)
+        QApplication.sendEvent(canvas, move)
+        QTest.mouseRelease(canvas, Qt.LeftButton, pos=end)
+        self.assertNotEqual((canvas.posX, canvas.posY), previous)
+        QTest.mouseDClick(canvas, Qt.LeftButton, pos=end)
+        self.assertEqual(canvas.zoom_factor, 1)
 
 
 if __name__ == "__main__":

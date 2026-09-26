@@ -86,6 +86,9 @@ def main():
                 ui.sidebar.detect.ui.useGPU.setChecked(False)
                 run(ui.pushButton_removeStreaks, "Detect Streaks (local CPU model)")
                 assert all(file.streaksMasks is not sentinel for file, sentinel in zip(app.getInputFileList(), sentinels))
+                run(ui.pushButton_stackImages, "Stack after detection")
+                stacked = app.getOutputFileList()[-1]
+                assert Path(stacked.path).is_file()
                 ui.showFile(stacked)
                 run(ui.pushButton_fillGaps, "Fill Gaps (local model)")
                 assert {file.operation for file in app.getOutputFileList()} >= {"Stacked", "FillGaps", "FillGapsMask"}
@@ -94,7 +97,15 @@ def main():
             first = app.getInputFileList()[0]
             first.streaksManualMasks = [np.array([[80, 100], [400, 100], [400, 104], [80, 104]], dtype=np.int64)]
             first.streaksManualDeletedMasks = [np.array([[80, 120], [400, 120], [400, 124], [80, 124]], dtype=np.int64)]
+            # Isolate the manual-mask stack case from model-dependent detections.
+            for file in app.getInputFileList():
+                file.streaksMasks = []
             ui.slotUpdateFile(first)
+            ui.slotRefreshReadiness()
+            run(ui.pushButton_stackImages, "Stack with manual masks")
+            expected = images[0].copy()
+            cv2.fillPoly(expected, first.streaksManualMasks, (0, 0, 0))
+            np.testing.assert_array_equal(cv2.imread(app.getOutputFileList()[-1].path), np.maximum(expected, images[1]))
             mask_dir, training_dir = folder / "masks", folder / "training"
             mask_dir.mkdir()
             training_dir.mkdir()

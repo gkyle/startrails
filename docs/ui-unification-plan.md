@@ -1,6 +1,6 @@
 # StarTrails sidebar UI plan
 
-Status: implementation in progress.
+Status: implementation complete; all tasks are done. See the [validation report](ui-validation.md).
 Created: 2026-09-26. Branch: `ui_refresh`.
 Baseline inspected: StarTrails `efb6681`; Pyquator `70236ae`.
 
@@ -140,13 +140,13 @@ Every task below is a suggested commit-sized unit. T2 and T3 can be developed be
 | ID | Deliverable / suggested commit | Depends on | Owner | Status | Commit / validation evidence |
 | --- | --- | --- | --- | --- | --- |
 | T0 | Record source audit and migration plan | — | Codex | DONE | This document; implementation untouched |
-| T1 | Record behavior baseline for confirmed design | T0 | Codex | DONE | [Baseline](ui-behavior-baseline.md); four contract checks pass |
-| T2 | Add declarative step forms and generation tooling | T1 | Codex | DONE | Eight UI checks pass; forms generated with PySide6 6.8.2 |
+| T1 | Record behavior baseline for confirmed design | T0 | Codex | DONE | `0917f29`; [baseline](ui-behavior-baseline.md) |
+| T2 | Add declarative step forms and generation tooling | T1 | Codex | DONE | `f82a546`; forms generated with PySide6 6.8.2 |
 | T3 | Add scalable file models, views, and indicators | T1 | Codex | DONE | `ab18571`, `021fbf1`; integration verified with window checks |
-| T4 | Integrate left sidebar and remove footer/right column | T2, T3 | Codex | DONE | Header canonical comparison; rendered 1280?900 window; integrated checks |
-| T5 | Wire inline settings to existing operation dispatch | T4 | Codex | DONE | Scalar snapshot, repeated submissions, selection timing, and GUI-thread update checks |
-| T6 | Retire obsolete UI code and complete theme/accessibility pass | T5 | Codex | DONE | Light/dark palette renders at 100/150/200%; keyboard and canvas checks; no retired imports |
-| T7 | Verify workflows, queue parity, and large projects | T6 | Codex | IN PROGRESS | Actual CPU/local-model smoke passed; final review/report follows |
+| T4 | Integrate left sidebar and remove footer/right column | T2, T3 | Codex | DONE | `5ba9482`; header canonical comparison; rendered 1280x900 window |
+| T5 | Wire inline settings to existing operation dispatch | T4 | Codex | DONE | `5ba9482`, `a3c9df9`; scalar capture, selection timing, completion refresh, GUI-thread checks |
+| T6 | Retire obsolete UI code and complete theme/accessibility pass | T5 | Codex | DONE | `c55fb8b`; light/dark palette renders at 100/150/200%; keyboard and canvas checks |
+| T7 | Verify workflows, queue parity, and large projects | T6 | Codex | DONE | 24 checks plus real local-model workflow; [validation report](ui-validation.md) |
 
 ### T1 — Baseline and decisions
 
@@ -207,10 +207,10 @@ Acceptance: no stale imports or duplicate signal hookups; every remaining contro
 
 ### T7 — Validation and completion
 
-- [ ] Run the checks below; record environment, timing measurements, failures, fixes, and commit references.
-- [ ] Confirm old project files open without migration and saved annotations/exclusions survive reopening.
-- [ ] Review diff against all confirmed boundaries, especially header and queue behavior.
-- [ ] Mark implementation tasks DONE only after their acceptance checks pass.
+- [x] Run the checks below; record environment, timing measurements, failures, fixes, and commit references.
+- [x] Confirm old project files open without migration and saved annotations/exclusions survive reopening.
+- [x] Review diff against all confirmed boundaries, especially header and queue behavior.
+- [x] Mark implementation tasks DONE only after their acceptance checks pass.
 
 ## Validation checklist
 
@@ -238,10 +238,10 @@ Use lightweight Qt checks with fake file records and fake operation callbacks fo
 | --- | --- | --- |
 | 2026-09-26 | T0 | Inspected both repositories; documented current forms, per-file widget costs, dialog defaults, readiness rules, and queue integration. Asked D1–D3. No application code changed. |
 | 2026-09-26 | T1 | User confirmed Optional: Export Artifacts containing both exports, minimal single-file management, and system-aware theme. Updated scope and acceptance checks; runtime baseline remains TODO. |
-
 | 2026-09-26 | T1 | Baseline recorded; four isolated Qt contract tests pass. Image name stays in the existing header. |
 | 2026-09-26 | T2 | Added Designer forms, controllers, and deterministic generation; eight checks pass, including settings defaults, CPU fallback, collapse retention, and numeric validation. |
-| 2026-09-26 | T3 | Model/view checks: 1,000 rows 16 ms; 5,000 rows 46 ms; targeted focus/update 6?8 ms; 19 widgets at both sizes. Twelve checks pass. |
+| 2026-09-26 | T3 | Model/view checks: 1,000 rows 16 ms; 5,000 rows 46 ms; targeted focus/update 6–8 ms; 19 widgets at both sizes. Twelve checks pass. |
 | 2026-09-26 | T3 | Real 1,000-image-path benchmark: per-file saves 23.018 s / 1,001 saves; batched import 0.045 s / one save. Verified append identity, annotations/exclusions after reopening, and replacement. UI wiring follows. |
 | 2026-09-26 | T4/T5 | Integrated sidebar and inline controls together so displayed settings always govern submissions. Header subtree is identical to baseline; actual window rendered with sample image; nineteen checks pass. |
 | 2026-09-26 | T6 | Retired old dialogs, Filestrip, thumbnail executor/signals, and unused icons. Palette/scaling previews reviewed; keyboard and canvas tests pass. Manual counts now update after every added mask. |
+| 2026-09-26 | T7 | All 24 UI checks pass; actual local-model workflow and exports pass; forms load and regenerate identically. Final review confirms unchanged processing modules, schema, header subtree, and queue semantics. Results and validation limits recorded in `ui-validation.md`. |
