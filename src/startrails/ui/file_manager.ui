@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FileSection</class>
+ <widget class="QFrame" name="fileSection">
+  <property name="styleSheet"><string notr="true">QFrame#fileSection { border: 1px solid palette(mid); border-radius: 8px; }
+QToolButton#toggle { border: none; font-weight: bold; padding: 6px; }
+QToolButton#toggle:hover { background: palette(alternate-base); }
+QToolButton#toggle:focus { border: 1px solid palette(highlight); }</string></property>
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing"><number>6</number></property>
+   <item><layout class="QHBoxLayout" name="header">
+    <item><widget class="QToolButton" name="toggle">
+     <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Preferred"><horstretch>1</horstretch><verstretch>0</verstretch></sizepolicy></property>
+     <property name="text"><string>Input Files</string></property><property name="checkable"><bool>true</bool></property>
+     <property name="toolButtonStyle"><enum>Qt::ToolButtonTextBesideIcon</enum></property><property name="arrowType"><enum>Qt::RightArrow</enum></property>
+    </widget></item>
+    <item><widget class="QLabel" name="count"><property name="text"><string>0</string></property><property name="accessibleName"><string>File count</string></property></widget></item>
+    <item><widget class="QPushButton" name="add"><property name="text"><string>Add Files…</string></property></widget></item>
+   </layout></item>
+   <item><widget class="QWidget" name="body"><layout class="QVBoxLayout" name="bodyLayout">
+    <property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property>
+    <item><widget class="QTreeView" name="files">
+     <property name="minimumSize"><size><width>0</width><height>160</height></size></property>
+     <property name="maximumSize"><size><width>16777215</width><height>240</height></size></property>
+     <property name="alternatingRowColors"><bool>true</bool></property>
+     <property name="selectionMode"><enum>QAbstractItemView::SingleSelection</enum></property>
+     <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+     <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+     <property name="rootIsDecorated"><bool>false</bool></property><property name="uniformRowHeights"><bool>true</bool></property>
+     <property name="textElideMode"><enum>Qt::ElideMiddle</enum></property>
+     <property name="contextMenuPolicy"><enum>Qt::CustomContextMenu</enum></property>
+    </widget></item>
+    <item><widget class="QLabel" name="empty"><property name="text"><string>No files yet.</string></property><property name="wordWrap"><bool>true</bool></property></widget></item>
+    <item><layout class="QHBoxLayout" name="actions">
+     <item><widget class="QPushButton" name="remove"><property name="text"><string>Remove from Project</string></property><property name="enabled"><bool>false</bool></property></widget></item>
+     <item><widget class="QPushButton" name="exclude"><property name="text"><string>Exclude from Stack</string></property><property name="checkable"><bool>true</bool></property><property name="enabled"><bool>false</bool></property></widget></item>
+    </layout></item>
+   </layout></widget></item>
+  </layout>
+ </widget>
+ <resources/><connections/>
+</ui>

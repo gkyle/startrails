@@ -17,7 +17,7 @@ def main():
         result = subprocess.run([compiler, source.name], cwd=directory, check=True, capture_output=True)
         # uic's resource import must be package-relative when imported by the app.
         code = result.stdout.decode("utf-8").replace("import icons_darktheme_rc", "from . import icons_darktheme_rc")
-        (directory / (name + ".py")).write_text(code, encoding="utf-8", newline="\n")
+        (directory / (name + ".py")).write_text(code.rstrip() + "\n", encoding="utf-8", newline="\n")
         print(source.name)
 
 

@@ -82,4 +82,3 @@ class Ui_StepCard(object):
         self.subtitle.setText(QCoreApplication.translate("StepCard", u"Ready", None))
         pass
     # retranslateUi
-

@@ -155,4 +155,3 @@ class Ui_Dialog_DetectStreaks(object):
         self.label.setText(QCoreApplication.translate("Dialog_DetectStreaks", u"Merge Threshold:", None))
         self.lineEdit_mergeThreshold.setText(QCoreApplication.translate("Dialog_DetectStreaks", u"0.2", None))
     # retranslateUi
-

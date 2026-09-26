@@ -118,4 +118,3 @@ class Ui_DetectSettings(object):
         self.run.setText(QCoreApplication.translate("DetectSettings", u"Detect Streaks", None))
         pass
     # retranslateUi
-

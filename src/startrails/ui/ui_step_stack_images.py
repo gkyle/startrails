@@ -154,4 +154,3 @@ class Ui_StackSettings(object):
         self.run.setText(QCoreApplication.translate("StackSettings", u"Stack Images", None))
         pass
     # retranslateUi
-

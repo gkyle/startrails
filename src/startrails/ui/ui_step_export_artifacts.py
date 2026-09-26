@@ -61,4 +61,3 @@ class Ui_ExportSettings(object):
 #endif // QT_CONFIG(tooltip)
         pass
     # retranslateUi
-

@@ -48,4 +48,3 @@ class Ui_FillSettings(object):
         self.run.setText(QCoreApplication.translate("FillSettings", u"Fill Gaps", None))
         pass
     # retranslateUi
-

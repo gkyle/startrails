@@ -142,7 +142,7 @@ Every task below is a suggested commit-sized unit. T2 and T3 can be developed be
 | T0 | Record source audit and migration plan | — | Codex | DONE | This document; implementation untouched |
 | T1 | Record behavior baseline for confirmed design | T0 | Codex | DONE | [Baseline](ui-behavior-baseline.md); four contract checks pass |
 | T2 | Add declarative step forms and generation tooling | T1 | Codex | DONE | Eight UI checks pass; forms generated with PySide6 6.8.2 |
-| T3 | Add scalable file models, views, and indicators | T1 | Codex | IN PROGRESS | |
+| T3 | Add scalable file models, views, and indicators | T1 | Codex | IN PROGRESS | Models/views pass; import and controller integration follow in T4 |
 | T4 | Integrate left sidebar and remove footer/right column | T2, T3 | Unassigned | TODO | |
 | T5 | Wire inline settings to existing operation dispatch | T4 | Unassigned | TODO | |
 | T6 | Retire obsolete UI code and complete theme/accessibility pass | T5 | Unassigned | TODO | |
@@ -168,9 +168,9 @@ Acceptance: forms open in Designer, regenerate cleanly, and instantiate without 
 
 ### T3 — File manager
 
-- [ ] Implement input/output models, bounded views, count headers, and annotation/exclusion indicators.
+- [x] Implement input/output models, bounded views, count headers, and annotation/exclusion indicators.
 - [ ] Implement add, preview, remove, include/exclude, and identity-safe focus.
-- [ ] Keep file interactions to single-file selection/actions; add no search, filters, or bulk controls.
+- [x] Keep file interactions to single-file selection/actions; add no search, filters, or bulk controls.
 - [ ] Replace button-dependent remove/exclude bindings with file-based actions; adapt callers together at integration.
 - [ ] Measure import/persistence and frequent update costs; address demonstrated large-list bottlenecks within scope.
 
@@ -241,3 +241,4 @@ Use lightweight Qt checks with fake file records and fake operation callbacks fo
 
 | 2026-09-26 | T1 | Baseline recorded; four isolated Qt contract tests pass. Image name stays in the existing header. |
 | 2026-09-26 | T2 | Added Designer forms, controllers, and deterministic generation; eight checks pass, including settings defaults, CPU fallback, collapse retention, and numeric validation. |
+| 2026-09-26 | T3 | Model/view checks: 1,000 rows 16 ms; 5,000 rows 46 ms; targeted focus/update 6?8 ms; 19 widgets at both sizes. Twelve checks pass. |

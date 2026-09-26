@@ -849,4 +849,3 @@ class Ui_MainWindow(object):
         self.label_inputFiles_count.setText("")
         self.label_2.setText("")
     # retranslateUi
-

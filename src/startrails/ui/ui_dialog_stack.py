@@ -221,4 +221,3 @@ class Ui_Dialog_StackImages(object):
         self.label_memory.setText("")
         self.label_batchSize.setText(QCoreApplication.translate("Dialog_StackImages", u"Batch Size:", None))
     # retranslateUi
-
