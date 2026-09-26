@@ -1,12 +1,10 @@
-import os
 from typing import Optional
 from PySide6.QtGui import (QPixmap, QGuiApplication)
-from PySide6.QtCore import QThreadPool, QTimer, QPoint, Qt
+from PySide6.QtCore import QThreadPool, QTimer, QPoint, Qt, QObject, Slot, QSignalBlocker
 from PySide6.QtWidgets import (
     QWidget,
     QFileDialog,
     QMainWindow,
-    QDialog,
     QApplication,
     QMessageBox,
 )
@@ -14,11 +12,9 @@ from functools import partial
 import numpy as np
 
 from startrails.app import App
-from startrails.ui.dialog_detectStreaks import DetectStreaksDialog
 from startrails.ui.progress import ProgressBarUpdater
-from startrails.ui.signals import AsyncWorker, emitLater, getSignals
-from startrails.ui.filestrip import FileButton, FileStrip
-from startrails.ui.dialog_stackImages import FadeRadio, StackImagesDialog, StreaksRadio
+from startrails.ui.signals import AsyncWorker, getSignals
+from startrails.ui.sidebar import Sidebar
 from startrails.ui.ui_interface import Ui_MainWindow
 from startrails.ui.canvasLabel import CanvasLabel
 from startrails.lib.file import File, InputFile, OutputFile
@@ -49,7 +45,7 @@ class MainWindow(QMainWindow):
         event.accept()
 
 
-class Ui_AppWindow(Ui_MainWindow):
+class Ui_AppWindow(QObject, Ui_MainWindow):
     app = None
     op_queue = None
     persistentSettings = {}
@@ -71,6 +67,23 @@ class Ui_AppWindow(Ui_MainWindow):
 
     def setupUi(self, MainWindow):
         super().setupUi(MainWindow)
+        self.setParent(MainWindow)
+        self.sidebar = Sidebar(self.app)
+        self.sidebarLayout.addWidget(self.sidebar)
+        self.bodySplitter.setSizes([400, 1000])
+        self.bodySplitter.setStretchFactor(0, 0)
+        self.bodySplitter.setStretchFactor(1, 1)
+
+        self.inputFiles = self.sidebar.inputs
+        self.outputFiles = self.sidebar.outputs
+        # Keep operation bindings local to the existing controller/queue.
+        self.pushButton_newProject = self.sidebar.ui.newProject
+        self.pushButton_openProject = self.sidebar.ui.openProject
+        self.pushButton_stackImages = self.sidebar.stack.ui.run
+        self.pushButton_removeStreaks = self.sidebar.detect.ui.run
+        self.pushButton_exportMasks = self.sidebar.exports.ui.masks
+        self.pushButton_exportTraining = self.sidebar.exports.ui.training
+        self.pushButton_fillGaps = self.sidebar.fill.ui.run
 
         MainWindow.setWindowTitle("StarTrails AI")
 
@@ -79,13 +92,13 @@ class Ui_AppWindow(Ui_MainWindow):
         width = screen_resolution.width()
         height = screen_resolution.height()
 
-        MainWindow.resize(width * 0.80, height * 0.90)
+        MainWindow.resize(int(width * 0.80), int(height * 0.90))
         MainWindow.center()
 
         # Bind events
         self.pushButton_newProject.clicked.connect(self.doNewProject)
         self.pushButton_openProject.clicked.connect(self.doOpenProject)
-        self.pushButton_selectFiles.clicked.connect(self.selectInputFiles)
+        self.inputFiles.addRequested.connect(self.selectInputFiles)
         self.pushButton_stackImages.clicked.connect(self.doStack)
         self.pushButton_removeStreaks.clicked.connect(self.doDetectStreaks)
         self.pushButton_exportMasks.clicked.connect(self.doExportMasks)
@@ -99,10 +112,11 @@ class Ui_AppWindow(Ui_MainWindow):
         self.signals.startProgress.connect(self.slotStartProgress)
         self.signals.incrementProgress.connect(self.slotIncrementProgressBar)
         self.signals.updateFile.connect(self.slotUpdateFile)
-        self.signals.removeFile.connect(self.slotRemoveFile)
-        self.signals.excludeFile.connect(self.slotExcludeFile)
         self.signals.showFile.connect(self.showFile)
-        self.signals.updateFileButton.connect(self.updateReadyStates)
+        self.signals.updateFileButton.connect(self.slotFileIndicators)
+        self.signals.refreshReadiness.connect(self.updateReadyStates)
+        self.signals.drawInputFileList.connect(self.slotRefreshInputs)
+        self.signals.drawOutputFileList.connect(self.slotRefreshOutputs)
         self.signals.findBrightestFrame.connect(self.doFindBrightFrame)
         self.signals.updateGPUStats.connect(self.slotUpdateGPUStats)
 
@@ -113,34 +127,63 @@ class Ui_AppWindow(Ui_MainWindow):
 
         self.slotUpdateGPUStats()
 
-        self.inputFileStrip = FileStrip(self.frame_inputFiles, self.frame_inputFilesContainer, self.app.getInputFileList(),
-                                        self.signals.drawInputFileList)
-        self.outputFileStrip = FileStrip(self.frame_outputFiles, self.frame_outputFilesContainer, self.app.getOutputFileList(),
-                                         self.signals.drawOutputFileList, maxVisibleButtons=3)
-        self.signals.updateFileButton.connect(self.inputFileStrip.update)
-        self.signals.updateFileButton.connect(self.outputFileStrip.update)
+        for section in (self.inputFiles, self.outputFiles):
+            section.showFile.connect(self.showFile)
+            section.removeFile.connect(self.slotRemoveFile)
+            section.excludeFile.connect(self.slotExcludeFile)
+            self.signals.focusFile.connect(section.focus_file)
+        self.inputFiles.model.summaryChanged.connect(self.updateReadyStates)
+        self.resetProjectView()
 
-        self.updateReadyStates()
-
+    @Slot()
     def updateReadyStates(self, _=None):
-        self.readyInputImages = False
-        self.readyStreaksRemoved = False
-        self.readyManualStreaksRemoved = False
-
-        if len(self.app.getInputFileList()) > 0:
-            self.readyInputImages = True
-
-        for file in self.app.getInputFileList():
-            if len(file.streaksMasks+file.streaksManualMasks) > 0:
-                self.readyStreaksRemoved = True
-            if len(file.streaksManualMasks) > 0 or len(file.streaksManualDeletedMasks) > 0:
-                self.readyManualStreaksRemoved = True
-                break
+        self.readyInputImages = bool(self.app.getInputFileList())
+        self.readyStreaksRemoved = bool(self.inputFiles.model.mask_files)
+        self.readyManualStreaksRemoved = bool(self.inputFiles.model.manual_files)
 
         self.pushButton_stackImages.setEnabled(self.readyInputImages)
         self.pushButton_removeStreaks.setEnabled(self.readyInputImages)
         self.pushButton_exportMasks.setEnabled(self.readyStreaksRemoved)
         self.pushButton_exportTraining.setEnabled(self.readyManualStreaksRemoved)
+        self.sidebar.stack.set_has_masks(self.readyStreaksRemoved)
+        self.sidebar.detectCard.setSubtitle("Ready to detect streaks" if self.readyInputImages else "Add input files to begin")
+        self.sidebar.stackCard.setSubtitle("Ready · detection is optional" if self.readyInputImages else "Add input files to begin")
+        self.updateFillEligibility()
+
+    def updateFillEligibility(self):
+        eligible = isinstance(self.currentFile, OutputFile) and self.currentFile.operation == "Stacked"
+        self.pushButton_fillGaps.setEnabled(eligible)
+        self.sidebar.fillCard.setSubtitle("Ready to fill gaps" if eligible else "Select a stacked output image")
+        self.sidebar.fill.ui.target.setText(self.currentFile.basename if eligible else "Select a stacked output image to fill its gaps.")
+
+    def resetProjectView(self):
+        self.showFile(None)
+        self.inputFiles.set_files(self.app.getInputFileList())
+        self.outputFiles.set_files(self.app.getOutputFileList())
+        self.sidebar.reset_settings()
+        self.updateReadyStates()
+        files = self.app.getInputFileList() or self.app.getOutputFileList()
+        if files:
+            self.showFile(files[0])
+
+    @Slot(File)
+    def slotRefreshInputs(self, focus=None):
+        self.inputFiles.set_files(self.app.getInputFileList())
+        self.sidebar.refresh_inputs()
+        self.updateReadyStates()
+        if focus is not None:
+            self.showFile(focus)
+
+    @Slot(File)
+    def slotRefreshOutputs(self, focus=None):
+        self.outputFiles.model.sync_files(self.app.getOutputFileList())
+        if focus is not None:
+            self.showFile(focus)
+
+    @Slot(File)
+    def slotFileIndicators(self, file):
+        self.inputFiles.model.update_file(file)
+        self.outputFiles.model.update_file(file)
 
     def onShowDeletedMasksChanged(self, state):
         self.canvas_main.showDeletedMasks = bool(state)
@@ -181,23 +224,39 @@ class Ui_AppWindow(Ui_MainWindow):
             self.frame_gpu_mem.setVisible(False)
             self.label_gpu.setText("NO GPU")
 
+    @Slot(File)
     def slotUpdateFile(self, file: File):
         self.app.saveProject()
         self.signals.updateFileButton.emit(file)
 
-    def slotRemoveFile(self, file: File, button: FileButton):
+    @Slot(File)
+    def slotRemoveFile(self, file: File):
+        was_current = file is self.currentFile
         if isinstance(file, InputFile):
+            if file not in self.app.getInputFileList():
+                return
             self.app.removeInputFile(file)
-            self.inputFileStrip.removeButton(file)
+            section = self.inputFiles
         elif isinstance(file, OutputFile):
+            if file not in self.app.getOutputFileList():
+                return
             self.app.removeOutputFile(file)
-            self.outputFileStrip.removeButton(file)
-        self.app.saveProject()
+            section = self.outputFiles
+        else:
+            return
+        with QSignalBlocker(section.ui.files.selectionModel()):
+            section.model.remove_file(file)
+        if was_current:
+            self.showFile(None)
+        self.sidebar.refresh_inputs()
+        self.updateReadyStates()
 
-    def slotExcludeFile(self, file: InputFile, button: FileButton):
+    @Slot(File)
+    def slotExcludeFile(self, file: InputFile):
+        if file not in self.app.getInputFileList():
+            return
         self.app.toggleExcludeFromStack(file)
-        button.updateIndicators()
-        self.app.saveProject()
+        self.inputFiles.model.update_file(file)
 
     def slotStartProgress(self, total, text):
         self.progressBar.setRange(0, total)
@@ -212,8 +271,10 @@ class Ui_AppWindow(Ui_MainWindow):
                 # In-memory preview update
                 self.canvas_main.setFromNumpyArray(data, resetZoomAndPosition=False)
             elif isinstance(data, File):
+                if isinstance(data, OutputFile):
+                    self.outputFiles.model.sync_files(self.app.getOutputFileList())
+                self.slotFileIndicators(data)
                 self.showFile(data)
-                self.inputFileStrip.update(data)
             else:
                 raise ValueError(f"Unknown data type: {type(data)}")
 
@@ -235,27 +296,25 @@ class Ui_AppWindow(Ui_MainWindow):
 
         fileNames, _ = QFileDialog.getOpenFileNames(filter="Image Files (*.jpg *.jpeg *.tif *.tiff)")
         if fileNames:
-            if clear:
-                self.app.clearInputFileList()
-            fileNames = sorted(fileNames)
-            for filepath in fileNames:
-                basename = os.path.basename(filepath)
-                self.app.appendInputFile(basename, filepath)
-            self.app.sortInputFiles()
-            self.inputFileStrip.setFileList(self.app.getInputFileList())
+            self.app.addInputFiles(fileNames, clear=clear)
+            if clear and isinstance(self.currentFile, InputFile):
+                self.showFile(None)
+            self.slotRefreshInputs()
+            self.inputFiles.setExpanded(True)
+            if self.currentFile is None:
+                self.showFile(self.app.getInputFileList()[0])
 
         self.pushButton_stackImages.setEnabled(len(self.app.getInputFileList()) > 0)
         self.pushButton_removeStreaks.setEnabled(len(self.app.getInputFileList()) > 0)
         self.updateReadyStates()
 
-    def showFile(self, file: File):
+    @Slot(File)
+    def showFile(self, file: Optional[File]):
         self.currentFile = file
         self.canvas_main.setFile(file)
-        self.label_imageName.setText(file.basename)
+        self.label_imageName.setText(file.basename if file is not None else "")
         self.signals.focusFile.emit(file)
-
-        fillGapsEligible = isinstance(file, OutputFile) and file.operation == "Stacked"
-        self.pushButton_fillGaps.setEnabled(fillGapsEligible)
+        self.updateFillEligibility()
 
     def doFindBrightFrame(self, file, x, y):
         def f(fileList):
@@ -274,7 +333,7 @@ class Ui_AppWindow(Ui_MainWindow):
             progressUpdater = ProgressBarUpdater(
                 self.progressBar, self.label_progressBar, total=1, desc="Filling Gaps:")
             fileFillGaps = self.app.doFillGaps(self.currentFile, progressUpdater.tick)
-            self.updateReadyStates()
+            self.signals.refreshReadiness.emit()
             self.signals.drawOutputFileList.emit(fileFillGaps)
 
         worker = AsyncWorker(f)
@@ -282,25 +341,20 @@ class Ui_AppWindow(Ui_MainWindow):
 
     def doStack(self, _=None):
         QApplication.processEvents()
-        dialog = StackImagesDialog(self.app, self.readyStreaksRemoved)
-        result = dialog.exec()
-        if result == QDialog.Accepted:
-            streaksRemoved = dialog.ui.getStreaksRemoved() == StreaksRadio.REMOVE.value
-            fade = dialog.ui.getFade() != FadeRadio.NONE.value
-            fadeStart, fadeEnd = dialog.ui.getFadeAmount()
-            batchSize = int(dialog.ui.lineEdit_batchSize.text())
-            useGpu = dialog.ui.getUseGPU()
+        settings = self.sidebar.stack.values()
+        if settings is None:
+            return
+        streaksRemoved = settings.pop("streaksRemoved")
 
-            def f(fileList):
-                total = len(list(fileList))
-                progressUpdater = ProgressBarUpdater(
-                    self.progressBar, self.label_progressBar, total=total, desc="Stacking:")
-                file = self.app.doStack(streaksRemoved, progressUpdater.tick, fade=fade,
-                                        fadeAmount=(fadeStart / 100, fadeEnd / 100), batchSize=batchSize, useGPU=useGpu)
-                self.signals.drawOutputFileList.emit(file)
+        def f(fileList):
+            total = len(list(fileList))
+            progressUpdater = ProgressBarUpdater(
+                self.progressBar, self.label_progressBar, total=total, desc="Stacking:")
+            file = self.app.doStack(streaksRemoved, progressUpdater.tick, **settings)
+            self.signals.drawOutputFileList.emit(file)
 
-            worker = AsyncWorker(partial(f, self.app.getInputFileList()))
-            self.op_queue.start(worker)
+        worker = AsyncWorker(partial(f, self.app.getInputFileList()))
+        self.op_queue.start(worker)
 
     def doExportTrainingStreaks(self):
 
@@ -327,24 +381,19 @@ class Ui_AppWindow(Ui_MainWindow):
         self.op_queue.start(worker)
 
     def doDetectStreaks(self):
-        dialog = DetectStreaksDialog(self.app)
-        result = dialog.exec()
-        if result == QDialog.Accepted:
-            mergeMethod = dialog.ui.getMergeMethod()
-            useGPU = dialog.ui.getUseGPU()
-            confThreshold = float(dialog.ui.lineEdit_confThreshold.text())
-            mergeThreshold = float(dialog.ui.lineEdit_mergeThreshold.text())
+        settings = self.sidebar.detect.values()
+        if settings is None:
+            return
 
-            def f(fileList):
-                total = len(list(fileList))
-                progressUpdater = ProgressBarUpdater(
-                    self.progressBar, self.label_progressBar, total=total, desc="Removing Streaks:")
-                self.app.doDetectStreaks(progressUpdater.tick, useGPU=useGPU, confThreshold=confThreshold,
-                                         mergeThreshold=mergeThreshold, mergeMethod=mergeMethod)
-                self.updateReadyStates()
+        def f(fileList):
+            total = len(list(fileList))
+            progressUpdater = ProgressBarUpdater(
+                self.progressBar, self.label_progressBar, total=total, desc="Removing Streaks:")
+            self.app.doDetectStreaks(progressUpdater.tick, **settings)
+            self.signals.refreshReadiness.emit()
 
-            worker = AsyncWorker(partial(f, self.app.getInputFileList()))
-            self.op_queue.start(worker)
+        worker = AsyncWorker(partial(f, self.app.getInputFileList()))
+        self.op_queue.start(worker)
 
     def doNewProject(self):
         QApplication.processEvents()
@@ -357,20 +406,14 @@ class Ui_AppWindow(Ui_MainWindow):
 
         if file_path:
             self.app.newProject(file_path)
-            self.canvas_main.setFile(None)
-            self.inputFileStrip.setFileList(self.app.getInputFileList())
-            self.outputFileStrip.setFileList(self.app.getOutputFileList())
-            self.updateReadyStates()
+            self.resetProjectView()
 
     def doOpenProject(self):
         QApplication.processEvents()
         fileName, _ = QFileDialog.getOpenFileName(dir="projects", filter="Project Files (*.project.json)")
         if fileName:
             self.app.loadProject(fileName)
-            self.canvas_main.setFile(None)
-            self.inputFileStrip.setFileList(self.app.getInputFileList())
-            self.outputFileStrip.setFileList(self.app.getOutputFileList())
-            self.updateReadyStates()
+            self.resetProjectView()
 
     def doExportMasks(self):
         def f(folderName):
@@ -390,7 +433,9 @@ class Ui_AppWindow(Ui_MainWindow):
 
 def replaceWidget(placeHolder: QWidget, newWidget: QWidget):
     parentLayout = placeHolder.parent().layout()
+    newWidget.setSizePolicy(placeHolder.sizePolicy())
+    newWidget.setMinimumSize(placeHolder.minimumSize())
+    parentLayout.replaceWidget(placeHolder, newWidget)
     placeHolder.setParent(None)
-    placeHolder.deleteLater
-    parentLayout.addWidget(newWidget)
+    placeHolder.deleteLater()
     return newWidget

@@ -142,10 +142,10 @@ Every task below is a suggested commit-sized unit. T2 and T3 can be developed be
 | T0 | Record source audit and migration plan | — | Codex | DONE | This document; implementation untouched |
 | T1 | Record behavior baseline for confirmed design | T0 | Codex | DONE | [Baseline](ui-behavior-baseline.md); four contract checks pass |
 | T2 | Add declarative step forms and generation tooling | T1 | Codex | DONE | Eight UI checks pass; forms generated with PySide6 6.8.2 |
-| T3 | Add scalable file models, views, and indicators | T1 | Codex | IN PROGRESS | Models/views pass; import and controller integration follow in T4 |
-| T4 | Integrate left sidebar and remove footer/right column | T2, T3 | Unassigned | TODO | |
-| T5 | Wire inline settings to existing operation dispatch | T4 | Unassigned | TODO | |
-| T6 | Retire obsolete UI code and complete theme/accessibility pass | T5 | Unassigned | TODO | |
+| T3 | Add scalable file models, views, and indicators | T1 | Codex | DONE | `ab18571`, `021fbf1`; integration verified with window checks |
+| T4 | Integrate left sidebar and remove footer/right column | T2, T3 | Codex | DONE | Header canonical comparison; rendered 1280?900 window; integrated checks |
+| T5 | Wire inline settings to existing operation dispatch | T4 | Codex | DONE | Scalar snapshot, repeated submissions, selection timing, and GUI-thread update checks |
+| T6 | Retire obsolete UI code and complete theme/accessibility pass | T5 | Codex | IN PROGRESS | |
 | T7 | Verify workflows, queue parity, and large projects | T6 | Unassigned | TODO | |
 
 ### T1 — Baseline and decisions
@@ -169,30 +169,30 @@ Acceptance: forms open in Designer, regenerate cleanly, and instantiate without 
 ### T3 — File manager
 
 - [x] Implement input/output models, bounded views, count headers, and annotation/exclusion indicators.
-- [ ] Implement add, preview, remove, include/exclude, and identity-safe focus.
+- [x] Implement add, preview, remove, include/exclude, and identity-safe focus.
 - [x] Keep file interactions to single-file selection/actions; add no search, filters, or bulk controls.
-- [ ] Replace button-dependent remove/exclude bindings with file-based actions; adapt callers together at integration.
+- [x] Replace button-dependent remove/exclude bindings with file-based actions; adapt callers together at integration.
 - [x] Measure import/persistence and frequent update costs; address demonstrated large-list bottlenecks within scope.
 
 Acceptance: 1,000 and 5,000 synthetic file records render with no thumbnails or per-row widgets; duplicate basenames, targeted annotation changes, empty lists, and removals behave correctly.
 
 ### T4 — Layout integration
 
-- [ ] Add left sidebar/canvas splitter to `interface.ui` and mount the new forms.
-- [ ] Move project/file controls into the sidebar, and Show Deleted Masks beside the canvas.
-- [ ] Mount operation cards; during this intermediate commit their actions may still open the existing dialogs.
-- [ ] Remove input/output footer containers and the right action column; disconnect obsolete Filestrip hookups.
-- [ ] Preserve header layout, controls, timer wiring, image name, and canvas interactions.
+- [x] Add left sidebar/canvas splitter to `interface.ui` and mount the new forms.
+- [x] Move project/file controls into the sidebar, and Show Deleted Masks beside the canvas.
+- [x] Mount operation cards; during this intermediate commit their actions may still open the existing dialogs.
+- [x] Remove input/output footer containers and the right action column; disconnect obsolete Filestrip hookups.
+- [x] Preserve header layout, controls, timer wiring, image name, and canvas interactions.
 
 Acceptance: the application starts and existing actions remain usable with the new layout; there is no footer/right action column, and no header redesign.
 
 ### T5 — Inline settings and queue integration
 
-- [ ] Replace dialog execution with validated values from inline controllers.
-- [ ] Preserve device suggestions, GPU fallback, fade conversion, and mask availability rules.
-- [ ] Update readiness and input/output models on imports, annotations, project changes, and generated outputs.
-- [ ] Connect Fill Gaps and both export buttons in Optional: Export Artifacts, preserving each action's readiness rules.
-- [ ] Confirm all operation dispatch uses the existing queue and retains settings capture and target resolution behavior.
+- [x] Replace dialog execution with validated values from inline controllers.
+- [x] Preserve device suggestions, GPU fallback, fade conversion, and mask availability rules.
+- [x] Update readiness and input/output models on imports, annotations, project changes, and generated outputs.
+- [x] Connect Fill Gaps and both export buttons in Optional: Export Artifacts, preserving each action's readiness rules.
+- [x] Confirm all operation dispatch uses the existing queue and retains settings capture and target resolution behavior.
 
 Acceptance: each operation runs from the new UI with equivalent arguments; stacking works without detection, and settings changes after enqueue do not mutate submitted scalar settings.
 
@@ -243,3 +243,4 @@ Use lightweight Qt checks with fake file records and fake operation callbacks fo
 | 2026-09-26 | T2 | Added Designer forms, controllers, and deterministic generation; eight checks pass, including settings defaults, CPU fallback, collapse retention, and numeric validation. |
 | 2026-09-26 | T3 | Model/view checks: 1,000 rows 16 ms; 5,000 rows 46 ms; targeted focus/update 6?8 ms; 19 widgets at both sizes. Twelve checks pass. |
 | 2026-09-26 | T3 | Real 1,000-image-path benchmark: per-file saves 23.018 s / 1,001 saves; batched import 0.045 s / one save. Verified append identity, annotations/exclusions after reopening, and replacement. UI wiring follows. |
+| 2026-09-26 | T4/T5 | Integrated sidebar and inline controls together so displayed settings always govern submissions. Header subtree is identical to baseline; actual window rendered with sample image; nineteen checks pass. |

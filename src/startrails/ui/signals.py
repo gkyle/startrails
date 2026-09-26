@@ -36,6 +36,7 @@ class Signals(QObject):
 
     updateFile: Signal = Signal(File)
     updateFileButton: Signal = Signal(File)
+    refreshReadiness: Signal = Signal()
 
     makeButton: Signal = Signal(File, QWidget, int)
     addFileButton: Signal = Signal(QWidget, QPushButton, bool)

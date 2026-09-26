@@ -63,6 +63,11 @@ class CanvasLabel(QLabel):
             if newPixmap.width() > 0 and newPixmap.height() > 0:
                 self.setPixmap(newPixmap, True)
         else:
+            self.file = None
+            self.selectedMask = None
+            self.selectedNub = None
+            self.draggingMask = False
+            self.draggingNub = False
             self.setPixmap(QPixmap(), True)
 
     def setFromNumpyArray(self, inputImage: np.ndarray, resetZoomAndPosition: bool = False) -> None:
@@ -88,7 +93,7 @@ class CanvasLabel(QLabel):
     def setPixmap(self, pixmap: QPixmap, doResetZoomAndPosition: bool = True) -> None:
         self.pixmap = pixmap
         if pixmap is None or pixmap.width() == 0 or pixmap.height() == 0:
-            self.setText("To get started, click \"Add Star Images\" on the panel to the right")
+            self.setText("To get started, choose Add Files in the sidebar.")
         else:
             self.setText("")
 
