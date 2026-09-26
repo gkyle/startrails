@@ -141,8 +141,8 @@ Every task below is a suggested commit-sized unit. T2 and T3 can be developed be
 | --- | --- | --- | --- | --- | --- |
 | T0 | Record source audit and migration plan | — | Codex | DONE | This document; implementation untouched |
 | T1 | Record behavior baseline for confirmed design | T0 | Codex | DONE | [Baseline](ui-behavior-baseline.md); four contract checks pass |
-| T2 | Add declarative step forms and generation tooling | T1 | Codex | IN PROGRESS | |
-| T3 | Add scalable file models, views, and indicators | T1 | Unassigned | TODO | |
+| T2 | Add declarative step forms and generation tooling | T1 | Codex | DONE | Eight UI checks pass; forms generated with PySide6 6.8.2 |
+| T3 | Add scalable file models, views, and indicators | T1 | Codex | IN PROGRESS | |
 | T4 | Integrate left sidebar and remove footer/right column | T2, T3 | Unassigned | TODO | |
 | T5 | Wire inline settings to existing operation dispatch | T4 | Unassigned | TODO | |
 | T6 | Retire obsolete UI code and complete theme/accessibility pass | T5 | Unassigned | TODO | |
@@ -159,10 +159,10 @@ Acceptance: a concrete baseline and resolved scope exist before UI integration; 
 
 ### T2 — Declarative components
 
-- [ ] Add reusable step shell and operation bodies in `.ui`, with small controllers.
-- [ ] Add a repeatable form-generation command and document Designer workflow.
-- [ ] Implement accessible expand/collapse controls and independent expansion state.
-- [ ] Preserve existing field defaults and guard empty-project initialization.
+- [x] Add reusable step shell and operation bodies in `.ui`, with small controllers.
+- [x] Add a repeatable form-generation command and document Designer workflow.
+- [x] Implement accessible expand/collapse controls and independent expansion state.
+- [x] Preserve existing field defaults and guard empty-project initialization.
 
 Acceptance: forms open in Designer, regenerate cleanly, and instantiate without loading images, models, or a GPU; settings remain intact while a step is collapsed.
 
@@ -240,3 +240,4 @@ Use lightweight Qt checks with fake file records and fake operation callbacks fo
 | 2026-09-26 | T1 | User confirmed Optional: Export Artifacts containing both exports, minimal single-file management, and system-aware theme. Updated scope and acceptance checks; runtime baseline remains TODO. |
 
 | 2026-09-26 | T1 | Baseline recorded; four isolated Qt contract tests pass. Image name stays in the existing header. |
+| 2026-09-26 | T2 | Added Designer forms, controllers, and deterministic generation; eight checks pass, including settings defaults, CPU fallback, collapse retention, and numeric validation. |
