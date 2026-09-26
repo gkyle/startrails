@@ -1,6 +1,6 @@
 # StarTrails sidebar UI plan
 
-Status: draft for review; implementation has not started.
+Status: implementation in progress.
 Created: 2026-09-26. Branch: `ui_refresh`.
 Baseline inspected: StarTrails `efb6681`; Pyquator `70236ae`.
 
@@ -50,9 +50,9 @@ Additional working decisions:
 
 ```text
 +-----------------------------------------------------------------------+
-| Existing title / progress / cancel / system resource header            |
+| Existing title / image name / progress / cancel / resource header       |
 +-----------------------------+-----------------------------------------+
-| Project                     | Current image name / Show Deleted Masks |
+| Project                     | Show Deleted Masks                      |
 | New / Open                  |                                         |
 |                             |                                         |
 | v Input Files (count)   [+]  |                                         |
@@ -140,8 +140,8 @@ Every task below is a suggested commit-sized unit. T2 and T3 can be developed be
 | ID | Deliverable / suggested commit | Depends on | Owner | Status | Commit / validation evidence |
 | --- | --- | --- | --- | --- | --- |
 | T0 | Record source audit and migration plan | — | Codex | DONE | This document; implementation untouched |
-| T1 | Record behavior baseline for confirmed design | T0 | Unassigned | TODO | |
-| T2 | Add declarative step forms and generation tooling | T1 | Unassigned | TODO | |
+| T1 | Record behavior baseline for confirmed design | T0 | Codex | DONE | [Baseline](ui-behavior-baseline.md); four contract checks pass |
+| T2 | Add declarative step forms and generation tooling | T1 | Codex | IN PROGRESS | |
 | T3 | Add scalable file models, views, and indicators | T1 | Unassigned | TODO | |
 | T4 | Integrate left sidebar and remove footer/right column | T2, T3 | Unassigned | TODO | |
 | T5 | Wire inline settings to existing operation dispatch | T4 | Unassigned | TODO | |
@@ -151,9 +151,9 @@ Every task below is a suggested commit-sized unit. T2 and T3 can be developed be
 ### T1 — Baseline and decisions
 
 - [x] Record answers to D1–D3 and update this document's scope and layout.
-- [ ] Capture current header/layout and control defaults for comparison.
-- [ ] Record queue behavior with two submitted operations, cancellation, changes to selection while work waits, and progress-driven focus.
-- [ ] Record no-files, inputs-without-masks, manual-only-masks, and selected-stacked-output readiness states.
+- [x] Capture current header/layout and control defaults for comparison.
+- [x] Record queue behavior with two submitted operations, cancellation, changes to selection while work waits, and progress-driven focus.
+- [x] Record no-files, inputs-without-masks, manual-only-masks, and selected-stacked-output readiness states.
 
 Acceptance: a concrete baseline and resolved scope exist before UI integration; any discovered pre-existing defects are recorded separately from intended UI changes.
 
@@ -238,3 +238,5 @@ Use lightweight Qt checks with fake file records and fake operation callbacks fo
 | --- | --- | --- |
 | 2026-09-26 | T0 | Inspected both repositories; documented current forms, per-file widget costs, dialog defaults, readiness rules, and queue integration. Asked D1–D3. No application code changed. |
 | 2026-09-26 | T1 | User confirmed Optional: Export Artifacts containing both exports, minimal single-file management, and system-aware theme. Updated scope and acceptance checks; runtime baseline remains TODO. |
+
+| 2026-09-26 | T1 | Baseline recorded; four isolated Qt contract tests pass. Image name stays in the existing header. |
