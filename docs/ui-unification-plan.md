@@ -81,10 +81,10 @@ Use a horizontal splitter so the sidebar can be resized. Match Pyquator's compac
 | --- | --- | --- |
 | Main layout and generated form | [interface.ui](../src/startrails/ui/interface.ui), [ui_interface.py](../src/startrails/ui/ui_interface.py) | Edit the `.ui` source and regenerate Python; preserve the header subtree |
 | Controller, readiness, dispatch | [ui_wrap.py](../src/startrails/ui/ui_wrap.py) | Replace widget bindings while retaining operation workers and queue |
-| Thumbnail strips | [filestrip.py](../src/startrails/ui/filestrip.py) | Replace per-file widgets and thumbnail loading with model/view rows |
-| Signals | [signals.py](../src/startrails/ui/signals.py) | Remove/exclude signals currently carry a `QPushButton`; decouple them from row widgets |
-| Detection settings | [ui_dialog_streaks.ui](../src/startrails/ui/ui_dialog_streaks.ui), [dialog_detectStreaks.py](../src/startrails/ui/dialog_detectStreaks.py) | Reuse fields, defaults, device logic, and merge-method mapping |
-| Stacking settings | [ui_dialog_stack.ui](../src/startrails/ui/ui_dialog_stack.ui), [dialog_stackImages.py](../src/startrails/ui/dialog_stackImages.py) | Reuse fade, masking, batch-size, and device behavior |
+| File manager | [file_manager.ui](../src/startrails/ui/file_manager.ui), [file_manager.py](../src/startrails/ui/file_manager.py) | Model/view rows replace the retired `filestrip.py` and thumbnail machinery |
+| Signals | [signals.py](../src/startrails/ui/signals.py) | Metadata updates are file-based; remove/exclude signals belong to the new file sections |
+| Detection settings | [step_detect_streaks.ui](../src/startrails/ui/step_detect_streaks.ui), [steps.py](../src/startrails/ui/steps.py) | Retired the old detection dialog; preserved defaults and method mapping |
+| Stacking settings | [step_stack_images.ui](../src/startrails/ui/step_stack_images.ui), [steps.py](../src/startrails/ui/steps.py) | Retired the old stacking dialog; preserved fade, masking, batch, and device behavior |
 | Domain state and persistence | [file.py](../src/startrails/lib/file.py), [app.py](../src/startrails/app.py), [project.py](../src/startrails/ui/project.py) | Keep File objects and the existing project schema authoritative |
 | Canvas and progress | [canvasLabel.py](../src/startrails/ui/canvasLabel.py), [progress.py](../src/startrails/ui/progress.py) | Preserve annotation gestures, brightest-frame navigation, previews, and header updates |
 | Pyquator reference | `C:/Users/kyles/Documents/GitHub/pyquator/src/pyquator/gui/sidebar.py` | Reference `CollapsibleCategorySection`, `CollapsibleOutputSection`, `StepHeaderWidget`, `CollapsibleStepCard`, and `SidebarWidget` |
@@ -145,8 +145,8 @@ Every task below is a suggested commit-sized unit. T2 and T3 can be developed be
 | T3 | Add scalable file models, views, and indicators | T1 | Codex | DONE | `ab18571`, `021fbf1`; integration verified with window checks |
 | T4 | Integrate left sidebar and remove footer/right column | T2, T3 | Codex | DONE | Header canonical comparison; rendered 1280?900 window; integrated checks |
 | T5 | Wire inline settings to existing operation dispatch | T4 | Codex | DONE | Scalar snapshot, repeated submissions, selection timing, and GUI-thread update checks |
-| T6 | Retire obsolete UI code and complete theme/accessibility pass | T5 | Codex | IN PROGRESS | |
-| T7 | Verify workflows, queue parity, and large projects | T6 | Unassigned | TODO | |
+| T6 | Retire obsolete UI code and complete theme/accessibility pass | T5 | Codex | DONE | Light/dark palette renders at 100/150/200%; keyboard and canvas checks; no retired imports |
+| T7 | Verify workflows, queue parity, and large projects | T6 | Codex | IN PROGRESS | Actual CPU/local-model smoke passed; final review/report follows |
 
 ### T1 — Baseline and decisions
 
@@ -198,10 +198,10 @@ Acceptance: each operation runs from the new UI with equivalent arguments; stack
 
 ### T6 — Cleanup and visual review
 
-- [ ] Remove obsolete dialog/Filestrip modules and resources only after all references are migrated.
-- [ ] Remove forced dark rules; apply D3 consistently without changing header structure.
-- [ ] Check long filenames, keyboard navigation, focus indication, tooltips, palette contrast, and display scaling.
-- [ ] Regenerate all forms and update relevant user/developer documentation.
+- [x] Remove obsolete dialog/Filestrip modules and resources only after all references are migrated.
+- [x] Remove forced dark rules; apply D3 consistently without changing header structure.
+- [x] Check long filenames, keyboard navigation, focus indication, tooltips, palette contrast, and display scaling.
+- [x] Regenerate all forms and update relevant user/developer documentation.
 
 Acceptance: no stale imports or duplicate signal hookups; every remaining control is reachable at a small window size, and generated files match their `.ui` sources.
 
@@ -244,3 +244,4 @@ Use lightweight Qt checks with fake file records and fake operation callbacks fo
 | 2026-09-26 | T3 | Model/view checks: 1,000 rows 16 ms; 5,000 rows 46 ms; targeted focus/update 6?8 ms; 19 widgets at both sizes. Twelve checks pass. |
 | 2026-09-26 | T3 | Real 1,000-image-path benchmark: per-file saves 23.018 s / 1,001 saves; batched import 0.045 s / one save. Verified append identity, annotations/exclusions after reopening, and replacement. UI wiring follows. |
 | 2026-09-26 | T4/T5 | Integrated sidebar and inline controls together so displayed settings always govern submissions. Header subtree is identical to baseline; actual window rendered with sample image; nineteen checks pass. |
+| 2026-09-26 | T6 | Retired old dialogs, Filestrip, thumbnail executor/signals, and unused icons. Palette/scaling previews reviewed; keyboard and canvas tests pass. Manual counts now update after every added mask. |

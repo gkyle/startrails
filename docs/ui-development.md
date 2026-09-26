@@ -18,3 +18,19 @@ $env:PYTHONPATH = 'src'
 ```
 
 The step shell uses Qt palette roles rather than fixed light/dark colors. Keep controls keyboard accessible, use label buddies for settings, and avoid painting annotation status with color alone.
+
+Render the real window with sample data without touching the current project:
+
+```powershell
+.venv/Scripts/python.exe tools/preview_ui.py "$env:TEMP/sidebar.png" --expanded --bottom
+```
+
+Use `--theme dark` to simulate a dark Qt palette in offscreen mode; this is a rendering check, not a change to the app's theme preference. Set `QT_SCALE_FACTOR` to `1.5` or `2` to check display scaling.
+
+For actual operations and persistence in a disposable project, run:
+
+```powershell
+.venv/Scripts/python.exe tools/smoke_workflow.py --ml
+```
+
+The `--ml` option uses the local detection/fill model files. Omit it to check stacking, optional exports, and persistence without inference. Run from the repository root. The script isolates project, output, and third-party settings in a temporary directory. To reproduce the 1,000-file import benchmark, run `tools/benchmark_import.py` with `PYTHONPATH=src`.

@@ -8,7 +8,9 @@ import unittest
 import xml.etree.ElementTree as ET
 from types import SimpleNamespace
 from unittest.mock import patch
-from PySide6.QtCore import QCoreApplication, QEvent, Qt
+from PySide6.QtCore import QCoreApplication, QEvent, Qt, QPoint, QPointF
+from PySide6.QtGui import QPixmap, QMouseEvent
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QWidget
 from test_ui_contract import ui_wrap
 from startrails.lib.file import InputFile, OutputFile
@@ -101,7 +103,7 @@ class WindowTests(unittest.TestCase):
         self.ui.inputFiles.model.dataChanged.connect(lambda *args: observed_threads.append(QThread.currentThread()))
         def worker():
             file.streaksMasks.append([])
-            self.ui.signals.updateFileButton.emit(file)
+            self.ui.signals.fileMetadataChanged.emit(file)
         self.ui.op_queue.start(ui_wrap.AsyncWorker(worker))
         self.assertTrue(self.ui.op_queue.waitForDone(3000))
         QT_APP.processEvents()
@@ -130,6 +132,49 @@ class WindowTests(unittest.TestCase):
         updater = SimpleNamespace(update=lambda _: None)
         self.ui.slotIncrementProgressBar(updater, 2, 1, 1, False, np.zeros((16, 16, 3), dtype=np.uint8))
         self.assertEqual(self.ui.canvas_main.pixmap.width(), 16)
+
+    def test_canvas_annotations_update_counts_and_remain_editable(self):
+        import numpy as np
+        file = InputFile("image", "missing-image")
+        self.app.inputs = [file]
+        self.ui.slotRefreshInputs(file)
+        canvas = self.ui.canvas_main
+        pixmap = QPixmap(512, 512)
+        pixmap.fill(Qt.black)
+        canvas.setPixmap(pixmap)
+        QT_APP.processEvents()
+
+        def point(x, y):
+            return QPoint(round(canvas.posX + x * canvas.scale), round(canvas.posY + y * canvas.scale))
+
+        for vertices in (((100, 100), (200, 100), (200, 200)), ((250, 100), (350, 100), (350, 200))):
+            for vertex in vertices:
+                QTest.mouseClick(canvas, Qt.RightButton, pos=point(*vertex))
+            QTest.mouseClick(canvas, Qt.LeftButton, pos=point(450, 450))
+        self.assertEqual(self.ui.inputFiles.model.index(0, 1).data(), "M:2")
+        before = file.streaksManualMasks[0].copy()
+        start, end = point(170, 120), point(180, 130)
+        QTest.mousePress(canvas, Qt.LeftButton, pos=start)
+        move = QMouseEvent(QEvent.MouseMove, QPointF(end), QPointF(canvas.mapToGlobal(end)), Qt.NoButton, Qt.LeftButton, Qt.NoModifier)
+        QApplication.sendEvent(canvas, move)
+        QTest.mouseRelease(canvas, Qt.LeftButton, pos=end)
+        self.assertFalse(np.array_equal(file.streaksManualMasks[0], before))
+        QTest.mouseClick(canvas, Qt.LeftButton, Qt.ShiftModifier, point(180, 130))
+        self.assertEqual(self.ui.inputFiles.model.index(0, 1).data(), "M:1")
+        self.assertTrue(self.ui.pushButton_exportTraining.isEnabled())
+
+    def test_keyboard_navigation_and_step_expansion(self):
+        files = [InputFile("a", "a"), InputFile("b", "b")]
+        self.app.inputs = files
+        self.ui.slotRefreshInputs(files[0])
+        view = self.ui.inputFiles.ui.files
+        view.setFocus()
+        QTest.keyClick(view, Qt.Key_Down)
+        self.assertIs(self.ui.currentFile, files[1])
+        toggle = self.ui.sidebar.stackCard.ui.toggle
+        toggle.setFocus()
+        QTest.keyClick(toggle, Qt.Key_Space)
+        self.assertTrue(toggle.isChecked())
 
 
 if __name__ == "__main__":

@@ -15,8 +15,7 @@ def main():
     for source in sorted(directory.glob("*.ui")):
         name = source.stem if source.stem.startswith("ui_") else "ui_" + source.stem
         result = subprocess.run([compiler, source.name], cwd=directory, check=True, capture_output=True)
-        # uic's resource import must be package-relative when imported by the app.
-        code = result.stdout.decode("utf-8").replace("import icons_darktheme_rc", "from . import icons_darktheme_rc")
+        code = result.stdout.decode("utf-8")
         (directory / (name + ".py")).write_text(code.rstrip() + "\n", encoding="utf-8", newline="\n")
         print(source.name)
 

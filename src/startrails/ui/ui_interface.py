@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout,
     QHBoxLayout, QLabel, QLayout, QMainWindow,
     QProgressBar, QPushButton, QSizePolicy, QSplitter,
     QVBoxLayout, QWidget)
-from . import icons_darktheme_rc
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):

@@ -1,6 +1,4 @@
-from functools import partial
-from PySide6.QtCore import QObject, Signal, QThreadPool, QEvent
-from PySide6.QtWidgets import QWidget, QPushButton, QFrame
+from PySide6.QtCore import QObject, Signal, QEvent
 from PySide6.QtCore import QThread, QRunnable
 
 from startrails.lib.file import File
@@ -17,15 +15,6 @@ class AsyncWorker(QRunnable):
             self.work()
 
 
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super().__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
 class Signals(QObject):
     startProgress: Signal = Signal(int, str)
     incrementProgress: Signal = Signal(object, int, int, int, bool, object)
@@ -35,31 +24,15 @@ class Signals(QObject):
     findBrightestFrame: Signal = Signal(File, int, int)
 
     updateFile: Signal = Signal(File)
-    updateFileButton: Signal = Signal(File)
+    fileMetadataChanged: Signal = Signal(File)
     refreshReadiness: Signal = Signal()
 
-    makeButton: Signal = Signal(File, QWidget, int)
-    addFileButton: Signal = Signal(QWidget, QPushButton, bool)
     focusFile: Signal = Signal(File)
-    loadThumbnailsAsync: Signal = Signal(QFrame)  # New signal for lazy thumbnail loading
     drawInputFileList: Signal = Signal(File)
     drawOutputFileList: Signal = Signal(File)
 
-    removeFile: Signal = Signal(File, QPushButton)
-    excludeFile: Signal = Signal(File, QPushButton)
-
     windowResized: Signal = Signal(QEvent)
     windowMoved: Signal = Signal(QEvent)
-
-
-lowpri_threadpool = QThreadPool()
-lowpri_threadpool.setMaxThreadCount(1)
-
-
-def emitLater(emit, *args, priority=0):
-    worker = AsyncWorker(partial(emit, *args))
-    pool = lowpri_threadpool
-    pool.start(worker, priority=priority)
 
 
 signals = Signals()

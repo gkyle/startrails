@@ -183,8 +183,7 @@ class CanvasLabel(QLabel):
                     self.file.streaksManualMasks.append(np.array(self.file.activeMaskPoints).astype(np.int64))
                     self.file.activeMaskPoints = []
                     self.repaint()
-                    if len(self.file.streaksManualMasks) == 1:
-                        self.signals.updateFile.emit(self.file)
+                    self.signals.updateFile.emit(self.file)
 
         if isinstance(self.file, OutputFile):
             if ev.modifiers() == Qt.ShiftModifier:

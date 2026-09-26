@@ -531,8 +531,6 @@
    </layout>
   </widget>
  </widget>
- <resources>
-  <include location="icons_darktheme/icons_darktheme.qrc" />
- </resources>
+ <resources />
  <connections />
 </ui>

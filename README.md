@@ -18,6 +18,12 @@ It can be difficult and tedious to remove streaks from star trail images. If we 
 
 ## Features and Workflow
 
+The left sidebar contains input/output file lists and collapsible operation steps. Select a filename to preview it, and use the single-file controls to remove it from the project or exclude an input from stacking. Annotation counts use **A** for automatic masks, **M** for manual masks, and **D** for manually deleted masks; full paths and details are available in tooltips. The lists do not load thumbnails.
+
+Expand **Detect Streaks** or **Stack Images** to adjust settings and submit work. Stacking can run without detection. Select a stacked output to enable **Fill Gaps**. Both export actions are under **Optional: Export Artifacts**. The header continues to show operation progress and resource usage, and its cancel button retains its existing behavior.
+
+The sidebar follows the system theme. The walkthrough images below show the earlier layout; the image-processing workflow and canvas gestures are unchanged. See [UI development](docs/ui-development.md) for Designer forms and validation commands.
+
 #### Detect Streaks
 
 The model will automatically flag streaks, indicated with green boxes.

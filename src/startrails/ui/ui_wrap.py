@@ -113,7 +113,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.signals.incrementProgress.connect(self.slotIncrementProgressBar)
         self.signals.updateFile.connect(self.slotUpdateFile)
         self.signals.showFile.connect(self.showFile)
-        self.signals.updateFileButton.connect(self.slotFileIndicators)
+        self.signals.fileMetadataChanged.connect(self.slotFileIndicators)
         self.signals.refreshReadiness.connect(self.slotRefreshReadiness)
         self.signals.drawInputFileList.connect(self.slotRefreshInputs)
         self.signals.drawOutputFileList.connect(self.slotRefreshOutputs)
@@ -233,7 +233,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     @Slot(File)
     def slotUpdateFile(self, file: File):
         self.app.saveProject()
-        self.signals.updateFileButton.emit(file)
+        self.signals.fileMetadataChanged.emit(file)
 
     @Slot(File)
     def slotRemoveFile(self, file: File):

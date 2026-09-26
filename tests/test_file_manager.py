@@ -2,6 +2,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import time
+import tracemalloc
 import unittest
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QAbstractItemModelTester, QSignalSpy
@@ -72,6 +73,7 @@ class FileModelTests(unittest.TestCase):
         for count in (1000, 5000):
             records = [InputFile(f"image_{i}.jpg", f"missing/{i}.jpg") for i in range(count)]
             start = time.perf_counter()
+            tracemalloc.start()
             section.set_files(records)
             QT_APP.processEvents()
             populate = time.perf_counter() - start
@@ -81,8 +83,10 @@ class FileModelTests(unittest.TestCase):
             section.model.update_file(records[-1])
             QT_APP.processEvents()
             update = time.perf_counter() - start
+            _, peak = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
             widget_counts.append(len(section.findChildren(QWidget)))
-            print(f"\n{count} files: populate {populate:.4f}s; focus/update {update:.4f}s; widgets {widget_counts[-1]}")
+            print(f"\n{count} files: populate {populate:.4f}s; focus/update {update:.4f}s; widgets {widget_counts[-1]}; traced peak {peak / 1024:.0f} KiB")
             self.assertEqual(section.model.rowCount(), count)
         self.assertEqual(widget_counts[0], widget_counts[1])
         section.close()

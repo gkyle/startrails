@@ -47,6 +47,7 @@ class DetectSettings(QWidget):
         self.ui.mergeMethod.setCurrentIndex(0)
         self._first_file = None
         self.ui.error.clear()
+        self.ui.error.hide()
         self.refresh_inputs()
 
     def refresh_inputs(self):
@@ -77,9 +78,11 @@ class DetectSettings(QWidget):
         for field in (self.ui.confidence, self.ui.mergeThreshold):
             if not field.hasAcceptableInput():
                 self.ui.error.setText("Enter thresholds between 0 and 1.")
+                self.ui.error.show()
                 field.setFocus()
                 return None
         self.ui.error.clear()
+        self.ui.error.hide()
         return dict(confThreshold=self.ui.confidence.value(),
                     mergeThreshold=self.ui.mergeThreshold.value(),
                     mergeMethod=("NMS", "GREEDYNMM")[self.ui.mergeMethod.currentIndex()],
@@ -106,6 +109,7 @@ class StackSettings(QWidget):
         self.set_has_masks(False)
         self._first_file = None
         self.ui.error.clear()
+        self.ui.error.hide()
         self.refresh_inputs()
 
     def set_has_masks(self, available):
@@ -144,9 +148,11 @@ class StackSettings(QWidget):
         for field in (self.ui.batchSize, self.ui.fadeAmount):
             if not field.hasAcceptableInput():
                 self.ui.error.setText("Enter a positive batch size and a fade amount from 0 to 100%.")
+                self.ui.error.show()
                 field.setFocus()
                 return None
         self.ui.error.clear()
+        self.ui.error.hide()
         mode = self.ui.fade.currentIndex()
         amount = self.ui.fadeAmount.value() / 100
         return dict(streaksRemoved=self.ui.streaks.currentIndex() == 1,
