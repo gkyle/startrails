@@ -43,10 +43,6 @@ class Ui_DetectSettings(object):
 "    color: #1e293b;\n"
 "    spacing: 6px;\n"
 "}\n"
-"QLabel#deviceHint {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"}\n"
 "QLabel#error {\n"
 "    font-size: 11px;\n"
 "    color: #ef4444;\n"
@@ -65,8 +61,7 @@ class Ui_DetectSettings(object):
 "}\n"
 "QPushButton#run:disabled {\n"
 "    background-color: #e2e8f0;\n"
-"    color: #94"
-                        "a3b8;\n"
+"    color: #94a3b8;\n"
 "}")
         self.layout = QVBoxLayout(detectSettings)
         self.layout.setSpacing(6)
@@ -124,12 +119,6 @@ class Ui_DetectSettings(object):
 
         self.layout.addWidget(self.useGPU)
 
-        self.deviceHint = QLabel(detectSettings)
-        self.deviceHint.setObjectName(u"deviceHint")
-        self.deviceHint.setWordWrap(True)
-
-        self.layout.addWidget(self.deviceHint)
-
         self.error = QLabel(detectSettings)
         self.error.setObjectName(u"error")
         self.error.setWordWrap(True)
@@ -162,7 +151,6 @@ class Ui_DetectSettings(object):
 
         self.thresholdLabel.setText(QCoreApplication.translate("DetectSettings", u"Merge &threshold", None))
         self.useGPU.setText(QCoreApplication.translate("DetectSettings", u"Use GPU", None))
-        self.deviceHint.setText(QCoreApplication.translate("DetectSettings", u"Add input files to check the device.", None))
         self.error.setText("")
         self.run.setText(QCoreApplication.translate("DetectSettings", u"Detect Streaks", None))
         pass

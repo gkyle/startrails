@@ -121,19 +121,14 @@ class DetectSettings(QWidget):
         if first is not self._first_file:
             self._first_file = first
             self.suggest_device(True)
-        if first is None:
-            self.ui.deviceHint.setText("Add input files to check the device.")
 
     def suggest_device(self, use_gpu):
         if self._first_file is None:
             return
         try:
             _, _, available = self.app.stackSuggestBatchSize(self._first_file, use_gpu)
-        except (OSError, ValueError) as error:
-            self.ui.deviceHint.setText(f"Device suggestion unavailable: {error}")
+        except (OSError, ValueError):
             available = False
-        else:
-            self.ui.deviceHint.setText("GPU" if available else "CPU")
         with QSignalBlocker(self.ui.useGPU):
             self.ui.useGPU.setChecked(bool(available))
 

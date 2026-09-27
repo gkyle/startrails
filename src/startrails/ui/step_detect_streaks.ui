@@ -23,10 +23,6 @@ QCheckBox {
     color: #1e293b;
     spacing: 6px;
 }
-QLabel#deviceHint {
-    font-size: 11px;
-    color: #64748b;
-}
 QLabel#error {
     font-size: 11px;
     color: #ef4444;
@@ -154,16 +150,6 @@ QPushButton#run:disabled {
     <widget class="QCheckBox" name="useGPU">
      <property name="text">
       <string>Use GPU</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="deviceHint">
-     <property name="text">
-      <string>Add input files to check the device.</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
      </property>
     </widget>
    </item>
