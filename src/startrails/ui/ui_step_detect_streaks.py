@@ -16,8 +16,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBox,
-    QFormLayout, QLabel, QPushButton, QSizePolicy,
-    QVBoxLayout, QWidget)
+    QFormLayout, QHBoxLayout, QLabel, QPushButton,
+    QSizePolicy, QVBoxLayout, QWidget)
 
 class Ui_DetectSettings(object):
     def setupUi(self, detectSettings):
@@ -91,17 +91,20 @@ class Ui_DetectSettings(object):
 
         self.fields.setWidget(1, QFormLayout.LabelRole, self.mergeLabel)
 
+        self.mergeRow = QHBoxLayout()
+        self.mergeRow.setSpacing(6)
+        self.mergeRow.setObjectName(u"mergeRow")
         self.mergeMethod = QComboBox(detectSettings)
         self.mergeMethod.addItem("")
         self.mergeMethod.addItem("")
         self.mergeMethod.setObjectName(u"mergeMethod")
 
-        self.fields.setWidget(1, QFormLayout.FieldRole, self.mergeMethod)
+        self.mergeRow.addWidget(self.mergeMethod)
 
         self.thresholdLabel = QLabel(detectSettings)
         self.thresholdLabel.setObjectName(u"thresholdLabel")
 
-        self.fields.setWidget(2, QFormLayout.LabelRole, self.thresholdLabel)
+        self.mergeRow.addWidget(self.thresholdLabel)
 
         self.mergeThreshold = QDoubleSpinBox(detectSettings)
         self.mergeThreshold.setObjectName(u"mergeThreshold")
@@ -109,7 +112,10 @@ class Ui_DetectSettings(object):
         self.mergeThreshold.setSingleStep(0.050000000000000)
         self.mergeThreshold.setValue(0.200000000000000)
 
-        self.fields.setWidget(2, QFormLayout.FieldRole, self.mergeThreshold)
+        self.mergeRow.addWidget(self.mergeThreshold)
+
+
+        self.fields.setLayout(1, QFormLayout.FieldRole, self.mergeRow)
 
 
         self.layout.addLayout(self.fields)
@@ -149,7 +155,10 @@ class Ui_DetectSettings(object):
         self.mergeMethod.setItemText(0, QCoreApplication.translate("DetectSettings", u"NMS", None))
         self.mergeMethod.setItemText(1, QCoreApplication.translate("DetectSettings", u"Greedy NMM", None))
 
-        self.thresholdLabel.setText(QCoreApplication.translate("DetectSettings", u"Merge &threshold", None))
+        self.thresholdLabel.setText(QCoreApplication.translate("DetectSettings", u"&Threshold", None))
+#if QT_CONFIG(tooltip)
+        self.thresholdLabel.setToolTip(QCoreApplication.translate("DetectSettings", u"Merge threshold", None))
+#endif // QT_CONFIG(tooltip)
         self.useGPU.setText(QCoreApplication.translate("DetectSettings", u"Use GPU", None))
         self.error.setText("")
         self.run.setText(QCoreApplication.translate("DetectSettings", u"Detect Streaks", None))

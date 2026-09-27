@@ -16,8 +16,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFormLayout,
-    QLabel, QPushButton, QSizePolicy, QSpinBox,
-    QVBoxLayout, QWidget)
+    QHBoxLayout, QLabel, QPushButton, QSizePolicy,
+    QSpacerItem, QSpinBox, QVBoxLayout, QWidget)
 
 class Ui_StackSettings(object):
     def setupUi(self, stackSettings):
@@ -108,6 +108,9 @@ class Ui_StackSettings(object):
 
         self.fields.setWidget(2, QFormLayout.LabelRole, self.fadeLabel)
 
+        self.fadeRow = QHBoxLayout()
+        self.fadeRow.setSpacing(6)
+        self.fadeRow.setObjectName(u"fadeRow")
         self.fade = QComboBox(stackSettings)
         self.fade.addItem("")
         self.fade.addItem("")
@@ -115,24 +118,42 @@ class Ui_StackSettings(object):
         self.fade.addItem("")
         self.fade.setObjectName(u"fade")
 
-        self.fields.setWidget(2, QFormLayout.FieldRole, self.fade)
+        self.fadeRow.addWidget(self.fade)
 
         self.amountLabel = QLabel(stackSettings)
         self.amountLabel.setObjectName(u"amountLabel")
 
-        self.fields.setWidget(3, QFormLayout.LabelRole, self.amountLabel)
+        self.fadeRow.addWidget(self.amountLabel)
 
         self.fadeAmount = QSpinBox(stackSettings)
         self.fadeAmount.setObjectName(u"fadeAmount")
         self.fadeAmount.setMaximum(100)
         self.fadeAmount.setValue(20)
 
-        self.fields.setWidget(3, QFormLayout.FieldRole, self.fadeAmount)
+        self.fadeRow.addWidget(self.fadeAmount)
+
+
+        self.fields.setLayout(2, QFormLayout.FieldRole, self.fadeRow)
+
+
+        self.layout.addLayout(self.fields)
+
+        self.gpuBatchRow = QHBoxLayout()
+        self.gpuBatchRow.setSpacing(6)
+        self.gpuBatchRow.setObjectName(u"gpuBatchRow")
+        self.useGPU = QCheckBox(stackSettings)
+        self.useGPU.setObjectName(u"useGPU")
+
+        self.gpuBatchRow.addWidget(self.useGPU)
+
+        self.gpuBatchSpacer = QSpacerItem(20, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gpuBatchRow.addItem(self.gpuBatchSpacer)
 
         self.batchLabel = QLabel(stackSettings)
         self.batchLabel.setObjectName(u"batchLabel")
 
-        self.fields.setWidget(4, QFormLayout.LabelRole, self.batchLabel)
+        self.gpuBatchRow.addWidget(self.batchLabel)
 
         self.batchSize = QSpinBox(stackSettings)
         self.batchSize.setObjectName(u"batchSize")
@@ -140,15 +161,10 @@ class Ui_StackSettings(object):
         self.batchSize.setMaximum(2147483647)
         self.batchSize.setValue(1)
 
-        self.fields.setWidget(4, QFormLayout.FieldRole, self.batchSize)
+        self.gpuBatchRow.addWidget(self.batchSize)
 
 
-        self.layout.addLayout(self.fields)
-
-        self.useGPU = QCheckBox(stackSettings)
-        self.useGPU.setObjectName(u"useGPU")
-
-        self.layout.addWidget(self.useGPU)
+        self.layout.addLayout(self.gpuBatchRow)
 
         self.memory = QLabel(stackSettings)
         self.memory.setObjectName(u"memory")
@@ -197,10 +213,13 @@ class Ui_StackSettings(object):
         self.fade.setItemText(2, QCoreApplication.translate("StackSettings", u"End only", None))
         self.fade.setItemText(3, QCoreApplication.translate("StackSettings", u"Start and end", None))
 
-        self.amountLabel.setText(QCoreApplication.translate("StackSettings", u"Fade &amount", None))
+        self.amountLabel.setText(QCoreApplication.translate("StackSettings", u"&Amount", None))
+#if QT_CONFIG(tooltip)
+        self.amountLabel.setToolTip(QCoreApplication.translate("StackSettings", u"Fade amount", None))
+#endif // QT_CONFIG(tooltip)
         self.fadeAmount.setSuffix(QCoreApplication.translate("StackSettings", u"%", None))
-        self.batchLabel.setText(QCoreApplication.translate("StackSettings", u"&Batch size", None))
         self.useGPU.setText(QCoreApplication.translate("StackSettings", u"Use GPU", None))
+        self.batchLabel.setText(QCoreApplication.translate("StackSettings", u"&Batch size", None))
         self.memory.setText(QCoreApplication.translate("StackSettings", u"Add input files for a batch suggestion.", None))
         self.error.setText("")
         self.run.setText(QCoreApplication.translate("StackSettings", u"Stack Images", None))
