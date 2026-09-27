@@ -106,25 +106,27 @@ class Ui_FileSection(object):
 "    font-style: italic;\n"
 "    padding: 12px;\n"
 "}\n"
-"QPushButton#remove, QPushButton#exclude {\n"
+"QMenu {\n"
 "    background-color: #ffffff;\n"
-"    color: #475569;\n"
 "    border: 1px solid #cbd5e1;\n"
-"    border-radius: 4px;\n"
-"    padding: 4px 8px;\n"
-"    font-size: 11px;\n"
-"    font-weight: 500;\n"
+"    border-radius: 6px;\n"
+"    padding: 4px;\n"
 "}\n"
-"QPushButton#r"
-                        "emove:hover, QPushButton#exclude:hover {\n"
+"QMenu::item {\n"
+"    padding: 6px 20px 6px 12px;\n"
+"    border-radius: 4px;\n"
+"    font-size: 12px;\n"
+"    color: #0f172a;"
+                        "\n"
+"}\n"
+"QMenu::item:selected {\n"
 "    background-color: #f1f5f9;\n"
 "    color: #0f172a;\n"
-"    border-color: #94a3b8;\n"
 "}\n"
-"QPushButton#remove:disabled, QPushButton#exclude:disabled {\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"    background-color: #f8fafc;\n"
+"QMenu::separator {\n"
+"    height: 1px;\n"
+"    background-color: #e2e8f0;\n"
+"    margin: 4px 6px;\n"
 "}")
         self.layout = QVBoxLayout(fileSection)
         self.layout.setSpacing(2)
@@ -219,25 +221,6 @@ class Ui_FileSection(object):
 
         self.bodyLayout.addWidget(self.empty)
 
-        self.actions = QHBoxLayout()
-        self.actions.setSpacing(6)
-        self.actions.setObjectName(u"actions")
-        self.remove = QPushButton(self.body)
-        self.remove.setObjectName(u"remove")
-        self.remove.setEnabled(False)
-
-        self.actions.addWidget(self.remove)
-
-        self.exclude = QPushButton(self.body)
-        self.exclude.setObjectName(u"exclude")
-        self.exclude.setEnabled(False)
-        self.exclude.setCheckable(True)
-
-        self.actions.addWidget(self.exclude)
-
-
-        self.bodyLayout.addLayout(self.actions)
-
 
         self.layout.addWidget(self.body)
 
@@ -260,7 +243,5 @@ class Ui_FileSection(object):
         self.add.setToolTip(QCoreApplication.translate("FileSection", u"Add files\u2026", None))
 #endif // QT_CONFIG(tooltip)
         self.empty.setText(QCoreApplication.translate("FileSection", u"No files yet.", None))
-        self.remove.setText(QCoreApplication.translate("FileSection", u"Remove from Project", None))
-        self.exclude.setText(QCoreApplication.translate("FileSection", u"Exclude from Stack", None))
         pass
     # retranslateUi

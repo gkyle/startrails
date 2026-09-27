@@ -63,7 +63,21 @@ class FileModelTests(unittest.TestCase):
         self.assertEqual(previews.count(), 1)
         section.set_files([])
         self.assertIsNone(section.current_file())
-        self.assertFalse(section.ui.remove.isEnabled())
+        self.assertEqual(section.model.rowCount(), 0)
+
+    def test_context_menu_actions(self):
+        section = FileSection("Input Files", inputs=True)
+        file = InputFile("a.tif", "a.tif")
+        section.set_files([file])
+        removes = QSignalSpy(section.removeFile)
+        excludes = QSignalSpy(section.excludeFile)
+        section.ui.files.setCurrentIndex(section.model.index(0, 0))
+        section._exclude()
+        self.assertEqual(excludes.count(), 1)
+        self.assertIs(excludes.at(0)[0], file)
+        section._remove()
+        self.assertEqual(removes.count(), 1)
+        self.assertIs(removes.at(0)[0], file)
 
     def test_large_lists_do_not_allocate_row_widgets(self):
         section = FileSection("Input Files", inputs=True)

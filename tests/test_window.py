@@ -96,7 +96,7 @@ class WindowTests(unittest.TestCase):
         self.assertTrue(self.ui.pushButton_exportTraining.isEnabled())
         self.ui.showFile(second)
         self.ui.slotExcludeFile(second)
-        self.assertTrue(self.ui.inputFiles.ui.exclude.isChecked())
+        self.assertTrue(second.excludeFromStack)
         self.ui.slotRemoveFile(second)
         self.assertEqual(self.ui.inputFiles.model.rowCount(), 1)
         self.assertIsNone(self.ui.currentFile)

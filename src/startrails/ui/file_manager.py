@@ -1,5 +1,5 @@
 """Metadata-only file views. No image decoding or widget allocation per row."""
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, QRect, QSize, Qt, Signal, QSignalBlocker
+from PySide6.QtCore import QAbstractTableModel, QEvent, QModelIndex, QRect, QSize, Qt, Signal, QSignalBlocker
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QHeaderView, QMenu, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QWidget
 
@@ -251,7 +251,6 @@ class FileSection(QFrame):
         self.ui.toggle.setText(title)
         self.ui.files.setAccessibleName(title)
         self.ui.add.setVisible(inputs)
-        self.ui.exclude.setVisible(inputs)
 
         if inputs:
             self.ui.icon.setPixmap(create_star_icon(QColor("#0284c7"), 16).pixmap(16, 16))
@@ -270,11 +269,17 @@ class FileSection(QFrame):
         self.ui.add.clicked.connect(self.addRequested.emit)
         self.ui.files.selectionModel().currentChanged.connect(self._selection_changed)
         self.ui.files.customContextMenuRequested.connect(self._context_menu)
-        self.ui.remove.clicked.connect(self._remove)
-        self.ui.exclude.clicked.connect(self._exclude)
+        self.ui.files.installEventFilter(self)
         self.model.summaryChanged.connect(self._refresh)
         self.setExpanded(inputs)
         self._refresh()
+
+    def eventFilter(self, watched, event):
+        if watched is self.ui.files and event.type() == QEvent.KeyPress:
+            if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+                self._remove()
+                return True
+        return super().eventFilter(watched, event)
 
     def _on_header_clicked(self, event):
         if event.button() == Qt.LeftButton:
@@ -335,16 +340,10 @@ class FileSection(QFrame):
         has_files = count > 0
         self.ui.empty.setVisible(not has_files)
         self.ui.files.setVisible(has_files)
-        self.ui.remove.setVisible(has_files)
-        self.ui.exclude.setVisible(has_files and getattr(self, "_inputs", False))
         if has_files:
             hh = self.ui.files.header().height() or 26
             ideal_h = min(220, max(54, hh + count * 24 + 4))
             self.ui.files.setFixedHeight(ideal_h)
-        current = self.current_file()
-        self.ui.remove.setEnabled(current is not None)
-        self.ui.exclude.setEnabled(isinstance(current, InputFile))
-        self.ui.exclude.setChecked(isinstance(current, InputFile) and current.excludeFromStack)
 
     def _remove(self):
         file = self.current_file()
@@ -358,15 +357,17 @@ class FileSection(QFrame):
 
     def _context_menu(self, pos):
         index = self.ui.files.indexAt(pos)
-        if index.isValid():
-            self.ui.files.setCurrentIndex(index)
+        if not index.isValid():
+            return
+        self.ui.files.setCurrentIndex(index)
         file = self.current_file()
         if file is None:
             return
         menu = QMenu(self)
-        menu.addAction("Remove from Project", self._remove)
         if isinstance(file, InputFile):
             exclude = menu.addAction("Exclude from Stack", self._exclude)
             exclude.setCheckable(True)
             exclude.setChecked(file.excludeFromStack)
+            menu.addSeparator()
+        menu.addAction("Remove from Project", self._remove)
         menu.exec(self.ui.files.viewport().mapToGlobal(pos))

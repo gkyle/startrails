@@ -85,24 +85,26 @@ QLabel#empty {
     font-style: italic;
     padding: 12px;
 }
-QPushButton#remove, QPushButton#exclude {
+QMenu {
     background-color: #ffffff;
-    color: #475569;
     border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 11px;
-    font-weight: 500;
+    border-radius: 6px;
+    padding: 4px;
 }
-QPushButton#remove:hover, QPushButton#exclude:hover {
+QMenu::item {
+    padding: 6px 20px 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #0f172a;
+}
+QMenu::item:selected {
     background-color: #f1f5f9;
     color: #0f172a;
-    border-color: #94a3b8;
 }
-QPushButton#remove:disabled, QPushButton#exclude:disabled {
-    color: #94a3b8;
-    border-color: #e2e8f0;
-    background-color: #f8fafc;
+QMenu::separator {
+    height: 1px;
+    background-color: #e2e8f0;
+    margin: 4px 6px;
 }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
@@ -329,36 +331,6 @@ QPushButton#remove:disabled, QPushButton#exclude:disabled {
          <bool>true</bool>
         </property>
        </widget>
-      </item>
-      <item>
-       <layout class="QHBoxLayout" name="actions">
-        <property name="spacing">
-         <number>6</number>
-        </property>
-        <item>
-         <widget class="QPushButton" name="remove">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Remove from Project</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="exclude">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Exclude from Stack</string>
-          </property>
-          <property name="checkable">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-       </layout>
       </item>
      </layout>
     </widget>
