@@ -1,4 +1,5 @@
 """Composition of the sidebar's Designer forms."""
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 from startrails.lib.file import OutputFile
 from .ui_sidebar import Ui_Sidebar
@@ -12,6 +13,7 @@ class Sidebar(QWidget):
         self.app = app
         self.ui = Ui_Sidebar()
         self.ui.setupUi(self)
+        self.ui.contentLayout.setAlignment(Qt.AlignTop)
         self.inputs = FileSection("Input Files", inputs=True)
         self.outputs = FileSection("Output Files")
         self.ui.inputLayout.addWidget(self.inputs)

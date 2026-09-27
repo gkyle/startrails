@@ -22,6 +22,11 @@ class Ui_StepCard(object):
     def setupUi(self, stepCard):
         if not stepCard.objectName():
             stepCard.setObjectName(u"stepCard")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(stepCard.sizePolicy().hasHeightForWidth())
+        stepCard.setSizePolicy(sizePolicy)
         stepCard.setStyleSheet(u"QFrame#stepCard {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -76,6 +81,11 @@ class Ui_StepCard(object):
         self.cardLayout.setContentsMargins(0, 0, 0, 0)
         self.headerWidget = QWidget(stepCard)
         self.headerWidget.setObjectName(u"headerWidget")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.headerWidget.sizePolicy().hasHeightForWidth())
+        self.headerWidget.setSizePolicy(sizePolicy1)
         self.headerWidget.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.headerLayout = QHBoxLayout(self.headerWidget)
         self.headerLayout.setSpacing(8)
@@ -95,11 +105,11 @@ class Ui_StepCard(object):
         self.textColumn.setContentsMargins(0, 0, 0, 0)
         self.toggle = QPushButton(self.headerWidget)
         self.toggle.setObjectName(u"toggle")
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        sizePolicy.setHorizontalStretch(1)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.toggle.sizePolicy().hasHeightForWidth())
-        self.toggle.setSizePolicy(sizePolicy)
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        sizePolicy2.setHorizontalStretch(1)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.toggle.sizePolicy().hasHeightForWidth())
+        self.toggle.setSizePolicy(sizePolicy2)
         self.toggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.toggle.setCheckable(True)
 

@@ -40,6 +40,13 @@ class StepCard(QFrame):
             self.ui.toggle.setChecked(expanded)
         self.ui.chevron.setText("▼" if expanded else "▶")
         self.ui.body.setVisible(expanded)
+        if not expanded:
+            self.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
+        else:
+            self.setMaximumHeight(16777215)
+            self.setMinimumHeight(0)
+            self.adjustSize()
+        self.updateGeometry()
 
     def setSubtitle(self, text):
         self.ui.subtitle.setText(text)

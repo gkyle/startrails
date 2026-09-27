@@ -24,6 +24,11 @@ class Ui_FileSection(object):
     def setupUi(self, fileSection):
         if not fileSection.objectName():
             fileSection.setObjectName(u"fileSection")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(fileSection.sizePolicy().hasHeightForWidth())
+        fileSection.setSizePolicy(sizePolicy)
         fileSection.setStyleSheet(u"QFrame#fileSection {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -127,6 +132,12 @@ class Ui_FileSection(object):
         self.layout.setContentsMargins(4, 4, 4, 4)
         self.headerWidget = QWidget(fileSection)
         self.headerWidget.setObjectName(u"headerWidget")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.headerWidget.sizePolicy().hasHeightForWidth())
+        self.headerWidget.setSizePolicy(sizePolicy1)
+        self.headerWidget.setMaximumSize(QSize(16777215, 32))
         self.headerWidget.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.header = QHBoxLayout(self.headerWidget)
         self.header.setSpacing(6)
@@ -154,6 +165,12 @@ class Ui_FileSection(object):
 
         self.count = QLabel(self.headerWidget)
         self.count.setObjectName(u"count")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.count.sizePolicy().hasHeightForWidth())
+        self.count.setSizePolicy(sizePolicy2)
+        self.count.setMaximumSize(QSize(16777215, 18))
         self.count.setAlignment(Qt.AlignCenter)
 
         self.header.addWidget(self.count)
@@ -173,14 +190,18 @@ class Ui_FileSection(object):
 
         self.body = QWidget(fileSection)
         self.body.setObjectName(u"body")
+        sizePolicy.setHeightForWidth(self.body.sizePolicy().hasHeightForWidth())
+        self.body.setSizePolicy(sizePolicy)
         self.bodyLayout = QVBoxLayout(self.body)
         self.bodyLayout.setSpacing(6)
         self.bodyLayout.setObjectName(u"bodyLayout")
         self.bodyLayout.setContentsMargins(4, 2, 4, 4)
         self.files = QTreeView(self.body)
         self.files.setObjectName(u"files")
-        self.files.setMinimumSize(QSize(0, 160))
-        self.files.setMaximumSize(QSize(16777215, 240))
+        sizePolicy1.setHeightForWidth(self.files.sizePolicy().hasHeightForWidth())
+        self.files.setSizePolicy(sizePolicy1)
+        self.files.setMinimumSize(QSize(0, 0))
+        self.files.setMaximumSize(QSize(16777215, 220))
         self.files.setSelectionMode(QAbstractItemView.SingleSelection)
         self.files.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.files.setEditTriggers(QAbstractItemView.NoEditTriggers)

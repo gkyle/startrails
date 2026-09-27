@@ -245,6 +245,7 @@ class FileSection(QFrame):
 
     def __init__(self, title, inputs=False, parent=None):
         super().__init__(parent)
+        self._inputs = inputs
         self.ui = Ui_FileSection()
         self.ui.setupUi(self)
         self.ui.toggle.setText(title)
@@ -291,6 +292,14 @@ class FileSection(QFrame):
             self.ui.toggle.setChecked(expanded)
         self.ui.chevron.setText("▼" if expanded else "▶")
         self.ui.body.setVisible(expanded)
+        if not expanded:
+            self.setFixedHeight(36)
+        else:
+            self.setMaximumHeight(16777215)
+            self.setMinimumHeight(0)
+            self._refresh()
+            self.adjustSize()
+        self.updateGeometry()
 
     def current_file(self):
         return self.ui.files.currentIndex().data(Qt.UserRole)
@@ -323,8 +332,15 @@ class FileSection(QFrame):
     def _refresh(self):
         count = self.model.rowCount()
         self.ui.count.setText(str(count))
-        self.ui.empty.setVisible(count == 0)
-        self.ui.files.setVisible(count != 0)
+        has_files = count > 0
+        self.ui.empty.setVisible(not has_files)
+        self.ui.files.setVisible(has_files)
+        self.ui.remove.setVisible(has_files)
+        self.ui.exclude.setVisible(has_files and getattr(self, "_inputs", False))
+        if has_files:
+            hh = self.ui.files.header().height() or 26
+            ideal_h = min(220, max(54, hh + count * 24 + 4))
+            self.ui.files.setFixedHeight(ideal_h)
         current = self.current_file()
         self.ui.remove.setEnabled(current is not None)
         self.ui.exclude.setEnabled(isinstance(current, InputFile))
