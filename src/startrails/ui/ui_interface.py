@@ -26,6 +26,9 @@ class Ui_MainWindow(object):
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(1600, 1200)
         MainWindow.setMinimumSize(QSize(300, 0))
+        MainWindow.setStyleSheet(u"QMainWindow {\n"
+"    background-color: #f8fafc;\n"
+"}")
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
@@ -33,6 +36,9 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.centralwidget.sizePolicy().hasHeightForWidth())
         self.centralwidget.setSizePolicy(sizePolicy)
+        self.centralwidget.setStyleSheet(u"QWidget#centralwidget {\n"
+"    background-color: #f8fafc;\n"
+"}")
         self.horizontalLayout_5 = QHBoxLayout(self.centralwidget)
         self.horizontalLayout_5.setSpacing(0)
         self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
@@ -52,13 +58,17 @@ class Ui_MainWindow(object):
         self.toolbar.setObjectName(u"toolbar")
         sizePolicy.setHeightForWidth(self.toolbar.sizePolicy().hasHeightForWidth())
         self.toolbar.setSizePolicy(sizePolicy)
-        self.toolbar.setMaximumSize(QSize(16777215, 40))
+        self.toolbar.setMaximumSize(QSize(16777215, 50))
+        self.toolbar.setStyleSheet(u"QFrame#toolbar {\n"
+"    background-color: #ffffff;\n"
+"    border-bottom: 1px solid #e2e8f0;\n"
+"}")
         self.toolbar.setFrameShape(QFrame.NoFrame)
         self.toolbar.setFrameShadow(QFrame.Raised)
         self.gridLayout = QGridLayout(self.toolbar)
         self.gridLayout.setObjectName(u"gridLayout")
         self.gridLayout.setHorizontalSpacing(0)
-        self.gridLayout.setContentsMargins(0, 0, 6, 0)
+        self.gridLayout.setContentsMargins(0, 4, 6, 4)
         self.frame = QFrame(self.toolbar)
         self.frame.setObjectName(u"frame")
         sizePolicy.setHeightForWidth(self.frame.sizePolicy().hasHeightForWidth())
@@ -71,9 +81,13 @@ class Ui_MainWindow(object):
         self.label_4 = QLabel(self.frame)
         self.label_4.setObjectName(u"label_4")
         font = QFont()
-        font.setPointSize(18)
         font.setBold(True)
         self.label_4.setFont(font)
+        self.label_4.setStyleSheet(u"QLabel#label_4 {\n"
+"    font-size: 15px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
 
         self.horizontalLayout_9.addWidget(self.label_4)
 
@@ -91,13 +105,37 @@ class Ui_MainWindow(object):
         self.horizontalLayout_11.setContentsMargins(-1, -1, 0, -1)
         self.label_progressBar = QLabel(self.frame_2)
         self.label_progressBar.setObjectName(u"label_progressBar")
+        self.label_progressBar.setStyleSheet(u"QLabel#label_progressBar {\n"
+"    font-size: 11px;\n"
+"    color: #64748b;\n"
+"}")
 
         self.horizontalLayout_11.addWidget(self.label_progressBar)
 
         self.progressBar = QProgressBar(self.frame_2)
         self.progressBar.setObjectName(u"progressBar")
-        self.progressBar.setMinimumSize(QSize(300, 0))
-        self.progressBar.setMaximumSize(QSize(300, 16777215))
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(1)
+        sizePolicy1.setHeightForWidth(self.progressBar.sizePolicy().hasHeightForWidth())
+        self.progressBar.setSizePolicy(sizePolicy1)
+        self.progressBar.setMinimumSize(QSize(300, 28))
+        self.progressBar.setMaximumSize(QSize(300, 28))
+        font1 = QFont()
+        font1.setPointSize(10)
+        self.progressBar.setFont(font1)
+        self.progressBar.setStyleSheet(u"QProgressBar#progressBar {\n"
+"    background-color: #e2e8f0;\n"
+"    border-radius: 4px;\n"
+"    border: none;\n"
+"    max-height: 28px;\n"
+"    min-height: 28px;\n"
+"    text-align: center;\n"
+"}\n"
+"QProgressBar#progressBar::chunk {\n"
+"    background-color: #0284c7;\n"
+"    border-radius: 4px;\n"
+"}")
         self.progressBar.setValue(0)
         self.progressBar.setAlignment(Qt.AlignCenter)
 
@@ -107,6 +145,18 @@ class Ui_MainWindow(object):
         self.pushButton_cancelOp.setObjectName(u"pushButton_cancelOp")
         self.pushButton_cancelOp.setMinimumSize(QSize(30, 0))
         self.pushButton_cancelOp.setMaximumSize(QSize(30, 16777215))
+        self.pushButton_cancelOp.setStyleSheet(u"QPushButton#pushButton_cancelOp {\n"
+"    background-color: #fee2e2;\n"
+"    color: #dc2626;\n"
+"    border: 1px solid #fecaca;\n"
+"    border-radius: 4px;\n"
+"    font-weight: bold;\n"
+"    font-size: 11px;\n"
+"    padding: 2px 6px;\n"
+"}\n"
+"QPushButton#pushButton_cancelOp:hover {\n"
+"    background-color: #fecaca;\n"
+"}")
 
         self.horizontalLayout_11.addWidget(self.pushButton_cancelOp)
 
@@ -123,9 +173,12 @@ class Ui_MainWindow(object):
         self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
         self.label_imageName = QLabel(self.frame_3)
         self.label_imageName.setObjectName(u"label_imageName")
-        font1 = QFont()
-        font1.setPointSize(13)
-        self.label_imageName.setFont(font1)
+        self.label_imageName.setFont(font)
+        self.label_imageName.setStyleSheet(u"QLabel#label_imageName {\n"
+"    font-size: 12px;\n"
+"    font-weight: 600;\n"
+"    color: #334155;\n"
+"}")
 
         self.horizontalLayout_10.addWidget(self.label_imageName)
 
@@ -141,10 +194,9 @@ class Ui_MainWindow(object):
         self.horizontalLayout_7 = QHBoxLayout(self.frame_4)
         self.horizontalLayout_7.setSpacing(6)
         self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
-        self.horizontalLayout_7.setContentsMargins(9, 5, 0, 5)
+        self.horizontalLayout_7.setContentsMargins(9, 0, 0, 0)
         self.frame_gpu = QFrame(self.frame_4)
         self.frame_gpu.setObjectName(u"frame_gpu")
-        self.frame_gpu.setStyleSheet(u"")
         self.frame_gpu.setFrameShape(QFrame.NoFrame)
         self.frame_gpu.setFrameShadow(QFrame.Raised)
         self.verticalLayout_15 = QVBoxLayout(self.frame_gpu)
@@ -157,8 +209,14 @@ class Ui_MainWindow(object):
         self.frame_gpu_label.setFrameShadow(QFrame.Raised)
         self.verticalLayout_7 = QVBoxLayout(self.frame_gpu_label)
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
+        self.verticalLayout_7.setContentsMargins(-1, 9, -1, 9)
         self.label_gpu = QLabel(self.frame_gpu_label)
         self.label_gpu.setObjectName(u"label_gpu")
+        self.label_gpu.setStyleSheet(u"QLabel#label_gpu {\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    color: #64748b;\n"
+"}")
 
         self.verticalLayout_7.addWidget(self.label_gpu)
 
@@ -174,18 +232,22 @@ class Ui_MainWindow(object):
         self.horizontalLayout_19.setContentsMargins(0, 0, 0, 0)
         self.progressBar_gpu_util = QProgressBar(self.frame_gpu_util)
         self.progressBar_gpu_util.setObjectName(u"progressBar_gpu_util")
+        self.progressBar_gpu_util.setMinimumSize(QSize(0, 16))
         font2 = QFont()
-        font2.setPointSize(8)
         self.progressBar_gpu_util.setFont(font2)
-        self.progressBar_gpu_util.setStyleSheet(u"QProgressBar {\n"
-"            border: 2px solid grey;\n"
-"            border-radius: 5px;\n"
-"        }\n"
-"\n"
-"        QProgressBar::chunk {\n"
-"            background-color: green;\n"
-"            width: 20px;\n"
-"        }")
+        self.progressBar_gpu_util.setStyleSheet(u"QProgressBar#progressBar_gpu_util {\n"
+"    background-color: #f1f5f9;\n"
+"    border: 1px solid #e2e8f0;\n"
+"    border-radius: 3px;\n"
+"    font-size: 9px;\n"
+"    color: #334155;\n"
+"    max-height: 14px;\n"
+"    min-height: 14px;\n"
+"}\n"
+"QProgressBar#progressBar_gpu_util::chunk {\n"
+"    background-color: green;\n"
+"    border-radius: 2px;\n"
+"}")
         self.progressBar_gpu_util.setValue(0)
         self.progressBar_gpu_util.setAlignment(Qt.AlignCenter)
         self.progressBar_gpu_util.setTextVisible(True)
@@ -207,15 +269,19 @@ class Ui_MainWindow(object):
         self.progressBar_gpu_mem = QProgressBar(self.frame_gpu_mem)
         self.progressBar_gpu_mem.setObjectName(u"progressBar_gpu_mem")
         self.progressBar_gpu_mem.setFont(font2)
-        self.progressBar_gpu_mem.setStyleSheet(u"QProgressBar {\n"
-"            border: 2px solid grey;\n"
-"            border-radius: 5px;\n"
-"        }\n"
-"\n"
-"        QProgressBar::chunk {\n"
-"            background-color: green;\n"
-"            width: 20px;\n"
-"        }")
+        self.progressBar_gpu_mem.setStyleSheet(u"QProgressBar#progressBar_gpu_mem {\n"
+"    background-color: #f1f5f9;\n"
+"    border: 1px solid #e2e8f0;\n"
+"    border-radius: 3px;\n"
+"    font-size: 9px;\n"
+"    color: #334155;\n"
+"    max-height: 14px;\n"
+"    min-height: 14px;\n"
+"}\n"
+"QProgressBar#progressBar_gpu_mem::chunk {\n"
+"    background-color: green;\n"
+"    border-radius: 2px;\n"
+"}")
         self.progressBar_gpu_mem.setValue(0)
         self.progressBar_gpu_mem.setAlignment(Qt.AlignCenter)
         self.progressBar_gpu_mem.setTextVisible(True)
@@ -237,27 +303,43 @@ class Ui_MainWindow(object):
 
         self.bodySplitter = QSplitter(self.vframe)
         self.bodySplitter.setObjectName(u"bodySplitter")
+        self.bodySplitter.setStyleSheet(u"QSplitter#bodySplitter::handle:horizontal {\n"
+"    background-color: #e2e8f0;\n"
+"    width: 1px;\n"
+"}\n"
+"QSplitter#bodySplitter::handle:horizontal:hover {\n"
+"    background-color: #cbd5e1;\n"
+"}")
         self.bodySplitter.setOrientation(Qt.Horizontal)
         self.bodySplitter.setChildrenCollapsible(False)
         self.sidebarHost = QWidget(self.bodySplitter)
         self.sidebarHost.setObjectName(u"sidebarHost")
+        self.sidebarHost.setStyleSheet(u"QWidget#sidebarHost {\n"
+"    background-color: #f8fafc;\n"
+"}")
         self.sidebarLayout = QVBoxLayout(self.sidebarHost)
         self.sidebarLayout.setObjectName(u"sidebarLayout")
         self.sidebarLayout.setContentsMargins(0, 0, 0, 0)
         self.bodySplitter.addWidget(self.sidebarHost)
         self.canvasHost = QWidget(self.bodySplitter)
         self.canvasHost.setObjectName(u"canvasHost")
+        self.canvasHost.setStyleSheet(u"QWidget#canvasHost {\n"
+"    background-color: #0f172a;\n"
+"}")
         self.canvasLayout = QVBoxLayout(self.canvasHost)
         self.canvasLayout.setObjectName(u"canvasLayout")
         self.canvasLayout.setContentsMargins(0, 0, 0, 0)
         self.canvas_main = QLabel(self.canvasHost)
         self.canvas_main.setObjectName(u"canvas_main")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
-        sizePolicy1.setHorizontalStretch(1)
-        sizePolicy1.setVerticalStretch(1)
-        sizePolicy1.setHeightForWidth(self.canvas_main.sizePolicy().hasHeightForWidth())
-        self.canvas_main.setSizePolicy(sizePolicy1)
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        sizePolicy2.setHorizontalStretch(1)
+        sizePolicy2.setVerticalStretch(1)
+        sizePolicy2.setHeightForWidth(self.canvas_main.sizePolicy().hasHeightForWidth())
+        self.canvas_main.setSizePolicy(sizePolicy2)
         self.canvas_main.setMinimumSize(QSize(200, 160))
+        self.canvas_main.setStyleSheet(u"QLabel#canvas_main {\n"
+"    background-color: #0f172a;\n"
+"}")
 
         self.canvasLayout.addWidget(self.canvas_main)
 
