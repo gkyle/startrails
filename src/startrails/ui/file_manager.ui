@@ -332,6 +332,127 @@ QMenu::separator {
         </property>
        </widget>
       </item>
+       <item>
+        <widget class="QWidget" name="legend" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>24</height>
+          </size>
+         </property>
+         <layout class="QHBoxLayout" name="legendLayout">
+          <property name="spacing">
+           <number>6</number>
+          </property>
+          <property name="leftMargin">
+           <number>4</number>
+          </property>
+          <property name="topMargin">
+           <number>2</number>
+          </property>
+          <property name="rightMargin">
+           <number>4</number>
+          </property>
+          <property name="bottomMargin">
+           <number>2</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="legendAuto">
+            <property name="styleSheet">
+             <string notr="true">QLabel#legendAuto {
+    background-color: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0px 6px;
+    min-height: 16px;
+    max-height: 16px;
+}</string>
+            </property>
+            <property name="text">
+             <string>Auto</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="legendManual">
+            <property name="styleSheet">
+             <string notr="true">QLabel#legendManual {
+    background-color: #e0f2fe;
+    color: #0284c7;
+    border: 1px solid #bae6fd;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0px 6px;
+    min-height: 16px;
+    max-height: 16px;
+}</string>
+            </property>
+            <property name="text">
+             <string>Manual</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="legendDeleted">
+            <property name="styleSheet">
+             <string notr="true">QLabel#legendDeleted {
+    background-color: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0px 6px;
+    min-height: 16px;
+    max-height: 16px;
+}</string>
+            </property>
+            <property name="text">
+             <string>Deleted</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="legendSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
      </layout>
     </widget>
    </item>

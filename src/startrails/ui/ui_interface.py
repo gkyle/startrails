@@ -15,12 +15,12 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox,
-    QDoubleSpinBox, QFormLayout, QFrame, QGridLayout,
-    QHBoxLayout, QHeaderView, QLabel, QLayout,
-    QMainWindow, QProgressBar, QPushButton, QScrollArea,
-    QSizePolicy, QSpacerItem, QSpinBox, QSplitter,
-    QToolButton, QTreeView, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QButtonGroup, QCheckBox,
+    QDoubleSpinBox, QFrame, QGridLayout, QHBoxLayout,
+    QHeaderView, QLabel, QLayout, QMainWindow,
+    QProgressBar, QPushButton, QScrollArea, QSizePolicy,
+    QSpacerItem, QSpinBox, QSplitter, QToolButton,
+    QTreeView, QVBoxLayout, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -364,7 +364,7 @@ class Ui_MainWindow(object):
         self.scroll.setWidgetResizable(True)
         self.content = QWidget()
         self.content.setObjectName(u"content")
-        self.content.setGeometry(QRect(0, 0, 398, 1146))
+        self.content.setGeometry(QRect(0, -39, 381, 1215))
         self.content.setMinimumSize(QSize(0, 0))
         self.content.setStyleSheet(u"QWidget#content {\n"
 "    background-color: #f8fafc;\n"
@@ -608,6 +608,91 @@ class Ui_MainWindow(object):
         self.inputFilesEmpty.setWordWrap(True)
 
         self.inputFilesBodyLayout.addWidget(self.inputFilesEmpty)
+
+        self.line = QFrame(self.inputFilesBody)
+        self.line.setObjectName(u"line")
+        self.line.setAutoFillBackground(False)
+        self.line.setStyleSheet(u"QFrame[frameShape=\"4\"] {\n"
+"    border-top: 1px solid #CCC;\n"
+"}")
+        self.line.setFrameShadow(QFrame.Plain)
+        self.line.setLineWidth(1)
+        self.line.setMidLineWidth(0)
+        self.line.setFrameShape(QFrame.Shape.HLine)
+
+        self.inputFilesBodyLayout.addWidget(self.line)
+
+        self.inputFilesLegend = QWidget(self.inputFilesBody)
+        self.inputFilesLegend.setObjectName(u"inputFilesLegend")
+        sizePolicy4.setHeightForWidth(self.inputFilesLegend.sizePolicy().hasHeightForWidth())
+        self.inputFilesLegend.setSizePolicy(sizePolicy4)
+        self.inputFilesLegend.setMinimumSize(QSize(0, 20))
+        self.inputFilesLegend.setMaximumSize(QSize(16777215, 24))
+        self.inputFilesLegendLayout = QHBoxLayout(self.inputFilesLegend)
+        self.inputFilesLegendLayout.setSpacing(6)
+        self.inputFilesLegendLayout.setObjectName(u"inputFilesLegendLayout")
+        self.inputFilesLegendLayout.setContentsMargins(4, 0, 4, 2)
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.inputFilesLegendLayout.addItem(self.horizontalSpacer)
+
+        self.inputFilesLegendAuto = QLabel(self.inputFilesLegend)
+        self.inputFilesLegendAuto.setObjectName(u"inputFilesLegendAuto")
+        self.inputFilesLegendAuto.setStyleSheet(u"QLabel#inputFilesLegendAuto {\n"
+"    background-color: #dcfce7;\n"
+"    color: #15803d;\n"
+"    border: 1px solid #bbf7d0;\n"
+"    border-radius: 4px;\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    padding: 0px 6px;\n"
+"    min-height: 16px;\n"
+"    max-height: 16px;\n"
+"}")
+        self.inputFilesLegendAuto.setAlignment(Qt.AlignCenter)
+
+        self.inputFilesLegendLayout.addWidget(self.inputFilesLegendAuto)
+
+        self.inputFilesLegendManual = QLabel(self.inputFilesLegend)
+        self.inputFilesLegendManual.setObjectName(u"inputFilesLegendManual")
+        self.inputFilesLegendManual.setStyleSheet(u"QLabel#inputFilesLegendManual {\n"
+"    background-color: #e0f2fe;\n"
+"    color: #0284c7;\n"
+"    border: 1px solid #bae6fd;\n"
+"    border-radius: 4px;\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    padding: 0px 6px;\n"
+"    min-height: 16px;\n"
+"    max-height: 16px;\n"
+"}")
+        self.inputFilesLegendManual.setAlignment(Qt.AlignCenter)
+
+        self.inputFilesLegendLayout.addWidget(self.inputFilesLegendManual)
+
+        self.inputFilesLegendDeleted = QLabel(self.inputFilesLegend)
+        self.inputFilesLegendDeleted.setObjectName(u"inputFilesLegendDeleted")
+        self.inputFilesLegendDeleted.setStyleSheet(u"QLabel#inputFilesLegendDeleted {\n"
+"    background-color: #fef3c7;\n"
+"    color: #b45309;\n"
+"    border: 1px solid #fde68a;\n"
+"    border-radius: 4px;\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    padding: 0px 6px;\n"
+"    min-height: 16px;\n"
+"    max-height: 16px;\n"
+"}")
+        self.inputFilesLegendDeleted.setAlignment(Qt.AlignCenter)
+
+        self.inputFilesLegendLayout.addWidget(self.inputFilesLegendDeleted)
+
+        self.inputFilesLegendSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.inputFilesLegendLayout.addItem(self.inputFilesLegendSpacer)
+
+
+        self.inputFilesBodyLayout.addWidget(self.inputFilesLegend)
 
 
         self.inputFilesLayout.addWidget(self.inputFilesBody)
@@ -942,13 +1027,11 @@ class Ui_MainWindow(object):
         self.stepDetectBodyLayout = QVBoxLayout(self.stepDetectBody)
         self.stepDetectBodyLayout.setSpacing(6)
         self.stepDetectBodyLayout.setObjectName(u"stepDetectBodyLayout")
-        self.stepDetectBodyLayout.setContentsMargins(10, 8, 10, 10)
-        self.stepDetectFields = QFormLayout()
+        self.stepDetectBodyLayout.setContentsMargins(16, 8, 16, 10)
+        self.stepDetectFields = QGridLayout()
+        self.stepDetectFields.setSpacing(8)
         self.stepDetectFields.setObjectName(u"stepDetectFields")
-        self.stepDetectFields.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-        self.stepDetectFields.setRowWrapPolicy(QFormLayout.WrapLongRows)
-        self.stepDetectFields.setHorizontalSpacing(8)
-        self.stepDetectFields.setVerticalSpacing(6)
+        self.stepDetectFields.setContentsMargins(0, 0, 0, 0)
         self.detectConfidenceLabel = QLabel(self.stepDetectBody)
         self.detectConfidenceLabel.setObjectName(u"detectConfidenceLabel")
         self.detectConfidenceLabel.setStyleSheet(u"QLabel#detectConfidenceLabel {\n"
@@ -956,7 +1039,7 @@ class Ui_MainWindow(object):
 "    font-size: 12px;\n"
 "}")
 
-        self.stepDetectFields.setWidget(0, QFormLayout.LabelRole, self.detectConfidenceLabel)
+        self.stepDetectFields.addWidget(self.detectConfidenceLabel, 0, 0, 1, 1)
 
         self.detectConfidence = QDoubleSpinBox(self.stepDetectBody)
         self.detectConfidence.setObjectName(u"detectConfidence")
@@ -967,6 +1050,8 @@ class Ui_MainWindow(object):
 "    padding: 4px 6px;\n"
 "    font-size: 12px;\n"
 "    color: #0f172a;\n"
+"    min-width: 75px;\n"
+"    max-width: 75px;\n"
 "}\n"
 "QDoubleSpinBox#detectConfidence:focus {\n"
 "    border-color: #0284c7;\n"
@@ -975,7 +1060,7 @@ class Ui_MainWindow(object):
         self.detectConfidence.setSingleStep(0.050000000000000)
         self.detectConfidence.setValue(0.300000000000000)
 
-        self.stepDetectFields.setWidget(0, QFormLayout.FieldRole, self.detectConfidence)
+        self.stepDetectFields.addWidget(self.detectConfidence, 0, 1, 1, 1, Qt.AlignRight)
 
         self.detectMergeLabel = QLabel(self.stepDetectBody)
         self.detectMergeLabel.setObjectName(u"detectMergeLabel")
@@ -984,37 +1069,71 @@ class Ui_MainWindow(object):
 "    font-size: 12px;\n"
 "}")
 
-        self.stepDetectFields.setWidget(1, QFormLayout.LabelRole, self.detectMergeLabel)
+        self.stepDetectFields.addWidget(self.detectMergeLabel, 1, 0, 1, 1)
 
-        self.detectMergeRow = QHBoxLayout()
-        self.detectMergeRow.setSpacing(6)
-        self.detectMergeRow.setObjectName(u"detectMergeRow")
-        self.detectMergeMethod = QComboBox(self.stepDetectBody)
-        self.detectMergeMethod.addItem("")
-        self.detectMergeMethod.addItem("")
-        self.detectMergeMethod.setObjectName(u"detectMergeMethod")
-        self.detectMergeMethod.setStyleSheet(u"QComboBox#detectMergeMethod {\n"
-"    background-color: #ffffff;\n"
-"    border: 1px solid #cbd5e1;\n"
-"    border-radius: 4px;\n"
-"    padding: 4px 6px;\n"
-"    font-size: 12px;\n"
-"    color: #0f172a;\n"
+        self.detectMergeContainer = QFrame(self.stepDetectBody)
+        self.detectMergeContainer.setObjectName(u"detectMergeContainer")
+        self.detectMergeContainer.setStyleSheet(u"QFrame#detectMergeContainer {\n"
+"    background-color: #f1f5f9;\n"
+"    border-radius: 5px;\n"
+"    padding: 2px;\n"
 "}\n"
-"QComboBox#detectMergeMethod:focus {\n"
-"    border-color: #0284c7;\n"
+"QPushButton#detectMergeNMS, QPushButton#detectMergeNMM {\n"
+"    background-color: transparent;\n"
+"    color: #334155;\n"
+"    border: none;\n"
+"    border-radius: 4px;\n"
+"    font-size: 12px;\n"
+"    font-weight: 500;\n"
+"    padding: 4px 12px;\n"
+"    min-height: 18px;\n"
+"}\n"
+"QPushButton#detectMergeNMS:checked, QPushButton#detectMergeNMM:checked {\n"
+"    background-color: #0284c7;\n"
+"    color: #ffffff;\n"
+"    font-weight: 600;\n"
+"}\n"
+"QPushButton#detectMergeNMS:hover:!checked, QPushButton#detectMergeNMM:hover:!checked {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #0f172a;\n"
 "}")
+        self.detectMergeLayout = QHBoxLayout(self.detectMergeContainer)
+        self.detectMergeLayout.setSpacing(2)
+        self.detectMergeLayout.setObjectName(u"detectMergeLayout")
+        self.detectMergeLayout.setContentsMargins(0, 0, 0, 0)
+        self.detectMergeNMS = QPushButton(self.detectMergeContainer)
+        self.detectMergeGroup = QButtonGroup(MainWindow)
+        self.detectMergeGroup.setObjectName(u"detectMergeGroup")
+        self.detectMergeGroup.addButton(self.detectMergeNMS)
+        self.detectMergeNMS.setObjectName(u"detectMergeNMS")
+        self.detectMergeNMS.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.detectMergeNMS.setCheckable(True)
+        self.detectMergeNMS.setChecked(True)
 
-        self.detectMergeRow.addWidget(self.detectMergeMethod)
+        self.detectMergeLayout.addWidget(self.detectMergeNMS)
+
+        self.detectMergeNMM = QPushButton(self.detectMergeContainer)
+        self.detectMergeGroup.addButton(self.detectMergeNMM)
+        self.detectMergeNMM.setObjectName(u"detectMergeNMM")
+        self.detectMergeNMM.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.detectMergeNMM.setCheckable(True)
+
+        self.detectMergeLayout.addWidget(self.detectMergeNMM)
+
+
+        self.stepDetectFields.addWidget(self.detectMergeContainer, 1, 1, 1, 1, Qt.AlignRight)
 
         self.detectThresholdLabel = QLabel(self.stepDetectBody)
         self.detectThresholdLabel.setObjectName(u"detectThresholdLabel")
         self.detectThresholdLabel.setStyleSheet(u"QLabel#detectThresholdLabel {\n"
 "    color: #334155;\n"
 "    font-size: 12px;\n"
+"    margin-left: 12px;\n"
+"    border-left: 2px solid #cbd5e1;\n"
+"    padding-left: 8px;\n"
 "}")
 
-        self.detectMergeRow.addWidget(self.detectThresholdLabel)
+        self.stepDetectFields.addWidget(self.detectThresholdLabel, 2, 0, 1, 1)
 
         self.detectMergeThreshold = QDoubleSpinBox(self.stepDetectBody)
         self.detectMergeThreshold.setObjectName(u"detectMergeThreshold")
@@ -1025,6 +1144,8 @@ class Ui_MainWindow(object):
 "    padding: 4px 6px;\n"
 "    font-size: 12px;\n"
 "    color: #0f172a;\n"
+"    min-width: 75px;\n"
+"    max-width: 75px;\n"
 "}\n"
 "QDoubleSpinBox#detectMergeThreshold:focus {\n"
 "    border-color: #0284c7;\n"
@@ -1033,23 +1154,46 @@ class Ui_MainWindow(object):
         self.detectMergeThreshold.setSingleStep(0.050000000000000)
         self.detectMergeThreshold.setValue(0.200000000000000)
 
-        self.detectMergeRow.addWidget(self.detectMergeThreshold)
+        self.stepDetectFields.addWidget(self.detectMergeThreshold, 2, 1, 1, 1, Qt.AlignRight)
 
+        self.detectUseGPULabel = QLabel(self.stepDetectBody)
+        self.detectUseGPULabel.setObjectName(u"detectUseGPULabel")
+        self.detectUseGPULabel.setStyleSheet(u"QLabel#detectUseGPULabel {\n"
+"    color: #334155;\n"
+"    font-size: 12px;\n"
+"}")
 
-        self.stepDetectFields.setLayout(1, QFormLayout.FieldRole, self.detectMergeRow)
-
-
-        self.stepDetectBodyLayout.addLayout(self.stepDetectFields)
+        self.stepDetectFields.addWidget(self.detectUseGPULabel, 3, 0, 1, 1)
 
         self.detectUseGPU = QCheckBox(self.stepDetectBody)
         self.detectUseGPU.setObjectName(u"detectUseGPU")
+        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy7.setHorizontalStretch(0)
+        sizePolicy7.setVerticalStretch(0)
+        sizePolicy7.setHeightForWidth(self.detectUseGPU.sizePolicy().hasHeightForWidth())
+        self.detectUseGPU.setSizePolicy(sizePolicy7)
+        self.detectUseGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.detectUseGPU.setStyleSheet(u"QCheckBox#detectUseGPU {\n"
-"    font-size: 12px;\n"
-"    color: #1e293b;\n"
-"    spacing: 6px;\n"
+"    spacing: 0px;\n"
+"}\n"
+"QCheckBox#detectUseGPU::indicator {\n"
+"    width: 36px;\n"
+"    height: 20px;\n"
+"}\n"
+"QCheckBox#detectUseGPU::indicator:unchecked {\n"
+"    image: url(src/startrails/ui/icons_darktheme/switch_off.png);\n"
+"}\n"
+"QCheckBox#detectUseGPU::indicator:checked {\n"
+"    image: url(src/startrails/ui/icons_darktheme/switch_on.png);\n"
 "}")
+        self.detectUseGPU.setChecked(True)
 
-        self.stepDetectBodyLayout.addWidget(self.detectUseGPU)
+        self.stepDetectFields.addWidget(self.detectUseGPU, 3, 1, 1, 1, Qt.AlignRight)
+
+        self.stepDetectFields.setColumnStretch(0, 1)
+        self.stepDetectFields.setColumnStretch(1, 2)
+
+        self.stepDetectBodyLayout.addLayout(self.stepDetectFields)
 
         self.detectError = QLabel(self.stepDetectBody)
         self.detectError.setObjectName(u"detectError")
@@ -1200,7 +1344,6 @@ class Ui_MainWindow(object):
 
         self.stepStackBody = QWidget(self.stepStack)
         self.stepStackBody.setObjectName(u"stepStackBody")
-        self.stepStackBody.setVisible(False)
         self.stepStackBody.setStyleSheet(u"QWidget#stepStackBody {\n"
 "    border-top: 1px solid #f1f5f9;\n"
 "    background: transparent;\n"
@@ -1208,13 +1351,11 @@ class Ui_MainWindow(object):
         self.stepStackBodyLayout = QVBoxLayout(self.stepStackBody)
         self.stepStackBodyLayout.setSpacing(6)
         self.stepStackBodyLayout.setObjectName(u"stepStackBodyLayout")
-        self.stepStackBodyLayout.setContentsMargins(10, 8, 10, 10)
-        self.stepStackFields = QFormLayout()
+        self.stepStackBodyLayout.setContentsMargins(16, 8, 16, 10)
+        self.stepStackFields = QGridLayout()
+        self.stepStackFields.setSpacing(8)
         self.stepStackFields.setObjectName(u"stepStackFields")
-        self.stepStackFields.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-        self.stepStackFields.setRowWrapPolicy(QFormLayout.WrapLongRows)
-        self.stepStackFields.setHorizontalSpacing(8)
-        self.stepStackFields.setVerticalSpacing(6)
+        self.stepStackFields.setContentsMargins(0, 0, 0, 0)
         self.stackMethodLabel = QLabel(self.stepStackBody)
         self.stackMethodLabel.setObjectName(u"stackMethodLabel")
         self.stackMethodLabel.setStyleSheet(u"QLabel#stackMethodLabel {\n"
@@ -1222,17 +1363,22 @@ class Ui_MainWindow(object):
 "    font-size: 12px;\n"
 "}")
 
-        self.stepStackFields.setWidget(0, QFormLayout.LabelRole, self.stackMethodLabel)
+        self.stepStackFields.addWidget(self.stackMethodLabel, 0, 0, 1, 1)
 
         self.stackMethod = QLabel(self.stepStackBody)
         self.stackMethod.setObjectName(u"stackMethod")
-        self.stackMethod.setFont(font2)
         self.stackMethod.setStyleSheet(u"QLabel#stackMethod {\n"
 "    color: #0f172a;\n"
 "    font-size: 12px;\n"
+"    font-weight: 500;\n"
+"    background-color: #f8fafc;\n"
+"    border: 1px solid #e2e8f0;\n"
+"    border-radius: 4px;\n"
+"    padding: 3px 12px;\n"
 "}")
+        self.stackMethod.setAlignment(Qt.AlignCenter)
 
-        self.stepStackFields.setWidget(0, QFormLayout.FieldRole, self.stackMethod)
+        self.stepStackFields.addWidget(self.stackMethod, 0, 1, 1, 1, Qt.AlignRight)
 
         self.stackStreaksLabel = QLabel(self.stepStackBody)
         self.stackStreaksLabel.setObjectName(u"stackStreaksLabel")
@@ -1241,25 +1387,63 @@ class Ui_MainWindow(object):
 "    font-size: 12px;\n"
 "}")
 
-        self.stepStackFields.setWidget(1, QFormLayout.LabelRole, self.stackStreaksLabel)
+        self.stepStackFields.addWidget(self.stackStreaksLabel, 1, 0, 1, 1)
 
-        self.stackStreaks = QComboBox(self.stepStackBody)
-        self.stackStreaks.addItem("")
-        self.stackStreaks.addItem("")
-        self.stackStreaks.setObjectName(u"stackStreaks")
-        self.stackStreaks.setStyleSheet(u"QComboBox#stackStreaks {\n"
-"    background-color: #ffffff;\n"
-"    border: 1px solid #cbd5e1;\n"
+        self.stackStreaksContainer = QFrame(self.stepStackBody)
+        self.stackStreaksContainer.setObjectName(u"stackStreaksContainer")
+        self.stackStreaksContainer.setStyleSheet(u"QFrame#stackStreaksContainer {\n"
+"    background-color: #f1f5f9;\n"
+"    border-radius: 5px;\n"
+"    padding: 2px;\n"
+"}\n"
+"QPushButton#stackStreaksKeep, QPushButton#stackStreaksRemove {\n"
+"    background-color: transparent;\n"
+"    color: #334155;\n"
+"    border: none;\n"
 "    border-radius: 4px;\n"
-"    padding: 4px 6px;\n"
 "    font-size: 12px;\n"
+"    font-weight: 500;\n"
+"    padding: 4px 14px;\n"
+"    min-height: 18px;\n"
+"}\n"
+"QPushButton#stackStreaksKeep:checked, QPushButton#stackStreaksRemove:checked {\n"
+"    background-color: #0284c7;\n"
+"    color: #ffffff;\n"
+"    font-weight: 600;\n"
+"}\n"
+"QPushButton#stackStreaksKeep:hover:!checked, QPushButton#stackStreaksRemove:hover:!checked {\n"
+"    background-color: #e2e8f0;\n"
 "    color: #0f172a;\n"
 "}\n"
-"QComboBox#stackStreaks:focus {\n"
-"    border-color: #0284c7;\n"
+"QPushButton#stackStreaksRemove:disabled {\n"
+"    color: #94a3b8;\n"
+"    background-color: transparent;\n"
 "}")
+        self.stackStreaksLayout = QHBoxLayout(self.stackStreaksContainer)
+        self.stackStreaksLayout.setSpacing(2)
+        self.stackStreaksLayout.setObjectName(u"stackStreaksLayout")
+        self.stackStreaksLayout.setContentsMargins(0, 0, 0, 0)
+        self.stackStreaksKeep = QPushButton(self.stackStreaksContainer)
+        self.stackStreaksGroup = QButtonGroup(MainWindow)
+        self.stackStreaksGroup.setObjectName(u"stackStreaksGroup")
+        self.stackStreaksGroup.addButton(self.stackStreaksKeep)
+        self.stackStreaksKeep.setObjectName(u"stackStreaksKeep")
+        self.stackStreaksKeep.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackStreaksKeep.setCheckable(True)
+        self.stackStreaksKeep.setChecked(True)
 
-        self.stepStackFields.setWidget(1, QFormLayout.FieldRole, self.stackStreaks)
+        self.stackStreaksLayout.addWidget(self.stackStreaksKeep)
+
+        self.stackStreaksRemove = QPushButton(self.stackStreaksContainer)
+        self.stackStreaksGroup.addButton(self.stackStreaksRemove)
+        self.stackStreaksRemove.setObjectName(u"stackStreaksRemove")
+        self.stackStreaksRemove.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackStreaksRemove.setCheckable(True)
+
+        self.stackStreaksLayout.addWidget(self.stackStreaksRemove)
+
+
+        self.stepStackFields.addWidget(self.stackStreaksContainer, 1, 1, 1, 1, Qt.AlignRight)
 
         self.stackFadeLabel = QLabel(self.stepStackBody)
         self.stackFadeLabel.setObjectName(u"stackFadeLabel")
@@ -1268,39 +1452,87 @@ class Ui_MainWindow(object):
 "    font-size: 12px;\n"
 "}")
 
-        self.stepStackFields.setWidget(2, QFormLayout.LabelRole, self.stackFadeLabel)
+        self.stepStackFields.addWidget(self.stackFadeLabel, 2, 0, 1, 1)
 
-        self.stackFadeRow = QHBoxLayout()
-        self.stackFadeRow.setSpacing(6)
-        self.stackFadeRow.setObjectName(u"stackFadeRow")
-        self.stackFade = QComboBox(self.stepStackBody)
-        self.stackFade.addItem("")
-        self.stackFade.addItem("")
-        self.stackFade.addItem("")
-        self.stackFade.addItem("")
-        self.stackFade.setObjectName(u"stackFade")
-        self.stackFade.setStyleSheet(u"QComboBox#stackFade {\n"
-"    background-color: #ffffff;\n"
-"    border: 1px solid #cbd5e1;\n"
-"    border-radius: 4px;\n"
-"    padding: 4px 6px;\n"
-"    font-size: 12px;\n"
-"    color: #0f172a;\n"
+        self.stackFadeContainer = QFrame(self.stepStackBody)
+        self.stackFadeContainer.setObjectName(u"stackFadeContainer")
+        self.stackFadeContainer.setStyleSheet(u"QFrame#stackFadeContainer {\n"
+"    background-color: #f1f5f9;\n"
+"    border-radius: 5px;\n"
+"    padding: 2px;\n"
 "}\n"
-"QComboBox#stackFade:focus {\n"
-"    border-color: #0284c7;\n"
+"QPushButton#stackFadeOff, QPushButton#stackFadeStart, QPushButton#stackFadeEnd, QPushButton#stackFadeBoth {\n"
+"    background-color: transparent;\n"
+"    color: #334155;\n"
+"    border: none;\n"
+"    border-radius: 4px;\n"
+"    font-size: 11px;\n"
+"    font-weight: 500;\n"
+"    padding: 4px 8px;\n"
+"    min-height: 18px;\n"
+"}\n"
+"QPushButton#stackFadeOff:checked, QPushButton#stackFadeStart:checked, QPushButton#stackFadeEnd:checked, QPushButton#stackFadeBoth:checked {\n"
+"    background-color: #0284c7;\n"
+"    color: #ffffff;\n"
+"    font-weight: 600;\n"
+"}\n"
+"QPushButton#stackFadeOff:hover:!checked, QPushButton#stackFadeStart:hover:!checked, QPushButton#stackFadeEnd:hover:!checked, QPushButton#stackFadeBoth:hover:!checked {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #0f172a;\n"
 "}")
+        self.stackFadeLayout = QHBoxLayout(self.stackFadeContainer)
+        self.stackFadeLayout.setSpacing(2)
+        self.stackFadeLayout.setObjectName(u"stackFadeLayout")
+        self.stackFadeLayout.setContentsMargins(0, 0, 0, 0)
+        self.stackFadeOff = QPushButton(self.stackFadeContainer)
+        self.stackFadeGroup = QButtonGroup(MainWindow)
+        self.stackFadeGroup.setObjectName(u"stackFadeGroup")
+        self.stackFadeGroup.addButton(self.stackFadeOff)
+        self.stackFadeOff.setObjectName(u"stackFadeOff")
+        self.stackFadeOff.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackFadeOff.setCheckable(True)
 
-        self.stackFadeRow.addWidget(self.stackFade)
+        self.stackFadeLayout.addWidget(self.stackFadeOff)
+
+        self.stackFadeStart = QPushButton(self.stackFadeContainer)
+        self.stackFadeGroup.addButton(self.stackFadeStart)
+        self.stackFadeStart.setObjectName(u"stackFadeStart")
+        self.stackFadeStart.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackFadeStart.setCheckable(True)
+
+        self.stackFadeLayout.addWidget(self.stackFadeStart)
+
+        self.stackFadeEnd = QPushButton(self.stackFadeContainer)
+        self.stackFadeGroup.addButton(self.stackFadeEnd)
+        self.stackFadeEnd.setObjectName(u"stackFadeEnd")
+        self.stackFadeEnd.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackFadeEnd.setCheckable(True)
+
+        self.stackFadeLayout.addWidget(self.stackFadeEnd)
+
+        self.stackFadeBoth = QPushButton(self.stackFadeContainer)
+        self.stackFadeGroup.addButton(self.stackFadeBoth)
+        self.stackFadeBoth.setObjectName(u"stackFadeBoth")
+        self.stackFadeBoth.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackFadeBoth.setCheckable(True)
+        self.stackFadeBoth.setChecked(True)
+
+        self.stackFadeLayout.addWidget(self.stackFadeBoth)
+
+
+        self.stepStackFields.addWidget(self.stackFadeContainer, 2, 1, 1, 1, Qt.AlignRight)
 
         self.stackAmountLabel = QLabel(self.stepStackBody)
         self.stackAmountLabel.setObjectName(u"stackAmountLabel")
         self.stackAmountLabel.setStyleSheet(u"QLabel#stackAmountLabel {\n"
 "    color: #334155;\n"
 "    font-size: 12px;\n"
+"    margin-left: 12px;\n"
+"    border-left: 2px solid #cbd5e1;\n"
+"    padding-left: 8px;\n"
 "}")
 
-        self.stackFadeRow.addWidget(self.stackAmountLabel)
+        self.stepStackFields.addWidget(self.stackAmountLabel, 3, 0, 1, 1)
 
         self.stackFadeAmount = QSpinBox(self.stepStackBody)
         self.stackFadeAmount.setObjectName(u"stackFadeAmount")
@@ -1311,37 +1543,52 @@ class Ui_MainWindow(object):
 "    padding: 4px 6px;\n"
 "    font-size: 12px;\n"
 "    color: #0f172a;\n"
+"    min-width: 75px;\n"
+"    max-width: 75px;\n"
 "}\n"
 "QSpinBox#stackFadeAmount:focus {\n"
 "    border-color: #0284c7;\n"
+"}\n"
+"QSpinBox#stackFadeAmount:disabled {\n"
+"    background-color: #f1f5f9;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
 "}")
         self.stackFadeAmount.setMaximum(100)
         self.stackFadeAmount.setValue(20)
 
-        self.stackFadeRow.addWidget(self.stackFadeAmount)
+        self.stepStackFields.addWidget(self.stackFadeAmount, 3, 1, 1, 1, Qt.AlignRight)
 
-
-        self.stepStackFields.setLayout(2, QFormLayout.FieldRole, self.stackFadeRow)
-
-
-        self.stepStackBodyLayout.addLayout(self.stepStackFields)
-
-        self.stackGpuBatchRow = QHBoxLayout()
-        self.stackGpuBatchRow.setSpacing(6)
-        self.stackGpuBatchRow.setObjectName(u"stackGpuBatchRow")
-        self.stackUseGPU = QCheckBox(self.stepStackBody)
-        self.stackUseGPU.setObjectName(u"stackUseGPU")
-        self.stackUseGPU.setStyleSheet(u"QCheckBox#stackUseGPU {\n"
+        self.stackUseGPULabel = QLabel(self.stepStackBody)
+        self.stackUseGPULabel.setObjectName(u"stackUseGPULabel")
+        self.stackUseGPULabel.setStyleSheet(u"QLabel#stackUseGPULabel {\n"
+"    color: #334155;\n"
 "    font-size: 12px;\n"
-"    color: #1e293b;\n"
-"    spacing: 6px;\n"
 "}")
 
-        self.stackGpuBatchRow.addWidget(self.stackUseGPU)
+        self.stepStackFields.addWidget(self.stackUseGPULabel, 4, 0, 1, 1)
 
-        self.stackGpuBatchSpacer = QSpacerItem(20, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.stackUseGPU = QCheckBox(self.stepStackBody)
+        self.stackUseGPU.setObjectName(u"stackUseGPU")
+        sizePolicy7.setHeightForWidth(self.stackUseGPU.sizePolicy().hasHeightForWidth())
+        self.stackUseGPU.setSizePolicy(sizePolicy7)
+        self.stackUseGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackUseGPU.setStyleSheet(u"QCheckBox#stackUseGPU {\n"
+"    spacing: 0px;\n"
+"}\n"
+"QCheckBox#stackUseGPU::indicator {\n"
+"    width: 36px;\n"
+"    height: 20px;\n"
+"}\n"
+"QCheckBox#stackUseGPU::indicator:unchecked {\n"
+"    image: url(src/startrails/ui/icons_darktheme/switch_off.png);\n"
+"}\n"
+"QCheckBox#stackUseGPU::indicator:checked {\n"
+"    image: url(src/startrails/ui/icons_darktheme/switch_on.png);\n"
+"}")
+        self.stackUseGPU.setChecked(True)
 
-        self.stackGpuBatchRow.addItem(self.stackGpuBatchSpacer)
+        self.stepStackFields.addWidget(self.stackUseGPU, 4, 1, 1, 1, Qt.AlignRight)
 
         self.stackBatchLabel = QLabel(self.stepStackBody)
         self.stackBatchLabel.setObjectName(u"stackBatchLabel")
@@ -1350,7 +1597,7 @@ class Ui_MainWindow(object):
 "    font-size: 12px;\n"
 "}")
 
-        self.stackGpuBatchRow.addWidget(self.stackBatchLabel)
+        self.stepStackFields.addWidget(self.stackBatchLabel, 5, 0, 1, 1)
 
         self.stackBatchSize = QSpinBox(self.stepStackBody)
         self.stackBatchSize.setObjectName(u"stackBatchSize")
@@ -1361,24 +1608,29 @@ class Ui_MainWindow(object):
 "    padding: 4px 6px;\n"
 "    font-size: 12px;\n"
 "    color: #0f172a;\n"
+"    min-width: 75px;\n"
+"    max-width: 75px;\n"
 "}\n"
 "QSpinBox#stackBatchSize:focus {\n"
 "    border-color: #0284c7;\n"
 "}")
         self.stackBatchSize.setMinimum(1)
         self.stackBatchSize.setMaximum(2147483647)
-        self.stackBatchSize.setValue(1)
+        self.stackBatchSize.setValue(16)
 
-        self.stackGpuBatchRow.addWidget(self.stackBatchSize)
+        self.stepStackFields.addWidget(self.stackBatchSize, 5, 1, 1, 1, Qt.AlignRight)
 
+        self.stepStackFields.setColumnStretch(0, 1)
+        self.stepStackFields.setColumnStretch(1, 2)
 
-        self.stepStackBodyLayout.addLayout(self.stackGpuBatchRow)
+        self.stepStackBodyLayout.addLayout(self.stepStackFields)
 
         self.stackMemory = QLabel(self.stepStackBody)
         self.stackMemory.setObjectName(u"stackMemory")
         self.stackMemory.setStyleSheet(u"QLabel#stackMemory {\n"
 "    font-size: 11px;\n"
 "    color: #64748b;\n"
+"    padding-top: 2px;\n"
 "}")
         self.stackMemory.setWordWrap(True)
 
@@ -1772,11 +2024,11 @@ class Ui_MainWindow(object):
         self.canvasLayout.setContentsMargins(0, 0, 0, 0)
         self.canvas_main = QLabel(self.canvasHost)
         self.canvas_main.setObjectName(u"canvas_main")
-        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
-        sizePolicy7.setHorizontalStretch(1)
-        sizePolicy7.setVerticalStretch(1)
-        sizePolicy7.setHeightForWidth(self.canvas_main.sizePolicy().hasHeightForWidth())
-        self.canvas_main.setSizePolicy(sizePolicy7)
+        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        sizePolicy8.setHorizontalStretch(1)
+        sizePolicy8.setVerticalStretch(1)
+        sizePolicy8.setHeightForWidth(self.canvas_main.sizePolicy().hasHeightForWidth())
+        self.canvas_main.setSizePolicy(sizePolicy8)
         self.canvas_main.setMinimumSize(QSize(200, 160))
         self.canvas_main.setStyleSheet(u"QLabel#canvas_main {\n"
 "    background-color: #0f172a;\n"
@@ -1794,9 +2046,6 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
-
-        self.stackFade.setCurrentIndex(3)
-
 
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
@@ -1819,6 +2068,9 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.inputFilesAdd.setText(QCoreApplication.translate("MainWindow", u"+", None))
         self.inputFilesEmpty.setText(QCoreApplication.translate("MainWindow", u"No files yet.", None))
+        self.inputFilesLegendAuto.setText(QCoreApplication.translate("MainWindow", u"Auto", None))
+        self.inputFilesLegendManual.setText(QCoreApplication.translate("MainWindow", u"Manual", None))
+        self.inputFilesLegendDeleted.setText(QCoreApplication.translate("MainWindow", u"Deleted", None))
         self.outputFilesChevron.setText(QCoreApplication.translate("MainWindow", u"\u25b6", None))
         self.outputFilesToggle.setText(QCoreApplication.translate("MainWindow", u"Output Files", None))
         self.outputFilesCount.setText(QCoreApplication.translate("MainWindow", u"0", None))
@@ -1831,16 +2083,13 @@ class Ui_MainWindow(object):
         self.stepDetectSubtitle.setText(QCoreApplication.translate("MainWindow", u"Ready to detect streaks", None))
         self.stepDetectStatusBadge.setText(QCoreApplication.translate("MainWindow", u"\u2713 Ready", None))
         self.stepDetectChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
-        self.detectConfidenceLabel.setText(QCoreApplication.translate("MainWindow", u"&Confidence threshold", None))
-        self.detectMergeLabel.setText(QCoreApplication.translate("MainWindow", u"&Merging strategy", None))
-        self.detectMergeMethod.setItemText(0, QCoreApplication.translate("MainWindow", u"NMS", None))
-        self.detectMergeMethod.setItemText(1, QCoreApplication.translate("MainWindow", u"Greedy NMM", None))
-
-#if QT_CONFIG(tooltip)
-        self.detectThresholdLabel.setToolTip(QCoreApplication.translate("MainWindow", u"Merge threshold", None))
-#endif // QT_CONFIG(tooltip)
-        self.detectThresholdLabel.setText(QCoreApplication.translate("MainWindow", u"&Threshold", None))
-        self.detectUseGPU.setText(QCoreApplication.translate("MainWindow", u"Use GPU", None))
+        self.detectConfidenceLabel.setText(QCoreApplication.translate("MainWindow", u"Confidence threshold", None))
+        self.detectMergeLabel.setText(QCoreApplication.translate("MainWindow", u"Merging strategy", None))
+        self.detectMergeNMS.setText(QCoreApplication.translate("MainWindow", u"NMS", None))
+        self.detectMergeNMM.setText(QCoreApplication.translate("MainWindow", u"Greedy NMM", None))
+        self.detectThresholdLabel.setText(QCoreApplication.translate("MainWindow", u"Threshold", None))
+        self.detectUseGPULabel.setText(QCoreApplication.translate("MainWindow", u"Use GPU", None))
+        self.detectUseGPU.setText("")
         self.detectError.setText("")
         self.detectRun.setText(QCoreApplication.translate("MainWindow", u"Detect Streaks", None))
         self.stepStackNumber.setText(QCoreApplication.translate("MainWindow", u"2", None))
@@ -1850,23 +2099,19 @@ class Ui_MainWindow(object):
         self.stepStackChevron.setText(QCoreApplication.translate("MainWindow", u"\u25b6", None))
         self.stackMethodLabel.setText(QCoreApplication.translate("MainWindow", u"Method", None))
         self.stackMethod.setText(QCoreApplication.translate("MainWindow", u"Lighten", None))
-        self.stackStreaksLabel.setText(QCoreApplication.translate("MainWindow", u"&Streaks", None))
-        self.stackStreaks.setItemText(0, QCoreApplication.translate("MainWindow", u"Keep", None))
-        self.stackStreaks.setItemText(1, QCoreApplication.translate("MainWindow", u"Remove", None))
-
-        self.stackFadeLabel.setText(QCoreApplication.translate("MainWindow", u"&Fade frames", None))
-        self.stackFade.setItemText(0, QCoreApplication.translate("MainWindow", u"None", None))
-        self.stackFade.setItemText(1, QCoreApplication.translate("MainWindow", u"Start only", None))
-        self.stackFade.setItemText(2, QCoreApplication.translate("MainWindow", u"End only", None))
-        self.stackFade.setItemText(3, QCoreApplication.translate("MainWindow", u"Start and end", None))
-
-#if QT_CONFIG(tooltip)
-        self.stackAmountLabel.setToolTip(QCoreApplication.translate("MainWindow", u"Fade amount", None))
-#endif // QT_CONFIG(tooltip)
-        self.stackAmountLabel.setText(QCoreApplication.translate("MainWindow", u"&Amount", None))
+        self.stackStreaksLabel.setText(QCoreApplication.translate("MainWindow", u"Streaks", None))
+        self.stackStreaksKeep.setText(QCoreApplication.translate("MainWindow", u"Keep", None))
+        self.stackStreaksRemove.setText(QCoreApplication.translate("MainWindow", u"Remove", None))
+        self.stackFadeLabel.setText(QCoreApplication.translate("MainWindow", u"Fade frames", None))
+        self.stackFadeOff.setText(QCoreApplication.translate("MainWindow", u"Off", None))
+        self.stackFadeStart.setText(QCoreApplication.translate("MainWindow", u"Start", None))
+        self.stackFadeEnd.setText(QCoreApplication.translate("MainWindow", u"End", None))
+        self.stackFadeBoth.setText(QCoreApplication.translate("MainWindow", u"Both", None))
+        self.stackAmountLabel.setText(QCoreApplication.translate("MainWindow", u"Amount", None))
         self.stackFadeAmount.setSuffix(QCoreApplication.translate("MainWindow", u"%", None))
-        self.stackUseGPU.setText(QCoreApplication.translate("MainWindow", u"Use GPU", None))
-        self.stackBatchLabel.setText(QCoreApplication.translate("MainWindow", u"&Batch size", None))
+        self.stackUseGPULabel.setText(QCoreApplication.translate("MainWindow", u"Use GPU", None))
+        self.stackUseGPU.setText("")
+        self.stackBatchLabel.setText(QCoreApplication.translate("MainWindow", u"Batch size", None))
         self.stackMemory.setText(QCoreApplication.translate("MainWindow", u"Add input files for a batch suggestion.", None))
         self.stackError.setText("")
         self.stackRun.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))

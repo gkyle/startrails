@@ -58,11 +58,11 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
 
                 badges = []
                 if auto:
-                    badges.append((f"Auto: {auto}", QColor("#dcfce7"), QColor("#15803d"), QColor("#bbf7d0")))
+                    badges.append((str(auto), QColor("#dcfce7"), QColor("#15803d"), QColor("#bbf7d0")))
                 if manual:
-                    badges.append((f"Manual: {manual}", QColor("#e0f2fe"), QColor("#0284c7"), QColor("#bae6fd")))
+                    badges.append((str(manual), QColor("#e0f2fe"), QColor("#0284c7"), QColor("#bae6fd")))
                 if deleted:
-                    badges.append((f"Deleted: {deleted}", QColor("#fef3c7"), QColor("#b45309"), QColor("#fde68a")))
+                    badges.append((str(deleted), QColor("#fef3c7"), QColor("#b45309"), QColor("#fde68a")))
                 if excluded:
                     badges.append(("Excluded", QColor("#fee2e2"), QColor("#b91c1c"), QColor("#fecaca")))
 
@@ -77,7 +77,7 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
 
                     for text, bg_col, text_col, border_col in badges:
                         text_w = fm.horizontalAdvance(text)
-                        badge_w = text_w + 12
+                        badge_w = max(18, text_w + 10)
                         if x + badge_w > option.rect.right() - 2:
                             break
                         pill_rect = QRect(x, y, badge_w, badge_h)
@@ -259,6 +259,7 @@ class FileSection(QFrame):
                 body=getattr(ui, f"{prefix}Body"),
                 files=getattr(ui, f"{prefix}Tree"),
                 empty=getattr(ui, f"{prefix}Empty"),
+                legend=getattr(ui, f"{prefix}Legend", None),
             )
         else:
             self.ui = Ui_FileSection()
@@ -266,6 +267,8 @@ class FileSection(QFrame):
         self.ui.toggle.setText(title)
         self.ui.files.setAccessibleName(title)
         self.ui.add.setVisible(inputs)
+        if getattr(self.ui, "legend", None) is not None:
+            self.ui.legend.setVisible(inputs)
 
         if inputs:
             self.ui.icon.setPixmap(create_star_icon(QColor("#0284c7"), 16).pixmap(16, 16))
@@ -278,7 +281,7 @@ class FileSection(QFrame):
         self.ui.files.setItemDelegate(self.delegate)
         self.ui.files.header().setSectionResizeMode(0, QHeaderView.Stretch)
         self.ui.files.header().setSectionResizeMode(1, QHeaderView.Interactive)
-        self.ui.files.header().resizeSection(1, 160)
+        self.ui.files.header().resizeSection(1, 130)
         self.ui.toggle.toggled.connect(self.setExpanded)
         self.ui.headerWidget.mousePressEvent = self._on_header_clicked
         self.ui.add.clicked.connect(self.addRequested.emit)

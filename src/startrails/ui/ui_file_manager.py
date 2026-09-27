@@ -221,6 +221,74 @@ class Ui_FileSection(object):
 
         self.bodyLayout.addWidget(self.empty)
 
+        self.legend = QWidget(self.body)
+        self.legend.setObjectName(u"legend")
+        sizePolicy1.setHeightForWidth(self.legend.sizePolicy().hasHeightForWidth())
+        self.legend.setSizePolicy(sizePolicy1)
+        self.legend.setMinimumSize(QSize(0, 20))
+        self.legend.setMaximumSize(QSize(16777215, 24))
+        self.legendLayout = QHBoxLayout(self.legend)
+        self.legendLayout.setSpacing(6)
+        self.legendLayout.setObjectName(u"legendLayout")
+        self.legendLayout.setContentsMargins(4, 2, 4, 2)
+        self.legendAuto = QLabel(self.legend)
+        self.legendAuto.setObjectName(u"legendAuto")
+        self.legendAuto.setStyleSheet(u"QLabel#legendAuto {\n"
+"    background-color: #dcfce7;\n"
+"    color: #15803d;\n"
+"    border: 1px solid #bbf7d0;\n"
+"    border-radius: 4px;\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    padding: 0px 6px;\n"
+"    min-height: 16px;\n"
+"    max-height: 16px;\n"
+"}")
+        self.legendAuto.setAlignment(Qt.AlignCenter)
+
+        self.legendLayout.addWidget(self.legendAuto)
+
+        self.legendManual = QLabel(self.legend)
+        self.legendManual.setObjectName(u"legendManual")
+        self.legendManual.setStyleSheet(u"QLabel#legendManual {\n"
+"    background-color: #e0f2fe;\n"
+"    color: #0284c7;\n"
+"    border: 1px solid #bae6fd;\n"
+"    border-radius: 4px;\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    padding: 0px 6px;\n"
+"    min-height: 16px;\n"
+"    max-height: 16px;\n"
+"}")
+        self.legendManual.setAlignment(Qt.AlignCenter)
+
+        self.legendLayout.addWidget(self.legendManual)
+
+        self.legendDeleted = QLabel(self.legend)
+        self.legendDeleted.setObjectName(u"legendDeleted")
+        self.legendDeleted.setStyleSheet(u"QLabel#legendDeleted {\n"
+"    background-color: #fef3c7;\n"
+"    color: #b45309;\n"
+"    border: 1px solid #fde68a;\n"
+"    border-radius: 4px;\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    padding: 0px 6px;\n"
+"    min-height: 16px;\n"
+"    max-height: 16px;\n"
+"}")
+        self.legendDeleted.setAlignment(Qt.AlignCenter)
+
+        self.legendLayout.addWidget(self.legendDeleted)
+
+        self.legendSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.legendLayout.addItem(self.legendSpacer)
+
+
+        self.bodyLayout.addWidget(self.legend)
+
 
         self.layout.addWidget(self.body)
 
@@ -243,5 +311,8 @@ class Ui_FileSection(object):
         self.add.setToolTip(QCoreApplication.translate("FileSection", u"Add files\u2026", None))
 #endif // QT_CONFIG(tooltip)
         self.empty.setText(QCoreApplication.translate("FileSection", u"No files yet.", None))
+        self.legendAuto.setText(QCoreApplication.translate("FileSection", u"Auto", None))
+        self.legendManual.setText(QCoreApplication.translate("FileSection", u"Manual", None))
+        self.legendDeleted.setText(QCoreApplication.translate("FileSection", u"Deleted", None))
         pass
     # retranslateUi

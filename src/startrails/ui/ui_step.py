@@ -112,6 +112,7 @@ class Ui_StepCard(object):
         self.toggle.setSizePolicy(sizePolicy2)
         self.toggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.toggle.setCheckable(True)
+        self.toggle.setChecked(True)
 
         self.textColumn.addWidget(self.toggle)
 
@@ -161,6 +162,6 @@ class Ui_StepCard(object):
         self.toggle.setText(QCoreApplication.translate("StepCard", u"Step Title", None))
         self.subtitle.setText(QCoreApplication.translate("StepCard", u"Ready", None))
         self.statusBadge.setText(QCoreApplication.translate("StepCard", u"\u2713 Ready", None))
-        self.chevron.setText(QCoreApplication.translate("StepCard", u"\u25b6", None))
+        self.chevron.setText(QCoreApplication.translate("StepCard", u"\u25bc", None))
         pass
     # retranslateUi
