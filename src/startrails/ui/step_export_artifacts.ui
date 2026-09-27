@@ -8,6 +8,11 @@
     color: #64748b;
     line-height: 1.4;
 }
+QCheckBox {
+    font-size: 12px;
+    color: #1e293b;
+    spacing: 6px;
+}
 QPushButton#masks, QPushButton#training {
     background-color: #ffffff;
     color: #1e293b;
@@ -50,6 +55,13 @@ QPushButton#masks:disabled, QPushButton#training:disabled {
      </property>
      <property name="wordWrap">
       <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="showDeletedMasks">
+     <property name="text">
+      <string>Show Deleted Masks</string>
      </property>
     </widget>
    </item>

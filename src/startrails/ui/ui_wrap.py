@@ -83,6 +83,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.pushButton_removeStreaks = self.sidebar.detect.ui.run
         self.pushButton_exportMasks = self.sidebar.exports.ui.masks
         self.pushButton_exportTraining = self.sidebar.exports.ui.training
+        self.checkBox_showDeletedMasks = self.sidebar.exports.ui.showDeletedMasks
         self.pushButton_fillGaps = self.sidebar.fill.ui.run
 
         MainWindow.setWindowTitle("StarTrails AI")
@@ -165,16 +166,6 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             }
             QWidget#canvasHost {
                 background-color: #0f172a;
-            }
-            QCheckBox#checkBox_showDeletedMasks {
-                color: #94a3b8;
-                font-size: 12px;
-                font-weight: 500;
-                padding: 4px 8px;
-                background-color: #0f172a;
-            }
-            QCheckBox#checkBox_showDeletedMasks:hover {
-                color: #f1f5f9;
             }
             QLabel#canvas_main {
                 background-color: #0f172a;

@@ -15,10 +15,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout,
-    QHBoxLayout, QLabel, QLayout, QMainWindow,
-    QProgressBar, QPushButton, QSizePolicy, QSplitter,
-    QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QFrame, QGridLayout, QHBoxLayout,
+    QLabel, QLayout, QMainWindow, QProgressBar,
+    QPushButton, QSizePolicy, QSplitter, QVBoxLayout,
+    QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -250,11 +250,6 @@ class Ui_MainWindow(object):
         self.canvasLayout = QVBoxLayout(self.canvasHost)
         self.canvasLayout.setObjectName(u"canvasLayout")
         self.canvasLayout.setContentsMargins(0, 0, 0, 0)
-        self.checkBox_showDeletedMasks = QCheckBox(self.canvasHost)
-        self.checkBox_showDeletedMasks.setObjectName(u"checkBox_showDeletedMasks")
-
-        self.canvasLayout.addWidget(self.checkBox_showDeletedMasks)
-
         self.canvas_main = QLabel(self.canvasHost)
         self.canvas_main.setObjectName(u"canvas_main")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
@@ -287,6 +282,5 @@ class Ui_MainWindow(object):
         self.pushButton_cancelOp.setText(QCoreApplication.translate("MainWindow", u"X", None))
         self.label_imageName.setText("")
         self.label_gpu.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
-        self.checkBox_showDeletedMasks.setText(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))
         self.canvas_main.setText(QCoreApplication.translate("MainWindow", u"Canvas", None))
     # retranslateUi

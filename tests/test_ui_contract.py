@@ -57,6 +57,7 @@ class DispatchContractTests(unittest.TestCase):
         ui.pushButton_removeStreaks = ui.sidebar.detect.ui.run
         ui.pushButton_exportMasks = ui.sidebar.exports.ui.masks
         ui.pushButton_exportTraining = ui.sidebar.exports.ui.training
+        ui.checkBox_showDeletedMasks = ui.sidebar.exports.ui.showDeletedMasks
         ui.pushButton_fillGaps = ui.sidebar.fill.ui.run
         return ui
 
