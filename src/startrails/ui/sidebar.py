@@ -2,36 +2,54 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 from startrails.lib.file import OutputFile
-from .ui_sidebar import Ui_Sidebar
 from .file_manager import FileSection
 from .steps import StepCard, DetectSettings, StackSettings, FillSettings, ExportSettings
 
 
 class Sidebar(QWidget):
-    def __init__(self, app, parent=None):
-        super().__init__(parent)
+    def __init__(self, app, parent=None, ui=None):
+        super().__init__(parent if isinstance(parent, QWidget) else None)
         self.app = app
-        self.ui = Ui_Sidebar()
-        self.ui.setupUi(self)
-        self.ui.contentLayout.setAlignment(Qt.AlignTop)
-        self.inputs = FileSection("Input Files", inputs=True)
-        self.outputs = FileSection("Output Files")
-        self.ui.inputLayout.addWidget(self.inputs)
-        self.ui.outputLayout.addWidget(self.outputs)
-        self.detect = DetectSettings(app)
-        self.stack = StackSettings(app)
-        self.fill = FillSettings()
-        self.exports = ExportSettings()
-        self.detectCard = StepCard("Detect Streaks", self.detect, 1, expanded=True)
-        self.stackCard = StepCard("Stack Images", self.stack, 2)
-        self.fillCard = StepCard("Fill Gaps", self.fill, 3)
-        self.exportCard = StepCard("Optional: Export Artifacts", self.exports)
-        self.ui.detectLayout.addWidget(self.detectCard)
-        self.ui.stackLayout.addWidget(self.stackCard)
-        self.ui.fillLayout.addWidget(self.fillCard)
-        self.ui.exportLayout.addWidget(self.exportCard)
-        self.exportCard.setSubtitle("Export masks or training samples")
-        self.update_operations_progress(app)
+        if ui is None and hasattr(parent, "sidebar"):
+            ui = parent
+
+        if ui is not None:
+            self.ui = ui
+            self.inputs = FileSection("Input Files", inputs=True, ui=ui, prefix="inputFiles")
+            self.outputs = FileSection("Output Files", inputs=False, ui=ui, prefix="outputFiles")
+            self.detect = DetectSettings(app, ui=ui)
+            self.stack = StackSettings(app, ui=ui)
+            self.fill = FillSettings(ui=ui)
+            self.exports = ExportSettings(ui=ui)
+            self.detectCard = StepCard("Detect Streaks", self.detect, 1, expanded=True, ui=ui, prefix="stepDetect")
+            self.stackCard = StepCard("Stack Images", self.stack, 2, ui=ui, prefix="stepStack")
+            self.fillCard = StepCard("Fill Gaps", self.fill, 3, ui=ui, prefix="stepFill")
+            self.exportCard = StepCard("Optional: Export Artifacts", self.exports, ui=ui, prefix="stepExport")
+            self.exportCard.setSubtitle("Export masks or training samples")
+            self.update_operations_progress(app)
+        else:
+            from .ui_sidebar import Ui_Sidebar
+            self.ui = Ui_Sidebar()
+            self.ui.setupUi(self)
+            self.ui.contentLayout.setAlignment(Qt.AlignTop)
+            self.inputs = FileSection("Input Files", inputs=True)
+            self.outputs = FileSection("Output Files")
+            self.ui.inputLayout.addWidget(self.inputs)
+            self.ui.outputLayout.addWidget(self.outputs)
+            self.detect = DetectSettings(app)
+            self.stack = StackSettings(app)
+            self.fill = FillSettings()
+            self.exports = ExportSettings()
+            self.detectCard = StepCard("Detect Streaks", self.detect, 1, expanded=True)
+            self.stackCard = StepCard("Stack Images", self.stack, 2)
+            self.fillCard = StepCard("Fill Gaps", self.fill, 3)
+            self.exportCard = StepCard("Optional: Export Artifacts", self.exports)
+            self.ui.detectLayout.addWidget(self.detectCard)
+            self.ui.stackLayout.addWidget(self.stackCard)
+            self.ui.fillLayout.addWidget(self.fillCard)
+            self.ui.exportLayout.addWidget(self.exportCard)
+            self.exportCard.setSubtitle("Export masks or training samples")
+            self.update_operations_progress(app)
 
     def refresh_inputs(self):
         self.detect.refresh_inputs()

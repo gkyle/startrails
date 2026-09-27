@@ -1,4 +1,5 @@
 """Behavior for Designer-authored operation cards and settings."""
+from types import SimpleNamespace
 from PySide6.QtCore import Qt, QSignalBlocker
 from PySide6.QtWidgets import QFrame, QWidget
 
@@ -10,19 +11,36 @@ from .ui_step_export_artifacts import Ui_ExportSettings
 
 
 class StepCard(QFrame):
-    def __init__(self, title, body, number=None, expanded=False, parent=None):
+    def __init__(self, title, body, number=None, expanded=False, parent=None, ui=None, prefix=None):
         super().__init__(parent)
-        self.ui = Ui_StepCard()
-        self.ui.setupUi(self)
+        self.has_number = number is not None
         self._status = "ready"
+        if ui is not None and prefix is not None:
+            self.frame = getattr(ui, prefix)
+            self.ui = SimpleNamespace(
+                headerWidget=getattr(ui, f"{prefix}Header"),
+                number=getattr(ui, f"{prefix}Number", None),
+                toggle=getattr(ui, f"{prefix}Toggle"),
+                statusBadge=getattr(ui, f"{prefix}StatusBadge", None),
+                subtitle=getattr(ui, f"{prefix}Subtitle"),
+                chevron=getattr(ui, f"{prefix}Chevron"),
+                body=getattr(ui, f"{prefix}Body"),
+                contentLayout=getattr(ui, f"{prefix}BodyLayout", None),
+            )
+        else:
+            self.frame = self
+            self.ui = Ui_StepCard()
+            self.ui.setupUi(self)
+            if body is not None:
+                self.ui.contentLayout.addWidget(body)
+
         self.ui.toggle.setText(title)
         self.ui.toggle.setAccessibleName(title)
-        self.has_number = number is not None
-        self.ui.number.setVisible(self.has_number)
-        self.ui.number.setText(str(number or ""))
-        if not self.has_number:
+        if self.ui.number is not None:
+            self.ui.number.setVisible(self.has_number)
+            self.ui.number.setText(str(number or ""))
+        if not self.has_number and self.ui.statusBadge is not None:
             self.ui.statusBadge.setVisible(False)
-        self.ui.contentLayout.addWidget(body)
         self.ui.toggle.toggled.connect(self.setExpanded)
         self.ui.headerWidget.mousePressEvent = self._on_header_clicked
         self.setExpanded(expanded)
@@ -40,13 +58,14 @@ class StepCard(QFrame):
             self.ui.toggle.setChecked(expanded)
         self.ui.chevron.setText("▼" if expanded else "▶")
         self.ui.body.setVisible(expanded)
+        target = self.frame if getattr(self, "frame", None) is not None else self
         if not expanded:
-            self.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
+            target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
         else:
-            self.setMaximumHeight(16777215)
-            self.setMinimumHeight(0)
-            self.adjustSize()
-        self.updateGeometry()
+            target.setMaximumHeight(16777215)
+            target.setMinimumHeight(0)
+            target.adjustSize()
+        target.updateGeometry()
 
     def setSubtitle(self, text):
         self.ui.subtitle.setText(text)
@@ -58,48 +77,65 @@ class StepCard(QFrame):
         self._update_status_appearance()
 
     def _update_status_appearance(self):
-        if not getattr(self, "has_number", True) or not self.ui.number.text():
+        if not getattr(self, "has_number", True) or not self.ui.number or not self.ui.number.text():
             return
         if self._status == "done":
-            self.ui.statusBadge.setVisible(True)
-            self.ui.statusBadge.setText("✓ Done")
-            self.ui.statusBadge.setStyleSheet(
-                "background-color: #dcfce7; color: #15803d; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
-            )
+            if self.ui.statusBadge is not None:
+                self.ui.statusBadge.setVisible(True)
+                self.ui.statusBadge.setText("✓ Done")
+                self.ui.statusBadge.setStyleSheet(
+                    "background-color: #dcfce7; color: #15803d; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
+                )
             self.ui.number.setStyleSheet(
                 "background-color: #1e293b; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
             )
         elif self._status == "running":
-            self.ui.statusBadge.setVisible(True)
-            self.ui.statusBadge.setText("⏳ Running")
-            self.ui.statusBadge.setStyleSheet(
-                "background-color: #fef3c7; color: #b45309; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
-            )
+            if self.ui.statusBadge is not None:
+                self.ui.statusBadge.setVisible(True)
+                self.ui.statusBadge.setText("⏳ Running")
+                self.ui.statusBadge.setStyleSheet(
+                    "background-color: #fef3c7; color: #b45309; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
+                )
             self.ui.number.setStyleSheet(
                 "background-color: #b45309; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
             )
         elif self._status == "locked":
-            self.ui.statusBadge.setVisible(False)
+            if self.ui.statusBadge is not None:
+                self.ui.statusBadge.setVisible(False)
             self.ui.number.setStyleSheet(
                 "background-color: #94a3b8; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
             )
         else:  # "ready"
-            self.ui.statusBadge.setVisible(True)
-            self.ui.statusBadge.setText("✓ Ready")
-            self.ui.statusBadge.setStyleSheet(
-                "background-color: #e0f2fe; color: #0284c7; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
-            )
+            if self.ui.statusBadge is not None:
+                self.ui.statusBadge.setVisible(True)
+                self.ui.statusBadge.setText("✓ Ready")
+                self.ui.statusBadge.setStyleSheet(
+                    "background-color: #e0f2fe; color: #0284c7; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
+                )
             self.ui.number.setStyleSheet(
                 "background-color: #0284c7; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
             )
 
 
 class DetectSettings(QWidget):
-    def __init__(self, app, parent=None):
+    def __init__(self, app, parent=None, ui=None):
         super().__init__(parent)
         self.app = app
-        self.ui = Ui_DetectSettings()
-        self.ui.setupUi(self)
+        if ui is not None:
+            self.ui = SimpleNamespace(
+                confidenceLabel=ui.detectConfidenceLabel,
+                confidence=ui.detectConfidence,
+                mergeLabel=ui.detectMergeLabel,
+                mergeMethod=ui.detectMergeMethod,
+                thresholdLabel=ui.detectThresholdLabel,
+                mergeThreshold=ui.detectMergeThreshold,
+                useGPU=ui.detectUseGPU,
+                error=ui.detectError,
+                run=ui.detectRun,
+            )
+        else:
+            self.ui = Ui_DetectSettings()
+            self.ui.setupUi(self)
         self._first_file = None
         self.ui.useGPU.toggled.connect(self.suggest_device)
         self.reset()
@@ -148,11 +184,29 @@ class DetectSettings(QWidget):
 
 
 class StackSettings(QWidget):
-    def __init__(self, app, parent=None):
+    def __init__(self, app, parent=None, ui=None):
         super().__init__(parent)
         self.app = app
-        self.ui = Ui_StackSettings()
-        self.ui.setupUi(self)
+        if ui is not None:
+            self.ui = SimpleNamespace(
+                methodLabel=ui.stackMethodLabel,
+                method=ui.stackMethod,
+                streaksLabel=ui.stackStreaksLabel,
+                streaks=ui.stackStreaks,
+                fadeLabel=ui.stackFadeLabel,
+                fade=ui.stackFade,
+                amountLabel=ui.stackAmountLabel,
+                fadeAmount=ui.stackFadeAmount,
+                useGPU=ui.stackUseGPU,
+                batchLabel=ui.stackBatchLabel,
+                batchSize=ui.stackBatchSize,
+                memory=ui.stackMemory,
+                error=ui.stackError,
+                run=ui.stackRun,
+            )
+        else:
+            self.ui = Ui_StackSettings()
+            self.ui.setupUi(self)
         self._first_file = None
         self._has_masks = None
         self.ui.useGPU.toggled.connect(self.suggest_batch)
@@ -220,14 +274,28 @@ class StackSettings(QWidget):
 
 
 class FillSettings(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, ui=None):
         super().__init__(parent)
-        self.ui = Ui_FillSettings()
-        self.ui.setupUi(self)
+        if ui is not None:
+            self.ui = SimpleNamespace(
+                target=ui.fillTarget,
+                run=ui.fillRun,
+            )
+        else:
+            self.ui = Ui_FillSettings()
+            self.ui.setupUi(self)
 
 
 class ExportSettings(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, ui=None):
         super().__init__(parent)
-        self.ui = Ui_ExportSettings()
-        self.ui.setupUi(self)
+        if ui is not None:
+            self.ui = SimpleNamespace(
+                hint=ui.exportHint,
+                showDeletedMasks=ui.exportShowDeletedMasks,
+                masks=ui.exportMasks,
+                training=ui.exportTraining,
+            )
+        else:
+            self.ui = Ui_ExportSettings()
+            self.ui.setupUi(self)

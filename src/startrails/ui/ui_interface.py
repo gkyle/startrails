@@ -15,10 +15,12 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QFrame, QGridLayout, QHBoxLayout,
-    QLabel, QLayout, QMainWindow, QProgressBar,
-    QPushButton, QSizePolicy, QSplitter, QVBoxLayout,
-    QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox,
+    QDoubleSpinBox, QFormLayout, QFrame, QGridLayout,
+    QHBoxLayout, QHeaderView, QLabel, QLayout,
+    QMainWindow, QProgressBar, QPushButton, QScrollArea,
+    QSizePolicy, QSpacerItem, QSpinBox, QSplitter,
+    QToolButton, QTreeView, QVBoxLayout, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -312,15 +314,1454 @@ class Ui_MainWindow(object):
 "}")
         self.bodySplitter.setOrientation(Qt.Horizontal)
         self.bodySplitter.setChildrenCollapsible(False)
-        self.sidebarHost = QWidget(self.bodySplitter)
-        self.sidebarHost.setObjectName(u"sidebarHost")
-        self.sidebarHost.setStyleSheet(u"QWidget#sidebarHost {\n"
+        self.sidebar = QWidget(self.bodySplitter)
+        self.sidebar.setObjectName(u"sidebar")
+        self.sidebar.setMinimumSize(QSize(400, 0))
+        self.sidebar.setMaximumSize(QSize(400, 16777215))
+        self.sidebarLayout = QVBoxLayout(self.sidebar)
+        self.sidebarLayout.setSpacing(0)
+        self.sidebarLayout.setObjectName(u"sidebarLayout")
+        self.sidebarLayout.setContentsMargins(1, 1, 1, 1)
+        self.scroll = QScrollArea(self.sidebar)
+        self.scroll.setObjectName(u"scroll")
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.scroll.sizePolicy().hasHeightForWidth())
+        self.scroll.setSizePolicy(sizePolicy2)
+        self.scroll.setMinimumSize(QSize(0, 0))
+        self.scroll.setMaximumSize(QSize(16777215, 16777215))
+        self.scroll.setStyleSheet(u"QScrollArea#scroll {\n"
+"    border: none;\n"
+"    background: transparent;\n"
+"}\n"
+"QScrollBar:vertical {\n"
+"    border: none;\n"
+"    background: #f1f5f9;\n"
+"    width: 6px;\n"
+"    border-radius: 3px;\n"
+"    margin: 2px 0px 2px 0px;\n"
+"}\n"
+"QScrollBar::handle:vertical {\n"
+"    background: #cbd5e1;\n"
+"    min-height: 24px;\n"
+"    border-radius: 3px;\n"
+"}\n"
+"QScrollBar::handle:vertical:hover {\n"
+"    background: #94a3b8;\n"
+"}\n"
+"QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {\n"
+"    height: 0px;\n"
+"}\n"
+"QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {\n"
+"    background: none;\n"
+"}\n"
+"QScrollBar:horizontal {\n"
+"    height: 0px;\n"
+"}")
+        self.scroll.setFrameShape(QFrame.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setWidgetResizable(True)
+        self.content = QWidget()
+        self.content.setObjectName(u"content")
+        self.content.setGeometry(QRect(0, 0, 398, 1146))
+        self.content.setMinimumSize(QSize(0, 0))
+        self.content.setStyleSheet(u"QWidget#content {\n"
 "    background-color: #f8fafc;\n"
 "}")
-        self.sidebarLayout = QVBoxLayout(self.sidebarHost)
-        self.sidebarLayout.setObjectName(u"sidebarLayout")
-        self.sidebarLayout.setContentsMargins(0, 0, 0, 0)
-        self.bodySplitter.addWidget(self.sidebarHost)
+        self.contentLayout = QVBoxLayout(self.content)
+        self.contentLayout.setSpacing(8)
+        self.contentLayout.setObjectName(u"contentLayout")
+        self.contentLayout.setContentsMargins(8, 8, 8, 8)
+        self.projectTitle = QLabel(self.content)
+        self.projectTitle.setObjectName(u"projectTitle")
+        self.projectTitle.setStyleSheet(u"QLabel#projectTitle {\n"
+"    font-size: 15px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
+
+        self.contentLayout.addWidget(self.projectTitle)
+
+        self.projectActions = QHBoxLayout()
+        self.projectActions.setSpacing(6)
+        self.projectActions.setObjectName(u"projectActions")
+        self.newProject = QPushButton(self.content)
+        self.newProject.setObjectName(u"newProject")
+        self.newProject.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.newProject.setStyleSheet(u"QPushButton#newProject {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#newProject:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#newProject:pressed {\n"
+"    background-color: #e2e8f0;\n"
+"}")
+
+        self.projectActions.addWidget(self.newProject)
+
+        self.openProject = QPushButton(self.content)
+        self.openProject.setObjectName(u"openProject")
+        self.openProject.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.openProject.setStyleSheet(u"QPushButton#openProject {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#openProject:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#openProject:pressed {\n"
+"    background-color: #e2e8f0;\n"
+"}")
+
+        self.projectActions.addWidget(self.openProject)
+
+
+        self.contentLayout.addLayout(self.projectActions)
+
+        self.inputFilesSection = QFrame(self.content)
+        self.inputFilesSection.setObjectName(u"inputFilesSection")
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.inputFilesSection.sizePolicy().hasHeightForWidth())
+        self.inputFilesSection.setSizePolicy(sizePolicy3)
+        self.inputFilesSection.setStyleSheet(u"QFrame#inputFilesSection {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #e2e8f0;\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QFrame#inputFilesSection:hover {\n"
+"    border-color: #cbd5e1;\n"
+"}")
+        self.inputFilesLayout = QVBoxLayout(self.inputFilesSection)
+        self.inputFilesLayout.setSpacing(2)
+        self.inputFilesLayout.setObjectName(u"inputFilesLayout")
+        self.inputFilesLayout.setContentsMargins(4, 4, 4, 4)
+        self.inputFilesHeader = QWidget(self.inputFilesSection)
+        self.inputFilesHeader.setObjectName(u"inputFilesHeader")
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.inputFilesHeader.sizePolicy().hasHeightForWidth())
+        self.inputFilesHeader.setSizePolicy(sizePolicy4)
+        self.inputFilesHeader.setMaximumSize(QSize(16777215, 32))
+        self.inputFilesHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.inputFilesHeaderLayout = QHBoxLayout(self.inputFilesHeader)
+        self.inputFilesHeaderLayout.setSpacing(6)
+        self.inputFilesHeaderLayout.setObjectName(u"inputFilesHeaderLayout")
+        self.inputFilesHeaderLayout.setContentsMargins(6, 4, 6, 4)
+        self.inputFilesChevron = QLabel(self.inputFilesHeader)
+        self.inputFilesChevron.setObjectName(u"inputFilesChevron")
+        self.inputFilesChevron.setStyleSheet(u"QLabel#inputFilesChevron {\n"
+"    font-size: 10px;\n"
+"    color: #64748b;\n"
+"    font-weight: bold;\n"
+"}")
+
+        self.inputFilesHeaderLayout.addWidget(self.inputFilesChevron)
+
+        self.inputFilesIcon = QLabel(self.inputFilesHeader)
+        self.inputFilesIcon.setObjectName(u"inputFilesIcon")
+        self.inputFilesIcon.setMinimumSize(QSize(16, 16))
+        self.inputFilesIcon.setMaximumSize(QSize(16, 16))
+        self.inputFilesIcon.setAlignment(Qt.AlignCenter)
+
+        self.inputFilesHeaderLayout.addWidget(self.inputFilesIcon)
+
+        self.inputFilesToggle = QToolButton(self.inputFilesHeader)
+        self.inputFilesToggle.setObjectName(u"inputFilesToggle")
+        self.inputFilesToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.inputFilesToggle.setStyleSheet(u"QToolButton#inputFilesToggle {\n"
+"    border: none;\n"
+"    background: transparent;\n"
+"    font-weight: bold;\n"
+"    font-size: 12px;\n"
+"    color: #0f172a;\n"
+"    padding: 0px;\n"
+"}")
+        self.inputFilesToggle.setCheckable(True)
+        self.inputFilesToggle.setChecked(True)
+
+        self.inputFilesHeaderLayout.addWidget(self.inputFilesToggle)
+
+        self.inputFilesCount = QLabel(self.inputFilesHeader)
+        self.inputFilesCount.setObjectName(u"inputFilesCount")
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy5.setHorizontalStretch(0)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.inputFilesCount.sizePolicy().hasHeightForWidth())
+        self.inputFilesCount.setSizePolicy(sizePolicy5)
+        self.inputFilesCount.setMaximumSize(QSize(16777215, 18))
+        self.inputFilesCount.setStyleSheet(u"QLabel#inputFilesCount {\n"
+"    background-color: #f1f5f9;\n"
+"    color: #475569;\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    padding: 1px 7px;\n"
+"    border-radius: 9px;\n"
+"    min-width: 14px;\n"
+"}")
+        self.inputFilesCount.setAlignment(Qt.AlignCenter)
+
+        self.inputFilesHeaderLayout.addWidget(self.inputFilesCount)
+
+        self.inputFilesSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.inputFilesHeaderLayout.addItem(self.inputFilesSpacer)
+
+        self.inputFilesAdd = QPushButton(self.inputFilesHeader)
+        self.inputFilesAdd.setObjectName(u"inputFilesAdd")
+        self.inputFilesAdd.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.inputFilesAdd.setStyleSheet(u"QPushButton#inputFilesAdd {\n"
+"    border: none;\n"
+"    border-radius: 3px;\n"
+"    font-weight: bold;\n"
+"    font-size: 13px;\n"
+"    color: #475569;\n"
+"    background: transparent;\n"
+"    min-width: 20px;\n"
+"    max-width: 20px;\n"
+"    min-height: 20px;\n"
+"    max-height: 20px;\n"
+"}\n"
+"QPushButton#inputFilesAdd:hover {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #0f172a;\n"
+"}")
+
+        self.inputFilesHeaderLayout.addWidget(self.inputFilesAdd)
+
+
+        self.inputFilesLayout.addWidget(self.inputFilesHeader)
+
+        self.inputFilesBody = QWidget(self.inputFilesSection)
+        self.inputFilesBody.setObjectName(u"inputFilesBody")
+        sizePolicy3.setHeightForWidth(self.inputFilesBody.sizePolicy().hasHeightForWidth())
+        self.inputFilesBody.setSizePolicy(sizePolicy3)
+        self.inputFilesBodyLayout = QVBoxLayout(self.inputFilesBody)
+        self.inputFilesBodyLayout.setSpacing(6)
+        self.inputFilesBodyLayout.setObjectName(u"inputFilesBodyLayout")
+        self.inputFilesBodyLayout.setContentsMargins(4, 2, 4, 4)
+        self.inputFilesTree = QTreeView(self.inputFilesBody)
+        self.inputFilesTree.setObjectName(u"inputFilesTree")
+        sizePolicy4.setHeightForWidth(self.inputFilesTree.sizePolicy().hasHeightForWidth())
+        self.inputFilesTree.setSizePolicy(sizePolicy4)
+        self.inputFilesTree.setMaximumSize(QSize(16777215, 220))
+        self.inputFilesTree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.inputFilesTree.setStyleSheet(u"QTreeView#inputFilesTree {\n"
+"    border: none;\n"
+"    background: transparent;\n"
+"}\n"
+"QTreeView#inputFilesTree::item {\n"
+"    padding: 2px 0px;\n"
+"    border-radius: 4px;\n"
+"}\n"
+"QTreeView#inputFilesTree::item:hover {\n"
+"    background-color: #f8fafc;\n"
+"}\n"
+"QTreeView#inputFilesTree::item:selected {\n"
+"    background-color: #eff6ff;\n"
+"    color: #1d4ed8;\n"
+"}\n"
+"QHeaderView::section {\n"
+"    background-color: #f8fafc;\n"
+"    color: #64748b;\n"
+"    font-weight: 600;\n"
+"    font-size: 11px;\n"
+"    border: none;\n"
+"    border-bottom: 1px solid #e2e8f0;\n"
+"    padding: 3px 6px;\n"
+"}")
+        self.inputFilesTree.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.inputFilesTree.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.inputFilesTree.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.inputFilesTree.setTextElideMode(Qt.ElideMiddle)
+        self.inputFilesTree.setRootIsDecorated(False)
+        self.inputFilesTree.setUniformRowHeights(True)
+
+        self.inputFilesBodyLayout.addWidget(self.inputFilesTree)
+
+        self.inputFilesEmpty = QLabel(self.inputFilesBody)
+        self.inputFilesEmpty.setObjectName(u"inputFilesEmpty")
+        self.inputFilesEmpty.setStyleSheet(u"QLabel#inputFilesEmpty {\n"
+"    color: #94a3b8;\n"
+"    font-size: 12px;\n"
+"    font-style: italic;\n"
+"    padding: 12px;\n"
+"}")
+        self.inputFilesEmpty.setAlignment(Qt.AlignCenter)
+        self.inputFilesEmpty.setWordWrap(True)
+
+        self.inputFilesBodyLayout.addWidget(self.inputFilesEmpty)
+
+
+        self.inputFilesLayout.addWidget(self.inputFilesBody)
+
+
+        self.contentLayout.addWidget(self.inputFilesSection)
+
+        self.outputFilesSection = QFrame(self.content)
+        self.outputFilesSection.setObjectName(u"outputFilesSection")
+        sizePolicy3.setHeightForWidth(self.outputFilesSection.sizePolicy().hasHeightForWidth())
+        self.outputFilesSection.setSizePolicy(sizePolicy3)
+        self.outputFilesSection.setStyleSheet(u"QFrame#outputFilesSection {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #e2e8f0;\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QFrame#outputFilesSection:hover {\n"
+"    border-color: #cbd5e1;\n"
+"}")
+        self.outputFilesLayout = QVBoxLayout(self.outputFilesSection)
+        self.outputFilesLayout.setSpacing(2)
+        self.outputFilesLayout.setObjectName(u"outputFilesLayout")
+        self.outputFilesLayout.setContentsMargins(4, 4, 4, 4)
+        self.outputFilesHeader = QWidget(self.outputFilesSection)
+        self.outputFilesHeader.setObjectName(u"outputFilesHeader")
+        sizePolicy4.setHeightForWidth(self.outputFilesHeader.sizePolicy().hasHeightForWidth())
+        self.outputFilesHeader.setSizePolicy(sizePolicy4)
+        self.outputFilesHeader.setMaximumSize(QSize(16777215, 32))
+        self.outputFilesHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.outputFilesHeaderLayout = QHBoxLayout(self.outputFilesHeader)
+        self.outputFilesHeaderLayout.setSpacing(6)
+        self.outputFilesHeaderLayout.setObjectName(u"outputFilesHeaderLayout")
+        self.outputFilesHeaderLayout.setContentsMargins(6, 4, 6, 4)
+        self.outputFilesChevron = QLabel(self.outputFilesHeader)
+        self.outputFilesChevron.setObjectName(u"outputFilesChevron")
+        self.outputFilesChevron.setStyleSheet(u"QLabel#outputFilesChevron {\n"
+"    font-size: 10px;\n"
+"    color: #64748b;\n"
+"    font-weight: bold;\n"
+"}")
+
+        self.outputFilesHeaderLayout.addWidget(self.outputFilesChevron)
+
+        self.outputFilesIcon = QLabel(self.outputFilesHeader)
+        self.outputFilesIcon.setObjectName(u"outputFilesIcon")
+        self.outputFilesIcon.setMinimumSize(QSize(16, 16))
+        self.outputFilesIcon.setMaximumSize(QSize(16, 16))
+        self.outputFilesIcon.setAlignment(Qt.AlignCenter)
+
+        self.outputFilesHeaderLayout.addWidget(self.outputFilesIcon)
+
+        self.outputFilesToggle = QToolButton(self.outputFilesHeader)
+        self.outputFilesToggle.setObjectName(u"outputFilesToggle")
+        self.outputFilesToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.outputFilesToggle.setStyleSheet(u"QToolButton#outputFilesToggle {\n"
+"    border: none;\n"
+"    background: transparent;\n"
+"    font-weight: bold;\n"
+"    font-size: 12px;\n"
+"    color: #0f172a;\n"
+"    padding: 0px;\n"
+"}")
+        self.outputFilesToggle.setCheckable(True)
+        self.outputFilesToggle.setChecked(False)
+
+        self.outputFilesHeaderLayout.addWidget(self.outputFilesToggle)
+
+        self.outputFilesCount = QLabel(self.outputFilesHeader)
+        self.outputFilesCount.setObjectName(u"outputFilesCount")
+        sizePolicy5.setHeightForWidth(self.outputFilesCount.sizePolicy().hasHeightForWidth())
+        self.outputFilesCount.setSizePolicy(sizePolicy5)
+        self.outputFilesCount.setMaximumSize(QSize(16777215, 18))
+        self.outputFilesCount.setStyleSheet(u"QLabel#outputFilesCount {\n"
+"    background-color: #f1f5f9;\n"
+"    color: #475569;\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    padding: 1px 7px;\n"
+"    border-radius: 9px;\n"
+"    min-width: 14px;\n"
+"}")
+        self.outputFilesCount.setAlignment(Qt.AlignCenter)
+
+        self.outputFilesHeaderLayout.addWidget(self.outputFilesCount)
+
+        self.outputFilesSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.outputFilesHeaderLayout.addItem(self.outputFilesSpacer)
+
+        self.outputFilesAdd = QPushButton(self.outputFilesHeader)
+        self.outputFilesAdd.setObjectName(u"outputFilesAdd")
+        self.outputFilesAdd.setVisible(False)
+
+        self.outputFilesHeaderLayout.addWidget(self.outputFilesAdd)
+
+
+        self.outputFilesLayout.addWidget(self.outputFilesHeader)
+
+        self.outputFilesBody = QWidget(self.outputFilesSection)
+        self.outputFilesBody.setObjectName(u"outputFilesBody")
+        sizePolicy3.setHeightForWidth(self.outputFilesBody.sizePolicy().hasHeightForWidth())
+        self.outputFilesBody.setSizePolicy(sizePolicy3)
+        self.outputFilesBody.setVisible(False)
+        self.outputFilesBodyLayout = QVBoxLayout(self.outputFilesBody)
+        self.outputFilesBodyLayout.setSpacing(6)
+        self.outputFilesBodyLayout.setObjectName(u"outputFilesBodyLayout")
+        self.outputFilesBodyLayout.setContentsMargins(4, 2, 4, 4)
+        self.outputFilesTree = QTreeView(self.outputFilesBody)
+        self.outputFilesTree.setObjectName(u"outputFilesTree")
+        sizePolicy4.setHeightForWidth(self.outputFilesTree.sizePolicy().hasHeightForWidth())
+        self.outputFilesTree.setSizePolicy(sizePolicy4)
+        self.outputFilesTree.setMaximumSize(QSize(16777215, 220))
+        self.outputFilesTree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.outputFilesTree.setStyleSheet(u"QTreeView#outputFilesTree {\n"
+"    border: none;\n"
+"    background: transparent;\n"
+"}\n"
+"QTreeView#outputFilesTree::item {\n"
+"    padding: 2px 0px;\n"
+"    border-radius: 4px;\n"
+"}\n"
+"QTreeView#outputFilesTree::item:hover {\n"
+"    background-color: #f8fafc;\n"
+"}\n"
+"QTreeView#outputFilesTree::item:selected {\n"
+"    background-color: #eff6ff;\n"
+"    color: #1d4ed8;\n"
+"}\n"
+"QHeaderView::section {\n"
+"    background-color: #f8fafc;\n"
+"    color: #64748b;\n"
+"    font-weight: 600;\n"
+"    font-size: 11px;\n"
+"    border: none;\n"
+"    border-bottom: 1px solid #e2e8f0;\n"
+"    padding: 3px 6px;\n"
+"}")
+        self.outputFilesTree.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.outputFilesTree.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.outputFilesTree.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.outputFilesTree.setTextElideMode(Qt.ElideMiddle)
+        self.outputFilesTree.setRootIsDecorated(False)
+        self.outputFilesTree.setUniformRowHeights(True)
+
+        self.outputFilesBodyLayout.addWidget(self.outputFilesTree)
+
+        self.outputFilesEmpty = QLabel(self.outputFilesBody)
+        self.outputFilesEmpty.setObjectName(u"outputFilesEmpty")
+        self.outputFilesEmpty.setStyleSheet(u"QLabel#outputFilesEmpty {\n"
+"    color: #94a3b8;\n"
+"    font-size: 12px;\n"
+"    font-style: italic;\n"
+"    padding: 12px;\n"
+"}")
+        self.outputFilesEmpty.setAlignment(Qt.AlignCenter)
+        self.outputFilesEmpty.setWordWrap(True)
+
+        self.outputFilesBodyLayout.addWidget(self.outputFilesEmpty)
+
+
+        self.outputFilesLayout.addWidget(self.outputFilesBody)
+
+
+        self.contentLayout.addWidget(self.outputFilesSection)
+
+        self.operationsHeaderWidget = QWidget(self.content)
+        self.operationsHeaderWidget.setObjectName(u"operationsHeaderWidget")
+        self.operationsHeaderLayout = QVBoxLayout(self.operationsHeaderWidget)
+        self.operationsHeaderLayout.setSpacing(3)
+        self.operationsHeaderLayout.setObjectName(u"operationsHeaderLayout")
+        self.operationsHeaderLayout.setContentsMargins(0, 4, 0, 0)
+        self.operationsTitle = QLabel(self.operationsHeaderWidget)
+        self.operationsTitle.setObjectName(u"operationsTitle")
+        self.operationsTitle.setStyleSheet(u"QLabel#operationsTitle {\n"
+"    font-size: 15px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
+
+        self.operationsHeaderLayout.addWidget(self.operationsTitle)
+
+        self.operationsProgressLabel = QLabel(self.operationsHeaderWidget)
+        self.operationsProgressLabel.setObjectName(u"operationsProgressLabel")
+        self.operationsProgressLabel.setStyleSheet(u"QLabel#operationsProgressLabel {\n"
+"    font-size: 11px;\n"
+"    color: #64748b;\n"
+"    font-weight: 500;\n"
+"}")
+
+        self.operationsHeaderLayout.addWidget(self.operationsProgressLabel)
+
+        self.operationsProgress = QProgressBar(self.operationsHeaderWidget)
+        self.operationsProgress.setObjectName(u"operationsProgress")
+        self.operationsProgress.setStyleSheet(u"QProgressBar#operationsProgress {\n"
+"    background-color: #e2e8f0;\n"
+"    border-radius: 3px;\n"
+"    max-height: 6px;\n"
+"    min-height: 6px;\n"
+"    border: none;\n"
+"}\n"
+"QProgressBar#operationsProgress::chunk {\n"
+"    background-color: #16a34a;\n"
+"    border-radius: 3px;\n"
+"}")
+        self.operationsProgress.setMaximum(3)
+        self.operationsProgress.setValue(0)
+        self.operationsProgress.setTextVisible(False)
+
+        self.operationsHeaderLayout.addWidget(self.operationsProgress)
+
+
+        self.contentLayout.addWidget(self.operationsHeaderWidget)
+
+        self.stepDetect = QFrame(self.content)
+        self.stepDetect.setObjectName(u"stepDetect")
+        sizePolicy3.setHeightForWidth(self.stepDetect.sizePolicy().hasHeightForWidth())
+        self.stepDetect.setSizePolicy(sizePolicy3)
+        self.stepDetect.setStyleSheet(u"QFrame#stepDetect {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #e2e8f0;\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QFrame#stepDetect:hover {\n"
+"    border-color: #cbd5e1;\n"
+"}")
+        self.stepDetectLayout = QVBoxLayout(self.stepDetect)
+        self.stepDetectLayout.setSpacing(0)
+        self.stepDetectLayout.setObjectName(u"stepDetectLayout")
+        self.stepDetectLayout.setContentsMargins(0, 0, 0, 0)
+        self.stepDetectHeader = QWidget(self.stepDetect)
+        self.stepDetectHeader.setObjectName(u"stepDetectHeader")
+        sizePolicy4.setHeightForWidth(self.stepDetectHeader.sizePolicy().hasHeightForWidth())
+        self.stepDetectHeader.setSizePolicy(sizePolicy4)
+        self.stepDetectHeader.setMaximumSize(QSize(16777215, 46))
+        self.stepDetectHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepDetectHeaderLayout = QHBoxLayout(self.stepDetectHeader)
+        self.stepDetectHeaderLayout.setSpacing(8)
+        self.stepDetectHeaderLayout.setObjectName(u"stepDetectHeaderLayout")
+        self.stepDetectHeaderLayout.setContentsMargins(8, 4, 8, 4)
+        self.stepDetectNumber = QLabel(self.stepDetectHeader)
+        self.stepDetectNumber.setObjectName(u"stepDetectNumber")
+        self.stepDetectNumber.setMinimumSize(QSize(30, 30))
+        self.stepDetectNumber.setMaximumSize(QSize(30, 30))
+        self.stepDetectNumber.setStyleSheet(u"QLabel#stepDetectNumber {\n"
+"    background-color: #0284c7;\n"
+"    color: #ffffff;\n"
+"    border-radius: 15px;\n"
+"    font-weight: bold;\n"
+"    font-size: 13px;\n"
+"}")
+        self.stepDetectNumber.setAlignment(Qt.AlignCenter)
+
+        self.stepDetectHeaderLayout.addWidget(self.stepDetectNumber)
+
+        self.stepDetectTextColumn = QVBoxLayout()
+        self.stepDetectTextColumn.setSpacing(2)
+        self.stepDetectTextColumn.setObjectName(u"stepDetectTextColumn")
+        self.stepDetectTextColumn.setContentsMargins(0, 0, 0, 0)
+        self.stepDetectToggle = QPushButton(self.stepDetectHeader)
+        self.stepDetectToggle.setObjectName(u"stepDetectToggle")
+        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        sizePolicy6.setHorizontalStretch(1)
+        sizePolicy6.setVerticalStretch(0)
+        sizePolicy6.setHeightForWidth(self.stepDetectToggle.sizePolicy().hasHeightForWidth())
+        self.stepDetectToggle.setSizePolicy(sizePolicy6)
+        self.stepDetectToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepDetectToggle.setStyleSheet(u"QPushButton#stepDetectToggle {\n"
+"    border: none;\n"
+"    background: transparent;\n"
+"    text-align: left;\n"
+"    padding: 0px;\n"
+"    font-size: 13px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
+        self.stepDetectToggle.setCheckable(True)
+        self.stepDetectToggle.setChecked(True)
+
+        self.stepDetectTextColumn.addWidget(self.stepDetectToggle)
+
+        self.stepDetectSubtitle = QLabel(self.stepDetectHeader)
+        self.stepDetectSubtitle.setObjectName(u"stepDetectSubtitle")
+        self.stepDetectSubtitle.setStyleSheet(u"QLabel#stepDetectSubtitle {\n"
+"    font-size: 10px;\n"
+"    color: #64748b;\n"
+"}")
+        self.stepDetectSubtitle.setWordWrap(True)
+
+        self.stepDetectTextColumn.addWidget(self.stepDetectSubtitle)
+
+
+        self.stepDetectHeaderLayout.addLayout(self.stepDetectTextColumn)
+
+        self.stepDetectStatusBadge = QLabel(self.stepDetectHeader)
+        self.stepDetectStatusBadge.setObjectName(u"stepDetectStatusBadge")
+        self.stepDetectStatusBadge.setStyleSheet(u"QLabel#stepDetectStatusBadge {\n"
+"    background-color: #e0f2fe;\n"
+"    color: #0284c7;\n"
+"    border-radius: 9px;\n"
+"    font-weight: 600;\n"
+"    font-size: 10px;\n"
+"    padding: 2px 8px;\n"
+"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.stepDetectStatusBadge.setAlignment(Qt.AlignCenter)
+
+        self.stepDetectHeaderLayout.addWidget(self.stepDetectStatusBadge)
+
+        self.stepDetectChevron = QLabel(self.stepDetectHeader)
+        self.stepDetectChevron.setObjectName(u"stepDetectChevron")
+        self.stepDetectChevron.setMinimumSize(QSize(14, 0))
+        self.stepDetectChevron.setMaximumSize(QSize(14, 16777215))
+        self.stepDetectChevron.setStyleSheet(u"QLabel#stepDetectChevron {\n"
+"    font-size: 9px;\n"
+"    font-weight: bold;\n"
+"    color: #64748b;\n"
+"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.stepDetectChevron.setAlignment(Qt.AlignCenter)
+
+        self.stepDetectHeaderLayout.addWidget(self.stepDetectChevron)
+
+
+        self.stepDetectLayout.addWidget(self.stepDetectHeader)
+
+        self.stepDetectBody = QWidget(self.stepDetect)
+        self.stepDetectBody.setObjectName(u"stepDetectBody")
+        self.stepDetectBody.setStyleSheet(u"QWidget#stepDetectBody {\n"
+"    border-top: 1px solid #f1f5f9;\n"
+"    background: transparent;\n"
+"}")
+        self.stepDetectBodyLayout = QVBoxLayout(self.stepDetectBody)
+        self.stepDetectBodyLayout.setSpacing(6)
+        self.stepDetectBodyLayout.setObjectName(u"stepDetectBodyLayout")
+        self.stepDetectBodyLayout.setContentsMargins(10, 8, 10, 10)
+        self.stepDetectFields = QFormLayout()
+        self.stepDetectFields.setObjectName(u"stepDetectFields")
+        self.stepDetectFields.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        self.stepDetectFields.setRowWrapPolicy(QFormLayout.WrapLongRows)
+        self.stepDetectFields.setHorizontalSpacing(8)
+        self.stepDetectFields.setVerticalSpacing(6)
+        self.detectConfidenceLabel = QLabel(self.stepDetectBody)
+        self.detectConfidenceLabel.setObjectName(u"detectConfidenceLabel")
+        self.detectConfidenceLabel.setStyleSheet(u"QLabel#detectConfidenceLabel {\n"
+"    color: #334155;\n"
+"    font-size: 12px;\n"
+"}")
+
+        self.stepDetectFields.setWidget(0, QFormLayout.LabelRole, self.detectConfidenceLabel)
+
+        self.detectConfidence = QDoubleSpinBox(self.stepDetectBody)
+        self.detectConfidence.setObjectName(u"detectConfidence")
+        self.detectConfidence.setStyleSheet(u"QDoubleSpinBox#detectConfidence {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 4px;\n"
+"    padding: 4px 6px;\n"
+"    font-size: 12px;\n"
+"    color: #0f172a;\n"
+"}\n"
+"QDoubleSpinBox#detectConfidence:focus {\n"
+"    border-color: #0284c7;\n"
+"}")
+        self.detectConfidence.setMaximum(1.000000000000000)
+        self.detectConfidence.setSingleStep(0.050000000000000)
+        self.detectConfidence.setValue(0.300000000000000)
+
+        self.stepDetectFields.setWidget(0, QFormLayout.FieldRole, self.detectConfidence)
+
+        self.detectMergeLabel = QLabel(self.stepDetectBody)
+        self.detectMergeLabel.setObjectName(u"detectMergeLabel")
+        self.detectMergeLabel.setStyleSheet(u"QLabel#detectMergeLabel {\n"
+"    color: #334155;\n"
+"    font-size: 12px;\n"
+"}")
+
+        self.stepDetectFields.setWidget(1, QFormLayout.LabelRole, self.detectMergeLabel)
+
+        self.detectMergeRow = QHBoxLayout()
+        self.detectMergeRow.setSpacing(6)
+        self.detectMergeRow.setObjectName(u"detectMergeRow")
+        self.detectMergeMethod = QComboBox(self.stepDetectBody)
+        self.detectMergeMethod.addItem("")
+        self.detectMergeMethod.addItem("")
+        self.detectMergeMethod.setObjectName(u"detectMergeMethod")
+        self.detectMergeMethod.setStyleSheet(u"QComboBox#detectMergeMethod {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 4px;\n"
+"    padding: 4px 6px;\n"
+"    font-size: 12px;\n"
+"    color: #0f172a;\n"
+"}\n"
+"QComboBox#detectMergeMethod:focus {\n"
+"    border-color: #0284c7;\n"
+"}")
+
+        self.detectMergeRow.addWidget(self.detectMergeMethod)
+
+        self.detectThresholdLabel = QLabel(self.stepDetectBody)
+        self.detectThresholdLabel.setObjectName(u"detectThresholdLabel")
+        self.detectThresholdLabel.setStyleSheet(u"QLabel#detectThresholdLabel {\n"
+"    color: #334155;\n"
+"    font-size: 12px;\n"
+"}")
+
+        self.detectMergeRow.addWidget(self.detectThresholdLabel)
+
+        self.detectMergeThreshold = QDoubleSpinBox(self.stepDetectBody)
+        self.detectMergeThreshold.setObjectName(u"detectMergeThreshold")
+        self.detectMergeThreshold.setStyleSheet(u"QDoubleSpinBox#detectMergeThreshold {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 4px;\n"
+"    padding: 4px 6px;\n"
+"    font-size: 12px;\n"
+"    color: #0f172a;\n"
+"}\n"
+"QDoubleSpinBox#detectMergeThreshold:focus {\n"
+"    border-color: #0284c7;\n"
+"}")
+        self.detectMergeThreshold.setMaximum(1.000000000000000)
+        self.detectMergeThreshold.setSingleStep(0.050000000000000)
+        self.detectMergeThreshold.setValue(0.200000000000000)
+
+        self.detectMergeRow.addWidget(self.detectMergeThreshold)
+
+
+        self.stepDetectFields.setLayout(1, QFormLayout.FieldRole, self.detectMergeRow)
+
+
+        self.stepDetectBodyLayout.addLayout(self.stepDetectFields)
+
+        self.detectUseGPU = QCheckBox(self.stepDetectBody)
+        self.detectUseGPU.setObjectName(u"detectUseGPU")
+        self.detectUseGPU.setStyleSheet(u"QCheckBox#detectUseGPU {\n"
+"    font-size: 12px;\n"
+"    color: #1e293b;\n"
+"    spacing: 6px;\n"
+"}")
+
+        self.stepDetectBodyLayout.addWidget(self.detectUseGPU)
+
+        self.detectError = QLabel(self.stepDetectBody)
+        self.detectError.setObjectName(u"detectError")
+        self.detectError.setStyleSheet(u"QLabel#detectError {\n"
+"    font-size: 11px;\n"
+"    color: #ef4444;\n"
+"}")
+        self.detectError.setWordWrap(True)
+
+        self.stepDetectBodyLayout.addWidget(self.detectError)
+
+        self.detectRun = QPushButton(self.stepDetectBody)
+        self.detectRun.setObjectName(u"detectRun")
+        self.detectRun.setEnabled(False)
+        self.detectRun.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.detectRun.setStyleSheet(u"QPushButton#detectRun {\n"
+"    font-weight: bold;\n"
+"    background-color: #0284c7;\n"
+"    color: #ffffff;\n"
+"    padding: 7px 12px;\n"
+"    border-radius: 6px;\n"
+"    font-size: 13px;\n"
+"    border: none;\n"
+"}\n"
+"QPushButton#detectRun:hover {\n"
+"    background-color: #0369a1;\n"
+"}\n"
+"QPushButton#detectRun:disabled {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #94a3b8;\n"
+"}")
+
+        self.stepDetectBodyLayout.addWidget(self.detectRun)
+
+
+        self.stepDetectLayout.addWidget(self.stepDetectBody)
+
+
+        self.contentLayout.addWidget(self.stepDetect)
+
+        self.stepStack = QFrame(self.content)
+        self.stepStack.setObjectName(u"stepStack")
+        sizePolicy3.setHeightForWidth(self.stepStack.sizePolicy().hasHeightForWidth())
+        self.stepStack.setSizePolicy(sizePolicy3)
+        self.stepStack.setStyleSheet(u"QFrame#stepStack {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #e2e8f0;\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QFrame#stepStack:hover {\n"
+"    border-color: #cbd5e1;\n"
+"}")
+        self.stepStackLayout = QVBoxLayout(self.stepStack)
+        self.stepStackLayout.setSpacing(0)
+        self.stepStackLayout.setObjectName(u"stepStackLayout")
+        self.stepStackLayout.setContentsMargins(0, 0, 0, 0)
+        self.stepStackHeader = QWidget(self.stepStack)
+        self.stepStackHeader.setObjectName(u"stepStackHeader")
+        sizePolicy4.setHeightForWidth(self.stepStackHeader.sizePolicy().hasHeightForWidth())
+        self.stepStackHeader.setSizePolicy(sizePolicy4)
+        self.stepStackHeader.setMaximumSize(QSize(16777215, 46))
+        self.stepStackHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepStackHeaderLayout = QHBoxLayout(self.stepStackHeader)
+        self.stepStackHeaderLayout.setSpacing(8)
+        self.stepStackHeaderLayout.setObjectName(u"stepStackHeaderLayout")
+        self.stepStackHeaderLayout.setContentsMargins(8, 4, 8, 4)
+        self.stepStackNumber = QLabel(self.stepStackHeader)
+        self.stepStackNumber.setObjectName(u"stepStackNumber")
+        self.stepStackNumber.setMinimumSize(QSize(30, 30))
+        self.stepStackNumber.setMaximumSize(QSize(30, 30))
+        self.stepStackNumber.setStyleSheet(u"QLabel#stepStackNumber {\n"
+"    background-color: #0284c7;\n"
+"    color: #ffffff;\n"
+"    border-radius: 15px;\n"
+"    font-weight: bold;\n"
+"    font-size: 13px;\n"
+"}")
+        self.stepStackNumber.setAlignment(Qt.AlignCenter)
+
+        self.stepStackHeaderLayout.addWidget(self.stepStackNumber)
+
+        self.stepStackTextColumn = QVBoxLayout()
+        self.stepStackTextColumn.setSpacing(2)
+        self.stepStackTextColumn.setObjectName(u"stepStackTextColumn")
+        self.stepStackTextColumn.setContentsMargins(0, 0, 0, 0)
+        self.stepStackToggle = QPushButton(self.stepStackHeader)
+        self.stepStackToggle.setObjectName(u"stepStackToggle")
+        sizePolicy6.setHeightForWidth(self.stepStackToggle.sizePolicy().hasHeightForWidth())
+        self.stepStackToggle.setSizePolicy(sizePolicy6)
+        self.stepStackToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepStackToggle.setStyleSheet(u"QPushButton#stepStackToggle {\n"
+"    border: none;\n"
+"    background: transparent;\n"
+"    text-align: left;\n"
+"    padding: 0px;\n"
+"    font-size: 13px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
+        self.stepStackToggle.setCheckable(True)
+
+        self.stepStackTextColumn.addWidget(self.stepStackToggle)
+
+        self.stepStackSubtitle = QLabel(self.stepStackHeader)
+        self.stepStackSubtitle.setObjectName(u"stepStackSubtitle")
+        self.stepStackSubtitle.setStyleSheet(u"QLabel#stepStackSubtitle {\n"
+"    font-size: 10px;\n"
+"    color: #64748b;\n"
+"}")
+        self.stepStackSubtitle.setWordWrap(True)
+
+        self.stepStackTextColumn.addWidget(self.stepStackSubtitle)
+
+
+        self.stepStackHeaderLayout.addLayout(self.stepStackTextColumn)
+
+        self.stepStackStatusBadge = QLabel(self.stepStackHeader)
+        self.stepStackStatusBadge.setObjectName(u"stepStackStatusBadge")
+        self.stepStackStatusBadge.setStyleSheet(u"QLabel#stepStackStatusBadge {\n"
+"    background-color: #e0f2fe;\n"
+"    color: #0284c7;\n"
+"    border-radius: 9px;\n"
+"    font-weight: 600;\n"
+"    font-size: 10px;\n"
+"    padding: 2px 8px;\n"
+"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.stepStackStatusBadge.setAlignment(Qt.AlignCenter)
+
+        self.stepStackHeaderLayout.addWidget(self.stepStackStatusBadge)
+
+        self.stepStackChevron = QLabel(self.stepStackHeader)
+        self.stepStackChevron.setObjectName(u"stepStackChevron")
+        self.stepStackChevron.setMinimumSize(QSize(14, 0))
+        self.stepStackChevron.setMaximumSize(QSize(14, 16777215))
+        self.stepStackChevron.setStyleSheet(u"QLabel#stepStackChevron {\n"
+"    font-size: 9px;\n"
+"    font-weight: bold;\n"
+"    color: #64748b;\n"
+"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.stepStackChevron.setAlignment(Qt.AlignCenter)
+
+        self.stepStackHeaderLayout.addWidget(self.stepStackChevron)
+
+
+        self.stepStackLayout.addWidget(self.stepStackHeader)
+
+        self.stepStackBody = QWidget(self.stepStack)
+        self.stepStackBody.setObjectName(u"stepStackBody")
+        self.stepStackBody.setVisible(False)
+        self.stepStackBody.setStyleSheet(u"QWidget#stepStackBody {\n"
+"    border-top: 1px solid #f1f5f9;\n"
+"    background: transparent;\n"
+"}")
+        self.stepStackBodyLayout = QVBoxLayout(self.stepStackBody)
+        self.stepStackBodyLayout.setSpacing(6)
+        self.stepStackBodyLayout.setObjectName(u"stepStackBodyLayout")
+        self.stepStackBodyLayout.setContentsMargins(10, 8, 10, 10)
+        self.stepStackFields = QFormLayout()
+        self.stepStackFields.setObjectName(u"stepStackFields")
+        self.stepStackFields.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        self.stepStackFields.setRowWrapPolicy(QFormLayout.WrapLongRows)
+        self.stepStackFields.setHorizontalSpacing(8)
+        self.stepStackFields.setVerticalSpacing(6)
+        self.stackMethodLabel = QLabel(self.stepStackBody)
+        self.stackMethodLabel.setObjectName(u"stackMethodLabel")
+        self.stackMethodLabel.setStyleSheet(u"QLabel#stackMethodLabel {\n"
+"    color: #334155;\n"
+"    font-size: 12px;\n"
+"}")
+
+        self.stepStackFields.setWidget(0, QFormLayout.LabelRole, self.stackMethodLabel)
+
+        self.stackMethod = QLabel(self.stepStackBody)
+        self.stackMethod.setObjectName(u"stackMethod")
+        self.stackMethod.setFont(font2)
+        self.stackMethod.setStyleSheet(u"QLabel#stackMethod {\n"
+"    color: #0f172a;\n"
+"    font-size: 12px;\n"
+"}")
+
+        self.stepStackFields.setWidget(0, QFormLayout.FieldRole, self.stackMethod)
+
+        self.stackStreaksLabel = QLabel(self.stepStackBody)
+        self.stackStreaksLabel.setObjectName(u"stackStreaksLabel")
+        self.stackStreaksLabel.setStyleSheet(u"QLabel#stackStreaksLabel {\n"
+"    color: #334155;\n"
+"    font-size: 12px;\n"
+"}")
+
+        self.stepStackFields.setWidget(1, QFormLayout.LabelRole, self.stackStreaksLabel)
+
+        self.stackStreaks = QComboBox(self.stepStackBody)
+        self.stackStreaks.addItem("")
+        self.stackStreaks.addItem("")
+        self.stackStreaks.setObjectName(u"stackStreaks")
+        self.stackStreaks.setStyleSheet(u"QComboBox#stackStreaks {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 4px;\n"
+"    padding: 4px 6px;\n"
+"    font-size: 12px;\n"
+"    color: #0f172a;\n"
+"}\n"
+"QComboBox#stackStreaks:focus {\n"
+"    border-color: #0284c7;\n"
+"}")
+
+        self.stepStackFields.setWidget(1, QFormLayout.FieldRole, self.stackStreaks)
+
+        self.stackFadeLabel = QLabel(self.stepStackBody)
+        self.stackFadeLabel.setObjectName(u"stackFadeLabel")
+        self.stackFadeLabel.setStyleSheet(u"QLabel#stackFadeLabel {\n"
+"    color: #334155;\n"
+"    font-size: 12px;\n"
+"}")
+
+        self.stepStackFields.setWidget(2, QFormLayout.LabelRole, self.stackFadeLabel)
+
+        self.stackFadeRow = QHBoxLayout()
+        self.stackFadeRow.setSpacing(6)
+        self.stackFadeRow.setObjectName(u"stackFadeRow")
+        self.stackFade = QComboBox(self.stepStackBody)
+        self.stackFade.addItem("")
+        self.stackFade.addItem("")
+        self.stackFade.addItem("")
+        self.stackFade.addItem("")
+        self.stackFade.setObjectName(u"stackFade")
+        self.stackFade.setStyleSheet(u"QComboBox#stackFade {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 4px;\n"
+"    padding: 4px 6px;\n"
+"    font-size: 12px;\n"
+"    color: #0f172a;\n"
+"}\n"
+"QComboBox#stackFade:focus {\n"
+"    border-color: #0284c7;\n"
+"}")
+
+        self.stackFadeRow.addWidget(self.stackFade)
+
+        self.stackAmountLabel = QLabel(self.stepStackBody)
+        self.stackAmountLabel.setObjectName(u"stackAmountLabel")
+        self.stackAmountLabel.setStyleSheet(u"QLabel#stackAmountLabel {\n"
+"    color: #334155;\n"
+"    font-size: 12px;\n"
+"}")
+
+        self.stackFadeRow.addWidget(self.stackAmountLabel)
+
+        self.stackFadeAmount = QSpinBox(self.stepStackBody)
+        self.stackFadeAmount.setObjectName(u"stackFadeAmount")
+        self.stackFadeAmount.setStyleSheet(u"QSpinBox#stackFadeAmount {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 4px;\n"
+"    padding: 4px 6px;\n"
+"    font-size: 12px;\n"
+"    color: #0f172a;\n"
+"}\n"
+"QSpinBox#stackFadeAmount:focus {\n"
+"    border-color: #0284c7;\n"
+"}")
+        self.stackFadeAmount.setMaximum(100)
+        self.stackFadeAmount.setValue(20)
+
+        self.stackFadeRow.addWidget(self.stackFadeAmount)
+
+
+        self.stepStackFields.setLayout(2, QFormLayout.FieldRole, self.stackFadeRow)
+
+
+        self.stepStackBodyLayout.addLayout(self.stepStackFields)
+
+        self.stackGpuBatchRow = QHBoxLayout()
+        self.stackGpuBatchRow.setSpacing(6)
+        self.stackGpuBatchRow.setObjectName(u"stackGpuBatchRow")
+        self.stackUseGPU = QCheckBox(self.stepStackBody)
+        self.stackUseGPU.setObjectName(u"stackUseGPU")
+        self.stackUseGPU.setStyleSheet(u"QCheckBox#stackUseGPU {\n"
+"    font-size: 12px;\n"
+"    color: #1e293b;\n"
+"    spacing: 6px;\n"
+"}")
+
+        self.stackGpuBatchRow.addWidget(self.stackUseGPU)
+
+        self.stackGpuBatchSpacer = QSpacerItem(20, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.stackGpuBatchRow.addItem(self.stackGpuBatchSpacer)
+
+        self.stackBatchLabel = QLabel(self.stepStackBody)
+        self.stackBatchLabel.setObjectName(u"stackBatchLabel")
+        self.stackBatchLabel.setStyleSheet(u"QLabel#stackBatchLabel {\n"
+"    color: #334155;\n"
+"    font-size: 12px;\n"
+"}")
+
+        self.stackGpuBatchRow.addWidget(self.stackBatchLabel)
+
+        self.stackBatchSize = QSpinBox(self.stepStackBody)
+        self.stackBatchSize.setObjectName(u"stackBatchSize")
+        self.stackBatchSize.setStyleSheet(u"QSpinBox#stackBatchSize {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 4px;\n"
+"    padding: 4px 6px;\n"
+"    font-size: 12px;\n"
+"    color: #0f172a;\n"
+"}\n"
+"QSpinBox#stackBatchSize:focus {\n"
+"    border-color: #0284c7;\n"
+"}")
+        self.stackBatchSize.setMinimum(1)
+        self.stackBatchSize.setMaximum(2147483647)
+        self.stackBatchSize.setValue(1)
+
+        self.stackGpuBatchRow.addWidget(self.stackBatchSize)
+
+
+        self.stepStackBodyLayout.addLayout(self.stackGpuBatchRow)
+
+        self.stackMemory = QLabel(self.stepStackBody)
+        self.stackMemory.setObjectName(u"stackMemory")
+        self.stackMemory.setStyleSheet(u"QLabel#stackMemory {\n"
+"    font-size: 11px;\n"
+"    color: #64748b;\n"
+"}")
+        self.stackMemory.setWordWrap(True)
+
+        self.stepStackBodyLayout.addWidget(self.stackMemory)
+
+        self.stackError = QLabel(self.stepStackBody)
+        self.stackError.setObjectName(u"stackError")
+        self.stackError.setStyleSheet(u"QLabel#stackError {\n"
+"    font-size: 11px;\n"
+"    color: #ef4444;\n"
+"}")
+        self.stackError.setWordWrap(True)
+
+        self.stepStackBodyLayout.addWidget(self.stackError)
+
+        self.stackRun = QPushButton(self.stepStackBody)
+        self.stackRun.setObjectName(u"stackRun")
+        self.stackRun.setEnabled(False)
+        self.stackRun.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackRun.setStyleSheet(u"QPushButton#stackRun {\n"
+"    font-weight: bold;\n"
+"    background-color: #0284c7;\n"
+"    color: #ffffff;\n"
+"    padding: 7px 12px;\n"
+"    border-radius: 6px;\n"
+"    font-size: 13px;\n"
+"    border: none;\n"
+"}\n"
+"QPushButton#stackRun:hover {\n"
+"    background-color: #0369a1;\n"
+"}\n"
+"QPushButton#stackRun:disabled {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #94a3b8;\n"
+"}")
+
+        self.stepStackBodyLayout.addWidget(self.stackRun)
+
+
+        self.stepStackLayout.addWidget(self.stepStackBody)
+
+
+        self.contentLayout.addWidget(self.stepStack)
+
+        self.stepFill = QFrame(self.content)
+        self.stepFill.setObjectName(u"stepFill")
+        sizePolicy3.setHeightForWidth(self.stepFill.sizePolicy().hasHeightForWidth())
+        self.stepFill.setSizePolicy(sizePolicy3)
+        self.stepFill.setStyleSheet(u"QFrame#stepFill {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #e2e8f0;\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QFrame#stepFill:hover {\n"
+"    border-color: #cbd5e1;\n"
+"}")
+        self.stepFillLayout = QVBoxLayout(self.stepFill)
+        self.stepFillLayout.setSpacing(0)
+        self.stepFillLayout.setObjectName(u"stepFillLayout")
+        self.stepFillLayout.setContentsMargins(0, 0, 0, 0)
+        self.stepFillHeader = QWidget(self.stepFill)
+        self.stepFillHeader.setObjectName(u"stepFillHeader")
+        sizePolicy4.setHeightForWidth(self.stepFillHeader.sizePolicy().hasHeightForWidth())
+        self.stepFillHeader.setSizePolicy(sizePolicy4)
+        self.stepFillHeader.setMaximumSize(QSize(16777215, 46))
+        self.stepFillHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepFillHeaderLayout = QHBoxLayout(self.stepFillHeader)
+        self.stepFillHeaderLayout.setSpacing(8)
+        self.stepFillHeaderLayout.setObjectName(u"stepFillHeaderLayout")
+        self.stepFillHeaderLayout.setContentsMargins(8, 4, 8, 4)
+        self.stepFillNumber = QLabel(self.stepFillHeader)
+        self.stepFillNumber.setObjectName(u"stepFillNumber")
+        self.stepFillNumber.setMinimumSize(QSize(30, 30))
+        self.stepFillNumber.setMaximumSize(QSize(30, 30))
+        self.stepFillNumber.setStyleSheet(u"QLabel#stepFillNumber {\n"
+"    background-color: #94a3b8;\n"
+"    color: #ffffff;\n"
+"    border-radius: 15px;\n"
+"    font-weight: bold;\n"
+"    font-size: 13px;\n"
+"}")
+        self.stepFillNumber.setAlignment(Qt.AlignCenter)
+
+        self.stepFillHeaderLayout.addWidget(self.stepFillNumber)
+
+        self.stepFillTextColumn = QVBoxLayout()
+        self.stepFillTextColumn.setSpacing(2)
+        self.stepFillTextColumn.setObjectName(u"stepFillTextColumn")
+        self.stepFillTextColumn.setContentsMargins(0, 0, 0, 0)
+        self.stepFillToggle = QPushButton(self.stepFillHeader)
+        self.stepFillToggle.setObjectName(u"stepFillToggle")
+        sizePolicy6.setHeightForWidth(self.stepFillToggle.sizePolicy().hasHeightForWidth())
+        self.stepFillToggle.setSizePolicy(sizePolicy6)
+        self.stepFillToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepFillToggle.setStyleSheet(u"QPushButton#stepFillToggle {\n"
+"    border: none;\n"
+"    background: transparent;\n"
+"    text-align: left;\n"
+"    padding: 0px;\n"
+"    font-size: 13px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
+        self.stepFillToggle.setCheckable(True)
+
+        self.stepFillTextColumn.addWidget(self.stepFillToggle)
+
+        self.stepFillSubtitle = QLabel(self.stepFillHeader)
+        self.stepFillSubtitle.setObjectName(u"stepFillSubtitle")
+        self.stepFillSubtitle.setStyleSheet(u"QLabel#stepFillSubtitle {\n"
+"    font-size: 10px;\n"
+"    color: #64748b;\n"
+"}")
+        self.stepFillSubtitle.setWordWrap(True)
+
+        self.stepFillTextColumn.addWidget(self.stepFillSubtitle)
+
+
+        self.stepFillHeaderLayout.addLayout(self.stepFillTextColumn)
+
+        self.stepFillStatusBadge = QLabel(self.stepFillHeader)
+        self.stepFillStatusBadge.setObjectName(u"stepFillStatusBadge")
+        self.stepFillStatusBadge.setStyleSheet(u"QLabel#stepFillStatusBadge {\n"
+"    background-color: #e0f2fe;\n"
+"    color: #0284c7;\n"
+"    border-radius: 9px;\n"
+"    font-weight: 600;\n"
+"    font-size: 10px;\n"
+"    padding: 2px 8px;\n"
+"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.stepFillStatusBadge.setAlignment(Qt.AlignCenter)
+
+        self.stepFillHeaderLayout.addWidget(self.stepFillStatusBadge)
+
+        self.stepFillChevron = QLabel(self.stepFillHeader)
+        self.stepFillChevron.setObjectName(u"stepFillChevron")
+        self.stepFillChevron.setMinimumSize(QSize(14, 0))
+        self.stepFillChevron.setMaximumSize(QSize(14, 16777215))
+        self.stepFillChevron.setStyleSheet(u"QLabel#stepFillChevron {\n"
+"    font-size: 9px;\n"
+"    font-weight: bold;\n"
+"    color: #64748b;\n"
+"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.stepFillChevron.setAlignment(Qt.AlignCenter)
+
+        self.stepFillHeaderLayout.addWidget(self.stepFillChevron)
+
+
+        self.stepFillLayout.addWidget(self.stepFillHeader)
+
+        self.stepFillBody = QWidget(self.stepFill)
+        self.stepFillBody.setObjectName(u"stepFillBody")
+        self.stepFillBody.setVisible(False)
+        self.stepFillBody.setStyleSheet(u"QWidget#stepFillBody {\n"
+"    border-top: 1px solid #f1f5f9;\n"
+"    background: transparent;\n"
+"}")
+        self.stepFillBodyLayout = QVBoxLayout(self.stepFillBody)
+        self.stepFillBodyLayout.setSpacing(8)
+        self.stepFillBodyLayout.setObjectName(u"stepFillBodyLayout")
+        self.stepFillBodyLayout.setContentsMargins(10, 8, 10, 10)
+        self.fillTarget = QLabel(self.stepFillBody)
+        self.fillTarget.setObjectName(u"fillTarget")
+        self.fillTarget.setStyleSheet(u"QLabel#fillTarget {\n"
+"    font-size: 12px;\n"
+"    color: #475569;\n"
+"}")
+        self.fillTarget.setWordWrap(True)
+
+        self.stepFillBodyLayout.addWidget(self.fillTarget)
+
+        self.fillRun = QPushButton(self.stepFillBody)
+        self.fillRun.setObjectName(u"fillRun")
+        self.fillRun.setEnabled(False)
+        self.fillRun.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.fillRun.setStyleSheet(u"QPushButton#fillRun {\n"
+"    font-weight: bold;\n"
+"    background-color: #0284c7;\n"
+"    color: #ffffff;\n"
+"    padding: 7px 12px;\n"
+"    border-radius: 6px;\n"
+"    font-size: 13px;\n"
+"    border: none;\n"
+"}\n"
+"QPushButton#fillRun:hover {\n"
+"    background-color: #0369a1;\n"
+"}\n"
+"QPushButton#fillRun:disabled {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #94a3b8;\n"
+"}")
+
+        self.stepFillBodyLayout.addWidget(self.fillRun)
+
+
+        self.stepFillLayout.addWidget(self.stepFillBody)
+
+
+        self.contentLayout.addWidget(self.stepFill)
+
+        self.stepExport = QFrame(self.content)
+        self.stepExport.setObjectName(u"stepExport")
+        sizePolicy3.setHeightForWidth(self.stepExport.sizePolicy().hasHeightForWidth())
+        self.stepExport.setSizePolicy(sizePolicy3)
+        self.stepExport.setStyleSheet(u"QFrame#stepExport {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #e2e8f0;\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QFrame#stepExport:hover {\n"
+"    border-color: #cbd5e1;\n"
+"}")
+        self.stepExportLayout = QVBoxLayout(self.stepExport)
+        self.stepExportLayout.setSpacing(0)
+        self.stepExportLayout.setObjectName(u"stepExportLayout")
+        self.stepExportLayout.setContentsMargins(0, 0, 0, 0)
+        self.stepExportHeader = QWidget(self.stepExport)
+        self.stepExportHeader.setObjectName(u"stepExportHeader")
+        sizePolicy4.setHeightForWidth(self.stepExportHeader.sizePolicy().hasHeightForWidth())
+        self.stepExportHeader.setSizePolicy(sizePolicy4)
+        self.stepExportHeader.setMaximumSize(QSize(16777215, 46))
+        self.stepExportHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepExportHeaderLayout = QHBoxLayout(self.stepExportHeader)
+        self.stepExportHeaderLayout.setSpacing(8)
+        self.stepExportHeaderLayout.setObjectName(u"stepExportHeaderLayout")
+        self.stepExportHeaderLayout.setContentsMargins(8, 4, 8, 4)
+        self.stepExportTextColumn = QVBoxLayout()
+        self.stepExportTextColumn.setSpacing(2)
+        self.stepExportTextColumn.setObjectName(u"stepExportTextColumn")
+        self.stepExportTextColumn.setContentsMargins(0, 0, 0, 0)
+        self.stepExportToggle = QPushButton(self.stepExportHeader)
+        self.stepExportToggle.setObjectName(u"stepExportToggle")
+        sizePolicy6.setHeightForWidth(self.stepExportToggle.sizePolicy().hasHeightForWidth())
+        self.stepExportToggle.setSizePolicy(sizePolicy6)
+        self.stepExportToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepExportToggle.setStyleSheet(u"QPushButton#stepExportToggle {\n"
+"    border: none;\n"
+"    background: transparent;\n"
+"    text-align: left;\n"
+"    padding: 0px;\n"
+"    font-size: 13px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
+        self.stepExportToggle.setCheckable(True)
+
+        self.stepExportTextColumn.addWidget(self.stepExportToggle)
+
+        self.stepExportSubtitle = QLabel(self.stepExportHeader)
+        self.stepExportSubtitle.setObjectName(u"stepExportSubtitle")
+        self.stepExportSubtitle.setStyleSheet(u"QLabel#stepExportSubtitle {\n"
+"    font-size: 10px;\n"
+"    color: #64748b;\n"
+"}")
+        self.stepExportSubtitle.setWordWrap(True)
+
+        self.stepExportTextColumn.addWidget(self.stepExportSubtitle)
+
+
+        self.stepExportHeaderLayout.addLayout(self.stepExportTextColumn)
+
+        self.stepExportChevron = QLabel(self.stepExportHeader)
+        self.stepExportChevron.setObjectName(u"stepExportChevron")
+        self.stepExportChevron.setMinimumSize(QSize(14, 0))
+        self.stepExportChevron.setMaximumSize(QSize(14, 16777215))
+        self.stepExportChevron.setStyleSheet(u"QLabel#stepExportChevron {\n"
+"    font-size: 9px;\n"
+"    font-weight: bold;\n"
+"    color: #64748b;\n"
+"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.stepExportChevron.setAlignment(Qt.AlignCenter)
+
+        self.stepExportHeaderLayout.addWidget(self.stepExportChevron)
+
+
+        self.stepExportLayout.addWidget(self.stepExportHeader)
+
+        self.stepExportBody = QWidget(self.stepExport)
+        self.stepExportBody.setObjectName(u"stepExportBody")
+        self.stepExportBody.setVisible(False)
+        self.stepExportBody.setStyleSheet(u"QWidget#stepExportBody {\n"
+"    border-top: 1px solid #f1f5f9;\n"
+"    background: transparent;\n"
+"}")
+        self.stepExportBodyLayout = QVBoxLayout(self.stepExportBody)
+        self.stepExportBodyLayout.setSpacing(6)
+        self.stepExportBodyLayout.setObjectName(u"stepExportBodyLayout")
+        self.stepExportBodyLayout.setContentsMargins(10, 8, 10, 10)
+        self.exportHint = QLabel(self.stepExportBody)
+        self.exportHint.setObjectName(u"exportHint")
+        self.exportHint.setStyleSheet(u"QLabel#exportHint {\n"
+"    font-size: 11px;\n"
+"    color: #64748b;\n"
+"    line-height: 1.4;\n"
+"}")
+        self.exportHint.setWordWrap(True)
+
+        self.stepExportBodyLayout.addWidget(self.exportHint)
+
+        self.exportShowDeletedMasks = QCheckBox(self.stepExportBody)
+        self.exportShowDeletedMasks.setObjectName(u"exportShowDeletedMasks")
+        self.exportShowDeletedMasks.setStyleSheet(u"QCheckBox#exportShowDeletedMasks {\n"
+"    font-size: 12px;\n"
+"    color: #1e293b;\n"
+"    spacing: 6px;\n"
+"}")
+
+        self.stepExportBodyLayout.addWidget(self.exportShowDeletedMasks)
+
+        self.exportButtonsRow = QHBoxLayout()
+        self.exportButtonsRow.setSpacing(6)
+        self.exportButtonsRow.setObjectName(u"exportButtonsRow")
+        self.exportMasks = QPushButton(self.stepExportBody)
+        self.exportMasks.setObjectName(u"exportMasks")
+        self.exportMasks.setEnabled(False)
+        self.exportMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.exportMasks.setStyleSheet(u"QPushButton#exportMasks {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#exportMasks:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#exportMasks:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}")
+
+        self.exportButtonsRow.addWidget(self.exportMasks)
+
+        self.exportTraining = QPushButton(self.stepExportBody)
+        self.exportTraining.setObjectName(u"exportTraining")
+        self.exportTraining.setEnabled(False)
+        self.exportTraining.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.exportTraining.setStyleSheet(u"QPushButton#exportTraining {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#exportTraining:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#exportTraining:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}")
+
+        self.exportButtonsRow.addWidget(self.exportTraining)
+
+
+        self.stepExportBodyLayout.addLayout(self.exportButtonsRow)
+
+
+        self.stepExportLayout.addWidget(self.stepExportBody)
+
+
+        self.contentLayout.addWidget(self.stepExport)
+
+        self.bottomSpace = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.contentLayout.addItem(self.bottomSpace)
+
+        self.scroll.setWidget(self.content)
+
+        self.sidebarLayout.addWidget(self.scroll)
+
+        self.bodySplitter.addWidget(self.sidebar)
         self.canvasHost = QWidget(self.bodySplitter)
         self.canvasHost.setObjectName(u"canvasHost")
         self.canvasHost.setStyleSheet(u"QWidget#canvasHost {\n"
@@ -331,11 +1772,11 @@ class Ui_MainWindow(object):
         self.canvasLayout.setContentsMargins(0, 0, 0, 0)
         self.canvas_main = QLabel(self.canvasHost)
         self.canvas_main.setObjectName(u"canvas_main")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
-        sizePolicy2.setHorizontalStretch(1)
-        sizePolicy2.setVerticalStretch(1)
-        sizePolicy2.setHeightForWidth(self.canvas_main.sizePolicy().hasHeightForWidth())
-        self.canvas_main.setSizePolicy(sizePolicy2)
+        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        sizePolicy7.setHorizontalStretch(1)
+        sizePolicy7.setVerticalStretch(1)
+        sizePolicy7.setHeightForWidth(self.canvas_main.sizePolicy().hasHeightForWidth())
+        self.canvas_main.setSizePolicy(sizePolicy7)
         self.canvas_main.setMinimumSize(QSize(200, 160))
         self.canvas_main.setStyleSheet(u"QLabel#canvas_main {\n"
 "    background-color: #0f172a;\n"
@@ -354,6 +1795,9 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
+        self.stackFade.setCurrentIndex(3)
+
+
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
 
@@ -364,5 +1808,87 @@ class Ui_MainWindow(object):
         self.pushButton_cancelOp.setText(QCoreApplication.translate("MainWindow", u"X", None))
         self.label_imageName.setText("")
         self.label_gpu.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
+        self.projectTitle.setText(QCoreApplication.translate("MainWindow", u"Project Images", None))
+        self.newProject.setText(QCoreApplication.translate("MainWindow", u"New Project", None))
+        self.openProject.setText(QCoreApplication.translate("MainWindow", u"Open Project", None))
+        self.inputFilesChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
+        self.inputFilesToggle.setText(QCoreApplication.translate("MainWindow", u"Input Files", None))
+        self.inputFilesCount.setText(QCoreApplication.translate("MainWindow", u"0", None))
+#if QT_CONFIG(tooltip)
+        self.inputFilesAdd.setToolTip(QCoreApplication.translate("MainWindow", u"Add files\u2026", None))
+#endif // QT_CONFIG(tooltip)
+        self.inputFilesAdd.setText(QCoreApplication.translate("MainWindow", u"+", None))
+        self.inputFilesEmpty.setText(QCoreApplication.translate("MainWindow", u"No files yet.", None))
+        self.outputFilesChevron.setText(QCoreApplication.translate("MainWindow", u"\u25b6", None))
+        self.outputFilesToggle.setText(QCoreApplication.translate("MainWindow", u"Output Files", None))
+        self.outputFilesCount.setText(QCoreApplication.translate("MainWindow", u"0", None))
+        self.outputFilesAdd.setText(QCoreApplication.translate("MainWindow", u"+", None))
+        self.outputFilesEmpty.setText(QCoreApplication.translate("MainWindow", u"Stacked and processed outputs will appear here.", None))
+        self.operationsTitle.setText(QCoreApplication.translate("MainWindow", u"Operations", None))
+        self.operationsProgressLabel.setText(QCoreApplication.translate("MainWindow", u"0 of 3 steps complete", None))
+        self.stepDetectNumber.setText(QCoreApplication.translate("MainWindow", u"1", None))
+        self.stepDetectToggle.setText(QCoreApplication.translate("MainWindow", u"Detect Streaks", None))
+        self.stepDetectSubtitle.setText(QCoreApplication.translate("MainWindow", u"Ready to detect streaks", None))
+        self.stepDetectStatusBadge.setText(QCoreApplication.translate("MainWindow", u"\u2713 Ready", None))
+        self.stepDetectChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
+        self.detectConfidenceLabel.setText(QCoreApplication.translate("MainWindow", u"&Confidence threshold", None))
+        self.detectMergeLabel.setText(QCoreApplication.translate("MainWindow", u"&Merging strategy", None))
+        self.detectMergeMethod.setItemText(0, QCoreApplication.translate("MainWindow", u"NMS", None))
+        self.detectMergeMethod.setItemText(1, QCoreApplication.translate("MainWindow", u"Greedy NMM", None))
+
+#if QT_CONFIG(tooltip)
+        self.detectThresholdLabel.setToolTip(QCoreApplication.translate("MainWindow", u"Merge threshold", None))
+#endif // QT_CONFIG(tooltip)
+        self.detectThresholdLabel.setText(QCoreApplication.translate("MainWindow", u"&Threshold", None))
+        self.detectUseGPU.setText(QCoreApplication.translate("MainWindow", u"Use GPU", None))
+        self.detectError.setText("")
+        self.detectRun.setText(QCoreApplication.translate("MainWindow", u"Detect Streaks", None))
+        self.stepStackNumber.setText(QCoreApplication.translate("MainWindow", u"2", None))
+        self.stepStackToggle.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))
+        self.stepStackSubtitle.setText(QCoreApplication.translate("MainWindow", u"Ready \u00b7 detection is optional", None))
+        self.stepStackStatusBadge.setText(QCoreApplication.translate("MainWindow", u"\u2713 Ready", None))
+        self.stepStackChevron.setText(QCoreApplication.translate("MainWindow", u"\u25b6", None))
+        self.stackMethodLabel.setText(QCoreApplication.translate("MainWindow", u"Method", None))
+        self.stackMethod.setText(QCoreApplication.translate("MainWindow", u"Lighten", None))
+        self.stackStreaksLabel.setText(QCoreApplication.translate("MainWindow", u"&Streaks", None))
+        self.stackStreaks.setItemText(0, QCoreApplication.translate("MainWindow", u"Keep", None))
+        self.stackStreaks.setItemText(1, QCoreApplication.translate("MainWindow", u"Remove", None))
+
+        self.stackFadeLabel.setText(QCoreApplication.translate("MainWindow", u"&Fade frames", None))
+        self.stackFade.setItemText(0, QCoreApplication.translate("MainWindow", u"None", None))
+        self.stackFade.setItemText(1, QCoreApplication.translate("MainWindow", u"Start only", None))
+        self.stackFade.setItemText(2, QCoreApplication.translate("MainWindow", u"End only", None))
+        self.stackFade.setItemText(3, QCoreApplication.translate("MainWindow", u"Start and end", None))
+
+#if QT_CONFIG(tooltip)
+        self.stackAmountLabel.setToolTip(QCoreApplication.translate("MainWindow", u"Fade amount", None))
+#endif // QT_CONFIG(tooltip)
+        self.stackAmountLabel.setText(QCoreApplication.translate("MainWindow", u"&Amount", None))
+        self.stackFadeAmount.setSuffix(QCoreApplication.translate("MainWindow", u"%", None))
+        self.stackUseGPU.setText(QCoreApplication.translate("MainWindow", u"Use GPU", None))
+        self.stackBatchLabel.setText(QCoreApplication.translate("MainWindow", u"&Batch size", None))
+        self.stackMemory.setText(QCoreApplication.translate("MainWindow", u"Add input files for a batch suggestion.", None))
+        self.stackError.setText("")
+        self.stackRun.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))
+        self.stepFillNumber.setText(QCoreApplication.translate("MainWindow", u"3", None))
+        self.stepFillToggle.setText(QCoreApplication.translate("MainWindow", u"Fill Gaps", None))
+        self.stepFillSubtitle.setText(QCoreApplication.translate("MainWindow", u"Select a stacked output image", None))
+        self.stepFillStatusBadge.setText(QCoreApplication.translate("MainWindow", u"Locked", None))
+        self.stepFillChevron.setText(QCoreApplication.translate("MainWindow", u"\u25b6", None))
+        self.fillTarget.setText(QCoreApplication.translate("MainWindow", u"Select a stacked output image to fill its gaps.", None))
+        self.fillRun.setText(QCoreApplication.translate("MainWindow", u"Fill Gaps", None))
+        self.stepExportToggle.setText(QCoreApplication.translate("MainWindow", u"Optional: Export Artifacts", None))
+        self.stepExportSubtitle.setText(QCoreApplication.translate("MainWindow", u"Export masks or training samples", None))
+        self.stepExportChevron.setText(QCoreApplication.translate("MainWindow", u"\u25b6", None))
+        self.exportHint.setText(QCoreApplication.translate("MainWindow", u"Export masks or manually reviewed training samples. These exports are optional.", None))
+        self.exportShowDeletedMasks.setText(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))
+#if QT_CONFIG(tooltip)
+        self.exportMasks.setToolTip(QCoreApplication.translate("MainWindow", u"Requires automatic or manual streak masks.", None))
+#endif // QT_CONFIG(tooltip)
+        self.exportMasks.setText(QCoreApplication.translate("MainWindow", u"Export Masks", None))
+#if QT_CONFIG(tooltip)
+        self.exportTraining.setToolTip(QCoreApplication.translate("MainWindow", u"Requires manually added or deleted streak masks.", None))
+#endif // QT_CONFIG(tooltip)
+        self.exportTraining.setText(QCoreApplication.translate("MainWindow", u"Export Training", None))
         self.canvas_main.setText(QCoreApplication.translate("MainWindow", u"Canvas", None))
     # retranslateUi

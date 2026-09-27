@@ -3,6 +3,7 @@ from PySide6.QtCore import QAbstractTableModel, QEvent, QModelIndex, QRect, QSiz
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QHeaderView, QMenu, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QWidget
 
+from types import SimpleNamespace
 from startrails.lib.file import File, InputFile
 from .icons import create_doc_icon, create_star_icon
 from .ui_file_manager import Ui_FileSection
@@ -243,11 +244,25 @@ class FileSection(QFrame):
     excludeFile = Signal(File)
     addRequested = Signal()
 
-    def __init__(self, title, inputs=False, parent=None):
+    def __init__(self, title, inputs=False, parent=None, ui=None, prefix=None):
         super().__init__(parent)
         self._inputs = inputs
-        self.ui = Ui_FileSection()
-        self.ui.setupUi(self)
+        self.frame = getattr(ui, f"{prefix}Section") if ui and prefix else self
+        if ui and prefix:
+            self.ui = SimpleNamespace(
+                headerWidget=getattr(ui, f"{prefix}Header"),
+                chevron=getattr(ui, f"{prefix}Chevron"),
+                icon=getattr(ui, f"{prefix}Icon"),
+                toggle=getattr(ui, f"{prefix}Toggle"),
+                count=getattr(ui, f"{prefix}Count"),
+                add=getattr(ui, f"{prefix}Add"),
+                body=getattr(ui, f"{prefix}Body"),
+                files=getattr(ui, f"{prefix}Tree"),
+                empty=getattr(ui, f"{prefix}Empty"),
+            )
+        else:
+            self.ui = Ui_FileSection()
+            self.ui.setupUi(self)
         self.ui.toggle.setText(title)
         self.ui.files.setAccessibleName(title)
         self.ui.add.setVisible(inputs)
@@ -297,14 +312,15 @@ class FileSection(QFrame):
             self.ui.toggle.setChecked(expanded)
         self.ui.chevron.setText("▼" if expanded else "▶")
         self.ui.body.setVisible(expanded)
+        target = self.frame if getattr(self, "frame", None) is not None else self
         if not expanded:
-            self.setFixedHeight(36)
+            target.setFixedHeight(36)
         else:
-            self.setMaximumHeight(16777215)
-            self.setMinimumHeight(0)
+            target.setMaximumHeight(16777215)
+            target.setMinimumHeight(0)
             self._refresh()
-            self.adjustSize()
-        self.updateGeometry()
+            target.adjustSize()
+        target.updateGeometry()
 
     def current_file(self):
         return self.ui.files.currentIndex().data(Qt.UserRole)
@@ -318,15 +334,18 @@ class FileSection(QFrame):
         self._refresh()
 
     def focus_file(self, file):
-        index = self.model.index_for_file(file)
-        with QSignalBlocker(self.ui.files.selectionModel()):
-            self.ui.files.setCurrentIndex(index)
-            if not index.isValid():
-                self.ui.files.clearSelection()
-        if index.isValid():
-            self.setExpanded(True)
-            self.ui.files.scrollTo(index)
-        self._refresh()
+        try:
+            index = self.model.index_for_file(file)
+            with QSignalBlocker(self.ui.files.selectionModel()):
+                self.ui.files.setCurrentIndex(index)
+                if not index.isValid():
+                    self.ui.files.clearSelection()
+            if index.isValid():
+                self.setExpanded(True)
+                self.ui.files.scrollTo(index)
+            self._refresh()
+        except RuntimeError:
+            pass
 
     def _selection_changed(self, current, previous):
         self._refresh()
@@ -363,7 +382,7 @@ class FileSection(QFrame):
         file = self.current_file()
         if file is None:
             return
-        menu = QMenu(self)
+        menu = QMenu(self.frame if getattr(self, "frame", None) is not None else self)
         if isinstance(file, InputFile):
             exclude = menu.addAction("Exclude from Stack", self._exclude)
             exclude.setCheckable(True)

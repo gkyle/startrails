@@ -68,8 +68,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     def setupUi(self, MainWindow):
         super().setupUi(MainWindow)
         self.setParent(MainWindow)
-        self.sidebar = Sidebar(self.app)
-        self.sidebarLayout.addWidget(self.sidebar)
+        self.sidebar = Sidebar(self.app, self)
         self.bodySplitter.setSizes([400, 1000])
         self.bodySplitter.setStretchFactor(0, 0)
         self.bodySplitter.setStretchFactor(1, 1)
