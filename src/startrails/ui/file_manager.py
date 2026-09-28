@@ -1,24 +1,29 @@
 """Metadata-only file views. No image decoding or widget allocation per row."""
 from PySide6.QtCore import QAbstractTableModel, QEvent, QModelIndex, QRect, QSize, Qt, Signal, QSignalBlocker
-from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen
+from PySide6.QtGui import QBrush, QFont, QIcon, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QHeaderView, QMenu, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QWidget
 
 from types import SimpleNamespace
 from startrails.lib.file import File, InputFile
 from . import resources_rc  # Register SVG icons when this module is used directly.
 from .ui_file_manager import Ui_FileSection
+from .theme import is_dark, themed_color
 
 
 class AnnotationBadgeDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.doc_icon = QIcon(":/startrails/ui/document.svg")
+        self.dark_doc_icon = QIcon(":/startrails/ui/document_dark.svg")
 
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
         return QSize(size.width(), max(24, size.height()))
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex):
+        def color(value, role="foreground"):
+            return themed_color(value, option.palette, role)
+
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing)
 
@@ -26,25 +31,26 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
         is_hovered = bool(option.state & QStyle.State_MouseOver)
 
         if is_selected:
-            painter.fillRect(option.rect, QColor("#eff6ff"))
+            painter.fillRect(option.rect, color("#eff6ff", "background"))
         elif is_hovered:
-            painter.fillRect(option.rect, QColor("#f8fafc"))
+            painter.fillRect(option.rect, color("#f8fafc", "background"))
 
         file = index.data(Qt.UserRole)
         col = index.column()
 
         if col == 0:
             icon_rect = QRect(option.rect.left() + 4, option.rect.top() + (option.rect.height() - 14) // 2, 14, 14)
-            self.doc_icon.paint(painter, icon_rect)
+            icon = self.dark_doc_icon if is_dark(option.palette) else self.doc_icon
+            icon.paint(painter, icon_rect)
 
             text_rect = QRect(option.rect.left() + 24, option.rect.top(), option.rect.width() - 28, option.rect.height())
             text = index.data(Qt.DisplayRole) or ""
             font = QFont("Segoe UI", 9)
             if is_selected:
                 font.setWeight(QFont.DemiBold)
-                painter.setPen(QColor("#1d4ed8"))
+                painter.setPen(color("#1d4ed8"))
             else:
-                painter.setPen(QColor("#0f172a"))
+                painter.setPen(color("#0f172a"))
             painter.setFont(font)
             metrics = painter.fontMetrics()
             elided = metrics.elidedText(text, Qt.ElideMiddle, text_rect.width())
@@ -58,13 +64,13 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
 
                 badges = []
                 if auto:
-                    badges.append((str(auto), QColor("#dcfce7"), QColor("#15803d"), QColor("#bbf7d0")))
+                    badges.append((str(auto), color("#dcfce7", "background"), color("#15803d"), color("#bbf7d0", "border")))
                 if manual:
-                    badges.append((str(manual), QColor("#e0f2fe"), QColor("#0284c7"), QColor("#bae6fd")))
+                    badges.append((str(manual), color("#e0f2fe", "background"), color("#0284c7"), color("#bae6fd", "border")))
                 if deleted:
-                    badges.append((str(deleted), QColor("#fef3c7"), QColor("#b45309"), QColor("#fde68a")))
+                    badges.append((str(deleted), color("#fef3c7", "background"), color("#b45309"), color("#fde68a", "border")))
                 if excluded:
-                    badges.append(("Excluded", QColor("#fee2e2"), QColor("#b91c1c"), QColor("#fecaca")))
+                    badges.append(("Excluded", color("#fee2e2", "background"), color("#b91c1c"), color("#fecaca", "border")))
 
                 if badges:
                     x = option.rect.left() + 4
@@ -89,7 +95,7 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
                         painter.drawText(pill_rect, Qt.AlignCenter, text)
                         x += badge_w + 4
                 else:
-                    painter.setPen(QColor("#94a3b8"))
+                    painter.setPen(color("#94a3b8"))
                     painter.setFont(QFont("Segoe UI", 9))
                     painter.drawText(option.rect, Qt.AlignVCenter | Qt.AlignLeft, "—")
             else:
@@ -103,11 +109,11 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
                 badge_w = fm.horizontalAdvance(op_text) + 12
                 pill_rect = QRect(option.rect.left() + 4, y, badge_w, badge_h)
                 if op_text == "Stacked":
-                    bg_col, text_col, border_col = QColor("#eff6ff"), QColor("#1d4ed8"), QColor("#bfdbfe")
+                    bg_col, text_col, border_col = color("#eff6ff", "background"), color("#1d4ed8"), color("#bfdbfe", "border")
                 elif "FillGaps" in op_text:
-                    bg_col, text_col, border_col = QColor("#f3e8ff"), QColor("#6b21a8"), QColor("#e9d5ff")
+                    bg_col, text_col, border_col = color("#f3e8ff", "background"), color("#6b21a8"), color("#e9d5ff", "border")
                 else:
-                    bg_col, text_col, border_col = QColor("#f1f5f9"), QColor("#475569"), QColor("#e2e8f0")
+                    bg_col, text_col, border_col = color("#f1f5f9", "background"), color("#475569"), color("#e2e8f0", "border")
                 painter.setPen(QPen(border_col, 1))
                 painter.setBrush(QBrush(bg_col))
                 painter.drawRoundedRect(pill_rect, 4, 4)

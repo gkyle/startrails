@@ -18,14 +18,20 @@ from startrails.ui.signals import AsyncWorker, getSignals
 from startrails.ui.sidebar import Sidebar
 from startrails.ui.ui_interface import Ui_MainWindow
 from startrails.ui.canvasLabel import CanvasLabel
+from startrails.ui.theme import system_theme, theme_palette
 from startrails.lib.file import File, InputFile, OutputFile
 
 
 class MainWindow(QMainWindow):
     def __init__(self, app: App):
         QMainWindow.__init__(self)
+        theme = system_theme()
         self.ui = Ui_AppWindow(app)
         self.ui.setupUi(self)
+        self.ui.canvasHost.setProperty("themeFixed", True)
+        self.ui.canvasHost.setPalette(theme_palette(True))
+        self.ui.canvas_main.setPalette(theme_palette(True))
+        theme.register(self)
         self.show()
 
         # timer for updating GPU stats
