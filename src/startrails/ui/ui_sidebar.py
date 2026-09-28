@@ -176,15 +176,15 @@ class Ui_Sidebar(object):
 
         self.contentLayout.addLayout(self.detectLayout)
 
-        self.reviewLayout = QVBoxLayout()
-        self.reviewLayout.setObjectName(u"reviewLayout")
-
-        self.contentLayout.addLayout(self.reviewLayout)
-
         self.stackLayout = QVBoxLayout()
         self.stackLayout.setObjectName(u"stackLayout")
 
         self.contentLayout.addLayout(self.stackLayout)
+
+        self.reviewLayout = QVBoxLayout()
+        self.reviewLayout.setObjectName(u"reviewLayout")
+
+        self.contentLayout.addLayout(self.reviewLayout)
 
         self.fillLayout = QVBoxLayout()
         self.fillLayout.setObjectName(u"fillLayout")
@@ -213,3 +213,4 @@ class Ui_Sidebar(object):
         self.operationsProgressLabel.setText(QCoreApplication.translate("Sidebar", u"0 of 4 steps complete", None))
         pass
     # retranslateUi
+

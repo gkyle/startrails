@@ -3,7 +3,7 @@
  <class>ReviewSettings</class>
  <widget class="QWidget" name="reviewSettings">
   <property name="styleSheet">
-   <string notr="true">QLabel#optionalHeading, QLabel#contributeHeading {
+   <string notr="true">QLabel#optionalHeading, QLabel#contributeHeading, QLabel#findBrightestHeading {
     font-size: 11px;
     font-weight: 600;
     color: #475569;
@@ -11,7 +11,7 @@
     letter-spacing: 0.5px;
     margin-top: 2px;
 }
-QLabel#optionalMasksHint, QLabel#contributeHint {
+QLabel#optionalMasksHint, QLabel#contributeHint, QLabel#findBrightestHint {
     font-size: 11px;
     color: #64748b;
     line-height: 1.3;
@@ -67,7 +67,7 @@ QCheckBox#showDeletedMasks {
     spacing: 8px;
     font-weight: 500;
 }
-QPushButton#masks, QPushButton#training {
+QPushButton#masks, QPushButton#training, QPushButton#findBrightest {
     background-color: #ffffff;
     color: #1e293b;
     border: 1px solid #cbd5e1;
@@ -76,16 +76,22 @@ QPushButton#masks, QPushButton#training {
     font-weight: 500;
     font-size: 12px;
 }
-QPushButton#masks:hover, QPushButton#training:hover {
+QPushButton#masks:hover, QPushButton#training:hover, QPushButton#findBrightest:hover {
     background-color: #f1f5f9;
     border-color: #94a3b8;
 }
-QPushButton#masks:disabled, QPushButton#training:disabled {
+QPushButton#findBrightest:checked {
+    background-color: #e0f2fe;
+    color: #0284c7;
+    border-color: #0284c7;
+    font-weight: 600;
+}
+QPushButton#masks:disabled, QPushButton#training:disabled, QPushButton#findBrightest:disabled {
     background-color: #f8fafc;
     color: #94a3b8;
     border-color: #e2e8f0;
 }
-QFrame#sep1, QFrame#sep2 {
+QFrame#sep1, QFrame#sep2, QFrame#sepFindBrightest {
     background-color: #f1f5f9;
     max-height: 1px;
 }</string>
@@ -225,6 +231,49 @@ QFrame#sep1, QFrame#sep2 {
      </property>
      <property name="text">
       <string>Show Deleted Masks</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="sepFindBrightest">
+     <property name="frameShape">
+      <enum>QFrame::HLine</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="findBrightestHeading">
+     <property name="text">
+      <string>Locate Streaks</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="findBrightestHint">
+     <property name="text">
+      <string>Click on a streak in a stacked or gap-filled image to locate its source frame.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="findBrightest">
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Find Brightest</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="toolTip">
+      <string>Select a stacked or gap-filled output image to enable finding the brightest frame at a point.</string>
      </property>
     </widget>
    </item>

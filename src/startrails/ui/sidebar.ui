@@ -217,10 +217,10 @@ QPushButton#newProject:pressed, QPushButton#openProject:pressed {
         <layout class="QVBoxLayout" name="detectLayout"/>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="reviewLayout"/>
+        <layout class="QVBoxLayout" name="stackLayout"/>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="stackLayout"/>
+        <layout class="QVBoxLayout" name="reviewLayout"/>
        </item>
        <item>
         <layout class="QVBoxLayout" name="fillLayout"/>

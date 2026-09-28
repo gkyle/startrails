@@ -2061,622 +2061,6 @@ QPushButton#detectRun:disabled {
                 </widget>
                </item>
                <item>
-                <widget class="QFrame" name="stepReview">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">QFrame#stepReview {
-    background-color: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-}
-QFrame#stepReview:hover {
-    border-color: #cbd5e1;
-}</string>
-                 </property>
-                 <layout class="QVBoxLayout" name="stepReviewLayout">
-                  <property name="spacing">
-                   <number>0</number>
-                  </property>
-                  <property name="leftMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="bottomMargin">
-                   <number>0</number>
-                  </property>
-                  <item>
-                   <widget class="QWidget" name="stepReviewHeader" native="true">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>16777215</width>
-                      <height>46</height>
-                     </size>
-                    </property>
-                    <property name="cursor">
-                     <cursorShape>PointingHandCursor</cursorShape>
-                    </property>
-                    <layout class="QHBoxLayout" name="stepReviewHeaderLayout">
-                     <property name="spacing">
-                      <number>8</number>
-                     </property>
-                     <property name="leftMargin">
-                      <number>8</number>
-                     </property>
-                     <property name="topMargin">
-                      <number>4</number>
-                     </property>
-                     <property name="rightMargin">
-                      <number>8</number>
-                     </property>
-                     <property name="bottomMargin">
-                      <number>4</number>
-                     </property>
-                     <item>
-                      <widget class="QLabel" name="stepReviewNumber">
-                       <property name="minimumSize">
-                        <size>
-                         <width>30</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>30</width>
-                         <height>30</height>
-                        </size>
-                       </property>
-                       <property name="styleSheet">
-                        <string notr="true">QLabel#stepReviewNumber {
-    background-color: #94a3b8;
-    color: #ffffff;
-    border-radius: 15px;
-    font-weight: bold;
-    font-size: 13px;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>2</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QVBoxLayout" name="stepReviewTextColumn">
-                       <property name="spacing">
-                        <number>2</number>
-                       </property>
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
-                        <number>0</number>
-                       </property>
-                       <item>
-                        <widget class="QPushButton" name="stepReviewToggle">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-                           <horstretch>1</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="cursor">
-                          <cursorShape>PointingHandCursor</cursorShape>
-                         </property>
-                         <property name="styleSheet">
-                          <string notr="true">QPushButton#stepReviewToggle {
-    border: none;
-    background: transparent;
-    text-align: left;
-    padding: 0px;
-    font-size: 13px;
-    font-weight: bold;
-    color: #0f172a;
-}</string>
-                         </property>
-                         <property name="text">
-                          <string>Review Detections</string>
-                         </property>
-                         <property name="checkable">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLabel" name="stepReviewSubtitle">
-                         <property name="styleSheet">
-                          <string notr="true">QLabel#stepReviewSubtitle {
-    color: #64748b;
-    font-size: 11px;
-}</string>
-                         </property>
-                         <property name="text">
-                          <string>Ready · review is optional</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="stepReviewStatusBadge">
-                       <property name="styleSheet">
-                        <string notr="true">QLabel#stepReviewStatusBadge {
-    border-radius: 9px;
-    font-weight: 600;
-    font-size: 10px;
-    padding: 2px 8px;
-    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>Ready</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="stepReviewChevron">
-                       <property name="minimumSize">
-                        <size>
-                         <width>14</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>14</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="styleSheet">
-                        <string notr="true">QLabel#stepReviewChevron {
-    font-size: 9px;
-    font-weight: bold;
-    color: #64748b;
-    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>▼</string>
-                       </property>
-                       <property name="alignment">
-                        <set>Qt::AlignCenter</set>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QWidget" name="stepReviewBody" native="true">
-                    <property name="styleSheet">
-                     <string notr="true">QWidget#stepReviewBody {
-    border-top: 1px solid #f1f5f9;
-    background: transparent;
-}</string>
-                    </property>
-                    <layout class="QVBoxLayout" name="stepReviewBodyLayout">
-                     <property name="spacing">
-                      <number>8</number>
-                     </property>
-                     <property name="leftMargin">
-                      <number>10</number>
-                     </property>
-                     <property name="topMargin">
-                      <number>8</number>
-                     </property>
-                     <property name="rightMargin">
-                      <number>10</number>
-                     </property>
-                     <property name="bottomMargin">
-                      <number>10</number>
-                     </property>
-                     <item>
-                      <widget class="QLabel" name="label">
-                       <property name="styleSheet">
-                        <string notr="true">QLabel {
-    font-size: 11px;
-    color: #64748b;
-    line-height: 1.3;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>You can review and edit detected streaks. If you manually add, edit, or delete masks, consider contributing your corrections so that models may be improved.</string>
-                       </property>
-                       <property name="wordWrap">
-                        <bool>true</bool>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="reviewCountsLayout">
-                       <property name="spacing">
-                        <number>6</number>
-                       </property>
-                       <item>
-                        <widget class="QFrame" name="reviewStatAuto">
-                         <property name="styleSheet">
-                          <string notr="true">QFrame#reviewStatAuto {
-    background-color: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    border-radius: 6px;
-}</string>
-                         </property>
-                         <layout class="QVBoxLayout" name="reviewStatAutoLayout">
-                          <property name="spacing">
-                           <number>2</number>
-                          </property>
-                          <property name="leftMargin">
-                           <number>6</number>
-                          </property>
-                          <property name="topMargin">
-                           <number>6</number>
-                          </property>
-                          <property name="rightMargin">
-                           <number>6</number>
-                          </property>
-                          <property name="bottomMargin">
-                           <number>6</number>
-                          </property>
-                          <item>
-                           <widget class="QLabel" name="reviewStatAutoTitle">
-                            <property name="styleSheet">
-                             <string notr="true">QLabel#reviewStatAutoTitle {
-    font-size: 11px;
-    font-weight: 600;
-    color: #15803d;
-}</string>
-                            </property>
-                            <property name="text">
-                             <string>● Auto</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item>
-                           <widget class="QLabel" name="reviewStatAutoNum">
-                            <property name="styleSheet">
-                             <string notr="true">QLabel#reviewStatAutoNum {
-    font-size: 17px;
-    font-weight: bold;
-    color: #166534;
-}</string>
-                            </property>
-                            <property name="text">
-                             <string>0</string>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QFrame" name="reviewStatManual">
-                         <property name="styleSheet">
-                          <string notr="true">QFrame#reviewStatManual {
-    background-color: #f0f9ff;
-    border: 1px solid #bae6fd;
-    border-radius: 6px;
-}</string>
-                         </property>
-                         <layout class="QVBoxLayout" name="reviewStatManualLayout">
-                          <property name="spacing">
-                           <number>2</number>
-                          </property>
-                          <property name="leftMargin">
-                           <number>6</number>
-                          </property>
-                          <property name="topMargin">
-                           <number>6</number>
-                          </property>
-                          <property name="rightMargin">
-                           <number>6</number>
-                          </property>
-                          <property name="bottomMargin">
-                           <number>6</number>
-                          </property>
-                          <item>
-                           <widget class="QLabel" name="reviewStatManualTitle">
-                            <property name="styleSheet">
-                             <string notr="true">QLabel#reviewStatManualTitle {
-    font-size: 11px;
-    font-weight: 600;
-    color: #0284c7;
-}</string>
-                            </property>
-                            <property name="text">
-                             <string>● Manual</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item>
-                           <widget class="QLabel" name="reviewStatManualNum">
-                            <property name="styleSheet">
-                             <string notr="true">QLabel#reviewStatManualNum {
-    font-size: 17px;
-    font-weight: bold;
-    color: #0369a1;
-}</string>
-                            </property>
-                            <property name="text">
-                             <string>0</string>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QFrame" name="reviewStatDeleted">
-                         <property name="styleSheet">
-                          <string notr="true">QFrame#reviewStatDeleted {
-    background-color: #fffbeb;
-    border: 1px solid #fde68a;
-    border-radius: 6px;
-}</string>
-                         </property>
-                         <layout class="QVBoxLayout" name="reviewStatDeletedLayout">
-                          <property name="spacing">
-                           <number>2</number>
-                          </property>
-                          <property name="leftMargin">
-                           <number>6</number>
-                          </property>
-                          <property name="topMargin">
-                           <number>6</number>
-                          </property>
-                          <property name="rightMargin">
-                           <number>6</number>
-                          </property>
-                          <property name="bottomMargin">
-                           <number>6</number>
-                          </property>
-                          <item>
-                           <widget class="QLabel" name="reviewStatDeletedTitle">
-                            <property name="styleSheet">
-                             <string notr="true">QLabel#reviewStatDeletedTitle {
-    font-size: 11px;
-    font-weight: 600;
-    color: #b45309;
-}</string>
-                            </property>
-                            <property name="text">
-                             <string>● Deleted</string>
-                            </property>
-                           </widget>
-                          </item>
-                          <item>
-                           <widget class="QLabel" name="reviewStatDeletedNum">
-                            <property name="styleSheet">
-                             <string notr="true">QLabel#reviewStatDeletedNum {
-    font-size: 17px;
-    font-weight: bold;
-    color: #92400e;
-}</string>
-                            </property>
-                            <property name="text">
-                             <string>0</string>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <widget class="QCheckBox" name="exportShowDeletedMasks">
-                       <property name="cursor">
-                        <cursorShape>PointingHandCursor</cursorShape>
-                       </property>
-                       <property name="styleSheet">
-                        <string notr="true">QCheckBox#exportShowDeletedMasks {
-    font-size: 12px;
-    color: #1e293b;
-    spacing: 8px;
-    font-weight: 500;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>Show Deleted Masks</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QFrame" name="reviewSep1">
-                       <property name="styleSheet">
-                        <string notr="true">QFrame[frameShape=&quot;4&quot;] {
-    border-top: 1px solid #CCC;
-}</string>
-                       </property>
-                       <property name="frameShape">
-                        <enum>QFrame::HLine</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="reviewOptionalHeading">
-                       <property name="styleSheet">
-                        <string notr="true">QLabel#reviewOptionalHeading {
-    font-size: 11px;
-    font-weight: 600;
-    color: #475569;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 2px;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>Optional</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="reviewOptionalMasksHint">
-                       <property name="styleSheet">
-                        <string notr="true">QLabel#reviewOptionalMasksHint {
-    font-size: 11px;
-    color: #64748b;
-    line-height: 1.3;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>Save detected streak masks as image files.</string>
-                       </property>
-                       <property name="wordWrap">
-                        <bool>true</bool>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="exportMasks">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="cursor">
-                        <cursorShape>PointingHandCursor</cursorShape>
-                       </property>
-                       <property name="toolTip">
-                        <string>Requires automatic or manual streak masks.</string>
-                       </property>
-                       <property name="styleSheet">
-                        <string notr="true">QPushButton#exportMasks {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-weight: 500;
-    font-size: 12px;
-}
-QPushButton#exportMasks:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}
-QPushButton#exportMasks:disabled {
-    background-color: #f8fafc;
-    color: #94a3b8;
-    border-color: #e2e8f0;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>Export Masks</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QFrame" name="reviewSep2">
-                       <property name="styleSheet">
-                        <string notr="true">QFrame[frameShape=&quot;4&quot;] {
-    border-top: 1px solid #CCC;
-}</string>
-                       </property>
-                       <property name="frameShape">
-                        <enum>QFrame::HLine</enum>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="reviewContributeHeading">
-                       <property name="styleSheet">
-                        <string notr="true">QLabel#reviewContributeHeading {
-    font-size: 11px;
-    font-weight: 600;
-    color: #475569;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 2px;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>Optional: Contribute Corrections</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="reviewContributeHint">
-                       <property name="styleSheet">
-                        <string notr="true">QLabel#reviewContributeHint {
-    font-size: 11px;
-    color: #64748b;
-    line-height: 1.3;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>Export manual additions and deletions to help improve future streak detection models.</string>
-                       </property>
-                       <property name="wordWrap">
-                        <bool>true</bool>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="exportTraining">
-                       <property name="enabled">
-                        <bool>false</bool>
-                       </property>
-                       <property name="cursor">
-                        <cursorShape>PointingHandCursor</cursorShape>
-                       </property>
-                       <property name="toolTip">
-                        <string>Requires manually added or deleted streak masks.</string>
-                       </property>
-                       <property name="styleSheet">
-                        <string notr="true">QPushButton#exportTraining {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-weight: 500;
-    font-size: 12px;
-}
-QPushButton#exportTraining:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}
-QPushButton#exportTraining:disabled {
-    background-color: #f8fafc;
-    color: #94a3b8;
-    border-color: #e2e8f0;
-}</string>
-                       </property>
-                       <property name="text">
-                        <string>Export Training</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item>
                 <widget class="QFrame" name="stepStack">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
@@ -2767,7 +2151,7 @@ QFrame#stepStack:hover {
 }</string>
                        </property>
                        <property name="text">
-                        <string>3</string>
+                        <string>2</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
@@ -3394,6 +2778,714 @@ QPushButton#stackRun:disabled {
                        </property>
                        <property name="text">
                         <string>Stack Images</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QFrame" name="stepReview">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QFrame#stepReview {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+QFrame#stepReview:hover {
+    border-color: #cbd5e1;
+}</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="stepReviewLayout">
+                  <property name="spacing">
+                   <number>0</number>
+                  </property>
+                  <property name="leftMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <widget class="QWidget" name="stepReviewHeader" native="true">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="maximumSize">
+                     <size>
+                      <width>16777215</width>
+                      <height>46</height>
+                     </size>
+                    </property>
+                    <property name="cursor">
+                     <cursorShape>PointingHandCursor</cursorShape>
+                    </property>
+                    <layout class="QHBoxLayout" name="stepReviewHeaderLayout">
+                     <property name="spacing">
+                      <number>8</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>8</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>4</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>8</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>4</number>
+                     </property>
+                     <item>
+                      <widget class="QLabel" name="stepReviewNumber">
+                       <property name="minimumSize">
+                        <size>
+                         <width>30</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>30</width>
+                         <height>30</height>
+                        </size>
+                       </property>
+                       <property name="styleSheet">
+                        <string notr="true">QLabel#stepReviewNumber {
+    background-color: #94a3b8;
+    color: #ffffff;
+    border-radius: 15px;
+    font-weight: bold;
+    font-size: 13px;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>3</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignCenter</set>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <layout class="QVBoxLayout" name="stepReviewTextColumn">
+                       <property name="spacing">
+                        <number>2</number>
+                       </property>
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
+                        <number>0</number>
+                       </property>
+                       <item>
+                        <widget class="QPushButton" name="stepReviewToggle">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                           <horstretch>1</horstretch>
+                           <verstretch>0</verstretch>
+                          </sizepolicy>
+                         </property>
+                         <property name="cursor">
+                          <cursorShape>PointingHandCursor</cursorShape>
+                         </property>
+                         <property name="styleSheet">
+                          <string notr="true">QPushButton#stepReviewToggle {
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: 0px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #0f172a;
+}</string>
+                         </property>
+                         <property name="text">
+                          <string>Review and Correct</string>
+                         </property>
+                         <property name="checkable">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QLabel" name="stepReviewSubtitle">
+                         <property name="styleSheet">
+                          <string notr="true">QLabel#stepReviewSubtitle {
+    color: #64748b;
+    font-size: 11px;
+}</string>
+                         </property>
+                         <property name="text">
+                          <string>0 corrections</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="stepReviewStatusBadge">
+                       <property name="styleSheet">
+                        <string notr="true">QLabel#stepReviewStatusBadge {
+    border-radius: 9px;
+    font-weight: 600;
+    font-size: 10px;
+    padding: 2px 8px;
+    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>Ready</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignCenter</set>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="stepReviewChevron">
+                       <property name="minimumSize">
+                        <size>
+                         <width>14</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>14</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="styleSheet">
+                        <string notr="true">QLabel#stepReviewChevron {
+    font-size: 9px;
+    font-weight: bold;
+    color: #64748b;
+    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>▼</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignCenter</set>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QWidget" name="stepReviewBody" native="true">
+                    <property name="styleSheet">
+                     <string notr="true">QWidget#stepReviewBody {
+    border-top: 1px solid #f1f5f9;
+    background: transparent;
+}</string>
+                    </property>
+                    <layout class="QVBoxLayout" name="stepReviewBodyLayout">
+                     <property name="spacing">
+                      <number>8</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>10</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>8</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>10</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>10</number>
+                     </property>
+                     <item>
+                      <widget class="QLabel" name="label">
+                       <property name="styleSheet">
+                        <string notr="true">QLabel {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.3;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>You can review and edit detected streaks. If you manually add, edit, or delete masks, consider contributing your corrections so that models may be improved.</string>
+                       </property>
+                       <property name="wordWrap">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <layout class="QHBoxLayout" name="reviewCountsLayout">
+                       <property name="spacing">
+                        <number>6</number>
+                       </property>
+                       <item>
+                        <widget class="QFrame" name="reviewStatAuto">
+                         <property name="styleSheet">
+                          <string notr="true">QFrame#reviewStatAuto {
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+}</string>
+                         </property>
+                         <layout class="QVBoxLayout" name="reviewStatAutoLayout">
+                          <property name="spacing">
+                           <number>2</number>
+                          </property>
+                          <property name="leftMargin">
+                           <number>6</number>
+                          </property>
+                          <property name="topMargin">
+                           <number>6</number>
+                          </property>
+                          <property name="rightMargin">
+                           <number>6</number>
+                          </property>
+                          <property name="bottomMargin">
+                           <number>6</number>
+                          </property>
+                          <item>
+                           <widget class="QLabel" name="reviewStatAutoTitle">
+                            <property name="styleSheet">
+                             <string notr="true">QLabel#reviewStatAutoTitle {
+    font-size: 11px;
+    font-weight: 600;
+    color: #15803d;
+}</string>
+                            </property>
+                            <property name="text">
+                             <string>● Auto</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QLabel" name="reviewStatAutoNum">
+                            <property name="styleSheet">
+                             <string notr="true">QLabel#reviewStatAutoNum {
+    font-size: 17px;
+    font-weight: bold;
+    color: #166534;
+}</string>
+                            </property>
+                            <property name="text">
+                             <string>0</string>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QFrame" name="reviewStatManual">
+                         <property name="styleSheet">
+                          <string notr="true">QFrame#reviewStatManual {
+    background-color: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+}</string>
+                         </property>
+                         <layout class="QVBoxLayout" name="reviewStatManualLayout">
+                          <property name="spacing">
+                           <number>2</number>
+                          </property>
+                          <property name="leftMargin">
+                           <number>6</number>
+                          </property>
+                          <property name="topMargin">
+                           <number>6</number>
+                          </property>
+                          <property name="rightMargin">
+                           <number>6</number>
+                          </property>
+                          <property name="bottomMargin">
+                           <number>6</number>
+                          </property>
+                          <item>
+                           <widget class="QLabel" name="reviewStatManualTitle">
+                            <property name="styleSheet">
+                             <string notr="true">QLabel#reviewStatManualTitle {
+    font-size: 11px;
+    font-weight: 600;
+    color: #0284c7;
+}</string>
+                            </property>
+                            <property name="text">
+                             <string>● Manual</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QLabel" name="reviewStatManualNum">
+                            <property name="styleSheet">
+                             <string notr="true">QLabel#reviewStatManualNum {
+    font-size: 17px;
+    font-weight: bold;
+    color: #0369a1;
+}</string>
+                            </property>
+                            <property name="text">
+                             <string>0</string>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QFrame" name="reviewStatDeleted">
+                         <property name="styleSheet">
+                          <string notr="true">QFrame#reviewStatDeleted {
+    background-color: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+}</string>
+                         </property>
+                         <layout class="QVBoxLayout" name="reviewStatDeletedLayout">
+                          <property name="spacing">
+                           <number>2</number>
+                          </property>
+                          <property name="leftMargin">
+                           <number>6</number>
+                          </property>
+                          <property name="topMargin">
+                           <number>6</number>
+                          </property>
+                          <property name="rightMargin">
+                           <number>6</number>
+                          </property>
+                          <property name="bottomMargin">
+                           <number>6</number>
+                          </property>
+                          <item>
+                           <widget class="QLabel" name="reviewStatDeletedTitle">
+                            <property name="styleSheet">
+                             <string notr="true">QLabel#reviewStatDeletedTitle {
+    font-size: 11px;
+    font-weight: 600;
+    color: #b45309;
+}</string>
+                            </property>
+                            <property name="text">
+                             <string>● Deleted</string>
+                            </property>
+                           </widget>
+                          </item>
+                          <item>
+                           <widget class="QLabel" name="reviewStatDeletedNum">
+                            <property name="styleSheet">
+                             <string notr="true">QLabel#reviewStatDeletedNum {
+    font-size: 17px;
+    font-weight: bold;
+    color: #92400e;
+}</string>
+                            </property>
+                            <property name="text">
+                             <string>0</string>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                      </layout>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="exportShowDeletedMasks">
+                       <property name="cursor">
+                        <cursorShape>PointingHandCursor</cursorShape>
+                       </property>
+                       <property name="styleSheet">
+                        <string notr="true">QCheckBox#exportShowDeletedMasks {
+    font-size: 12px;
+    color: #1e293b;
+    spacing: 8px;
+    font-weight: 500;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>Show Deleted Masks</string>
+                       </property>
+                      </widget>
+                     </item>
+                                           <item>
+                       <widget class="QFrame" name="reviewSepFindBrightest">
+                        <property name="frameShape">
+                         <enum>QFrame::HLine</enum>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true">QFrame#reviewSepFindBrightest {
+    background-color: #f1f5f9;
+    max-height: 1px;
+}</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="reviewFindBrightestHeading">
+                        <property name="styleSheet">
+                         <string notr="true">QLabel#reviewFindBrightestHeading {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}</string>
+                        </property>
+                        <property name="text">
+                         <string>Locate Streaks</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="reviewFindBrightestHint">
+                        <property name="styleSheet">
+                         <string notr="true">QLabel#reviewFindBrightestHint {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.3;
+}</string>
+                        </property>
+                        <property name="text">
+                         <string>Click on a streak in a stacked or gap-filled image to locate its source frame.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="findBrightest">
+                        <property name="enabled">
+                         <bool>false</bool>
+                        </property>
+                        <property name="cursor">
+                         <cursorShape>PointingHandCursor</cursorShape>
+                        </property>
+                        <property name="toolTip">
+                         <string>Select a stacked or gap-filled output image to enable finding the brightest frame at a point.</string>
+                        </property>
+                        <property name="styleSheet">
+                         <string notr="true">QPushButton#findBrightest {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#findBrightest:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#findBrightest:checked {
+    background-color: #e0f2fe;
+    color: #0284c7;
+    border-color: #0284c7;
+    font-weight: 600;
+}
+QPushButton#findBrightest:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}</string>
+                        </property>
+                        <property name="text">
+                         <string>Find Brightest</string>
+                        </property>
+                        <property name="checkable">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+<item>
+                      <widget class="QFrame" name="reviewSep1">
+                       <property name="styleSheet">
+                        <string notr="true">QFrame[frameShape=&quot;4&quot;] {
+    border-top: 1px solid #CCC;
+}</string>
+                       </property>
+                       <property name="frameShape">
+                        <enum>QFrame::HLine</enum>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="reviewOptionalHeading">
+                       <property name="styleSheet">
+                        <string notr="true">QLabel#reviewOptionalHeading {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>Optional</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="reviewOptionalMasksHint">
+                       <property name="styleSheet">
+                        <string notr="true">QLabel#reviewOptionalMasksHint {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.3;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>Save detected streak masks as image files.</string>
+                       </property>
+                       <property name="wordWrap">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="exportMasks">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
+                       <property name="cursor">
+                        <cursorShape>PointingHandCursor</cursorShape>
+                       </property>
+                       <property name="toolTip">
+                        <string>Requires automatic or manual streak masks.</string>
+                       </property>
+                       <property name="styleSheet">
+                        <string notr="true">QPushButton#exportMasks {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#exportMasks:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#exportMasks:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>Export Masks</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QFrame" name="reviewSep2">
+                       <property name="styleSheet">
+                        <string notr="true">QFrame[frameShape=&quot;4&quot;] {
+    border-top: 1px solid #CCC;
+}</string>
+                       </property>
+                       <property name="frameShape">
+                        <enum>QFrame::HLine</enum>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="reviewContributeHeading">
+                       <property name="styleSheet">
+                        <string notr="true">QLabel#reviewContributeHeading {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>Optional: Contribute Corrections</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="reviewContributeHint">
+                       <property name="styleSheet">
+                        <string notr="true">QLabel#reviewContributeHint {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.3;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>Export manual additions and deletions to help improve future streak detection models.</string>
+                       </property>
+                       <property name="wordWrap">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="exportTraining">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
+                       <property name="cursor">
+                        <cursorShape>PointingHandCursor</cursorShape>
+                       </property>
+                       <property name="toolTip">
+                        <string>Requires manually added or deleted streak masks.</string>
+                       </property>
+                       <property name="styleSheet">
+                        <string notr="true">QPushButton#exportTraining {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#exportTraining:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#exportTraining:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}</string>
+                       </property>
+                       <property name="text">
+                        <string>Export Training</string>
                        </property>
                       </widget>
                      </item>

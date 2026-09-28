@@ -1,6 +1,6 @@
 from typing import List, Optional, Tuple
 import numpy as np
-from PySide6.QtCore import (Qt, QPointF, QTimer)
+from PySide6.QtCore import (Qt, QPointF, QTimer, Signal)
 from PySide6.QtGui import (QPainter, QPaintEvent, QWheelEvent, QMouseEvent,
                            QPixmap, QColor, QPen, QPainterPath, QFont, QImage)
 from PySide6.QtWidgets import QLabel, QWidget
@@ -12,6 +12,7 @@ from startrails.ui.signals import Signals, getSignals
 class CanvasLabel(QLabel):
     NUB_SIZE = 10
     NUB_SIZE_TOLERANT = 15
+    findBrightestModeChanged = Signal(bool)
 
     def __init__(self, text: Optional[str] = None, pixmap: Optional[QPixmap] = None, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -36,6 +37,7 @@ class CanvasLabel(QLabel):
         self.scale: Optional[float] = None
         self.ratio: Optional[float] = None
         self.showDeletedMasks: bool = False
+        self.findBrightestMode: bool = False
 
         # Debounce timers for high-frequency events
         self.wheelDebounceTimer = QTimer()
@@ -51,7 +53,26 @@ class CanvasLabel(QLabel):
         self.setFont(QFont("Arial", 20, QFont.Bold))
         self.setPixmap(pixmap)
 
+    def setFindBrightestMode(self, active: bool) -> None:
+        active = bool(active)
+        if self.findBrightestMode != active:
+            self.findBrightestMode = active
+            if active:
+                self.setCursor(Qt.CrossCursor)
+            else:
+                self.unsetCursor()
+            self.findBrightestModeChanged.emit(active)
+
+    def keyPressEvent(self, ev) -> None:
+        if ev.key() == Qt.Key_Escape and self.findBrightestMode:
+            self.setFindBrightestMode(False)
+            ev.accept()
+            return
+        super().keyPressEvent(ev)
+
     def setFile(self, file: File) -> None:
+        if self.findBrightestMode:
+            self.setFindBrightestMode(False)
         # clear previous active mask points
         if isinstance(self.file, InputFile):
             self.file.activeMaskPoints = []
@@ -184,6 +205,16 @@ class CanvasLabel(QLabel):
                     self.file.activeMaskPoints = []
                     self.repaint()
                     self.signals.updateFile.emit(self.file)
+
+        if self.findBrightestMode and isinstance(self.file, OutputFile):
+            if ev.button() == Qt.LeftButton:
+                ratio = self.ratio if self.ratio else 1.0
+                zoom = self.zoom_factor if self.zoom_factor else 1.0
+                self.signals.findBrightestFrame.emit(self.file,
+                                                     int((ev.position().x() - self.posX) / zoom / ratio),
+                                                     int((ev.position().y() - self.posY) / zoom / ratio))
+                self.setFindBrightestMode(False)
+                return
 
         if isinstance(self.file, OutputFile):
             if ev.modifiers() == Qt.ShiftModifier:

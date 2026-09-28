@@ -23,8 +23,8 @@ class Sidebar(QWidget):
             self.fill = FillSettings(ui=ui)
             self.exports = self.review
             self.detectCard = StepCard("Detect Streaks", self.detect, 1, expanded=True, ui=ui, prefix="stepDetect")
-            self.reviewCard = StepCard("Review Detections", self.review, 2, ui=ui, prefix="stepReview")
-            self.stackCard = StepCard("Stack Images", self.stack, 3, ui=ui, prefix="stepStack")
+            self.stackCard = StepCard("Stack Images", self.stack, 2, ui=ui, prefix="stepStack")
+            self.reviewCard = StepCard("Review and Correct", self.review, 3, ui=ui, prefix="stepReview")
             self.fillCard = StepCard("Fill Gaps", self.fill, 4, ui=ui, prefix="stepFill")
             self.exportCard = self.reviewCard
             self.update_operations_progress(app)
@@ -43,13 +43,13 @@ class Sidebar(QWidget):
             self.fill = FillSettings()
             self.exports = self.review
             self.detectCard = StepCard("Detect Streaks", self.detect, 1, expanded=True)
-            self.reviewCard = StepCard("Review Detections", self.review, 2)
-            self.stackCard = StepCard("Stack Images", self.stack, 3)
+            self.stackCard = StepCard("Stack Images", self.stack, 2)
+            self.reviewCard = StepCard("Review and Correct", self.review, 3)
             self.fillCard = StepCard("Fill Gaps", self.fill, 4)
             self.exportCard = self.reviewCard
             self.ui.detectLayout.addWidget(self.detectCard)
-            self.ui.reviewLayout.addWidget(self.reviewCard)
             self.ui.stackLayout.addWidget(self.stackCard)
+            self.ui.reviewLayout.addWidget(self.reviewCard)
             self.ui.fillLayout.addWidget(self.fillCard)
             self.update_operations_progress(app)
 
@@ -91,14 +91,15 @@ class Sidebar(QWidget):
         else:
             self.detectCard.setStatus("ready", "Ready to detect streaks")
 
+        corrections_count = manual_count + deleted_count
+        corrections_text = f"{corrections_count} correction" if corrections_count == 1 else f"{corrections_count} corrections"
+
         if not has_inputs:
             self.reviewCard.setStatus("locked", "Add input files to begin")
         elif has_stacked:
-            self.reviewCard.setStatus("done", f"{total_detections} detections reviewed")
-        elif has_detections:
-            self.reviewCard.setStatus("ready", f"{total_detections} active, {deleted_count} deleted")
+            self.reviewCard.setStatus("done", corrections_text)
         else:
-            self.reviewCard.setStatus("ready", "Ready · detection is optional")
+            self.reviewCard.setStatus("ready", corrections_text)
 
         if not has_inputs:
             self.stackCard.setStatus("locked", "Add input files to begin")

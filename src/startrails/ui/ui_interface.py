@@ -1165,374 +1165,6 @@ class Ui_MainWindow(object):
 
         self.contentLayout.addWidget(self.stepDetect)
 
-        self.stepReview = QFrame(self.content)
-        self.stepReview.setObjectName(u"stepReview")
-        sizePolicy2.setHeightForWidth(self.stepReview.sizePolicy().hasHeightForWidth())
-        self.stepReview.setSizePolicy(sizePolicy2)
-        self.stepReview.setStyleSheet(u"QFrame#stepReview {\n"
-"    background-color: #ffffff;\n"
-"    border: 1px solid #e2e8f0;\n"
-"    border-radius: 8px;\n"
-"}\n"
-"QFrame#stepReview:hover {\n"
-"    border-color: #cbd5e1;\n"
-"}")
-        self.stepReviewLayout = QVBoxLayout(self.stepReview)
-        self.stepReviewLayout.setSpacing(0)
-        self.stepReviewLayout.setObjectName(u"stepReviewLayout")
-        self.stepReviewLayout.setContentsMargins(0, 0, 0, 0)
-        self.stepReviewHeader = QWidget(self.stepReview)
-        self.stepReviewHeader.setObjectName(u"stepReviewHeader")
-        sizePolicy3.setHeightForWidth(self.stepReviewHeader.sizePolicy().hasHeightForWidth())
-        self.stepReviewHeader.setSizePolicy(sizePolicy3)
-        self.stepReviewHeader.setMaximumSize(QSize(16777215, 46))
-        self.stepReviewHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.stepReviewHeaderLayout = QHBoxLayout(self.stepReviewHeader)
-        self.stepReviewHeaderLayout.setSpacing(8)
-        self.stepReviewHeaderLayout.setObjectName(u"stepReviewHeaderLayout")
-        self.stepReviewHeaderLayout.setContentsMargins(8, 4, 8, 4)
-        self.stepReviewNumber = QLabel(self.stepReviewHeader)
-        self.stepReviewNumber.setObjectName(u"stepReviewNumber")
-        self.stepReviewNumber.setMinimumSize(QSize(30, 30))
-        self.stepReviewNumber.setMaximumSize(QSize(30, 30))
-        self.stepReviewNumber.setStyleSheet(u"QLabel#stepReviewNumber {\n"
-"    background-color: #94a3b8;\n"
-"    color: #ffffff;\n"
-"    border-radius: 15px;\n"
-"    font-weight: bold;\n"
-"    font-size: 13px;\n"
-"}")
-        self.stepReviewNumber.setAlignment(Qt.AlignCenter)
-
-        self.stepReviewHeaderLayout.addWidget(self.stepReviewNumber)
-
-        self.stepReviewTextColumn = QVBoxLayout()
-        self.stepReviewTextColumn.setSpacing(2)
-        self.stepReviewTextColumn.setObjectName(u"stepReviewTextColumn")
-        self.stepReviewTextColumn.setContentsMargins(0, 0, 0, 0)
-        self.stepReviewToggle = QPushButton(self.stepReviewHeader)
-        self.stepReviewToggle.setObjectName(u"stepReviewToggle")
-        sizePolicy5.setHeightForWidth(self.stepReviewToggle.sizePolicy().hasHeightForWidth())
-        self.stepReviewToggle.setSizePolicy(sizePolicy5)
-        self.stepReviewToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.stepReviewToggle.setStyleSheet(u"QPushButton#stepReviewToggle {\n"
-"    border: none;\n"
-"    background: transparent;\n"
-"    text-align: left;\n"
-"    padding: 0px;\n"
-"    font-size: 13px;\n"
-"    font-weight: bold;\n"
-"    color: #0f172a;\n"
-"}")
-        self.stepReviewToggle.setCheckable(True)
-
-        self.stepReviewTextColumn.addWidget(self.stepReviewToggle)
-
-        self.stepReviewSubtitle = QLabel(self.stepReviewHeader)
-        self.stepReviewSubtitle.setObjectName(u"stepReviewSubtitle")
-        self.stepReviewSubtitle.setStyleSheet(u"QLabel#stepReviewSubtitle {\n"
-"    color: #64748b;\n"
-"    font-size: 11px;\n"
-"}")
-
-        self.stepReviewTextColumn.addWidget(self.stepReviewSubtitle)
-
-
-        self.stepReviewHeaderLayout.addLayout(self.stepReviewTextColumn)
-
-        self.stepReviewStatusBadge = QLabel(self.stepReviewHeader)
-        self.stepReviewStatusBadge.setObjectName(u"stepReviewStatusBadge")
-        self.stepReviewStatusBadge.setStyleSheet(u"QLabel#stepReviewStatusBadge {\n"
-"    border-radius: 9px;\n"
-"    font-weight: 600;\n"
-"    font-size: 10px;\n"
-"    padding: 2px 8px;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
-"}")
-        self.stepReviewStatusBadge.setAlignment(Qt.AlignCenter)
-
-        self.stepReviewHeaderLayout.addWidget(self.stepReviewStatusBadge)
-
-        self.stepReviewChevron = QLabel(self.stepReviewHeader)
-        self.stepReviewChevron.setObjectName(u"stepReviewChevron")
-        self.stepReviewChevron.setMinimumSize(QSize(14, 0))
-        self.stepReviewChevron.setMaximumSize(QSize(14, 16777215))
-        self.stepReviewChevron.setStyleSheet(u"QLabel#stepReviewChevron {\n"
-"    font-size: 9px;\n"
-"    font-weight: bold;\n"
-"    color: #64748b;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
-"}")
-        self.stepReviewChevron.setAlignment(Qt.AlignCenter)
-
-        self.stepReviewHeaderLayout.addWidget(self.stepReviewChevron)
-
-
-        self.stepReviewLayout.addWidget(self.stepReviewHeader)
-
-        self.stepReviewBody = QWidget(self.stepReview)
-        self.stepReviewBody.setObjectName(u"stepReviewBody")
-        self.stepReviewBody.setStyleSheet(u"QWidget#stepReviewBody {\n"
-"    border-top: 1px solid #f1f5f9;\n"
-"    background: transparent;\n"
-"}")
-        self.stepReviewBodyLayout = QVBoxLayout(self.stepReviewBody)
-        self.stepReviewBodyLayout.setSpacing(8)
-        self.stepReviewBodyLayout.setObjectName(u"stepReviewBodyLayout")
-        self.stepReviewBodyLayout.setContentsMargins(10, 8, 10, 10)
-        self.label = QLabel(self.stepReviewBody)
-        self.label.setObjectName(u"label")
-        self.label.setStyleSheet(u"QLabel {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"    line-height: 1.3;\n"
-"}")
-        self.label.setWordWrap(True)
-
-        self.stepReviewBodyLayout.addWidget(self.label)
-
-        self.reviewCountsLayout = QHBoxLayout()
-        self.reviewCountsLayout.setSpacing(6)
-        self.reviewCountsLayout.setObjectName(u"reviewCountsLayout")
-        self.reviewStatAuto = QFrame(self.stepReviewBody)
-        self.reviewStatAuto.setObjectName(u"reviewStatAuto")
-        self.reviewStatAuto.setStyleSheet(u"QFrame#reviewStatAuto {\n"
-"    background-color: #f0fdf4;\n"
-"    border: 1px solid #bbf7d0;\n"
-"    border-radius: 6px;\n"
-"}")
-        self.reviewStatAutoLayout = QVBoxLayout(self.reviewStatAuto)
-        self.reviewStatAutoLayout.setSpacing(2)
-        self.reviewStatAutoLayout.setObjectName(u"reviewStatAutoLayout")
-        self.reviewStatAutoLayout.setContentsMargins(6, 6, 6, 6)
-        self.reviewStatAutoTitle = QLabel(self.reviewStatAuto)
-        self.reviewStatAutoTitle.setObjectName(u"reviewStatAutoTitle")
-        self.reviewStatAutoTitle.setStyleSheet(u"QLabel#reviewStatAutoTitle {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #15803d;\n"
-"}")
-
-        self.reviewStatAutoLayout.addWidget(self.reviewStatAutoTitle)
-
-        self.reviewStatAutoNum = QLabel(self.reviewStatAuto)
-        self.reviewStatAutoNum.setObjectName(u"reviewStatAutoNum")
-        self.reviewStatAutoNum.setStyleSheet(u"QLabel#reviewStatAutoNum {\n"
-"    font-size: 17px;\n"
-"    font-weight: bold;\n"
-"    color: #166534;\n"
-"}")
-
-        self.reviewStatAutoLayout.addWidget(self.reviewStatAutoNum)
-
-
-        self.reviewCountsLayout.addWidget(self.reviewStatAuto)
-
-        self.reviewStatManual = QFrame(self.stepReviewBody)
-        self.reviewStatManual.setObjectName(u"reviewStatManual")
-        self.reviewStatManual.setStyleSheet(u"QFrame#reviewStatManual {\n"
-"    background-color: #f0f9ff;\n"
-"    border: 1px solid #bae6fd;\n"
-"    border-radius: 6px;\n"
-"}")
-        self.reviewStatManualLayout = QVBoxLayout(self.reviewStatManual)
-        self.reviewStatManualLayout.setSpacing(2)
-        self.reviewStatManualLayout.setObjectName(u"reviewStatManualLayout")
-        self.reviewStatManualLayout.setContentsMargins(6, 6, 6, 6)
-        self.reviewStatManualTitle = QLabel(self.reviewStatManual)
-        self.reviewStatManualTitle.setObjectName(u"reviewStatManualTitle")
-        self.reviewStatManualTitle.setStyleSheet(u"QLabel#reviewStatManualTitle {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #0284c7;\n"
-"}")
-
-        self.reviewStatManualLayout.addWidget(self.reviewStatManualTitle)
-
-        self.reviewStatManualNum = QLabel(self.reviewStatManual)
-        self.reviewStatManualNum.setObjectName(u"reviewStatManualNum")
-        self.reviewStatManualNum.setStyleSheet(u"QLabel#reviewStatManualNum {\n"
-"    font-size: 17px;\n"
-"    font-weight: bold;\n"
-"    color: #0369a1;\n"
-"}")
-
-        self.reviewStatManualLayout.addWidget(self.reviewStatManualNum)
-
-
-        self.reviewCountsLayout.addWidget(self.reviewStatManual)
-
-        self.reviewStatDeleted = QFrame(self.stepReviewBody)
-        self.reviewStatDeleted.setObjectName(u"reviewStatDeleted")
-        self.reviewStatDeleted.setStyleSheet(u"QFrame#reviewStatDeleted {\n"
-"    background-color: #fffbeb;\n"
-"    border: 1px solid #fde68a;\n"
-"    border-radius: 6px;\n"
-"}")
-        self.reviewStatDeletedLayout = QVBoxLayout(self.reviewStatDeleted)
-        self.reviewStatDeletedLayout.setSpacing(2)
-        self.reviewStatDeletedLayout.setObjectName(u"reviewStatDeletedLayout")
-        self.reviewStatDeletedLayout.setContentsMargins(6, 6, 6, 6)
-        self.reviewStatDeletedTitle = QLabel(self.reviewStatDeleted)
-        self.reviewStatDeletedTitle.setObjectName(u"reviewStatDeletedTitle")
-        self.reviewStatDeletedTitle.setStyleSheet(u"QLabel#reviewStatDeletedTitle {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #b45309;\n"
-"}")
-
-        self.reviewStatDeletedLayout.addWidget(self.reviewStatDeletedTitle)
-
-        self.reviewStatDeletedNum = QLabel(self.reviewStatDeleted)
-        self.reviewStatDeletedNum.setObjectName(u"reviewStatDeletedNum")
-        self.reviewStatDeletedNum.setStyleSheet(u"QLabel#reviewStatDeletedNum {\n"
-"    font-size: 17px;\n"
-"    font-weight: bold;\n"
-"    color: #92400e;\n"
-"}")
-
-        self.reviewStatDeletedLayout.addWidget(self.reviewStatDeletedNum)
-
-
-        self.reviewCountsLayout.addWidget(self.reviewStatDeleted)
-
-
-        self.stepReviewBodyLayout.addLayout(self.reviewCountsLayout)
-
-        self.exportShowDeletedMasks = QCheckBox(self.stepReviewBody)
-        self.exportShowDeletedMasks.setObjectName(u"exportShowDeletedMasks")
-        self.exportShowDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.exportShowDeletedMasks.setStyleSheet(u"QCheckBox#exportShowDeletedMasks {\n"
-"    font-size: 12px;\n"
-"    color: #1e293b;\n"
-"    spacing: 8px;\n"
-"    font-weight: 500;\n"
-"}")
-
-        self.stepReviewBodyLayout.addWidget(self.exportShowDeletedMasks)
-
-        self.reviewSep1 = QFrame(self.stepReviewBody)
-        self.reviewSep1.setObjectName(u"reviewSep1")
-        self.reviewSep1.setStyleSheet(u"QFrame[frameShape=\"4\"] {\n"
-"    border-top: 1px solid #CCC;\n"
-"}")
-        self.reviewSep1.setFrameShape(QFrame.HLine)
-
-        self.stepReviewBodyLayout.addWidget(self.reviewSep1)
-
-        self.reviewOptionalHeading = QLabel(self.stepReviewBody)
-        self.reviewOptionalHeading.setObjectName(u"reviewOptionalHeading")
-        self.reviewOptionalHeading.setStyleSheet(u"QLabel#reviewOptionalHeading {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #475569;\n"
-"    text-transform: uppercase;\n"
-"    letter-spacing: 0.5px;\n"
-"    margin-top: 2px;\n"
-"}")
-
-        self.stepReviewBodyLayout.addWidget(self.reviewOptionalHeading)
-
-        self.reviewOptionalMasksHint = QLabel(self.stepReviewBody)
-        self.reviewOptionalMasksHint.setObjectName(u"reviewOptionalMasksHint")
-        self.reviewOptionalMasksHint.setStyleSheet(u"QLabel#reviewOptionalMasksHint {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"    line-height: 1.3;\n"
-"}")
-        self.reviewOptionalMasksHint.setWordWrap(True)
-
-        self.stepReviewBodyLayout.addWidget(self.reviewOptionalMasksHint)
-
-        self.exportMasks = QPushButton(self.stepReviewBody)
-        self.exportMasks.setObjectName(u"exportMasks")
-        self.exportMasks.setEnabled(False)
-        self.exportMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.exportMasks.setStyleSheet(u"QPushButton#exportMasks {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#exportMasks:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#exportMasks:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}")
-
-        self.stepReviewBodyLayout.addWidget(self.exportMasks)
-
-        self.reviewSep2 = QFrame(self.stepReviewBody)
-        self.reviewSep2.setObjectName(u"reviewSep2")
-        self.reviewSep2.setStyleSheet(u"QFrame[frameShape=\"4\"] {\n"
-"    border-top: 1px solid #CCC;\n"
-"}")
-        self.reviewSep2.setFrameShape(QFrame.HLine)
-
-        self.stepReviewBodyLayout.addWidget(self.reviewSep2)
-
-        self.reviewContributeHeading = QLabel(self.stepReviewBody)
-        self.reviewContributeHeading.setObjectName(u"reviewContributeHeading")
-        self.reviewContributeHeading.setStyleSheet(u"QLabel#reviewContributeHeading {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #475569;\n"
-"    text-transform: uppercase;\n"
-"    letter-spacing: 0.5px;\n"
-"    margin-top: 2px;\n"
-"}")
-
-        self.stepReviewBodyLayout.addWidget(self.reviewContributeHeading)
-
-        self.reviewContributeHint = QLabel(self.stepReviewBody)
-        self.reviewContributeHint.setObjectName(u"reviewContributeHint")
-        self.reviewContributeHint.setStyleSheet(u"QLabel#reviewContributeHint {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"    line-height: 1.3;\n"
-"}")
-        self.reviewContributeHint.setWordWrap(True)
-
-        self.stepReviewBodyLayout.addWidget(self.reviewContributeHint)
-
-        self.exportTraining = QPushButton(self.stepReviewBody)
-        self.exportTraining.setObjectName(u"exportTraining")
-        self.exportTraining.setEnabled(False)
-        self.exportTraining.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.exportTraining.setStyleSheet(u"QPushButton#exportTraining {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#exportTraining:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#exportTraining:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}")
-
-        self.stepReviewBodyLayout.addWidget(self.exportTraining)
-
-
-        self.stepReviewLayout.addWidget(self.stepReviewBody)
-
-
-        self.contentLayout.addWidget(self.stepReview)
-
         self.stepStack = QFrame(self.content)
         self.stepStack.setObjectName(u"stepStack")
         sizePolicy2.setHeightForWidth(self.stepStack.sizePolicy().hasHeightForWidth())
@@ -1974,6 +1606,440 @@ class Ui_MainWindow(object):
 
         self.contentLayout.addWidget(self.stepStack)
 
+        self.stepReview = QFrame(self.content)
+        self.stepReview.setObjectName(u"stepReview")
+        sizePolicy2.setHeightForWidth(self.stepReview.sizePolicy().hasHeightForWidth())
+        self.stepReview.setSizePolicy(sizePolicy2)
+        self.stepReview.setStyleSheet(u"QFrame#stepReview {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #e2e8f0;\n"
+"    border-radius: 8px;\n"
+"}\n"
+"QFrame#stepReview:hover {\n"
+"    border-color: #cbd5e1;\n"
+"}")
+        self.stepReviewLayout = QVBoxLayout(self.stepReview)
+        self.stepReviewLayout.setSpacing(0)
+        self.stepReviewLayout.setObjectName(u"stepReviewLayout")
+        self.stepReviewLayout.setContentsMargins(0, 0, 0, 0)
+        self.stepReviewHeader = QWidget(self.stepReview)
+        self.stepReviewHeader.setObjectName(u"stepReviewHeader")
+        sizePolicy3.setHeightForWidth(self.stepReviewHeader.sizePolicy().hasHeightForWidth())
+        self.stepReviewHeader.setSizePolicy(sizePolicy3)
+        self.stepReviewHeader.setMaximumSize(QSize(16777215, 46))
+        self.stepReviewHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepReviewHeaderLayout = QHBoxLayout(self.stepReviewHeader)
+        self.stepReviewHeaderLayout.setSpacing(8)
+        self.stepReviewHeaderLayout.setObjectName(u"stepReviewHeaderLayout")
+        self.stepReviewHeaderLayout.setContentsMargins(8, 4, 8, 4)
+        self.stepReviewNumber = QLabel(self.stepReviewHeader)
+        self.stepReviewNumber.setObjectName(u"stepReviewNumber")
+        self.stepReviewNumber.setMinimumSize(QSize(30, 30))
+        self.stepReviewNumber.setMaximumSize(QSize(30, 30))
+        self.stepReviewNumber.setStyleSheet(u"QLabel#stepReviewNumber {\n"
+"    background-color: #94a3b8;\n"
+"    color: #ffffff;\n"
+"    border-radius: 15px;\n"
+"    font-weight: bold;\n"
+"    font-size: 13px;\n"
+"}")
+        self.stepReviewNumber.setAlignment(Qt.AlignCenter)
+
+        self.stepReviewHeaderLayout.addWidget(self.stepReviewNumber)
+
+        self.stepReviewTextColumn = QVBoxLayout()
+        self.stepReviewTextColumn.setSpacing(2)
+        self.stepReviewTextColumn.setObjectName(u"stepReviewTextColumn")
+        self.stepReviewTextColumn.setContentsMargins(0, 0, 0, 0)
+        self.stepReviewToggle = QPushButton(self.stepReviewHeader)
+        self.stepReviewToggle.setObjectName(u"stepReviewToggle")
+        sizePolicy5.setHeightForWidth(self.stepReviewToggle.sizePolicy().hasHeightForWidth())
+        self.stepReviewToggle.setSizePolicy(sizePolicy5)
+        self.stepReviewToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepReviewToggle.setStyleSheet(u"QPushButton#stepReviewToggle {\n"
+"    border: none;\n"
+"    background: transparent;\n"
+"    text-align: left;\n"
+"    padding: 0px;\n"
+"    font-size: 13px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
+        self.stepReviewToggle.setCheckable(True)
+
+        self.stepReviewTextColumn.addWidget(self.stepReviewToggle)
+
+        self.stepReviewSubtitle = QLabel(self.stepReviewHeader)
+        self.stepReviewSubtitle.setObjectName(u"stepReviewSubtitle")
+        self.stepReviewSubtitle.setStyleSheet(u"QLabel#stepReviewSubtitle {\n"
+"    color: #64748b;\n"
+"    font-size: 11px;\n"
+"}")
+
+        self.stepReviewTextColumn.addWidget(self.stepReviewSubtitle)
+
+
+        self.stepReviewHeaderLayout.addLayout(self.stepReviewTextColumn)
+
+        self.stepReviewStatusBadge = QLabel(self.stepReviewHeader)
+        self.stepReviewStatusBadge.setObjectName(u"stepReviewStatusBadge")
+        self.stepReviewStatusBadge.setStyleSheet(u"QLabel#stepReviewStatusBadge {\n"
+"    border-radius: 9px;\n"
+"    font-weight: 600;\n"
+"    font-size: 10px;\n"
+"    padding: 2px 8px;\n"
+"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.stepReviewStatusBadge.setAlignment(Qt.AlignCenter)
+
+        self.stepReviewHeaderLayout.addWidget(self.stepReviewStatusBadge)
+
+        self.stepReviewChevron = QLabel(self.stepReviewHeader)
+        self.stepReviewChevron.setObjectName(u"stepReviewChevron")
+        self.stepReviewChevron.setMinimumSize(QSize(14, 0))
+        self.stepReviewChevron.setMaximumSize(QSize(14, 16777215))
+        self.stepReviewChevron.setStyleSheet(u"QLabel#stepReviewChevron {\n"
+"    font-size: 9px;\n"
+"    font-weight: bold;\n"
+"    color: #64748b;\n"
+"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.stepReviewChevron.setAlignment(Qt.AlignCenter)
+
+        self.stepReviewHeaderLayout.addWidget(self.stepReviewChevron)
+
+
+        self.stepReviewLayout.addWidget(self.stepReviewHeader)
+
+        self.stepReviewBody = QWidget(self.stepReview)
+        self.stepReviewBody.setObjectName(u"stepReviewBody")
+        self.stepReviewBody.setStyleSheet(u"QWidget#stepReviewBody {\n"
+"    border-top: 1px solid #f1f5f9;\n"
+"    background: transparent;\n"
+"}")
+        self.stepReviewBodyLayout = QVBoxLayout(self.stepReviewBody)
+        self.stepReviewBodyLayout.setSpacing(8)
+        self.stepReviewBodyLayout.setObjectName(u"stepReviewBodyLayout")
+        self.stepReviewBodyLayout.setContentsMargins(10, 8, 10, 10)
+        self.label = QLabel(self.stepReviewBody)
+        self.label.setObjectName(u"label")
+        self.label.setStyleSheet(u"QLabel {\n"
+"    font-size: 11px;\n"
+"    color: #64748b;\n"
+"    line-height: 1.3;\n"
+"}")
+        self.label.setWordWrap(True)
+
+        self.stepReviewBodyLayout.addWidget(self.label)
+
+        self.reviewCountsLayout = QHBoxLayout()
+        self.reviewCountsLayout.setSpacing(6)
+        self.reviewCountsLayout.setObjectName(u"reviewCountsLayout")
+        self.reviewStatAuto = QFrame(self.stepReviewBody)
+        self.reviewStatAuto.setObjectName(u"reviewStatAuto")
+        self.reviewStatAuto.setStyleSheet(u"QFrame#reviewStatAuto {\n"
+"    background-color: #f0fdf4;\n"
+"    border: 1px solid #bbf7d0;\n"
+"    border-radius: 6px;\n"
+"}")
+        self.reviewStatAutoLayout = QVBoxLayout(self.reviewStatAuto)
+        self.reviewStatAutoLayout.setSpacing(2)
+        self.reviewStatAutoLayout.setObjectName(u"reviewStatAutoLayout")
+        self.reviewStatAutoLayout.setContentsMargins(6, 6, 6, 6)
+        self.reviewStatAutoTitle = QLabel(self.reviewStatAuto)
+        self.reviewStatAutoTitle.setObjectName(u"reviewStatAutoTitle")
+        self.reviewStatAutoTitle.setStyleSheet(u"QLabel#reviewStatAutoTitle {\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    color: #15803d;\n"
+"}")
+
+        self.reviewStatAutoLayout.addWidget(self.reviewStatAutoTitle)
+
+        self.reviewStatAutoNum = QLabel(self.reviewStatAuto)
+        self.reviewStatAutoNum.setObjectName(u"reviewStatAutoNum")
+        self.reviewStatAutoNum.setStyleSheet(u"QLabel#reviewStatAutoNum {\n"
+"    font-size: 17px;\n"
+"    font-weight: bold;\n"
+"    color: #166534;\n"
+"}")
+
+        self.reviewStatAutoLayout.addWidget(self.reviewStatAutoNum)
+
+
+        self.reviewCountsLayout.addWidget(self.reviewStatAuto)
+
+        self.reviewStatManual = QFrame(self.stepReviewBody)
+        self.reviewStatManual.setObjectName(u"reviewStatManual")
+        self.reviewStatManual.setStyleSheet(u"QFrame#reviewStatManual {\n"
+"    background-color: #f0f9ff;\n"
+"    border: 1px solid #bae6fd;\n"
+"    border-radius: 6px;\n"
+"}")
+        self.reviewStatManualLayout = QVBoxLayout(self.reviewStatManual)
+        self.reviewStatManualLayout.setSpacing(2)
+        self.reviewStatManualLayout.setObjectName(u"reviewStatManualLayout")
+        self.reviewStatManualLayout.setContentsMargins(6, 6, 6, 6)
+        self.reviewStatManualTitle = QLabel(self.reviewStatManual)
+        self.reviewStatManualTitle.setObjectName(u"reviewStatManualTitle")
+        self.reviewStatManualTitle.setStyleSheet(u"QLabel#reviewStatManualTitle {\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    color: #0284c7;\n"
+"}")
+
+        self.reviewStatManualLayout.addWidget(self.reviewStatManualTitle)
+
+        self.reviewStatManualNum = QLabel(self.reviewStatManual)
+        self.reviewStatManualNum.setObjectName(u"reviewStatManualNum")
+        self.reviewStatManualNum.setStyleSheet(u"QLabel#reviewStatManualNum {\n"
+"    font-size: 17px;\n"
+"    font-weight: bold;\n"
+"    color: #0369a1;\n"
+"}")
+
+        self.reviewStatManualLayout.addWidget(self.reviewStatManualNum)
+
+
+        self.reviewCountsLayout.addWidget(self.reviewStatManual)
+
+        self.reviewStatDeleted = QFrame(self.stepReviewBody)
+        self.reviewStatDeleted.setObjectName(u"reviewStatDeleted")
+        self.reviewStatDeleted.setStyleSheet(u"QFrame#reviewStatDeleted {\n"
+"    background-color: #fffbeb;\n"
+"    border: 1px solid #fde68a;\n"
+"    border-radius: 6px;\n"
+"}")
+        self.reviewStatDeletedLayout = QVBoxLayout(self.reviewStatDeleted)
+        self.reviewStatDeletedLayout.setSpacing(2)
+        self.reviewStatDeletedLayout.setObjectName(u"reviewStatDeletedLayout")
+        self.reviewStatDeletedLayout.setContentsMargins(6, 6, 6, 6)
+        self.reviewStatDeletedTitle = QLabel(self.reviewStatDeleted)
+        self.reviewStatDeletedTitle.setObjectName(u"reviewStatDeletedTitle")
+        self.reviewStatDeletedTitle.setStyleSheet(u"QLabel#reviewStatDeletedTitle {\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    color: #b45309;\n"
+"}")
+
+        self.reviewStatDeletedLayout.addWidget(self.reviewStatDeletedTitle)
+
+        self.reviewStatDeletedNum = QLabel(self.reviewStatDeleted)
+        self.reviewStatDeletedNum.setObjectName(u"reviewStatDeletedNum")
+        self.reviewStatDeletedNum.setStyleSheet(u"QLabel#reviewStatDeletedNum {\n"
+"    font-size: 17px;\n"
+"    font-weight: bold;\n"
+"    color: #92400e;\n"
+"}")
+
+        self.reviewStatDeletedLayout.addWidget(self.reviewStatDeletedNum)
+
+
+        self.reviewCountsLayout.addWidget(self.reviewStatDeleted)
+
+
+        self.stepReviewBodyLayout.addLayout(self.reviewCountsLayout)
+
+        self.exportShowDeletedMasks = QCheckBox(self.stepReviewBody)
+        self.exportShowDeletedMasks.setObjectName(u"exportShowDeletedMasks")
+        self.exportShowDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.exportShowDeletedMasks.setStyleSheet(u"QCheckBox#exportShowDeletedMasks {\n"
+"    font-size: 12px;\n"
+"    color: #1e293b;\n"
+"    spacing: 8px;\n"
+"    font-weight: 500;\n"
+"}")
+
+        self.stepReviewBodyLayout.addWidget(self.exportShowDeletedMasks)
+
+        self.reviewSepFindBrightest = QFrame(self.stepReviewBody)
+        self.reviewSepFindBrightest.setObjectName(u"reviewSepFindBrightest")
+        self.reviewSepFindBrightest.setFrameShape(QFrame.HLine)
+        self.reviewSepFindBrightest.setStyleSheet(u"QFrame#reviewSepFindBrightest {\n"
+"    background-color: #f1f5f9;\n"
+"    max-height: 1px;\n"
+"}")
+
+        self.stepReviewBodyLayout.addWidget(self.reviewSepFindBrightest)
+
+        self.reviewFindBrightestHeading = QLabel(self.stepReviewBody)
+        self.reviewFindBrightestHeading.setObjectName(u"reviewFindBrightestHeading")
+        self.reviewFindBrightestHeading.setStyleSheet(u"QLabel#reviewFindBrightestHeading {\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    color: #475569;\n"
+"    text-transform: uppercase;\n"
+"    letter-spacing: 0.5px;\n"
+"    margin-top: 2px;\n"
+"}")
+
+        self.stepReviewBodyLayout.addWidget(self.reviewFindBrightestHeading)
+
+        self.reviewFindBrightestHint = QLabel(self.stepReviewBody)
+        self.reviewFindBrightestHint.setObjectName(u"reviewFindBrightestHint")
+        self.reviewFindBrightestHint.setStyleSheet(u"QLabel#reviewFindBrightestHint {\n"
+"    font-size: 11px;\n"
+"    color: #64748b;\n"
+"    line-height: 1.3;\n"
+"}")
+        self.reviewFindBrightestHint.setWordWrap(True)
+
+        self.stepReviewBodyLayout.addWidget(self.reviewFindBrightestHint)
+
+        self.findBrightest = QPushButton(self.stepReviewBody)
+        self.findBrightest.setObjectName(u"findBrightest")
+        self.findBrightest.setEnabled(False)
+        self.findBrightest.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.findBrightest.setStyleSheet(u"QPushButton#findBrightest {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#findBrightest:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#findBrightest:checked {\n"
+"    background-color: #e0f2fe;\n"
+"    color: #0284c7;\n"
+"    border-color: #0284c7;\n"
+"    font-weight: 600;\n"
+"}\n"
+"QPushButton#findBrightest:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}")
+        self.findBrightest.setCheckable(True)
+
+        self.stepReviewBodyLayout.addWidget(self.findBrightest)
+
+        self.reviewSep1 = QFrame(self.stepReviewBody)
+        self.reviewSep1.setObjectName(u"reviewSep1")
+        self.reviewSep1.setStyleSheet(u"QFrame[frameShape=\"4\"] {\n"
+"    border-top: 1px solid #CCC;\n"
+"}")
+        self.reviewSep1.setFrameShape(QFrame.HLine)
+
+        self.stepReviewBodyLayout.addWidget(self.reviewSep1)
+
+        self.reviewOptionalHeading = QLabel(self.stepReviewBody)
+        self.reviewOptionalHeading.setObjectName(u"reviewOptionalHeading")
+        self.reviewOptionalHeading.setStyleSheet(u"QLabel#reviewOptionalHeading {\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    color: #475569;\n"
+"    text-transform: uppercase;\n"
+"    letter-spacing: 0.5px;\n"
+"    margin-top: 2px;\n"
+"}")
+
+        self.stepReviewBodyLayout.addWidget(self.reviewOptionalHeading)
+
+        self.reviewOptionalMasksHint = QLabel(self.stepReviewBody)
+        self.reviewOptionalMasksHint.setObjectName(u"reviewOptionalMasksHint")
+        self.reviewOptionalMasksHint.setStyleSheet(u"QLabel#reviewOptionalMasksHint {\n"
+"    font-size: 11px;\n"
+"    color: #64748b;\n"
+"    line-height: 1.3;\n"
+"}")
+        self.reviewOptionalMasksHint.setWordWrap(True)
+
+        self.stepReviewBodyLayout.addWidget(self.reviewOptionalMasksHint)
+
+        self.exportMasks = QPushButton(self.stepReviewBody)
+        self.exportMasks.setObjectName(u"exportMasks")
+        self.exportMasks.setEnabled(False)
+        self.exportMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.exportMasks.setStyleSheet(u"QPushButton#exportMasks {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#exportMasks:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#exportMasks:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}")
+
+        self.stepReviewBodyLayout.addWidget(self.exportMasks)
+
+        self.reviewSep2 = QFrame(self.stepReviewBody)
+        self.reviewSep2.setObjectName(u"reviewSep2")
+        self.reviewSep2.setStyleSheet(u"QFrame[frameShape=\"4\"] {\n"
+"    border-top: 1px solid #CCC;\n"
+"}")
+        self.reviewSep2.setFrameShape(QFrame.HLine)
+
+        self.stepReviewBodyLayout.addWidget(self.reviewSep2)
+
+        self.reviewContributeHeading = QLabel(self.stepReviewBody)
+        self.reviewContributeHeading.setObjectName(u"reviewContributeHeading")
+        self.reviewContributeHeading.setStyleSheet(u"QLabel#reviewContributeHeading {\n"
+"    font-size: 11px;\n"
+"    font-weight: 600;\n"
+"    color: #475569;\n"
+"    text-transform: uppercase;\n"
+"    letter-spacing: 0.5px;\n"
+"    margin-top: 2px;\n"
+"}")
+
+        self.stepReviewBodyLayout.addWidget(self.reviewContributeHeading)
+
+        self.reviewContributeHint = QLabel(self.stepReviewBody)
+        self.reviewContributeHint.setObjectName(u"reviewContributeHint")
+        self.reviewContributeHint.setStyleSheet(u"QLabel#reviewContributeHint {\n"
+"    font-size: 11px;\n"
+"    color: #64748b;\n"
+"    line-height: 1.3;\n"
+"}")
+        self.reviewContributeHint.setWordWrap(True)
+
+        self.stepReviewBodyLayout.addWidget(self.reviewContributeHint)
+
+        self.exportTraining = QPushButton(self.stepReviewBody)
+        self.exportTraining.setObjectName(u"exportTraining")
+        self.exportTraining.setEnabled(False)
+        self.exportTraining.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.exportTraining.setStyleSheet(u"QPushButton#exportTraining {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#exportTraining:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#exportTraining:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}")
+
+        self.stepReviewBodyLayout.addWidget(self.exportTraining)
+
+
+        self.stepReviewLayout.addWidget(self.stepReviewBody)
+
+
+        self.contentLayout.addWidget(self.stepReview)
+
         self.stepFill = QFrame(self.content)
         self.stepFill.setObjectName(u"stepFill")
         sizePolicy2.setHeightForWidth(self.stepFill.sizePolicy().hasHeightForWidth())
@@ -2217,32 +2283,7 @@ class Ui_MainWindow(object):
         self.detectUseGPU.setText("")
         self.detectError.setText("")
         self.detectRun.setText(QCoreApplication.translate("MainWindow", u"Detect Streaks", None))
-        self.stepReviewNumber.setText(QCoreApplication.translate("MainWindow", u"2", None))
-        self.stepReviewToggle.setText(QCoreApplication.translate("MainWindow", u"Review Detections", None))
-        self.stepReviewSubtitle.setText(QCoreApplication.translate("MainWindow", u"Ready \u00b7 review is optional", None))
-        self.stepReviewStatusBadge.setText(QCoreApplication.translate("MainWindow", u"Ready", None))
-        self.stepReviewChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
-        self.label.setText(QCoreApplication.translate("MainWindow", u"You can review and edit detected streaks. If you manually add, edit, or delete masks, consider contributing your corrections so that models may be improved.", None))
-        self.reviewStatAutoTitle.setText(QCoreApplication.translate("MainWindow", u"\u25cf Auto", None))
-        self.reviewStatAutoNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
-        self.reviewStatManualTitle.setText(QCoreApplication.translate("MainWindow", u"\u25cf Manual", None))
-        self.reviewStatManualNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
-        self.reviewStatDeletedTitle.setText(QCoreApplication.translate("MainWindow", u"\u25cf Deleted", None))
-        self.reviewStatDeletedNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
-        self.exportShowDeletedMasks.setText(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))
-        self.reviewOptionalHeading.setText(QCoreApplication.translate("MainWindow", u"Optional", None))
-        self.reviewOptionalMasksHint.setText(QCoreApplication.translate("MainWindow", u"Save detected streak masks as image files.", None))
-#if QT_CONFIG(tooltip)
-        self.exportMasks.setToolTip(QCoreApplication.translate("MainWindow", u"Requires automatic or manual streak masks.", None))
-#endif // QT_CONFIG(tooltip)
-        self.exportMasks.setText(QCoreApplication.translate("MainWindow", u"Export Masks", None))
-        self.reviewContributeHeading.setText(QCoreApplication.translate("MainWindow", u"Optional: Contribute Corrections", None))
-        self.reviewContributeHint.setText(QCoreApplication.translate("MainWindow", u"Export manual additions and deletions to help improve future streak detection models.", None))
-#if QT_CONFIG(tooltip)
-        self.exportTraining.setToolTip(QCoreApplication.translate("MainWindow", u"Requires manually added or deleted streak masks.", None))
-#endif // QT_CONFIG(tooltip)
-        self.exportTraining.setText(QCoreApplication.translate("MainWindow", u"Export Training", None))
-        self.stepStackNumber.setText(QCoreApplication.translate("MainWindow", u"3", None))
+        self.stepStackNumber.setText(QCoreApplication.translate("MainWindow", u"2", None))
         self.stepStackToggle.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))
         self.stepStackSubtitle.setText(QCoreApplication.translate("MainWindow", u"Ready \u00b7 detection is optional", None))
         self.stepStackStatusBadge.setText(QCoreApplication.translate("MainWindow", u"\u2713 Ready", None))
@@ -2265,6 +2306,37 @@ class Ui_MainWindow(object):
         self.stackMemory.setText(QCoreApplication.translate("MainWindow", u"Add input files for a batch suggestion.", None))
         self.stackError.setText("")
         self.stackRun.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))
+        self.stepReviewNumber.setText(QCoreApplication.translate("MainWindow", u"3", None))
+        self.stepReviewToggle.setText(QCoreApplication.translate("MainWindow", u"Review and Correct", None))
+        self.stepReviewSubtitle.setText(QCoreApplication.translate("MainWindow", u"0 corrections", None))
+        self.stepReviewStatusBadge.setText(QCoreApplication.translate("MainWindow", u"Ready", None))
+        self.stepReviewChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
+        self.label.setText(QCoreApplication.translate("MainWindow", u"You can review and edit detected streaks. If you manually add, edit, or delete masks, consider contributing your corrections so that models may be improved.", None))
+        self.reviewStatAutoTitle.setText(QCoreApplication.translate("MainWindow", u"\u25cf Auto", None))
+        self.reviewStatAutoNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
+        self.reviewStatManualTitle.setText(QCoreApplication.translate("MainWindow", u"\u25cf Manual", None))
+        self.reviewStatManualNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
+        self.reviewStatDeletedTitle.setText(QCoreApplication.translate("MainWindow", u"\u25cf Deleted", None))
+        self.reviewStatDeletedNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
+        self.exportShowDeletedMasks.setText(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))
+        self.reviewFindBrightestHeading.setText(QCoreApplication.translate("MainWindow", u"Locate Streaks", None))
+        self.reviewFindBrightestHint.setText(QCoreApplication.translate("MainWindow", u"Click on a streak in a stacked or gap-filled image to locate its source frame.", None))
+#if QT_CONFIG(tooltip)
+        self.findBrightest.setToolTip(QCoreApplication.translate("MainWindow", u"Select a stacked or gap-filled output image to enable finding the brightest frame at a point.", None))
+#endif // QT_CONFIG(tooltip)
+        self.findBrightest.setText(QCoreApplication.translate("MainWindow", u"Find Brightest", None))
+        self.reviewOptionalHeading.setText(QCoreApplication.translate("MainWindow", u"Optional", None))
+        self.reviewOptionalMasksHint.setText(QCoreApplication.translate("MainWindow", u"Save detected streak masks as image files.", None))
+#if QT_CONFIG(tooltip)
+        self.exportMasks.setToolTip(QCoreApplication.translate("MainWindow", u"Requires automatic or manual streak masks.", None))
+#endif // QT_CONFIG(tooltip)
+        self.exportMasks.setText(QCoreApplication.translate("MainWindow", u"Export Masks", None))
+        self.reviewContributeHeading.setText(QCoreApplication.translate("MainWindow", u"Optional: Contribute Corrections", None))
+        self.reviewContributeHint.setText(QCoreApplication.translate("MainWindow", u"Export manual additions and deletions to help improve future streak detection models.", None))
+#if QT_CONFIG(tooltip)
+        self.exportTraining.setToolTip(QCoreApplication.translate("MainWindow", u"Requires manually added or deleted streak masks.", None))
+#endif // QT_CONFIG(tooltip)
+        self.exportTraining.setText(QCoreApplication.translate("MainWindow", u"Export Training", None))
         self.stepFillNumber.setText(QCoreApplication.translate("MainWindow", u"4", None))
         self.stepFillToggle.setText(QCoreApplication.translate("MainWindow", u"Fill Gaps", None))
         self.stepFillSubtitle.setText(QCoreApplication.translate("MainWindow", u"Select a stacked output image", None))
@@ -2274,3 +2346,4 @@ class Ui_MainWindow(object):
         self.fillRun.setText(QCoreApplication.translate("MainWindow", u"Fill Gaps", None))
         self.canvas_main.setText(QCoreApplication.translate("MainWindow", u"Canvas", None))
     # retranslateUi
+

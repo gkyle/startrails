@@ -23,7 +23,7 @@ class Ui_ReviewSettings(object):
     def setupUi(self, reviewSettings):
         if not reviewSettings.objectName():
             reviewSettings.setObjectName(u"reviewSettings")
-        reviewSettings.setStyleSheet(u"QLabel#optionalHeading, QLabel#contributeHeading {\n"
+        reviewSettings.setStyleSheet(u"QLabel#optionalHeading, QLabel#contributeHeading, QLabel#findBrightestHeading {\n"
 "    font-size: 11px;\n"
 "    font-weight: 600;\n"
 "    color: #475569;\n"
@@ -31,7 +31,7 @@ class Ui_ReviewSettings(object):
 "    letter-spacing: 0.5px;\n"
 "    margin-top: 2px;\n"
 "}\n"
-"QLabel#optionalMasksHint, QLabel#contributeHint {\n"
+"QLabel#optionalMasksHint, QLabel#contributeHint, QLabel#findBrightestHint {\n"
 "    font-size: 11px;\n"
 "    color: #64748b;\n"
 "    line-height: 1.3;\n"
@@ -61,10 +61,10 @@ class Ui_ReviewSettings(object):
 "    font-weight: 600;\n"
 "    color: #0284c7;\n"
 "}\n"
-"QLabel#statDeletedTitle {\n"
+"QLabel#"
+                        "statDeletedTitle {\n"
 "    font-size: 11px;\n"
-"    fon"
-                        "t-weight: 600;\n"
+"    font-weight: 600;\n"
 "    color: #b45309;\n"
 "}\n"
 "QLabel#statAutoNum {\n"
@@ -88,7 +88,7 @@ class Ui_ReviewSettings(object):
 "    spacing: 8px;\n"
 "    font-weight: 500;\n"
 "}\n"
-"QPushButton#masks, QPushButton#training {\n"
+"QPushButton#masks, QPushButton#training, QPushButton#findBrightest {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
 "    border: 1px solid #cbd5e1;\n"
@@ -97,17 +97,23 @@ class Ui_ReviewSettings(object):
 "    font-weight: 500;\n"
 "    font-size: 12px;\n"
 "}\n"
-"QPushButton#masks:hover, QPushButton#training:hover {\n"
+"QPushButton#masks:hover, QPushButton#training:hover, QPushButton#findBrightest:hover {\n"
 "    background-color: #f1f5f9;\n"
 "    border-color: #94a3b8;\n"
 "}\n"
-"QPushButton#masks:disabled, QPushButton#training:disabled {\n"
+"QPushButton#findB"
+                        "rightest:checked {\n"
+"    background-color: #e0f2fe;\n"
+"    color: #0284c7;\n"
+"    border-color: #0284c7;\n"
+"    font-weight: 600;\n"
+"}\n"
+"QPushButton#masks:disabled, QPushButton#training:disabled, QPushButton#findBrightest:disabled {\n"
 "    background-color: #f8fafc;\n"
 "    color: #94a3b8;\n"
-"    borde"
-                        "r-color: #e2e8f0;\n"
+"    border-color: #e2e8f0;\n"
 "}\n"
-"QFrame#sep1, QFrame#sep2 {\n"
+"QFrame#sep1, QFrame#sep2, QFrame#sepFindBrightest {\n"
 "    background-color: #f1f5f9;\n"
 "    max-height: 1px;\n"
 "}")
@@ -184,6 +190,31 @@ class Ui_ReviewSettings(object):
 
         self.layout.addWidget(self.showDeletedMasks)
 
+        self.sepFindBrightest = QFrame(reviewSettings)
+        self.sepFindBrightest.setObjectName(u"sepFindBrightest")
+        self.sepFindBrightest.setFrameShape(QFrame.HLine)
+
+        self.layout.addWidget(self.sepFindBrightest)
+
+        self.findBrightestHeading = QLabel(reviewSettings)
+        self.findBrightestHeading.setObjectName(u"findBrightestHeading")
+
+        self.layout.addWidget(self.findBrightestHeading)
+
+        self.findBrightestHint = QLabel(reviewSettings)
+        self.findBrightestHint.setObjectName(u"findBrightestHint")
+        self.findBrightestHint.setWordWrap(True)
+
+        self.layout.addWidget(self.findBrightestHint)
+
+        self.findBrightest = QPushButton(reviewSettings)
+        self.findBrightest.setObjectName(u"findBrightest")
+        self.findBrightest.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.findBrightest.setCheckable(True)
+        self.findBrightest.setEnabled(False)
+
+        self.layout.addWidget(self.findBrightest)
+
         self.sep1 = QFrame(reviewSettings)
         self.sep1.setObjectName(u"sep1")
         self.sep1.setFrameShape(QFrame.HLine)
@@ -246,6 +277,12 @@ class Ui_ReviewSettings(object):
         self.statDeletedTitle.setText(QCoreApplication.translate("ReviewSettings", u"\u25cf Deleted", None))
         self.statDeletedNum.setText(QCoreApplication.translate("ReviewSettings", u"0", None))
         self.showDeletedMasks.setText(QCoreApplication.translate("ReviewSettings", u"Show Deleted Masks", None))
+        self.findBrightestHeading.setText(QCoreApplication.translate("ReviewSettings", u"Locate Streaks", None))
+        self.findBrightestHint.setText(QCoreApplication.translate("ReviewSettings", u"Click on a streak in a stacked or gap-filled image to locate its source frame.", None))
+        self.findBrightest.setText(QCoreApplication.translate("ReviewSettings", u"Find Brightest", None))
+#if QT_CONFIG(tooltip)
+        self.findBrightest.setToolTip(QCoreApplication.translate("ReviewSettings", u"Select a stacked or gap-filled output image to enable finding the brightest frame at a point.", None))
+#endif // QT_CONFIG(tooltip)
         self.optionalHeading.setText(QCoreApplication.translate("ReviewSettings", u"Optional", None))
         self.optionalMasksHint.setText(QCoreApplication.translate("ReviewSettings", u"Save detected streak masks as image files.", None))
         self.masks.setText(QCoreApplication.translate("ReviewSettings", u"Export Masks", None))
@@ -260,3 +297,4 @@ class Ui_ReviewSettings(object):
 #endif // QT_CONFIG(tooltip)
         pass
     # retranslateUi
+

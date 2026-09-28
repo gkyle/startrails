@@ -399,6 +399,7 @@ class ReviewSettings(QWidget):
                 statDeleted=getattr(ui, "reviewStatDeleted", None),
                 statDeletedNum=getattr(ui, "reviewStatDeletedNum", None),
                 showDeletedMasks=getattr(ui, "exportShowDeletedMasks", getattr(ui, "showDeletedMasks", None)),
+                findBrightest=getattr(ui, "findBrightest", None),
                 masks=getattr(ui, "exportMasks", getattr(ui, "masks", None)),
                 training=getattr(ui, "exportTraining", getattr(ui, "training", None)),
                 hint=getattr(ui, "reviewOptionalMasksHint", getattr(ui, "exportHint", None)),

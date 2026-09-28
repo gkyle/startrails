@@ -40,6 +40,14 @@ class MainWindow(QMainWindow):
         y = (screen.height() - window_size.height()) // 2
         self.move(QPoint(x, y))
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape and getattr(self.ui, "canvas_main", None) is not None:
+            if getattr(self.ui.canvas_main, "findBrightestMode", False):
+                self.ui.canvas_main.setFindBrightestMode(False)
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
     def closeEvent(self, event):
         self.ui.doCancelOp()
         if self.ui.op_queue is not None and hasattr(self.ui.op_queue, "clear"):
@@ -56,6 +64,8 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     persistentSettings = {}
     currentFile: File = None
 
+    pushButton_findBrightest = None
+
     def __init__(self, app: App):
         super().__init__()
         self.app = app
@@ -71,6 +81,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.progressBar = None
         self.label_progressBar = None
         self.pushButton_cancelOp = None
+        self.pushButton_findBrightest = None
 
         settings = app.getWindowSettings()
         if settings is not None:
@@ -94,6 +105,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.pushButton_exportMasks = self.sidebar.review.ui.masks
         self.pushButton_exportTraining = self.sidebar.review.ui.training
         self.checkBox_showDeletedMasks = self.sidebar.review.ui.showDeletedMasks
+        self.pushButton_findBrightest = getattr(self.sidebar.review.ui, "findBrightest", None)
         self.pushButton_fillGaps = self.sidebar.fill.ui.run
 
         MainWindow.setWindowTitle("StarTrails AI")
@@ -142,6 +154,9 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.label_progressBar = self.progressOverlay.label_progressBar
         self.pushButton_cancelOp = self.progressOverlay.pushButton_cancelOp
         self.pushButton_cancelOp.clicked.connect(self.doCancelOp)
+        if self.pushButton_findBrightest is not None:
+            self.pushButton_findBrightest.toggled.connect(self.canvas_main.setFindBrightestMode)
+            self.canvas_main.findBrightestModeChanged.connect(self.pushButton_findBrightest.setChecked)
 
         self.slotUpdateGPUStats()
 
@@ -172,6 +187,14 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     def updateFillEligibility(self):
         eligible = isinstance(self.currentFile, OutputFile) and self.currentFile.operation == "Stacked"
         self.pushButton_fillGaps.setEnabled(eligible)
+        bright_eligible = (
+            isinstance(self.currentFile, OutputFile)
+            and self.currentFile.operation in ("Stacked", "FillGaps")
+        )
+        if self.pushButton_findBrightest is not None:
+            self.pushButton_findBrightest.setEnabled(bright_eligible)
+            if not bright_eligible and self.pushButton_findBrightest.isChecked():
+                self.pushButton_findBrightest.setChecked(False)
         self.sidebar.fillCard.setSubtitle("Ready to fill gaps" if eligible else "Select a stacked output image")
         self.sidebar.fill.ui.target.setText(self.currentFile.basename if eligible else "Select a stacked output image to fill its gaps.")
         self.sidebar.update_operations_progress(self.app, self.currentFile)
