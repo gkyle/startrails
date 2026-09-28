@@ -193,14 +193,14 @@ QPushButton#newProject:pressed, QPushButton#openProject:pressed {
           <item>
            <widget class="QLabel" name="operationsProgressLabel">
             <property name="text">
-             <string>0 of 3 steps complete</string>
+             <string>0 of 4 steps complete</string>
             </property>
            </widget>
           </item>
           <item>
            <widget class="QProgressBar" name="operationsProgress">
             <property name="maximum">
-             <number>3</number>
+             <number>4</number>
             </property>
             <property name="value">
              <number>0</number>
@@ -217,13 +217,13 @@ QPushButton#newProject:pressed, QPushButton#openProject:pressed {
         <layout class="QVBoxLayout" name="detectLayout"/>
        </item>
        <item>
+        <layout class="QVBoxLayout" name="reviewLayout"/>
+       </item>
+       <item>
         <layout class="QVBoxLayout" name="stackLayout"/>
        </item>
        <item>
         <layout class="QVBoxLayout" name="fillLayout"/>
-       </item>
-       <item>
-        <layout class="QVBoxLayout" name="exportLayout"/>
        </item>
        <item>
         <spacer name="bottomSpace">

@@ -185,4 +185,3 @@ class Ui_ProgressOverlay(object):
         self.label_progressETA.setText(QCoreApplication.translate("ProgressOverlay", u"ETA --:--:--", None))
         pass
     # retranslateUi
-

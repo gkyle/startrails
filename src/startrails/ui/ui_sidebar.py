@@ -162,7 +162,7 @@ class Ui_Sidebar(object):
 
         self.operationsProgress = QProgressBar(self.operationsHeaderWidget)
         self.operationsProgress.setObjectName(u"operationsProgress")
-        self.operationsProgress.setMaximum(3)
+        self.operationsProgress.setMaximum(4)
         self.operationsProgress.setValue(0)
         self.operationsProgress.setTextVisible(False)
 
@@ -176,6 +176,11 @@ class Ui_Sidebar(object):
 
         self.contentLayout.addLayout(self.detectLayout)
 
+        self.reviewLayout = QVBoxLayout()
+        self.reviewLayout.setObjectName(u"reviewLayout")
+
+        self.contentLayout.addLayout(self.reviewLayout)
+
         self.stackLayout = QVBoxLayout()
         self.stackLayout.setObjectName(u"stackLayout")
 
@@ -185,11 +190,6 @@ class Ui_Sidebar(object):
         self.fillLayout.setObjectName(u"fillLayout")
 
         self.contentLayout.addLayout(self.fillLayout)
-
-        self.exportLayout = QVBoxLayout()
-        self.exportLayout.setObjectName(u"exportLayout")
-
-        self.contentLayout.addLayout(self.exportLayout)
 
         self.bottomSpace = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
@@ -210,6 +210,6 @@ class Ui_Sidebar(object):
         self.newProject.setText(QCoreApplication.translate("Sidebar", u"New Project", None))
         self.openProject.setText(QCoreApplication.translate("Sidebar", u"Open Project", None))
         self.operationsTitle.setText(QCoreApplication.translate("Sidebar", u"Operations", None))
-        self.operationsProgressLabel.setText(QCoreApplication.translate("Sidebar", u"0 of 3 steps complete", None))
+        self.operationsProgressLabel.setText(QCoreApplication.translate("Sidebar", u"0 of 4 steps complete", None))
         pass
     # retranslateUi

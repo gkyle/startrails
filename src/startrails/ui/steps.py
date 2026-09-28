@@ -72,6 +72,7 @@ from .ui_step_detect_streaks import Ui_DetectSettings
 from .ui_step_stack_images import Ui_StackSettings
 from .ui_step_fill_gaps import Ui_FillSettings
 from .ui_step_export_artifacts import Ui_ExportSettings
+from .ui_step_review_detections import Ui_ReviewSettings
 
 
 class StepCard(QFrame):
@@ -385,16 +386,44 @@ class FillSettings(QWidget):
             self.ui.setupUi(self)
 
 
-class ExportSettings(QWidget):
-    def __init__(self, parent=None, ui=None):
+class ReviewSettings(QWidget):
+    def __init__(self, app=None, parent=None, ui=None):
         super().__init__(parent)
+        self.app = app
         if ui is not None:
             self.ui = SimpleNamespace(
-                hint=ui.exportHint,
-                showDeletedMasks=ui.exportShowDeletedMasks,
-                masks=ui.exportMasks,
-                training=ui.exportTraining,
+                statAuto=getattr(ui, "reviewStatAuto", None),
+                statAutoNum=getattr(ui, "reviewStatAutoNum", None),
+                statManual=getattr(ui, "reviewStatManual", None),
+                statManualNum=getattr(ui, "reviewStatManualNum", None),
+                statDeleted=getattr(ui, "reviewStatDeleted", None),
+                statDeletedNum=getattr(ui, "reviewStatDeletedNum", None),
+                showDeletedMasks=getattr(ui, "exportShowDeletedMasks", getattr(ui, "showDeletedMasks", None)),
+                masks=getattr(ui, "exportMasks", getattr(ui, "masks", None)),
+                training=getattr(ui, "exportTraining", getattr(ui, "training", None)),
+                hint=getattr(ui, "reviewOptionalMasksHint", getattr(ui, "exportHint", None)),
             )
         else:
-            self.ui = Ui_ExportSettings()
+            self.ui = Ui_ReviewSettings()
             self.ui.setupUi(self)
+
+    def set_counts(self, auto: int, manual: int, deleted: int):
+        if getattr(self.ui, "statAutoNum", None) is not None:
+            self.ui.statAutoNum.setText(str(auto))
+        if getattr(self.ui, "statManualNum", None) is not None:
+            self.ui.statManualNum.setText(str(manual))
+        if getattr(self.ui, "statDeletedNum", None) is not None:
+            self.ui.statDeletedNum.setText(str(deleted))
+
+    def reset(self):
+        self.set_counts(0, 0, 0)
+        if getattr(self.ui, "showDeletedMasks", None) is not None:
+            with QSignalBlocker(self.ui.showDeletedMasks):
+                self.ui.showDeletedMasks.setChecked(False)
+
+
+class ExportSettings(ReviewSettings):
+    """Backward-compatible wrapper for review/export settings."""
+    def __init__(self, parent=None, ui=None):
+        super().__init__(app=None, parent=parent, ui=ui)
+

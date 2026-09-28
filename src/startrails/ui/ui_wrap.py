@@ -91,9 +91,9 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.pushButton_openProject = self.sidebar.ui.openProject
         self.pushButton_stackImages = self.sidebar.stack.ui.run
         self.pushButton_removeStreaks = self.sidebar.detect.ui.run
-        self.pushButton_exportMasks = self.sidebar.exports.ui.masks
-        self.pushButton_exportTraining = self.sidebar.exports.ui.training
-        self.checkBox_showDeletedMasks = self.sidebar.exports.ui.showDeletedMasks
+        self.pushButton_exportMasks = self.sidebar.review.ui.masks
+        self.pushButton_exportTraining = self.sidebar.review.ui.training
+        self.checkBox_showDeletedMasks = self.sidebar.review.ui.showDeletedMasks
         self.pushButton_fillGaps = self.sidebar.fill.ui.run
 
         MainWindow.setWindowTitle("StarTrails AI")
