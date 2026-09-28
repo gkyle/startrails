@@ -295,7 +295,7 @@ class Ui_MainWindow(object):
         self.scroll.setWidgetResizable(True)
         self.content = QWidget()
         self.content.setObjectName(u"content")
-        self.content.setGeometry(QRect(0, 0, 381, 1534))
+        self.content.setGeometry(QRect(0, -619, 381, 1765))
         self.content.setMinimumSize(QSize(0, 0))
         self.content.setStyleSheet(u"QWidget#content {\n"
 "    background-color: #f8fafc;\n"
@@ -1225,6 +1225,7 @@ class Ui_MainWindow(object):
 "    color: #0f172a;\n"
 "}")
         self.stepStackToggle.setCheckable(True)
+        self.stepStackToggle.setChecked(True)
 
         self.stepStackTextColumn.addWidget(self.stepStackToggle)
 
@@ -1666,6 +1667,7 @@ class Ui_MainWindow(object):
 "    color: #0f172a;\n"
 "}")
         self.stepReviewToggle.setCheckable(True)
+        self.stepReviewToggle.setChecked(True)
 
         self.stepReviewTextColumn.addWidget(self.stepReviewToggle)
 
@@ -1840,25 +1842,28 @@ class Ui_MainWindow(object):
 
         self.stepReviewBodyLayout.addLayout(self.reviewCountsLayout)
 
+        self.exportShowDeletedMasksLayout = QHBoxLayout()
+        self.exportShowDeletedMasksLayout.setObjectName(u"exportShowDeletedMasksLayout")
+        self.exportShowDeletedMasksLabel = QLabel(self.stepReviewBody)
+        self.exportShowDeletedMasksLabel.setObjectName(u"exportShowDeletedMasksLabel")
+
+        self.exportShowDeletedMasksLayout.addWidget(self.exportShowDeletedMasksLabel)
+
         self.exportShowDeletedMasks = QCheckBox(self.stepReviewBody)
         self.exportShowDeletedMasks.setObjectName(u"exportShowDeletedMasks")
         self.exportShowDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.exportShowDeletedMasks.setStyleSheet(u"QCheckBox#exportShowDeletedMasks {\n"
-"    font-size: 12px;\n"
-"    color: #1e293b;\n"
-"    spacing: 8px;\n"
-"    font-weight: 500;\n"
-"}")
 
-        self.stepReviewBodyLayout.addWidget(self.exportShowDeletedMasks)
+        self.exportShowDeletedMasksLayout.addWidget(self.exportShowDeletedMasks, 0, Qt.AlignRight)
+
+
+        self.stepReviewBodyLayout.addLayout(self.exportShowDeletedMasksLayout)
 
         self.reviewSepFindBrightest = QFrame(self.stepReviewBody)
         self.reviewSepFindBrightest.setObjectName(u"reviewSepFindBrightest")
-        self.reviewSepFindBrightest.setFrameShape(QFrame.HLine)
-        self.reviewSepFindBrightest.setStyleSheet(u"QFrame#reviewSepFindBrightest {\n"
-"    background-color: #f1f5f9;\n"
-"    max-height: 1px;\n"
+        self.reviewSepFindBrightest.setStyleSheet(u"QFrame[frameShape=\"4\"] {\n"
+"    border-top: 1px solid #CCC;\n"
 "}")
+        self.reviewSepFindBrightest.setFrameShape(QFrame.HLine)
 
         self.stepReviewBodyLayout.addWidget(self.reviewSepFindBrightest)
 
@@ -1926,64 +1931,6 @@ class Ui_MainWindow(object):
         self.reviewSep1.setFrameShape(QFrame.HLine)
 
         self.stepReviewBodyLayout.addWidget(self.reviewSep1)
-
-        self.reviewOptionalHeading = QLabel(self.stepReviewBody)
-        self.reviewOptionalHeading.setObjectName(u"reviewOptionalHeading")
-        self.reviewOptionalHeading.setStyleSheet(u"QLabel#reviewOptionalHeading {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #475569;\n"
-"    text-transform: uppercase;\n"
-"    letter-spacing: 0.5px;\n"
-"    margin-top: 2px;\n"
-"}")
-
-        self.stepReviewBodyLayout.addWidget(self.reviewOptionalHeading)
-
-        self.reviewOptionalMasksHint = QLabel(self.stepReviewBody)
-        self.reviewOptionalMasksHint.setObjectName(u"reviewOptionalMasksHint")
-        self.reviewOptionalMasksHint.setStyleSheet(u"QLabel#reviewOptionalMasksHint {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"    line-height: 1.3;\n"
-"}")
-        self.reviewOptionalMasksHint.setWordWrap(True)
-
-        self.stepReviewBodyLayout.addWidget(self.reviewOptionalMasksHint)
-
-        self.exportMasks = QPushButton(self.stepReviewBody)
-        self.exportMasks.setObjectName(u"exportMasks")
-        self.exportMasks.setEnabled(False)
-        self.exportMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.exportMasks.setStyleSheet(u"QPushButton#exportMasks {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#exportMasks:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#exportMasks:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}")
-
-        self.stepReviewBodyLayout.addWidget(self.exportMasks)
-
-        self.reviewSep2 = QFrame(self.stepReviewBody)
-        self.reviewSep2.setObjectName(u"reviewSep2")
-        self.reviewSep2.setStyleSheet(u"QFrame[frameShape=\"4\"] {\n"
-"    border-top: 1px solid #CCC;\n"
-"}")
-        self.reviewSep2.setFrameShape(QFrame.HLine)
-
-        self.stepReviewBodyLayout.addWidget(self.reviewSep2)
 
         self.reviewContributeHeading = QLabel(self.stepReviewBody)
         self.reviewContributeHeading.setObjectName(u"reviewContributeHeading")
@@ -2100,6 +2047,7 @@ class Ui_MainWindow(object):
 "    color: #0f172a;\n"
 "}")
         self.stepFillToggle.setCheckable(True)
+        self.stepFillToggle.setChecked(True)
 
         self.stepFillTextColumn.addWidget(self.stepFillToggle)
 
@@ -2150,7 +2098,7 @@ class Ui_MainWindow(object):
 
         self.stepFillBody = QWidget(self.stepFill)
         self.stepFillBody.setObjectName(u"stepFillBody")
-        self.stepFillBody.setVisible(False)
+        self.stepFillBody.setVisible(True)
         self.stepFillBody.setStyleSheet(u"QWidget#stepFillBody {\n"
 "    border-top: 1px solid #f1f5f9;\n"
 "    background: transparent;\n"
@@ -2198,6 +2146,182 @@ class Ui_MainWindow(object):
 
         self.contentLayout.addWidget(self.stepFill)
 
+        self.additionalTools = QFrame(self.content)
+        self.additionalTools.setObjectName(u"additionalTools")
+        sizePolicy2.setHeightForWidth(self.additionalTools.sizePolicy().hasHeightForWidth())
+        self.additionalTools.setSizePolicy(sizePolicy2)
+        self.additionalTools.setStyleSheet(u"QFrame#additionalTools {\n"
+"                    background-color: #ffffff;\n"
+"                    border: 1px solid #e2e8f0;\n"
+"                    border-radius: 8px;\n"
+"}\n"
+"QFrame#additionalTools:hover {\n"
+"                    border-color: #cbd5e1;\n"
+"}")
+        self.additionalToolsLayout = QVBoxLayout(self.additionalTools)
+        self.additionalToolsLayout.setSpacing(0)
+        self.additionalToolsLayout.setObjectName(u"additionalToolsLayout")
+        self.additionalToolsLayout.setContentsMargins(0, 0, 0, 0)
+        self.additionalToolsHeader = QWidget(self.additionalTools)
+        self.additionalToolsHeader.setObjectName(u"additionalToolsHeader")
+        sizePolicy3.setHeightForWidth(self.additionalToolsHeader.sizePolicy().hasHeightForWidth())
+        self.additionalToolsHeader.setSizePolicy(sizePolicy3)
+        self.additionalToolsHeader.setMaximumSize(QSize(16777215, 46))
+        self.additionalToolsHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.additionalToolsHeaderLayout = QHBoxLayout(self.additionalToolsHeader)
+        self.additionalToolsHeaderLayout.setSpacing(8)
+        self.additionalToolsHeaderLayout.setObjectName(u"additionalToolsHeaderLayout")
+        self.additionalToolsHeaderLayout.setContentsMargins(8, 4, 8, 4)
+        self.additionalToolsNumber = QLabel(self.additionalToolsHeader)
+        self.additionalToolsNumber.setObjectName(u"additionalToolsNumber")
+        self.additionalToolsNumber.setMinimumSize(QSize(30, 30))
+        self.additionalToolsNumber.setMaximumSize(QSize(30, 30))
+        self.additionalToolsNumber.setStyleSheet(u"QLabel#additionalToolsNumber {\n"
+"    background-color: #94a3b8;\n"
+"    color: #ffffff;\n"
+"    border-radius: 15px;\n"
+"    font-weight: bold;\n"
+"    font-size: 13px;\n"
+"}")
+        self.additionalToolsNumber.setAlignment(Qt.AlignCenter)
+
+        self.additionalToolsHeaderLayout.addWidget(self.additionalToolsNumber)
+
+        self.additionalToolsTextColumn = QVBoxLayout()
+        self.additionalToolsTextColumn.setSpacing(2)
+        self.additionalToolsTextColumn.setObjectName(u"additionalToolsTextColumn")
+        self.additionalToolsTextColumn.setContentsMargins(0, 0, 0, 0)
+        self.additionalToolsToggle = QPushButton(self.additionalToolsHeader)
+        self.additionalToolsToggle.setObjectName(u"additionalToolsToggle")
+        sizePolicy5.setHeightForWidth(self.additionalToolsToggle.sizePolicy().hasHeightForWidth())
+        self.additionalToolsToggle.setSizePolicy(sizePolicy5)
+        self.additionalToolsToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.additionalToolsToggle.setStyleSheet(u"QPushButton#additionalToolsToggle {\n"
+"                    border: none;\n"
+"                    background: transparent;\n"
+"                    text-align: left;\n"
+"                    padding: 0px;\n"
+"                    font-size: 13px;\n"
+"                    font-weight: bold;\n"
+"                    color: #0f172a;\n"
+"}")
+        self.additionalToolsToggle.setCheckable(True)
+        self.additionalToolsToggle.setChecked(True)
+
+        self.additionalToolsTextColumn.addWidget(self.additionalToolsToggle)
+
+        self.additionalToolsSubtitle = QLabel(self.additionalToolsHeader)
+        self.additionalToolsSubtitle.setObjectName(u"additionalToolsSubtitle")
+        self.additionalToolsSubtitle.setStyleSheet(u"QLabel#additionalToolsSubtitle {\n"
+"                    font-size: 10px;\n"
+"                    color: #64748b;\n"
+"}")
+        self.additionalToolsSubtitle.setWordWrap(True)
+
+        self.additionalToolsTextColumn.addWidget(self.additionalToolsSubtitle)
+
+
+        self.additionalToolsHeaderLayout.addLayout(self.additionalToolsTextColumn)
+
+        self.additionalToolsStatusBadge = QLabel(self.additionalToolsHeader)
+        self.additionalToolsStatusBadge.setObjectName(u"additionalToolsStatusBadge")
+        self.additionalToolsStatusBadge.setVisible(False)
+        self.additionalToolsStatusBadge.setStyleSheet(u"QLabel#additionalToolsStatusBadge {\n"
+"                    background-color: #e0f2fe;\n"
+"                    color: #0284c7;\n"
+"                    border-radius: 9px;\n"
+"                    font-weight: 600;\n"
+"                    font-size: 10px;\n"
+"                    padding: 2px 8px;\n"
+"                    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.additionalToolsStatusBadge.setAlignment(Qt.AlignCenter)
+
+        self.additionalToolsHeaderLayout.addWidget(self.additionalToolsStatusBadge)
+
+        self.additionalToolsChevron = QLabel(self.additionalToolsHeader)
+        self.additionalToolsChevron.setObjectName(u"additionalToolsChevron")
+        self.additionalToolsChevron.setMinimumSize(QSize(14, 0))
+        self.additionalToolsChevron.setMaximumSize(QSize(14, 16777215))
+        self.additionalToolsChevron.setStyleSheet(u"QLabel#additionalToolsChevron {\n"
+"                    font-size: 9px;\n"
+"                    font-weight: bold;\n"
+"                    color: #64748b;\n"
+"                    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"}")
+        self.additionalToolsChevron.setAlignment(Qt.AlignCenter)
+
+        self.additionalToolsHeaderLayout.addWidget(self.additionalToolsChevron)
+
+
+        self.additionalToolsLayout.addWidget(self.additionalToolsHeader)
+
+        self.additionalToolsBody = QWidget(self.additionalTools)
+        self.additionalToolsBody.setObjectName(u"additionalToolsBody")
+        self.additionalToolsBody.setVisible(True)
+        self.additionalToolsBody.setStyleSheet(u"QWidget#additionalToolsBody {\n"
+"                    border-top: 1px solid #f1f5f9;\n"
+"                    background: transparent;\n"
+"}")
+        self.additionalToolsBodyLayout = QVBoxLayout(self.additionalToolsBody)
+        self.additionalToolsBodyLayout.setSpacing(8)
+        self.additionalToolsBodyLayout.setObjectName(u"additionalToolsBodyLayout")
+        self.additionalToolsBodyLayout.setContentsMargins(10, 8, 10, 10)
+        self.toolsMasksHeading = QLabel(self.additionalToolsBody)
+        self.toolsMasksHeading.setObjectName(u"toolsMasksHeading")
+        self.toolsMasksHeading.setStyleSheet(u"QLabel#toolsMasksHeading {\n"
+"                    font-size: 11px;\n"
+"                    font-weight: 600;\n"
+"                    color: #475569;\n"
+"                    text-transform: uppercase;\n"
+"                    letter-spacing: 0.5px;\n"
+"                    margin-top: 2px;\n"
+"}")
+
+        self.additionalToolsBodyLayout.addWidget(self.toolsMasksHeading)
+
+        self.toolsMasksHint = QLabel(self.additionalToolsBody)
+        self.toolsMasksHint.setObjectName(u"toolsMasksHint")
+        self.toolsMasksHint.setStyleSheet(u"QLabel#toolsMasksHint {\n"
+"                    font-size: 11px;\n"
+"                    color: #64748b;\n"
+"                    line-height: 1.3;\n"
+"}")
+        self.toolsMasksHint.setWordWrap(True)
+
+        self.additionalToolsBodyLayout.addWidget(self.toolsMasksHint)
+
+        self.exportMasks = QPushButton(self.additionalToolsBody)
+        self.exportMasks.setObjectName(u"exportMasks")
+        self.exportMasks.setEnabled(False)
+        self.exportMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.exportMasks.setStyleSheet(u"QPushButton#exportMasks {\n"
+"                    background-color: #ffffff;\n"
+"                    color: #1e293b;\n"
+"                    border: 1px solid #cbd5e1;\n"
+"                    border-radius: 6px;\n"
+"                    padding: 6px 12px;\n"
+"                    font-weight: 500;\n"
+"                    font-size: 12px;\n"
+"}\n"
+"QPushButton#exportMasks:hover {\n"
+"                    background-color: #f1f5f9;\n"
+"                    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#exportMasks:disabled {\n"
+"                    background-color: #f8fafc;\n"
+"                    color: #94a3b8;\n"
+"                    border-color: #e2e8f0;\n"
+"}")
+
+        self.additionalToolsBodyLayout.addWidget(self.exportMasks)
+
+
+        self.additionalToolsLayout.addWidget(self.additionalToolsBody)
+
+
+        self.contentLayout.addWidget(self.additionalTools)
+
         self.bottomSpace = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.contentLayout.addItem(self.bottomSpace)
@@ -2237,6 +2361,9 @@ class Ui_MainWindow(object):
         self.horizontalLayout_5.addWidget(self.vframe)
 
         MainWindow.setCentralWidget(self.centralwidget)
+#if QT_CONFIG(shortcut)
+        self.exportShowDeletedMasksLabel.setBuddy(self.exportShowDeletedMasks)
+#endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(MainWindow)
 
@@ -2287,7 +2414,7 @@ class Ui_MainWindow(object):
         self.stepStackToggle.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))
         self.stepStackSubtitle.setText(QCoreApplication.translate("MainWindow", u"Ready \u00b7 detection is optional", None))
         self.stepStackStatusBadge.setText(QCoreApplication.translate("MainWindow", u"\u2713 Ready", None))
-        self.stepStackChevron.setText(QCoreApplication.translate("MainWindow", u"\u25b6", None))
+        self.stepStackChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
         self.stackMethodLabel.setText(QCoreApplication.translate("MainWindow", u"Method", None))
         self.stackMethod.setText(QCoreApplication.translate("MainWindow", u"Lighten", None))
         self.stackStreaksLabel.setText(QCoreApplication.translate("MainWindow", u"Streaks", None))
@@ -2312,25 +2439,37 @@ class Ui_MainWindow(object):
         self.stepReviewStatusBadge.setText(QCoreApplication.translate("MainWindow", u"Ready", None))
         self.stepReviewChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"You can review and edit detected streaks. If you manually add, edit, or delete masks, consider contributing your corrections so that models may be improved.", None))
-        self.reviewStatAutoTitle.setText(QCoreApplication.translate("MainWindow", u"\u25cf Auto", None))
+        self.reviewStatAutoTitle.setText(QCoreApplication.translate("MainWindow", u"Auto", None))
         self.reviewStatAutoNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
-        self.reviewStatManualTitle.setText(QCoreApplication.translate("MainWindow", u"\u25cf Manual", None))
+        self.reviewStatManualTitle.setText(QCoreApplication.translate("MainWindow", u"Manual", None))
         self.reviewStatManualNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
-        self.reviewStatDeletedTitle.setText(QCoreApplication.translate("MainWindow", u"\u25cf Deleted", None))
+        self.reviewStatDeletedTitle.setText(QCoreApplication.translate("MainWindow", u"Deleted", None))
         self.reviewStatDeletedNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
-        self.exportShowDeletedMasks.setText(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))
+        self.exportShowDeletedMasksLabel.setStyleSheet(QCoreApplication.translate("MainWindow", u"color: #334155; font-size: 12px;", None))
+        self.exportShowDeletedMasksLabel.setText(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))
+#if QT_CONFIG(accessibility)
+        self.exportShowDeletedMasks.setAccessibleName(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))
+#endif // QT_CONFIG(accessibility)
+        self.exportShowDeletedMasks.setStyleSheet(QCoreApplication.translate("MainWindow", u"QCheckBox#exportShowDeletedMasks {\n"
+"                         spacing: 0px;\n"
+"                     }\n"
+"                     QCheckBox#exportShowDeletedMasks::indicator {\n"
+"                         width: 36px;\n"
+"                         height: 20px;\n"
+"                     }\n"
+"                     QCheckBox#exportShowDeletedMasks::indicator:unchecked {\n"
+"                         image: url(src/startrails/ui/icons_darktheme/switch_off.png);\n"
+"                     }\n"
+"                     QCheckBox#exportShowDeletedMasks::indicator:checked {\n"
+"                         image: url(src/startrails/ui/icons_darktheme/switch_on.png);\n"
+"                     }", None))
+        self.exportShowDeletedMasks.setText("")
         self.reviewFindBrightestHeading.setText(QCoreApplication.translate("MainWindow", u"Locate Streaks", None))
         self.reviewFindBrightestHint.setText(QCoreApplication.translate("MainWindow", u"Click on a streak in a stacked or gap-filled image to locate its source frame.", None))
 #if QT_CONFIG(tooltip)
         self.findBrightest.setToolTip(QCoreApplication.translate("MainWindow", u"Select a stacked or gap-filled output image to enable finding the brightest frame at a point.", None))
 #endif // QT_CONFIG(tooltip)
         self.findBrightest.setText(QCoreApplication.translate("MainWindow", u"Find Brightest", None))
-        self.reviewOptionalHeading.setText(QCoreApplication.translate("MainWindow", u"Optional", None))
-        self.reviewOptionalMasksHint.setText(QCoreApplication.translate("MainWindow", u"Save detected streak masks as image files.", None))
-#if QT_CONFIG(tooltip)
-        self.exportMasks.setToolTip(QCoreApplication.translate("MainWindow", u"Requires automatic or manual streak masks.", None))
-#endif // QT_CONFIG(tooltip)
-        self.exportMasks.setText(QCoreApplication.translate("MainWindow", u"Export Masks", None))
         self.reviewContributeHeading.setText(QCoreApplication.translate("MainWindow", u"Optional: Contribute Corrections", None))
         self.reviewContributeHint.setText(QCoreApplication.translate("MainWindow", u"Export manual additions and deletions to help improve future streak detection models.", None))
 #if QT_CONFIG(tooltip)
@@ -2341,9 +2480,19 @@ class Ui_MainWindow(object):
         self.stepFillToggle.setText(QCoreApplication.translate("MainWindow", u"Fill Gaps", None))
         self.stepFillSubtitle.setText(QCoreApplication.translate("MainWindow", u"Select a stacked output image", None))
         self.stepFillStatusBadge.setText(QCoreApplication.translate("MainWindow", u"Locked", None))
-        self.stepFillChevron.setText(QCoreApplication.translate("MainWindow", u"\u25b6", None))
+        self.stepFillChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
         self.fillTarget.setText(QCoreApplication.translate("MainWindow", u"Select a stacked output image to fill its gaps.", None))
         self.fillRun.setText(QCoreApplication.translate("MainWindow", u"Fill Gaps", None))
+        self.additionalToolsNumber.setText("")
+        self.additionalToolsToggle.setText(QCoreApplication.translate("MainWindow", u"Additional Tools", None))
+        self.additionalToolsSubtitle.setText(QCoreApplication.translate("MainWindow", u"Optional utilities", None))
+        self.additionalToolsStatusBadge.setText(QCoreApplication.translate("MainWindow", u"Locked", None))
+        self.additionalToolsChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
+        self.toolsMasksHeading.setText(QCoreApplication.translate("MainWindow", u"Export Masks", None))
+        self.toolsMasksHint.setText(QCoreApplication.translate("MainWindow", u"Save detected streak masks as image files.", None))
+#if QT_CONFIG(tooltip)
+        self.exportMasks.setToolTip(QCoreApplication.translate("MainWindow", u"Requires automatic or manual streak masks.", None))
+#endif // QT_CONFIG(tooltip)
+        self.exportMasks.setText(QCoreApplication.translate("MainWindow", u"Export Masks", None))
         self.canvas_main.setText(QCoreApplication.translate("MainWindow", u"Canvas", None))
     # retranslateUi
-

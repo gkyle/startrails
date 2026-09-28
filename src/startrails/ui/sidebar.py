@@ -3,7 +3,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 from startrails.lib.file import OutputFile
 from .file_manager import FileSection
-from .steps import StepCard, DetectSettings, ReviewSettings, StackSettings, FillSettings, ExportSettings
+from .steps import StepCard, DetectSettings, ReviewSettings, StackSettings, FillSettings, AdditionalToolsSettings
 
 
 class Sidebar(QWidget):
@@ -21,11 +21,13 @@ class Sidebar(QWidget):
             self.review = ReviewSettings(app, ui=ui)
             self.stack = StackSettings(app, ui=ui)
             self.fill = FillSettings(ui=ui)
+            self.tools = AdditionalToolsSettings(ui=ui)
             self.exports = self.review
             self.detectCard = StepCard("Detect Streaks", self.detect, 1, expanded=True, ui=ui, prefix="stepDetect")
             self.stackCard = StepCard("Stack Images", self.stack, 2, ui=ui, prefix="stepStack")
             self.reviewCard = StepCard("Review and Correct", self.review, 3, ui=ui, prefix="stepReview")
             self.fillCard = StepCard("Fill Gaps", self.fill, 4, ui=ui, prefix="stepFill")
+            self.toolsCard = StepCard("Additional Tools", self.tools, ui=ui, prefix="additionalTools")
             self.exportCard = self.reviewCard
             self.update_operations_progress(app)
         else:
@@ -41,16 +43,20 @@ class Sidebar(QWidget):
             self.review = ReviewSettings(app)
             self.stack = StackSettings(app)
             self.fill = FillSettings()
+            self.tools = AdditionalToolsSettings()
             self.exports = self.review
             self.detectCard = StepCard("Detect Streaks", self.detect, 1, expanded=True)
             self.stackCard = StepCard("Stack Images", self.stack, 2)
             self.reviewCard = StepCard("Review and Correct", self.review, 3)
             self.fillCard = StepCard("Fill Gaps", self.fill, 4)
+            self.toolsCard = StepCard("Additional Tools", self.tools)
+            self.toolsCard.setSubtitle("Optional utilities")
             self.exportCard = self.reviewCard
             self.ui.detectLayout.addWidget(self.detectCard)
             self.ui.stackLayout.addWidget(self.stackCard)
             self.ui.reviewLayout.addWidget(self.reviewCard)
             self.ui.fillLayout.addWidget(self.fillCard)
+            self.ui.toolsLayout.addWidget(self.toolsCard)
             self.update_operations_progress(app)
 
     def refresh_review_counts(self):

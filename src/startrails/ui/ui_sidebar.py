@@ -191,6 +191,11 @@ class Ui_Sidebar(object):
 
         self.contentLayout.addLayout(self.fillLayout)
 
+        self.toolsLayout = QVBoxLayout()
+        self.toolsLayout.setObjectName(u"toolsLayout")
+
+        self.contentLayout.addLayout(self.toolsLayout)
+
         self.bottomSpace = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.contentLayout.addItem(self.bottomSpace)
@@ -213,4 +218,3 @@ class Ui_Sidebar(object):
         self.operationsProgressLabel.setText(QCoreApplication.translate("Sidebar", u"0 of 4 steps complete", None))
         pass
     # retranslateUi
-

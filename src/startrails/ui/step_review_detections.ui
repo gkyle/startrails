@@ -3,7 +3,7 @@
  <class>ReviewSettings</class>
  <widget class="QWidget" name="reviewSettings">
   <property name="styleSheet">
-   <string notr="true">QLabel#optionalHeading, QLabel#contributeHeading, QLabel#findBrightestHeading {
+   <string notr="true">QLabel#contributeHeading, QLabel#findBrightestHeading {
     font-size: 11px;
     font-weight: 600;
     color: #475569;
@@ -11,7 +11,7 @@
     letter-spacing: 0.5px;
     margin-top: 2px;
 }
-QLabel#optionalMasksHint, QLabel#contributeHint, QLabel#findBrightestHint {
+QLabel#contributeHint, QLabel#findBrightestHint {
     font-size: 11px;
     color: #64748b;
     line-height: 1.3;
@@ -61,13 +61,7 @@ QLabel#statDeletedNum {
     font-weight: bold;
     color: #92400e;
 }
-QCheckBox#showDeletedMasks {
-    font-size: 12px;
-    color: #1e293b;
-    spacing: 8px;
-    font-weight: 500;
-}
-QPushButton#masks, QPushButton#training, QPushButton#findBrightest {
+QPushButton#training, QPushButton#findBrightest {
     background-color: #ffffff;
     color: #1e293b;
     border: 1px solid #cbd5e1;
@@ -76,7 +70,7 @@ QPushButton#masks, QPushButton#training, QPushButton#findBrightest {
     font-weight: 500;
     font-size: 12px;
 }
-QPushButton#masks:hover, QPushButton#training:hover, QPushButton#findBrightest:hover {
+QPushButton#training:hover, QPushButton#findBrightest:hover {
     background-color: #f1f5f9;
     border-color: #94a3b8;
 }
@@ -86,12 +80,12 @@ QPushButton#findBrightest:checked {
     border-color: #0284c7;
     font-weight: 600;
 }
-QPushButton#masks:disabled, QPushButton#training:disabled, QPushButton#findBrightest:disabled {
+QPushButton#training:disabled, QPushButton#findBrightest:disabled {
     background-color: #f8fafc;
     color: #94a3b8;
     border-color: #e2e8f0;
 }
-QFrame#sep1, QFrame#sep2, QFrame#sepFindBrightest {
+QFrame#sep1, QFrame#sepFindBrightest {
     background-color: #f1f5f9;
     max-height: 1px;
 }</string>
@@ -225,14 +219,46 @@ QFrame#sep1, QFrame#sep2, QFrame#sepFindBrightest {
     </layout>
    </item>
    <item>
-    <widget class="QCheckBox" name="showDeletedMasks">
-     <property name="cursor">
-      <cursorShape>PointingHandCursor</cursorShape>
-     </property>
-     <property name="text">
-      <string>Show Deleted Masks</string>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="showDeletedMasksLayout">
+     <item>
+      <widget class="QLabel" name="showDeletedMasksLabel">
+       <property name="text">
+        <string>Show Deleted Masks</string>
+       </property>
+       <property name="styleSheet">
+        <string>color: #334155; font-size: 12px;</string>
+       </property>
+       <property name="buddy">
+        <cstring>showDeletedMasks</cstring>
+       </property>
+      </widget>
+     </item>
+     <item alignment="Qt::AlignRight">
+      <widget class="QCheckBox" name="showDeletedMasks">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string>   QCheckBox#showDeletedMasks::indicator {
+       width: 36px;
+       height: 20px;
+   }
+   QCheckBox#showDeletedMasks::indicator:unchecked {
+       image: url(src/startrails/ui/icons_darktheme/switch_off.png);
+   }
+   QCheckBox#showDeletedMasks::indicator:checked {
+       image: url(src/startrails/ui/icons_darktheme/switch_on.png);
+   }</string>
+       </property>
+       <property name="text">
+        <string />
+       </property>
+       <property name="accessibleName">
+        <string>Show Deleted Masks</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QFrame" name="sepFindBrightest">
@@ -279,46 +305,6 @@ QFrame#sep1, QFrame#sep2, QFrame#sepFindBrightest {
    </item>
    <item>
     <widget class="QFrame" name="sep1">
-     <property name="frameShape">
-      <enum>QFrame::HLine</enum>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="optionalHeading">
-     <property name="text">
-      <string>Optional</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="optionalMasksHint">
-     <property name="text">
-      <string>Save detected streak masks as image files.</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="masks">
-     <property name="cursor">
-      <cursorShape>PointingHandCursor</cursorShape>
-     </property>
-     <property name="text">
-      <string>Export Masks</string>
-     </property>
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
-     <property name="toolTip">
-      <string>Requires automatic or manual streak masks.</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QFrame" name="sep2">
      <property name="frameShape">
       <enum>QFrame::HLine</enum>
      </property>

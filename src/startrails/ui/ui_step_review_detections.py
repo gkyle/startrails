@@ -23,7 +23,7 @@ class Ui_ReviewSettings(object):
     def setupUi(self, reviewSettings):
         if not reviewSettings.objectName():
             reviewSettings.setObjectName(u"reviewSettings")
-        reviewSettings.setStyleSheet(u"QLabel#optionalHeading, QLabel#contributeHeading, QLabel#findBrightestHeading {\n"
+        reviewSettings.setStyleSheet(u"QLabel#contributeHeading, QLabel#findBrightestHeading {\n"
 "    font-size: 11px;\n"
 "    font-weight: 600;\n"
 "    color: #475569;\n"
@@ -31,7 +31,7 @@ class Ui_ReviewSettings(object):
 "    letter-spacing: 0.5px;\n"
 "    margin-top: 2px;\n"
 "}\n"
-"QLabel#optionalMasksHint, QLabel#contributeHint, QLabel#findBrightestHint {\n"
+"QLabel#contributeHint, QLabel#findBrightestHint {\n"
 "    font-size: 11px;\n"
 "    color: #64748b;\n"
 "    line-height: 1.3;\n"
@@ -61,10 +61,10 @@ class Ui_ReviewSettings(object):
 "    font-weight: 600;\n"
 "    color: #0284c7;\n"
 "}\n"
-"QLabel#"
-                        "statDeletedTitle {\n"
+"QLabel#statDeletedTitle {\n"
 "    font-size: 11px;\n"
-"    font-weight: 600;\n"
+"  "
+                        "  font-weight: 600;\n"
 "    color: #b45309;\n"
 "}\n"
 "QLabel#statAutoNum {\n"
@@ -82,13 +82,7 @@ class Ui_ReviewSettings(object):
 "    font-weight: bold;\n"
 "    color: #92400e;\n"
 "}\n"
-"QCheckBox#showDeletedMasks {\n"
-"    font-size: 12px;\n"
-"    color: #1e293b;\n"
-"    spacing: 8px;\n"
-"    font-weight: 500;\n"
-"}\n"
-"QPushButton#masks, QPushButton#training, QPushButton#findBrightest {\n"
+"QPushButton#training, QPushButton#findBrightest {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
 "    border: 1px solid #cbd5e1;\n"
@@ -97,23 +91,23 @@ class Ui_ReviewSettings(object):
 "    font-weight: 500;\n"
 "    font-size: 12px;\n"
 "}\n"
-"QPushButton#masks:hover, QPushButton#training:hover, QPushButton#findBrightest:hover {\n"
+"QPushButton#training:hover, QPushButton#findBrightest:hover {\n"
 "    background-color: #f1f5f9;\n"
 "    border-color: #94a3b8;\n"
 "}\n"
-"QPushButton#findB"
-                        "rightest:checked {\n"
+"QPushButton#findBrightest:checked {\n"
 "    background-color: #e0f2fe;\n"
 "    color: #0284c7;\n"
 "    border-color: #0284c7;\n"
 "    font-weight: 600;\n"
 "}\n"
-"QPushButton#masks:disabled, QPushButton#training:disabled, QPushButton#findBrightest:disabled {\n"
-"    background-color: #f8fafc;\n"
+"QPushButton#training:disabled, QPushButton#findBrightest:disabled {\n"
+"    backgroun"
+                        "d-color: #f8fafc;\n"
 "    color: #94a3b8;\n"
 "    border-color: #e2e8f0;\n"
 "}\n"
-"QFrame#sep1, QFrame#sep2, QFrame#sepFindBrightest {\n"
+"QFrame#sep1, QFrame#sepFindBrightest {\n"
 "    background-color: #f1f5f9;\n"
 "    max-height: 1px;\n"
 "}")
@@ -184,11 +178,21 @@ class Ui_ReviewSettings(object):
 
         self.layout.addLayout(self.countsLayout)
 
+        self.showDeletedMasksLayout = QHBoxLayout()
+        self.showDeletedMasksLayout.setObjectName(u"showDeletedMasksLayout")
+        self.showDeletedMasksLabel = QLabel(reviewSettings)
+        self.showDeletedMasksLabel.setObjectName(u"showDeletedMasksLabel")
+
+        self.showDeletedMasksLayout.addWidget(self.showDeletedMasksLabel)
+
         self.showDeletedMasks = QCheckBox(reviewSettings)
         self.showDeletedMasks.setObjectName(u"showDeletedMasks")
         self.showDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
-        self.layout.addWidget(self.showDeletedMasks)
+        self.showDeletedMasksLayout.addWidget(self.showDeletedMasks, 0, Qt.AlignRight)
+
+
+        self.layout.addLayout(self.showDeletedMasksLayout)
 
         self.sepFindBrightest = QFrame(reviewSettings)
         self.sepFindBrightest.setObjectName(u"sepFindBrightest")
@@ -221,30 +225,6 @@ class Ui_ReviewSettings(object):
 
         self.layout.addWidget(self.sep1)
 
-        self.optionalHeading = QLabel(reviewSettings)
-        self.optionalHeading.setObjectName(u"optionalHeading")
-
-        self.layout.addWidget(self.optionalHeading)
-
-        self.optionalMasksHint = QLabel(reviewSettings)
-        self.optionalMasksHint.setObjectName(u"optionalMasksHint")
-        self.optionalMasksHint.setWordWrap(True)
-
-        self.layout.addWidget(self.optionalMasksHint)
-
-        self.masks = QPushButton(reviewSettings)
-        self.masks.setObjectName(u"masks")
-        self.masks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.masks.setEnabled(False)
-
-        self.layout.addWidget(self.masks)
-
-        self.sep2 = QFrame(reviewSettings)
-        self.sep2.setObjectName(u"sep2")
-        self.sep2.setFrameShape(QFrame.HLine)
-
-        self.layout.addWidget(self.sep2)
-
         self.contributeHeading = QLabel(reviewSettings)
         self.contributeHeading.setObjectName(u"contributeHeading")
 
@@ -263,6 +243,9 @@ class Ui_ReviewSettings(object):
 
         self.layout.addWidget(self.training)
 
+#if QT_CONFIG(shortcut)
+        self.showDeletedMasksLabel.setBuddy(self.showDeletedMasks)
+#endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(reviewSettings)
 
@@ -276,18 +259,27 @@ class Ui_ReviewSettings(object):
         self.statManualNum.setText(QCoreApplication.translate("ReviewSettings", u"0", None))
         self.statDeletedTitle.setText(QCoreApplication.translate("ReviewSettings", u"\u25cf Deleted", None))
         self.statDeletedNum.setText(QCoreApplication.translate("ReviewSettings", u"0", None))
-        self.showDeletedMasks.setText(QCoreApplication.translate("ReviewSettings", u"Show Deleted Masks", None))
+        self.showDeletedMasksLabel.setText(QCoreApplication.translate("ReviewSettings", u"Show Deleted Masks", None))
+        self.showDeletedMasksLabel.setStyleSheet(QCoreApplication.translate("ReviewSettings", u"color: #334155; font-size: 12px;", None))
+        self.showDeletedMasks.setStyleSheet(QCoreApplication.translate("ReviewSettings", u"   QCheckBox#showDeletedMasks::indicator {\n"
+"       width: 36px;\n"
+"       height: 20px;\n"
+"   }\n"
+"   QCheckBox#showDeletedMasks::indicator:unchecked {\n"
+"       image: url(src/startrails/ui/icons_darktheme/switch_off.png);\n"
+"   }\n"
+"   QCheckBox#showDeletedMasks::indicator:checked {\n"
+"       image: url(src/startrails/ui/icons_darktheme/switch_on.png);\n"
+"   }", None))
+        self.showDeletedMasks.setText("")
+#if QT_CONFIG(accessibility)
+        self.showDeletedMasks.setAccessibleName(QCoreApplication.translate("ReviewSettings", u"Show Deleted Masks", None))
+#endif // QT_CONFIG(accessibility)
         self.findBrightestHeading.setText(QCoreApplication.translate("ReviewSettings", u"Locate Streaks", None))
         self.findBrightestHint.setText(QCoreApplication.translate("ReviewSettings", u"Click on a streak in a stacked or gap-filled image to locate its source frame.", None))
         self.findBrightest.setText(QCoreApplication.translate("ReviewSettings", u"Find Brightest", None))
 #if QT_CONFIG(tooltip)
         self.findBrightest.setToolTip(QCoreApplication.translate("ReviewSettings", u"Select a stacked or gap-filled output image to enable finding the brightest frame at a point.", None))
-#endif // QT_CONFIG(tooltip)
-        self.optionalHeading.setText(QCoreApplication.translate("ReviewSettings", u"Optional", None))
-        self.optionalMasksHint.setText(QCoreApplication.translate("ReviewSettings", u"Save detected streak masks as image files.", None))
-        self.masks.setText(QCoreApplication.translate("ReviewSettings", u"Export Masks", None))
-#if QT_CONFIG(tooltip)
-        self.masks.setToolTip(QCoreApplication.translate("ReviewSettings", u"Requires automatic or manual streak masks.", None))
 #endif // QT_CONFIG(tooltip)
         self.contributeHeading.setText(QCoreApplication.translate("ReviewSettings", u"Optional: Contribute Corrections", None))
         self.contributeHint.setText(QCoreApplication.translate("ReviewSettings", u"Export manual additions and deletions to help improve future streak detection models.", None))
@@ -297,4 +289,3 @@ class Ui_ReviewSettings(object):
 #endif // QT_CONFIG(tooltip)
         pass
     # retranslateUi
-

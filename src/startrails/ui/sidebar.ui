@@ -226,6 +226,9 @@ QPushButton#newProject:pressed, QPushButton#openProject:pressed {
         <layout class="QVBoxLayout" name="fillLayout"/>
        </item>
        <item>
+        <layout class="QVBoxLayout" name="toolsLayout"/>
+       </item>
+       <item>
         <spacer name="bottomSpace">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

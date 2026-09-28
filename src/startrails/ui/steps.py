@@ -73,6 +73,7 @@ from .ui_step_stack_images import Ui_StackSettings
 from .ui_step_fill_gaps import Ui_FillSettings
 from .ui_step_export_artifacts import Ui_ExportSettings
 from .ui_step_review_detections import Ui_ReviewSettings
+from .ui_step_additional_tools import Ui_ToolsSettings
 
 
 class StepCard(QFrame):
@@ -102,8 +103,12 @@ class StepCard(QFrame):
         self.ui.toggle.setText(title)
         self.ui.toggle.setAccessibleName(title)
         if self.ui.number is not None:
-            self.ui.number.setVisible(self.has_number)
+            self.ui.number.setVisible(True)
             self.ui.number.setText(str(number or ""))
+            if not self.has_number:
+                self.ui.number.setStyleSheet(
+                    "background-color: #94a3b8; color: #ffffff; border: none; border-radius: 15px;"
+                )
         if not self.has_number and self.ui.statusBadge is not None:
             self.ui.statusBadge.setVisible(False)
         self.ui.toggle.toggled.connect(self.setExpanded)
@@ -400,13 +405,13 @@ class ReviewSettings(QWidget):
                 statDeletedNum=getattr(ui, "reviewStatDeletedNum", None),
                 showDeletedMasks=getattr(ui, "exportShowDeletedMasks", getattr(ui, "showDeletedMasks", None)),
                 findBrightest=getattr(ui, "findBrightest", None),
-                masks=getattr(ui, "exportMasks", getattr(ui, "masks", None)),
                 training=getattr(ui, "exportTraining", getattr(ui, "training", None)),
-                hint=getattr(ui, "reviewOptionalMasksHint", getattr(ui, "exportHint", None)),
             )
         else:
             self.ui = Ui_ReviewSettings()
             self.ui.setupUi(self)
+        if self.ui.showDeletedMasks is not None:
+            self.ui.showDeletedMasks.setStyleSheet(SWITCH_STYLE)
 
     def set_counts(self, auto: int, manual: int, deleted: int):
         if getattr(self.ui, "statAutoNum", None) is not None:
@@ -423,8 +428,17 @@ class ReviewSettings(QWidget):
                 self.ui.showDeletedMasks.setChecked(False)
 
 
+class AdditionalToolsSettings(QWidget):
+    def __init__(self, parent=None, ui=None):
+        super().__init__(parent)
+        if ui is not None:
+            self.ui = SimpleNamespace(masks=ui.exportMasks)
+        else:
+            self.ui = Ui_ToolsSettings()
+            self.ui.setupUi(self)
+
+
 class ExportSettings(ReviewSettings):
     """Backward-compatible wrapper for review/export settings."""
     def __init__(self, parent=None, ui=None):
         super().__init__(app=None, parent=parent, ui=ui)
-
