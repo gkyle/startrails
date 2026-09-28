@@ -83,7 +83,7 @@ QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/ar
      <item row="0" column="0">
       <widget class="QLabel" name="confidenceLabel">
        <property name="text">
-        <string>&amp;Confidence threshold</string>
+        <string>&amp;Confidence</string>
        </property>
        <property name="buddy">
         <cstring>confidence</cstring>
@@ -106,7 +106,7 @@ QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/ar
      <item row="1" column="0">
       <widget class="QLabel" name="mergeLabel">
        <property name="text">
-        <string>&amp;Merging strategy</string>
+        <string>&amp;Merging</string>
        </property>
        <property name="buddy">
         <cstring>mergeMethod</cstring>

@@ -52,7 +52,6 @@ class Ui_StepCard(object):
 "    font-size: 9px;\n"
 "    font-weight: bold;\n"
 "    color: #64748b;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "}\n"
 "QWidget#body {\n"
 "    border-top: 1px solid #f1f5f9;\n"
@@ -131,7 +130,6 @@ class Ui_StepCard(object):
 "           font-weight: 600;\n"
 "           font-size: 10px;\n"
 "           padding: 2px 8px;\n"
-"           font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "       }\n"
 "       QLabel#statusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
 "       QLabel#statusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")

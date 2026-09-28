@@ -59,6 +59,18 @@ class Sidebar(QWidget):
             self.ui.toolsLayout.addWidget(self.toolsCard)
             self.update_operations_progress(app)
 
+        self._step_cards = (self.detectCard, self.stackCard, self.reviewCard,
+                            self.fillCard, self.toolsCard)
+        for card in self._step_cards:
+            card.expanded.connect(lambda card=card: self._collapse_other_steps(card))
+
+    def _collapse_other_steps(self, expanded_card):
+        self.inputs.setExpanded(False)
+        self.outputs.setExpanded(False)
+        for card in self._step_cards:
+            if card is not expanded_card and card.ui.toggle.isChecked():
+                card.setExpanded(False)
+
     def refresh_review_counts(self):
         inputs = self.app.getInputFileList() if hasattr(self.app, "getInputFileList") else []
         auto_count = sum(len(f.streaksMasks) for f in inputs if hasattr(f, "streaksMasks") and f.streaksMasks)
@@ -125,4 +137,3 @@ class Sidebar(QWidget):
         completed = sum(1 for flag in (has_masks, has_stacked and has_masks, has_stacked, has_filled) if flag)
         self.ui.operationsProgress.setValue(completed)
         self.ui.operationsProgressLabel.setText(f"{completed} of 4 steps complete")
-

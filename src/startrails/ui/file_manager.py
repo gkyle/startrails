@@ -45,7 +45,8 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
 
             text_rect = QRect(option.rect.left() + 24, option.rect.top(), option.rect.width() - 28, option.rect.height())
             text = index.data(Qt.DisplayRole) or ""
-            font = QFont("Segoe UI", 9)
+            font = QFont(option.font)
+            font.setPointSize(9)
             if is_selected:
                 font.setWeight(QFont.DemiBold)
                 painter.setPen(color("#1d4ed8"))
@@ -74,7 +75,8 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
 
                 if badges:
                     x = option.rect.left() + 4
-                    badge_font = QFont("Segoe UI", 8)
+                    badge_font = QFont(option.font)
+                    badge_font.setPointSize(8)
                     badge_font.setWeight(QFont.DemiBold)
                     painter.setFont(badge_font)
                     fm = painter.fontMetrics()
@@ -96,11 +98,14 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
                         x += badge_w + 4
                 else:
                     painter.setPen(color("#64748b"))
-                    painter.setFont(QFont("Segoe UI", 9))
+                    font = QFont(option.font)
+                    font.setPointSize(9)
+                    painter.setFont(font)
                     painter.drawText(option.rect, Qt.AlignVCenter | Qt.AlignLeft, "—")
             else:
                 op_text = str(index.data(Qt.DisplayRole) or "")
-                badge_font = QFont("Segoe UI", 8)
+                badge_font = QFont(option.font)
+                badge_font.setPointSize(8)
                 badge_font.setWeight(QFont.DemiBold)
                 painter.setFont(badge_font)
                 fm = painter.fontMetrics()
@@ -383,7 +388,7 @@ class FileSection(QFrame):
         self.ui.files.setVisible(has_files)
         if has_files:
             hh = self.ui.files.header().height() or 26
-            ideal_h = min(220, max(54, hh + count * 24 + 4))
+            ideal_h = max(54, hh + min(count, 5) * 24 + 4)
             self.ui.files.setFixedHeight(ideal_h)
 
     def _remove(self):

@@ -56,6 +56,8 @@ from .ui_step_additional_tools import Ui_ToolsSettings
 
 
 class StepCard(QFrame):
+    expanded = Signal()
+
     def __init__(self, title, body, number=None, expanded=False, parent=None, ui=None, prefix=None):
         super().__init__(parent)
         self.has_number = number is not None
@@ -111,6 +113,8 @@ class StepCard(QFrame):
             target.setMinimumHeight(0)
             target.adjustSize()
         target.updateGeometry()
+        if expanded:
+            self.expanded.emit()
 
     def setSubtitle(self, text):
         self.ui.subtitle.setText(text)

@@ -446,14 +446,8 @@ QProgressBar#progressBar_gpu_mem::chunk {
        </item>
        <item>
         <widget class="QSplitter" name="bodySplitter">
-         <property name="styleSheet">
-          <string notr="true">QSplitter#bodySplitter::handle:horizontal {
-    background-color: #e2e8f0;
-    width: 1px;
-}
-QSplitter#bodySplitter::handle:horizontal:hover {
-    background-color: #cbd5e1;
-}</string>
+         <property name="handleWidth">
+          <number>0</number>
          </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -464,13 +458,13 @@ QSplitter#bodySplitter::handle:horizontal:hover {
          <widget class="QWidget" name="sidebar" native="true">
           <property name="minimumSize">
            <size>
-            <width>400</width>
+            <width>320</width>
             <height>0</height>
            </size>
           </property>
           <property name="maximumSize">
            <size>
-            <width>400</width>
+            <width>320</width>
             <height>16777215</height>
            </size>
           </property>
@@ -1706,7 +1700,6 @@ QPushButton#stepDetectToggle:focus:enabled { border-color: #0f172a; }</string>
                           font-weight: 600;
                           font-size: 10px;
                           padding: 2px 8px;
-                          font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
                       }
                       QLabel#stepDetectStatusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
                       QLabel#stepDetectStatusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
@@ -1741,7 +1734,6 @@ QPushButton#stepDetectToggle:focus:enabled { border-color: #0f172a; }</string>
     font-size: 9px;
     font-weight: bold;
     color: #64748b;
-    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
 }</string>
                        </property>
                        <property name="text">
@@ -1808,7 +1800,7 @@ QPushButton#stepDetectToggle:focus:enabled { border-color: #0f172a; }</string>
 }</string>
                          </property>
                          <property name="text">
-                          <string>Confidence threshold</string>
+                          <string>Confidence</string>
                          </property>
                         </widget>
                        </item>
@@ -1855,7 +1847,7 @@ QDoubleSpinBox#detectConfidence::down-arrow { image: url(:/startrails/ui/arrow_d
 }</string>
                          </property>
                          <property name="text">
-                          <string>Merging strategy</string>
+                          <string>Merging</string>
                          </property>
                         </widget>
                        </item>
@@ -2283,7 +2275,6 @@ QPushButton#stepStackToggle:focus:enabled { border-color: #0f172a; }</string>
                           font-weight: 600;
                           font-size: 10px;
                           padding: 2px 8px;
-                          font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
                       }
                       QLabel#stepStackStatusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
                       QLabel#stepStackStatusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
@@ -2318,7 +2309,6 @@ QPushButton#stepStackToggle:focus:enabled { border-color: #0f172a; }</string>
     font-size: 9px;
     font-weight: bold;
     color: #64748b;
-    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
 }</string>
                        </property>
                        <property name="text">
@@ -3046,7 +3036,6 @@ QPushButton#stepReviewToggle:focus:enabled { border-color: #0f172a; }</string>
                           font-weight: 600;
                           font-size: 10px;
                           padding: 2px 8px;
-                          font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
                       }
                       QLabel#stepReviewStatusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
                       QLabel#stepReviewStatusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
@@ -3081,7 +3070,6 @@ QPushButton#stepReviewToggle:focus:enabled { border-color: #0f172a; }</string>
     font-size: 9px;
     font-weight: bold;
     color: #64748b;
-    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
 }</string>
                        </property>
                        <property name="text">
@@ -3715,7 +3703,6 @@ QPushButton#stepFillToggle:focus:enabled { border-color: #0f172a; }</string>
                           font-weight: 600;
                           font-size: 10px;
                           padding: 2px 8px;
-                          font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
                       }
                       QLabel#stepFillStatusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
                       QLabel#stepFillStatusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
@@ -3750,7 +3737,6 @@ QPushButton#stepFillToggle:focus:enabled { border-color: #0f172a; }</string>
     font-size: 9px;
     font-weight: bold;
     color: #64748b;
-    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
 }</string>
                        </property>
                        <property name="text">
@@ -4032,7 +4018,6 @@ QPushButton#additionalToolsToggle:focus:enabled { border-color: #0f172a; }</stri
                           font-weight: 600;
                           font-size: 10px;
                           padding: 2px 8px;
-                          font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
                       }
                       QLabel#additionalToolsStatusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
                       QLabel#additionalToolsStatusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
@@ -4067,7 +4052,6 @@ QPushButton#additionalToolsToggle:focus:enabled { border-color: #0f172a; }</stri
                     font-size: 9px;
                     font-weight: bold;
                     color: #64748b;
-                    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
 }</string>
                        </property>
                        <property name="text">

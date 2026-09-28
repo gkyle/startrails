@@ -97,9 +97,11 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         super().setupUi(MainWindow)
         self.setParent(MainWindow)
         self.sidebar = Sidebar(self.app, self)
-        self.bodySplitter.setSizes([400, 1000])
+        self.bodySplitter.setSizes([self.bodySplitter.widget(0).maximumWidth(), 1000])
         self.bodySplitter.setStretchFactor(0, 0)
         self.bodySplitter.setStretchFactor(1, 1)
+        # The sidebar is fixed-width; disable the invisible handle's hit area.
+        self.bodySplitter.handle(1).setEnabled(False)
 
         self.inputFiles = self.sidebar.inputs
         self.outputFiles = self.sidebar.outputs

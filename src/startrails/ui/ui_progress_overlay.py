@@ -37,7 +37,6 @@ class Ui_ProgressOverlay(object):
 "    border-radius: 12px;\n"
 "}\n"
 "QLabel {\n"
-"    font-family: 'Segoe UI';\n"
 "    background: transparent;\n"
 "}\n"
 "QLabel#label_progressTitle {\n"

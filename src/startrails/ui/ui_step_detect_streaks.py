@@ -165,8 +165,8 @@ class Ui_DetectSettings(object):
     # setupUi
 
     def retranslateUi(self, detectSettings):
-        self.confidenceLabel.setText(QCoreApplication.translate("DetectSettings", u"&Confidence threshold", None))
-        self.mergeLabel.setText(QCoreApplication.translate("DetectSettings", u"&Merging strategy", None))
+        self.confidenceLabel.setText(QCoreApplication.translate("DetectSettings", u"&Confidence", None))
+        self.mergeLabel.setText(QCoreApplication.translate("DetectSettings", u"&Merging", None))
         self.mergeMethod.setItemText(0, QCoreApplication.translate("DetectSettings", u"NMS", None))
         self.mergeMethod.setItemText(1, QCoreApplication.translate("DetectSettings", u"Greedy NMM", None))
 

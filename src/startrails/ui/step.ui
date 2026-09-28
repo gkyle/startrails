@@ -34,7 +34,6 @@ QLabel#chevron {
     font-size: 9px;
     font-weight: bold;
     color: #64748b;
-    font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
 }
 QWidget#body {
     border-top: 1px solid #f1f5f9;
@@ -190,7 +189,6 @@ QPushButton#toggle:focus:enabled { border-color: #0f172a; }</string>
            font-weight: 600;
            font-size: 10px;
            padding: 2px 8px;
-           font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
        }
        QLabel#statusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
        QLabel#statusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>

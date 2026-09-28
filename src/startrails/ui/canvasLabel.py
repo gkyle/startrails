@@ -50,7 +50,10 @@ class CanvasLabel(QLabel):
         self.mouseMoveDebounceTimer.timeout.connect(self._debouncedMouseMoveAction)
 
         self.setAlignment(Qt.AlignCenter)
-        self.setFont(QFont("Arial", 20, QFont.Bold))
+        font = self.font()
+        font.setPointSize(20)
+        font.setWeight(QFont.Bold)
+        self.setFont(font)
         self.setPixmap(pixmap)
 
     def setFindBrightestMode(self, active: bool) -> None:

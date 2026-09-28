@@ -35,7 +35,6 @@
     border-radius: 12px;
 }
 QLabel {
-    font-family: 'Segoe UI';
     background: transparent;
 }
 QLabel#label_progressTitle {

@@ -237,19 +237,13 @@ class Ui_MainWindow(object):
 
         self.bodySplitter = QSplitter(self.vframe)
         self.bodySplitter.setObjectName(u"bodySplitter")
-        self.bodySplitter.setStyleSheet(u"QSplitter#bodySplitter::handle:horizontal {\n"
-"    background-color: #e2e8f0;\n"
-"    width: 1px;\n"
-"}\n"
-"QSplitter#bodySplitter::handle:horizontal:hover {\n"
-"    background-color: #cbd5e1;\n"
-"}")
+        self.bodySplitter.setHandleWidth(0)
         self.bodySplitter.setOrientation(Qt.Horizontal)
         self.bodySplitter.setChildrenCollapsible(False)
         self.sidebar = QWidget(self.bodySplitter)
         self.sidebar.setObjectName(u"sidebar")
-        self.sidebar.setMinimumSize(QSize(400, 0))
-        self.sidebar.setMaximumSize(QSize(400, 16777215))
+        self.sidebar.setMinimumSize(QSize(320, 0))
+        self.sidebar.setMaximumSize(QSize(320, 16777215))
         self.sidebarLayout = QVBoxLayout(self.sidebar)
         self.sidebarLayout.setSpacing(0)
         self.sidebarLayout.setObjectName(u"sidebarLayout")
@@ -938,7 +932,6 @@ class Ui_MainWindow(object):
 "                          font-weight: 600;\n"
 "                          font-size: 10px;\n"
 "                          padding: 2px 8px;\n"
-"                          font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "                      }\n"
 "                      QLabel#stepDetectStatusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
 "                      QLabel#stepDetectStatusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
@@ -955,7 +948,6 @@ class Ui_MainWindow(object):
 "    font-size: 9px;\n"
 "    font-weight: bold;\n"
 "    color: #64748b;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "}")
         self.stepDetectChevron.setAlignment(Qt.AlignCenter)
 
@@ -1275,7 +1267,6 @@ class Ui_MainWindow(object):
 "                          font-weight: 600;\n"
 "                          font-size: 10px;\n"
 "                          padding: 2px 8px;\n"
-"                          font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "                      }\n"
 "                      QLabel#stepStackStatusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
 "                      QLabel#stepStackStatusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
@@ -1292,7 +1283,6 @@ class Ui_MainWindow(object):
 "    font-size: 9px;\n"
 "    font-weight: bold;\n"
 "    color: #64748b;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "}")
         self.stepStackChevron.setAlignment(Qt.AlignCenter)
 
@@ -1732,7 +1722,6 @@ class Ui_MainWindow(object):
 "                          font-weight: 600;\n"
 "                          font-size: 10px;\n"
 "                          padding: 2px 8px;\n"
-"                          font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "                      }\n"
 "                      QLabel#stepReviewStatusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
 "                      QLabel#stepReviewStatusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
@@ -1749,7 +1738,6 @@ class Ui_MainWindow(object):
 "    font-size: 9px;\n"
 "    font-weight: bold;\n"
 "    color: #64748b;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "}")
         self.stepReviewChevron.setAlignment(Qt.AlignCenter)
 
@@ -2133,7 +2121,6 @@ class Ui_MainWindow(object):
 "                          font-weight: 600;\n"
 "                          font-size: 10px;\n"
 "                          padding: 2px 8px;\n"
-"                          font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "                      }\n"
 "                      QLabel#stepFillStatusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
 "                      QLabel#stepFillStatusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
@@ -2150,7 +2137,6 @@ class Ui_MainWindow(object):
 "    font-size: 9px;\n"
 "    font-weight: bold;\n"
 "    color: #64748b;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "}")
         self.stepFillChevron.setAlignment(Qt.AlignCenter)
 
@@ -2303,7 +2289,6 @@ class Ui_MainWindow(object):
 "                          font-weight: 600;\n"
 "                          font-size: 10px;\n"
 "                          padding: 2px 8px;\n"
-"                          font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "                      }\n"
 "                      QLabel#additionalToolsStatusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
 "                      QLabel#additionalToolsStatusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
@@ -2320,7 +2305,6 @@ class Ui_MainWindow(object):
 "                    font-size: 9px;\n"
 "                    font-weight: bold;\n"
 "                    color: #64748b;\n"
-"                    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "}")
         self.additionalToolsChevron.setAlignment(Qt.AlignCenter)
 
@@ -2481,11 +2465,11 @@ class Ui_MainWindow(object):
         self.stepDetectSubtitle.setText(QCoreApplication.translate("MainWindow", u"Ready to detect streaks", None))
         self.stepDetectStatusBadge.setText(QCoreApplication.translate("MainWindow", u"\u2713 Ready", None))
         self.stepDetectChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
-        self.detectConfidenceLabel.setText(QCoreApplication.translate("MainWindow", u"Confidence threshold", None))
+        self.detectConfidenceLabel.setText(QCoreApplication.translate("MainWindow", u"Confidence", None))
 #if QT_CONFIG(accessibility)
         self.detectConfidence.setAccessibleName(QCoreApplication.translate("MainWindow", u"Confidence threshold", None))
 #endif // QT_CONFIG(accessibility)
-        self.detectMergeLabel.setText(QCoreApplication.translate("MainWindow", u"Merging strategy", None))
+        self.detectMergeLabel.setText(QCoreApplication.translate("MainWindow", u"Merging", None))
         self.detectMergeNMS.setText(QCoreApplication.translate("MainWindow", u"NMS", None))
         self.detectMergeNMM.setText(QCoreApplication.translate("MainWindow", u"Greedy NMM", None))
         self.detectThresholdLabel.setText(QCoreApplication.translate("MainWindow", u"Threshold", None))
