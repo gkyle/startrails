@@ -1,18 +1,18 @@
 """Metadata-only file views. No image decoding or widget allocation per row."""
 from PySide6.QtCore import QAbstractTableModel, QEvent, QModelIndex, QRect, QSize, Qt, Signal, QSignalBlocker
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
+from PySide6.QtGui import QBrush, QColor, QFont, QIcon, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QHeaderView, QMenu, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QWidget
 
 from types import SimpleNamespace
 from startrails.lib.file import File, InputFile
-from .icons import create_doc_icon, create_star_icon
+from . import resources_rc  # Register SVG icons when this module is used directly.
 from .ui_file_manager import Ui_FileSection
 
 
 class AnnotationBadgeDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.doc_icon = create_doc_icon(QColor("#64748b"), 14)
+        self.doc_icon = QIcon(":/startrails/ui/document.svg")
 
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
@@ -271,9 +271,9 @@ class FileSection(QFrame):
             self.ui.legend.setVisible(inputs)
 
         if inputs:
-            self.ui.icon.setPixmap(create_star_icon(QColor("#0284c7"), 16).pixmap(16, 16))
+            self.ui.icon.setPixmap(QIcon(":/startrails/ui/star.svg").pixmap(16, 16))
         else:
-            self.ui.icon.setPixmap(create_doc_icon(QColor("#16a34a"), 16).pixmap(16, 16))
+            self.ui.icon.setPixmap(QIcon(":/startrails/ui/document_output.svg").pixmap(16, 16))
 
         self.model = FileModel(self)
         self.ui.files.setModel(self.model)
