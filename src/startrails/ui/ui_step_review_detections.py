@@ -206,6 +206,70 @@ class Ui_reviewSettings(object):
 
         self.layout.addWidget(self.findBrightest)
 
+        self.sourceNavigationLayout = QHBoxLayout()
+        self.sourceNavigationLayout.setObjectName(u"sourceNavigationLayout")
+        self.nextSource = QPushButton(reviewSettings)
+        self.nextSource.setObjectName(u"nextSource")
+        self.nextSource.setEnabled(False)
+        self.nextSource.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.nextSource.setStyleSheet(u"QPushButton#nextSource {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 2px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 8px;\n"
+"    font-size: 12px;\n"
+"    font-weight: 500;\n"
+"}\n"
+"QPushButton#nextSource:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#nextSource:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}\n"
+"QPushButton#nextSource:focus:enabled { border-color: #0f172a; }")
+
+        self.sourceNavigationLayout.addWidget(self.nextSource)
+
+        self.backToStack = QPushButton(reviewSettings)
+        self.backToStack.setObjectName(u"backToStack")
+        self.backToStack.setEnabled(False)
+        self.backToStack.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.backToStack.setStyleSheet(u"QPushButton#backToStack {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 2px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 8px;\n"
+"    font-size: 12px;\n"
+"    font-weight: 500;\n"
+"}\n"
+"QPushButton#backToStack:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#backToStack:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}\n"
+"QPushButton#backToStack:focus:enabled { border-color: #0f172a; }")
+
+        self.sourceNavigationLayout.addWidget(self.backToStack)
+
+
+        self.layout.addLayout(self.sourceNavigationLayout)
+
+        self.sourceLookupStatus = QLabel(reviewSettings)
+        self.sourceLookupStatus.setObjectName(u"sourceLookupStatus")
+        self.sourceLookupStatus.setWordWrap(True)
+        self.sourceLookupStatus.setStyleSheet(u"color: #64748b; font-size: 11px;")
+
+        self.layout.addWidget(self.sourceLookupStatus)
+
         self.sep1 = QFrame(reviewSettings)
         self.sep1.setObjectName(u"sep1")
         self.sep1.setStyleSheet(u"background-color: #f1f5f9;\n"
@@ -284,9 +348,12 @@ class Ui_reviewSettings(object):
         self.findBrightestHeading.setText(QCoreApplication.translate("reviewSettings", u"Locate Streaks", None))
         self.findBrightestHint.setText(QCoreApplication.translate("reviewSettings", u"Click on a streak in a stacked or gap-filled image to locate its source frame.", None))
 #if QT_CONFIG(tooltip)
-        self.findBrightest.setToolTip(QCoreApplication.translate("reviewSettings", u"Select a stacked or gap-filled output image to enable finding the brightest frame at a point.", None))
+        self.findBrightest.setToolTip(QCoreApplication.translate("reviewSettings", u"Select a stacked or gap-filled output, then click a streak to locate its original source images.", None))
 #endif // QT_CONFIG(tooltip)
-        self.findBrightest.setText(QCoreApplication.translate("reviewSettings", u"Find Brightest", None))
+        self.findBrightest.setText(QCoreApplication.translate("reviewSettings", u"Locate Source", None))
+        self.nextSource.setText(QCoreApplication.translate("reviewSettings", u"Next Candidate", None))
+        self.backToStack.setText(QCoreApplication.translate("reviewSettings", u"Back to Stack", None))
+        self.sourceLookupStatus.setText("")
         self.contributeHeading.setText(QCoreApplication.translate("reviewSettings", u"Optional: Contribute Corrections", None))
         self.contributeHint.setText(QCoreApplication.translate("reviewSettings", u"Export manual additions and deletions to help improve future streak detection models.", None))
 #if QT_CONFIG(tooltip)

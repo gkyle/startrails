@@ -81,7 +81,7 @@ class FillGaps(Observable):
     def suggestOutFileName(file: InputFile, outDir: str):
         fileName = os.path.basename(file.path)
         baseName, extension = os.path.splitext(fileName)
-        ts = datetime.now().strftime("%Y-%m-%d-%H-%M")
+        ts = datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
         return [
             "{}/fillgaps-{}-{}{}".format(outDir, baseName, ts, extension),
             "{}/fillgaps_mask-{}-{}{}".format(outDir, baseName, ts, extension),

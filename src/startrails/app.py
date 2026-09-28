@@ -16,7 +16,7 @@ from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.util import Observable
 from startrails.op.exportMaskedImages import ExportMaskedImages
 from startrails.op.exportStreaksTraining import ExportStreaksDetectTraining
-from startrails.op.findBrightFrame import FindBrightFrame
+from startrails.lib.source_map import locate_sources, output_sidecar, relative_path
 from startrails.op.stackImages import StackImages
 from startrails.ui.project import Project
 from startrails.lib.gpu import GPUInfo
@@ -89,9 +89,10 @@ class App:
     def doStack(self, satellitesRemoved, progressBar, fade=False, fadeAmount=(0.0, 0.0), batchSize=None, useGPU=True):
         stackImages = StackImages(useGPU)
         filteredInputFiles = list(filter(lambda file: not file.excludeFromStack, self.project.rawInputFiles))
-        paths = [file.path for file in filteredInputFiles]
+        if not filteredInputFiles:
+            raise ValueError("Include at least one input image in the stack.")
         outDir = self.project.projectFile.replace(".json", "")
-        filename = StackImages.suggestOutFileName(self.getInputFileList()[0], outDir)
+        filename = StackImages.suggestOutFileName(filteredInputFiles[0], outDir)
         os.makedirs(outDir, exist_ok=True)
 
         fadeGradient = None
@@ -122,16 +123,13 @@ class App:
         self.saveProject()
 
     def doFindBrightFrame(self, x, y, basisFile: OutputFile, progressBar):
-        filteredInputFiles = list(filter(lambda file: not file.excludeFromStack, self.project.rawInputFiles))
-        findBrightFrame = FindBrightFrame()
-        findBrightFrame.addObserver(progressBar)
-        self.activeOperation = findBrightFrame
-        try:
-            file = findBrightFrame.findBrightFrame(filteredInputFiles, x, y, basisFile.fadeGradient)
-        finally:
-            self.activeOperation = None
-            findBrightFrame.removeObserver(progressBar)
-        return file
+        """Compatibility entry point for callers requesting just the best source."""
+        result = self.locateSources(x, y, basisFile)
+        return result.candidates[0] if result.candidates else None
+
+    def locateSources(self, x, y, basisFile: OutputFile):
+        # Consult the saved stack, including sources now excluded from future stacks.
+        return locate_sources(basisFile, list(self.project.rawInputFiles), x, y)
 
     def doExportTrainingStreaks(self, outDir: str, progressBar):
         exportStreaksTraining = ExportStreaksDetectTraining()
@@ -170,6 +168,11 @@ class App:
             fillGaps.removeObserver(progressBar)
         fileFillGaps.fadeGradient = file.fadeGradient
         fileFillGapsMask.fadeGradient = file.fadeGradient
+        if file.sourceMap and not fillGaps.shouldInterrupt():
+            directory = os.path.dirname(os.path.abspath(fileFillGaps.path))
+            fileFillGaps.sourceMap = relative_path(output_sidecar(file, "sourceMap"), directory)
+            fileFillGaps.sourceStack = relative_path(file.path, directory)
+            fileFillGaps.gapMask = relative_path(fileFillGapsMask.path, directory)
         self.saveProject()
         return fileFillGaps
 
@@ -222,5 +225,5 @@ class App:
         self.saveProject()
 
     def stackSuggestBatchSize(self, file: InputFile, useGPU=True):
-        return StackImages.suggestBatchSize(file.path, gpuInfo=self.gpuInfo, useGPU=useGPU)
-
+        return StackImages.suggestBatchSize(file.path, gpuInfo=self.gpuInfo, useGPU=useGPU,
+                                           sourceCount=len(self.getInputFileList()))

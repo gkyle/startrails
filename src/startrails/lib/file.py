@@ -1,4 +1,5 @@
 from enum import Enum
+from uuid import uuid4
 
 
 class Unpickle:
@@ -24,6 +25,7 @@ class InputFile(File):
 
     def __init__(self, basename=None, path=None):
         super().__init__(basename, path)
+        self.sourceId = uuid4().hex
         self.streaksMasks = []
         self.streaksManualMasks = []
         self.streaksManualDeletedMasks = []
@@ -37,6 +39,10 @@ class OutputFile(File):
         super().__init__(basename, path)
         self.operation = operation
         self.fadeGradient = fadeGradient
+        # Sidecars are relative to this output's directory, never embedded in JSON.
+        self.sourceMap = None
+        self.sourceStack = None
+        self.gapMask = None
 
 
 class Operation(Enum):

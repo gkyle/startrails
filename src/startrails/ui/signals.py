@@ -29,6 +29,7 @@ class Signals(QObject):
     showFile: Signal = Signal(File)
     updateGPUStats: Signal = Signal()
     findBrightestFrame: Signal = Signal(File, int, int)
+    sourceLookupReady: Signal = Signal(object)
 
     updateFile: Signal = Signal(File)
     fileMetadataChanged: Signal = Signal(File)

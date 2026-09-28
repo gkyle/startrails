@@ -20,6 +20,7 @@ from startrails.ui.ui_interface import Ui_MainWindow
 from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.theme import system_theme, theme_palette
 from startrails.lib.file import File, InputFile, OutputFile
+from startrails.lib.source_map import SourceLookup, SourceMapError
 
 
 class MainWindow(QMainWindow):
@@ -79,6 +80,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.op_queue.setMaxThreadCount(1)
         self.enqueued_tasks = set()
         self.current_running_task = None
+        self.sourceLookupSession = None
 
         self.readyInputImages = False
         self.readyStreaksRemoved = False
@@ -211,6 +213,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.signals.drawInputFileList.connect(self.slotRefreshInputs)
         self.signals.drawOutputFileList.connect(self.slotRefreshOutputs)
         self.signals.findBrightestFrame.connect(self.doFindBrightFrame)
+        self.signals.sourceLookupReady.connect(self.slotSourceLookupReady)
         self.signals.updateGPUStats.connect(self.slotUpdateGPUStats)
 
         # Replace placeholders
@@ -227,6 +230,8 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         if self.pushButton_findBrightest is not None:
             self.pushButton_findBrightest.toggled.connect(self.canvas_main.setFindBrightestMode)
             self.canvas_main.findBrightestModeChanged.connect(self.pushButton_findBrightest.setChecked)
+        self.sidebar.review.ui.nextSource.clicked.connect(self.nextSourceCandidate)
+        self.sidebar.review.ui.backToStack.clicked.connect(self.backToSourceStack)
 
         self.slotUpdateGPUStats()
 
@@ -270,6 +275,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.sidebar.update_operations_progress(self.app, self.currentFile)
 
     def resetProjectView(self):
+        self.clearSourceLookup()
         self.showFile(None)
         self.inputFiles.set_files(self.app.getInputFileList())
         self.outputFiles.set_files(self.app.getOutputFileList())
@@ -516,6 +522,9 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
 
     @Slot(File)
     def showFile(self, file: Optional[File]):
+        session = self.sourceLookupSession
+        if session and file not in [session["basis"], *session["result"].candidates]:
+            self.clearSourceLookup()
         self.currentFile = file
         self.canvas_main.setFile(file)
         self.label_imageName.setText(file.basename if file is not None else "")
@@ -523,27 +532,79 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.updateFillEligibility()
 
     def doFindBrightFrame(self, file, x, y):
-        files = self.app.getInputFileList()
-        total = len(list(files))
+        if not isinstance(file, OutputFile) or file.operation not in ("Stacked", "FillGaps"):
+            return
+        canvas = self.canvas_main
+        view = (canvas.zoom_factor, canvas.posX, canvas.posY)
 
-        def f(fileList):
-            total = len(list(fileList))
-            progressUpdater = ProgressBarUpdater(
-                self.progressBar, self.label_progressBar, total=total, desc="Finding Brightest:")
-            brightFile = self.app.doFindBrightFrame(x, y, file, progressUpdater.tick)
-            if brightFile is not None:
-                try:
-                    self.signals.showFile.emit(brightFile)
-                except RuntimeError:
-                    pass
+        def lookup():
+            try:
+                result = self.app.locateSources(x, y, file)
+            except SourceMapError as error:
+                result = SourceLookup(message=str(error))
+            self.signals.sourceLookupReady.emit((file, result, view))
 
-        self.enqueue_task(
-            "findBrightFrame",
-            "Find Brightest Frame",
-            total,
-            "Searching brightest frame...",
-            partial(f, self.app.getInputFileList())
-        )
+        self.enqueue_task("findBrightFrame", "Locate Source", 0,
+                          "Reading saved source map...", lookup)
+
+    def clearSourceLookup(self):
+        self.sourceLookupSession = None
+        self.sidebar.review.ui.nextSource.setEnabled(False)
+        self.sidebar.review.ui.backToStack.setEnabled(False)
+        self.sidebar.review.ui.sourceLookupStatus.clear()
+
+    @Slot(object)
+    def slotSourceLookupReady(self, packet):
+        basis, result, view = packet
+        # Ignore a result delivered after switching projects or selecting another image.
+        if basis not in self.app.getOutputFileList() or self.currentFile is not basis:
+            return
+        self.clearSourceLookup()
+        self.sidebar.reviewCard.setExpanded(True)
+        if not result.candidates:
+            self.sidebar.review.ui.sourceLookupStatus.setText(result.message)
+            return
+        self.sourceLookupSession = dict(basis=basis, result=result, view=view, index=0)
+        self.showSourceCandidate()
+
+    def showSourceCandidate(self):
+        session = self.sourceLookupSession
+        if session is None:
+            return
+        candidates = session["result"].candidates
+        file = candidates[session["index"]]
+        if file not in self.app.getInputFileList():
+            self.clearSourceLookup()
+            self.sidebar.review.ui.sourceLookupStatus.setText("This source is no longer in the project.")
+            return
+        self.showFile(file)
+        self.restoreSourceView(session["view"])
+        self.sidebar.review.ui.nextSource.setEnabled(len(candidates) > 1)
+        self.sidebar.review.ui.backToStack.setEnabled(True)
+        status = f"Candidate {session['index'] + 1} of {len(candidates)}: {file.basename}"
+        if session["result"].message:
+            status += "\n" + session["result"].message
+        self.sidebar.review.ui.sourceLookupStatus.setText(status)
+
+    def restoreSourceView(self, view):
+        canvas = self.canvas_main
+        canvas.zoom_factor, canvas.posX, canvas.posY = view
+        canvas.repaint()
+
+    def nextSourceCandidate(self):
+        session = self.sourceLookupSession
+        if session:
+            session["index"] = (session["index"] + 1) % len(session["result"].candidates)
+            self.showSourceCandidate()
+
+    def backToSourceStack(self):
+        session = self.sourceLookupSession
+        if session:
+            if session["basis"] not in self.app.getOutputFileList():
+                self.clearSourceLookup()
+                return
+            self.showFile(session["basis"])
+            self.restoreSourceView(session["view"])
 
     def doFillGaps(self):
         def f():
