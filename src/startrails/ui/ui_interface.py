@@ -324,7 +324,7 @@ class Ui_MainWindow(object):
         self.newProject.setStyleSheet(u"QPushButton#newProject {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 2px solid #cbd5e1;\n"
 "    border-radius: 6px;\n"
 "    padding: 6px 12px;\n"
 "    font-weight: 500;\n"
@@ -336,7 +336,8 @@ class Ui_MainWindow(object):
 "}\n"
 "QPushButton#newProject:pressed {\n"
 "    background-color: #e2e8f0;\n"
-"}")
+"}\n"
+"QPushButton#newProject:focus:enabled { border-color: #0f172a; }")
 
         self.projectActions.addWidget(self.newProject)
 
@@ -346,7 +347,7 @@ class Ui_MainWindow(object):
         self.openProject.setStyleSheet(u"QPushButton#openProject {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 2px solid #cbd5e1;\n"
 "    border-radius: 6px;\n"
 "    padding: 6px 12px;\n"
 "    font-weight: 500;\n"
@@ -358,7 +359,8 @@ class Ui_MainWindow(object):
 "}\n"
 "QPushButton#openProject:pressed {\n"
 "    background-color: #e2e8f0;\n"
-"}")
+"}\n"
+"QPushButton#openProject:focus:enabled { border-color: #0f172a; }")
 
         self.projectActions.addWidget(self.openProject)
 
@@ -419,13 +421,14 @@ class Ui_MainWindow(object):
         self.inputFilesToggle.setObjectName(u"inputFilesToggle")
         self.inputFilesToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.inputFilesToggle.setStyleSheet(u"QToolButton#inputFilesToggle {\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    background: transparent;\n"
 "    font-weight: bold;\n"
 "    font-size: 12px;\n"
 "    color: #0f172a;\n"
 "    padding: 0px;\n"
-"}")
+"}\n"
+"QToolButton#inputFilesToggle:focus:enabled { border-color: #0f172a; }")
         self.inputFilesToggle.setCheckable(True)
         self.inputFilesToggle.setChecked(True)
 
@@ -460,7 +463,7 @@ class Ui_MainWindow(object):
         self.inputFilesAdd.setObjectName(u"inputFilesAdd")
         self.inputFilesAdd.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.inputFilesAdd.setStyleSheet(u"QPushButton#inputFilesAdd {\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    border-radius: 3px;\n"
 "    font-weight: bold;\n"
 "    font-size: 13px;\n"
@@ -474,7 +477,8 @@ class Ui_MainWindow(object):
 "QPushButton#inputFilesAdd:hover {\n"
 "    background-color: #e2e8f0;\n"
 "    color: #0f172a;\n"
-"}")
+"}\n"
+"QPushButton#inputFilesAdd:focus:enabled { border-color: #0f172a; }")
 
         self.inputFilesHeaderLayout.addWidget(self.inputFilesAdd)
 
@@ -531,7 +535,7 @@ class Ui_MainWindow(object):
         self.inputFilesEmpty = QLabel(self.inputFilesBody)
         self.inputFilesEmpty.setObjectName(u"inputFilesEmpty")
         self.inputFilesEmpty.setStyleSheet(u"QLabel#inputFilesEmpty {\n"
-"    color: #94a3b8;\n"
+"    color: #64748b;\n"
 "    font-size: 12px;\n"
 "    font-style: italic;\n"
 "    padding: 12px;\n"
@@ -589,7 +593,7 @@ class Ui_MainWindow(object):
         self.inputFilesLegendManual.setObjectName(u"inputFilesLegendManual")
         self.inputFilesLegendManual.setStyleSheet(u"QLabel#inputFilesLegendManual {\n"
 "    background-color: #e0f2fe;\n"
-"    color: #0284c7;\n"
+"    color: #0369a1;\n"
 "    border: 1px solid #bae6fd;\n"
 "    border-radius: 4px;\n"
 "    font-size: 11px;\n"
@@ -680,13 +684,14 @@ class Ui_MainWindow(object):
         self.outputFilesToggle.setObjectName(u"outputFilesToggle")
         self.outputFilesToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.outputFilesToggle.setStyleSheet(u"QToolButton#outputFilesToggle {\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    background: transparent;\n"
 "    font-weight: bold;\n"
 "    font-size: 12px;\n"
 "    color: #0f172a;\n"
 "    padding: 0px;\n"
-"}")
+"}\n"
+"QToolButton#outputFilesToggle:focus:enabled { border-color: #0f172a; }")
         self.outputFilesToggle.setCheckable(True)
         self.outputFilesToggle.setChecked(False)
 
@@ -774,7 +779,7 @@ class Ui_MainWindow(object):
         self.outputFilesEmpty = QLabel(self.outputFilesBody)
         self.outputFilesEmpty.setObjectName(u"outputFilesEmpty")
         self.outputFilesEmpty.setStyleSheet(u"QLabel#outputFilesEmpty {\n"
-"    color: #94a3b8;\n"
+"    color: #64748b;\n"
 "    font-size: 12px;\n"
 "    font-style: italic;\n"
 "    padding: 12px;\n"
@@ -869,14 +874,14 @@ class Ui_MainWindow(object):
         self.stepDetectNumber.setMinimumSize(QSize(30, 30))
         self.stepDetectNumber.setMaximumSize(QSize(30, 30))
         self.stepDetectNumber.setStyleSheet(u"QLabel#stepDetectNumber {\n"
-"                          background-color: #94a3b8;\n"
+"                          background-color: #64748b;\n"
 "                          color: #ffffff;\n"
 "                          border: none;\n"
 "                          border-radius: 15px;\n"
 "                          font-weight: bold;\n"
 "                          font-size: 13px;\n"
 "                      }\n"
-"                      QLabel#stepDetectNumber[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"                      QLabel#stepDetectNumber[stepStatus=\"ready\"] { background-color: #0369a1; }\n"
 "                      QLabel#stepDetectNumber[stepStatus=\"done\"] { background-color: #1e293b; }\n"
 "                      QLabel#stepDetectNumber[stepStatus=\"running\"] { background-color: #b45309; }")
         self.stepDetectNumber.setAlignment(Qt.AlignCenter)
@@ -897,14 +902,15 @@ class Ui_MainWindow(object):
         self.stepDetectToggle.setSizePolicy(sizePolicy5)
         self.stepDetectToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepDetectToggle.setStyleSheet(u"QPushButton#stepDetectToggle {\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    background: transparent;\n"
 "    text-align: left;\n"
 "    padding: 0px;\n"
 "    font-size: 13px;\n"
 "    font-weight: bold;\n"
 "    color: #0f172a;\n"
-"}")
+"}\n"
+"QPushButton#stepDetectToggle:focus:enabled { border-color: #0f172a; }")
         self.stepDetectToggle.setCheckable(True)
         self.stepDetectToggle.setChecked(True)
 
@@ -927,7 +933,7 @@ class Ui_MainWindow(object):
         self.stepDetectStatusBadge.setObjectName(u"stepDetectStatusBadge")
         self.stepDetectStatusBadge.setStyleSheet(u"QLabel#stepDetectStatusBadge {\n"
 "                          background-color: #e0f2fe;\n"
-"                          color: #0284c7;\n"
+"                          color: #0369a1;\n"
 "                          border-radius: 9px;\n"
 "                          font-weight: 600;\n"
 "                          font-size: 10px;\n"
@@ -985,7 +991,7 @@ class Ui_MainWindow(object):
         self.detectConfidence.setObjectName(u"detectConfidence")
         self.detectConfidence.setStyleSheet(u"QDoubleSpinBox#detectConfidence {\n"
 "    background-color: #ffffff;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 1px solid #64748b;\n"
 "    border-radius: 4px;\n"
 "    padding: 4px 6px;\n"
 "    font-size: 12px;\n"
@@ -994,8 +1000,11 @@ class Ui_MainWindow(object):
 "    max-width: 75px;\n"
 "}\n"
 "QDoubleSpinBox#detectConfidence:focus {\n"
-"    border-color: #0284c7;\n"
-"}")
+"    border: 2px solid #0369a1;\n"
+"    padding: 3px 5px;\n"
+"}\n"
+"QDoubleSpinBox#detectConfidence::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }\n"
+"QDoubleSpinBox#detectConfidence::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }")
         self.detectConfidence.setMaximum(1.000000000000000)
         self.detectConfidence.setSingleStep(0.050000000000000)
         self.detectConfidence.setValue(0.300000000000000)
@@ -1021,7 +1030,7 @@ class Ui_MainWindow(object):
 "QPushButton#detectMergeNMS, QPushButton#detectMergeNMM {\n"
 "    background-color: transparent;\n"
 "    color: #334155;\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    border-radius: 4px;\n"
 "    font-size: 12px;\n"
 "    font-weight: 500;\n"
@@ -1029,14 +1038,16 @@ class Ui_MainWindow(object):
 "    min-height: 18px;\n"
 "}\n"
 "QPushButton#detectMergeNMS:checked, QPushButton#detectMergeNMM:checked {\n"
-"    background-color: #0284c7;\n"
+"    background-color: #0369a1;\n"
 "    color: #ffffff;\n"
 "    font-weight: 600;\n"
 "}\n"
 "QPushButton#detectMergeNMS:hover:!checked, QPushButton#detectMergeNMM:hover:!checked {\n"
 "    background-color: #e2e8f0;\n"
 "    color: #0f172a;\n"
-"}")
+"}\n"
+"QPushButton#detectMergeNMS:focus:enabled, QPushButton#detectMergeNMM:focus:enabled { border-color: #0f172a; }\n"
+"QPushButton#detectMergeNMS:checked:focus:enabled, QPushButton#detectMergeNMM:checked:focus:enabled { border-color: #ffffff; }")
         self.detectMergeLayout = QHBoxLayout(self.detectMergeContainer)
         self.detectMergeLayout.setSpacing(2)
         self.detectMergeLayout.setObjectName(u"detectMergeLayout")
@@ -1079,7 +1090,7 @@ class Ui_MainWindow(object):
         self.detectMergeThreshold.setObjectName(u"detectMergeThreshold")
         self.detectMergeThreshold.setStyleSheet(u"QDoubleSpinBox#detectMergeThreshold {\n"
 "    background-color: #ffffff;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 1px solid #64748b;\n"
 "    border-radius: 4px;\n"
 "    padding: 4px 6px;\n"
 "    font-size: 12px;\n"
@@ -1088,8 +1099,11 @@ class Ui_MainWindow(object):
 "    max-width: 75px;\n"
 "}\n"
 "QDoubleSpinBox#detectMergeThreshold:focus {\n"
-"    border-color: #0284c7;\n"
-"}")
+"    border: 2px solid #0369a1;\n"
+"    padding: 3px 5px;\n"
+"}\n"
+"QDoubleSpinBox#detectMergeThreshold::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }\n"
+"QDoubleSpinBox#detectMergeThreshold::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }")
         self.detectMergeThreshold.setMaximum(1.000000000000000)
         self.detectMergeThreshold.setSingleStep(0.050000000000000)
         self.detectMergeThreshold.setValue(0.200000000000000)
@@ -1113,10 +1127,13 @@ class Ui_MainWindow(object):
         sizePolicy6.setHeightForWidth(self.detectUseGPU.sizePolicy().hasHeightForWidth())
         self.detectUseGPU.setSizePolicy(sizePolicy6)
         self.detectUseGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.detectUseGPU.setStyleSheet(u"QCheckBox#detectUseGPU { spacing: 0px; }\n"
-"                        QCheckBox#detectUseGPU::indicator { width: 36px; height: 20px; }\n"
+        self.detectUseGPU.setStyleSheet(u"QCheckBox#detectUseGPU { spacing: 0px;\n"
+"    border: 2px solid transparent;\n"
+"}\n"
+"                        QCheckBox#detectUseGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
 "                        QCheckBox#detectUseGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
-"                        QCheckBox#detectUseGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }")
+"                        QCheckBox#detectUseGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
+"QCheckBox#detectUseGPU:focus:enabled { border-color: #0f172a; }")
         self.detectUseGPU.setChecked(True)
 
         self.stepDetectFields.addWidget(self.detectUseGPU, 3, 1, 1, 1, Qt.AlignRight)
@@ -1130,7 +1147,7 @@ class Ui_MainWindow(object):
         self.detectError.setObjectName(u"detectError")
         self.detectError.setStyleSheet(u"QLabel#detectError {\n"
 "    font-size: 11px;\n"
-"    color: #ef4444;\n"
+"    color: #b91c1c;\n"
 "}")
         self.detectError.setWordWrap(True)
 
@@ -1142,20 +1159,21 @@ class Ui_MainWindow(object):
         self.detectRun.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.detectRun.setStyleSheet(u"QPushButton#detectRun {\n"
 "    font-weight: bold;\n"
-"    background-color: #0284c7;\n"
+"    background-color: #0369a1;\n"
 "    color: #ffffff;\n"
 "    padding: 7px 12px;\n"
 "    border-radius: 6px;\n"
 "    font-size: 13px;\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "}\n"
 "QPushButton#detectRun:hover {\n"
-"    background-color: #0369a1;\n"
+"    background-color: #075985;\n"
 "}\n"
 "QPushButton#detectRun:disabled {\n"
 "    background-color: #e2e8f0;\n"
 "    color: #94a3b8;\n"
-"}")
+"}\n"
+"QPushButton#detectRun:focus:enabled { border-color: #ffffff; }")
 
         self.stepDetectBodyLayout.addWidget(self.detectRun)
 
@@ -1196,14 +1214,14 @@ class Ui_MainWindow(object):
         self.stepStackNumber.setMinimumSize(QSize(30, 30))
         self.stepStackNumber.setMaximumSize(QSize(30, 30))
         self.stepStackNumber.setStyleSheet(u"QLabel#stepStackNumber {\n"
-"                          background-color: #94a3b8;\n"
+"                          background-color: #64748b;\n"
 "                          color: #ffffff;\n"
 "                          border: none;\n"
 "                          border-radius: 15px;\n"
 "                          font-weight: bold;\n"
 "                          font-size: 13px;\n"
 "                      }\n"
-"                      QLabel#stepStackNumber[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"                      QLabel#stepStackNumber[stepStatus=\"ready\"] { background-color: #0369a1; }\n"
 "                      QLabel#stepStackNumber[stepStatus=\"done\"] { background-color: #1e293b; }\n"
 "                      QLabel#stepStackNumber[stepStatus=\"running\"] { background-color: #b45309; }")
         self.stepStackNumber.setAlignment(Qt.AlignCenter)
@@ -1221,14 +1239,15 @@ class Ui_MainWindow(object):
         self.stepStackToggle.setSizePolicy(sizePolicy5)
         self.stepStackToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepStackToggle.setStyleSheet(u"QPushButton#stepStackToggle {\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    background: transparent;\n"
 "    text-align: left;\n"
 "    padding: 0px;\n"
 "    font-size: 13px;\n"
 "    font-weight: bold;\n"
 "    color: #0f172a;\n"
-"}")
+"}\n"
+"QPushButton#stepStackToggle:focus:enabled { border-color: #0f172a; }")
         self.stepStackToggle.setCheckable(True)
         self.stepStackToggle.setChecked(True)
 
@@ -1251,7 +1270,7 @@ class Ui_MainWindow(object):
         self.stepStackStatusBadge.setObjectName(u"stepStackStatusBadge")
         self.stepStackStatusBadge.setStyleSheet(u"QLabel#stepStackStatusBadge {\n"
 "                          background-color: #e0f2fe;\n"
-"                          color: #0284c7;\n"
+"                          color: #0369a1;\n"
 "                          border-radius: 9px;\n"
 "                          font-weight: 600;\n"
 "                          font-size: 10px;\n"
@@ -1339,7 +1358,7 @@ class Ui_MainWindow(object):
 "QPushButton#stackStreaksKeep, QPushButton#stackStreaksRemove {\n"
 "    background-color: transparent;\n"
 "    color: #334155;\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    border-radius: 4px;\n"
 "    font-size: 12px;\n"
 "    font-weight: 500;\n"
@@ -1347,7 +1366,7 @@ class Ui_MainWindow(object):
 "    min-height: 18px;\n"
 "}\n"
 "QPushButton#stackStreaksKeep:checked, QPushButton#stackStreaksRemove:checked {\n"
-"    background-color: #0284c7;\n"
+"    background-color: #0369a1;\n"
 "    color: #ffffff;\n"
 "    font-weight: 600;\n"
 "}\n"
@@ -1358,7 +1377,10 @@ class Ui_MainWindow(object):
 "QPushButton#stackStreaksRemove:disabled {\n"
 "    color: #94a3b8;\n"
 "    background-color: transparent;\n"
-"}")
+"}\n"
+"QPushButton#stackStreaksKeep:focus:enabled, QPushButton#stackStreaksRemove:focus:enabled { border-color: #0f172a; }\n"
+"QPushButton#stackStre"
+                        "aksKeep:checked:focus:enabled, QPushButton#stackStreaksRemove:checked:focus:enabled { border-color: #ffffff; }")
         self.stackStreaksLayout = QHBoxLayout(self.stackStreaksContainer)
         self.stackStreaksLayout.setSpacing(2)
         self.stackStreaksLayout.setObjectName(u"stackStreaksLayout")
@@ -1404,7 +1426,7 @@ class Ui_MainWindow(object):
 "QPushButton#stackFadeOff, QPushButton#stackFadeStart, QPushButton#stackFadeEnd, QPushButton#stackFadeBoth {\n"
 "    background-color: transparent;\n"
 "    color: #334155;\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    border-radius: 4px;\n"
 "    font-size: 11px;\n"
 "    font-weight: 500;\n"
@@ -1412,14 +1434,17 @@ class Ui_MainWindow(object):
 "    min-height: 18px;\n"
 "}\n"
 "QPushButton#stackFadeOff:checked, QPushButton#stackFadeStart:checked, QPushButton#stackFadeEnd:checked, QPushButton#stackFadeBoth:checked {\n"
-"    background-color: #0284c7;\n"
+"    background-color: #0369a1;\n"
 "    color: #ffffff;\n"
 "    font-weight: 600;\n"
 "}\n"
 "QPushButton#stackFadeOff:hover:!checked, QPushButton#stackFadeStart:hover:!checked, QPushButton#stackFadeEnd:hover:!checked, QPushButton#stackFadeBoth:hover:!checked {\n"
 "    background-color: #e2e8f0;\n"
 "    color: #0f172a;\n"
-"}")
+"}\n"
+"QPushButton#stackFadeOff:focus:enabled, QPushButton#stackFadeStart:focus:enable"
+                        "d, QPushButton#stackFadeEnd:focus:enabled, QPushButton#stackFadeBoth:focus:enabled { border-color: #0f172a; }\n"
+"QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:checked:focus:enabled, QPushButton#stackFadeEnd:checked:focus:enabled, QPushButton#stackFadeBoth:checked:focus:enabled { border-color: #ffffff; }")
         self.stackFadeLayout = QHBoxLayout(self.stackFadeContainer)
         self.stackFadeLayout.setSpacing(2)
         self.stackFadeLayout.setObjectName(u"stackFadeLayout")
@@ -1478,7 +1503,7 @@ class Ui_MainWindow(object):
         self.stackFadeAmount.setObjectName(u"stackFadeAmount")
         self.stackFadeAmount.setStyleSheet(u"QSpinBox#stackFadeAmount {\n"
 "    background-color: #ffffff;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 1px solid #64748b;\n"
 "    border-radius: 4px;\n"
 "    padding: 4px 6px;\n"
 "    font-size: 12px;\n"
@@ -1487,13 +1512,16 @@ class Ui_MainWindow(object):
 "    max-width: 75px;\n"
 "}\n"
 "QSpinBox#stackFadeAmount:focus {\n"
-"    border-color: #0284c7;\n"
+"    border: 2px solid #0369a1;\n"
+"    padding: 3px 5px;\n"
 "}\n"
 "QSpinBox#stackFadeAmount:disabled {\n"
 "    background-color: #f1f5f9;\n"
 "    color: #94a3b8;\n"
 "    border-color: #e2e8f0;\n"
-"}")
+"}\n"
+"QSpinBox#stackFadeAmount::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }\n"
+"QSpinBox#stackFadeAmount::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }")
         self.stackFadeAmount.setMaximum(100)
         self.stackFadeAmount.setValue(20)
 
@@ -1513,10 +1541,13 @@ class Ui_MainWindow(object):
         sizePolicy6.setHeightForWidth(self.stackUseGPU.sizePolicy().hasHeightForWidth())
         self.stackUseGPU.setSizePolicy(sizePolicy6)
         self.stackUseGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.stackUseGPU.setStyleSheet(u"QCheckBox#stackUseGPU { spacing: 0px; }\n"
-"                        QCheckBox#stackUseGPU::indicator { width: 36px; height: 20px; }\n"
+        self.stackUseGPU.setStyleSheet(u"QCheckBox#stackUseGPU { spacing: 0px;\n"
+"    border: 2px solid transparent;\n"
+"}\n"
+"                        QCheckBox#stackUseGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
 "                        QCheckBox#stackUseGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
-"                        QCheckBox#stackUseGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }")
+"                        QCheckBox#stackUseGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
+"QCheckBox#stackUseGPU:focus:enabled { border-color: #0f172a; }")
         self.stackUseGPU.setChecked(True)
 
         self.stepStackFields.addWidget(self.stackUseGPU, 4, 1, 1, 1, Qt.AlignRight)
@@ -1534,7 +1565,7 @@ class Ui_MainWindow(object):
         self.stackBatchSize.setObjectName(u"stackBatchSize")
         self.stackBatchSize.setStyleSheet(u"QSpinBox#stackBatchSize {\n"
 "    background-color: #ffffff;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 1px solid #64748b;\n"
 "    border-radius: 4px;\n"
 "    padding: 4px 6px;\n"
 "    font-size: 12px;\n"
@@ -1543,8 +1574,11 @@ class Ui_MainWindow(object):
 "    max-width: 75px;\n"
 "}\n"
 "QSpinBox#stackBatchSize:focus {\n"
-"    border-color: #0284c7;\n"
-"}")
+"    border: 2px solid #0369a1;\n"
+"    padding: 3px 5px;\n"
+"}\n"
+"QSpinBox#stackBatchSize::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }\n"
+"QSpinBox#stackBatchSize::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }")
         self.stackBatchSize.setMinimum(1)
         self.stackBatchSize.setMaximum(2147483647)
         self.stackBatchSize.setValue(16)
@@ -1571,7 +1605,7 @@ class Ui_MainWindow(object):
         self.stackError.setObjectName(u"stackError")
         self.stackError.setStyleSheet(u"QLabel#stackError {\n"
 "    font-size: 11px;\n"
-"    color: #ef4444;\n"
+"    color: #b91c1c;\n"
 "}")
         self.stackError.setWordWrap(True)
 
@@ -1583,20 +1617,21 @@ class Ui_MainWindow(object):
         self.stackRun.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stackRun.setStyleSheet(u"QPushButton#stackRun {\n"
 "    font-weight: bold;\n"
-"    background-color: #0284c7;\n"
+"    background-color: #0369a1;\n"
 "    color: #ffffff;\n"
 "    padding: 7px 12px;\n"
 "    border-radius: 6px;\n"
 "    font-size: 13px;\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "}\n"
 "QPushButton#stackRun:hover {\n"
-"    background-color: #0369a1;\n"
+"    background-color: #075985;\n"
 "}\n"
 "QPushButton#stackRun:disabled {\n"
 "    background-color: #e2e8f0;\n"
 "    color: #94a3b8;\n"
-"}")
+"}\n"
+"QPushButton#stackRun:focus:enabled { border-color: #ffffff; }")
 
         self.stepStackBodyLayout.addWidget(self.stackRun)
 
@@ -1637,14 +1672,14 @@ class Ui_MainWindow(object):
         self.stepReviewNumber.setMinimumSize(QSize(30, 30))
         self.stepReviewNumber.setMaximumSize(QSize(30, 30))
         self.stepReviewNumber.setStyleSheet(u"QLabel#stepReviewNumber {\n"
-"                          background-color: #94a3b8;\n"
+"                          background-color: #64748b;\n"
 "                          color: #ffffff;\n"
 "                          border: none;\n"
 "                          border-radius: 15px;\n"
 "                          font-weight: bold;\n"
 "                          font-size: 13px;\n"
 "                      }\n"
-"                      QLabel#stepReviewNumber[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"                      QLabel#stepReviewNumber[stepStatus=\"ready\"] { background-color: #0369a1; }\n"
 "                      QLabel#stepReviewNumber[stepStatus=\"done\"] { background-color: #1e293b; }\n"
 "                      QLabel#stepReviewNumber[stepStatus=\"running\"] { background-color: #b45309; }")
         self.stepReviewNumber.setAlignment(Qt.AlignCenter)
@@ -1662,14 +1697,15 @@ class Ui_MainWindow(object):
         self.stepReviewToggle.setSizePolicy(sizePolicy5)
         self.stepReviewToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepReviewToggle.setStyleSheet(u"QPushButton#stepReviewToggle {\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    background: transparent;\n"
 "    text-align: left;\n"
 "    padding: 0px;\n"
 "    font-size: 13px;\n"
 "    font-weight: bold;\n"
 "    color: #0f172a;\n"
-"}")
+"}\n"
+"QPushButton#stepReviewToggle:focus:enabled { border-color: #0f172a; }")
         self.stepReviewToggle.setCheckable(True)
         self.stepReviewToggle.setChecked(True)
 
@@ -1691,7 +1727,7 @@ class Ui_MainWindow(object):
         self.stepReviewStatusBadge.setObjectName(u"stepReviewStatusBadge")
         self.stepReviewStatusBadge.setStyleSheet(u"QLabel#stepReviewStatusBadge {\n"
 "                          background-color: #e0f2fe;\n"
-"                          color: #0284c7;\n"
+"                          color: #0369a1;\n"
 "                          border-radius: 9px;\n"
 "                          font-weight: 600;\n"
 "                          font-size: 10px;\n"
@@ -1796,7 +1832,7 @@ class Ui_MainWindow(object):
         self.reviewStatManualTitle.setStyleSheet(u"QLabel#reviewStatManualTitle {\n"
 "    font-size: 11px;\n"
 "    font-weight: 600;\n"
-"    color: #0284c7;\n"
+"    color: #0369a1;\n"
 "}")
 
         self.reviewStatManualLayout.addWidget(self.reviewStatManualTitle)
@@ -1861,10 +1897,13 @@ class Ui_MainWindow(object):
         self.exportShowDeletedMasks = QCheckBox(self.stepReviewBody)
         self.exportShowDeletedMasks.setObjectName(u"exportShowDeletedMasks")
         self.exportShowDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.exportShowDeletedMasks.setStyleSheet(u"QCheckBox#exportShowDeletedMasks { spacing: 0px; }\n"
-"                        QCheckBox#exportShowDeletedMasks::indicator { width: 36px; height: 20px; }\n"
+        self.exportShowDeletedMasks.setStyleSheet(u"QCheckBox#exportShowDeletedMasks { spacing: 0px;\n"
+"    border: 2px solid transparent;\n"
+"}\n"
+"                        QCheckBox#exportShowDeletedMasks::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
 "                        QCheckBox#exportShowDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
-"                        QCheckBox#exportShowDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }")
+"                        QCheckBox#exportShowDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
+"QCheckBox#exportShowDeletedMasks:focus:enabled { border-color: #0f172a; }")
 
         self.exportShowDeletedMasksLayout.addWidget(self.exportShowDeletedMasks, 0, Qt.AlignRight)
 
@@ -1911,7 +1950,7 @@ class Ui_MainWindow(object):
         self.findBrightest.setStyleSheet(u"QPushButton#findBrightest {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 2px solid #cbd5e1;\n"
 "    border-radius: 6px;\n"
 "    padding: 6px 12px;\n"
 "    font-weight: 500;\n"
@@ -1923,15 +1962,16 @@ class Ui_MainWindow(object):
 "}\n"
 "QPushButton#findBrightest:checked {\n"
 "    background-color: #e0f2fe;\n"
-"    color: #0284c7;\n"
-"    border-color: #0284c7;\n"
+"    color: #0369a1;\n"
+"    border-color: #0369a1;\n"
 "    font-weight: 600;\n"
 "}\n"
 "QPushButton#findBrightest:disabled {\n"
 "    background-color: #f8fafc;\n"
 "    color: #94a3b8;\n"
 "    border-color: #e2e8f0;\n"
-"}")
+"}\n"
+"QPushButton#findBrightest:focus:enabled { border-color: #0f172a; }")
         self.findBrightest.setCheckable(True)
 
         self.stepReviewBodyLayout.addWidget(self.findBrightest)
@@ -1976,7 +2016,7 @@ class Ui_MainWindow(object):
         self.exportTraining.setStyleSheet(u"QPushButton#exportTraining {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 2px solid #cbd5e1;\n"
 "    border-radius: 6px;\n"
 "    padding: 6px 12px;\n"
 "    font-weight: 500;\n"
@@ -1990,7 +2030,8 @@ class Ui_MainWindow(object):
 "    background-color: #f8fafc;\n"
 "    color: #94a3b8;\n"
 "    border-color: #e2e8f0;\n"
-"}")
+"}\n"
+"QPushButton#exportTraining:focus:enabled { border-color: #0f172a; }")
 
         self.stepReviewBodyLayout.addWidget(self.exportTraining)
 
@@ -2031,14 +2072,14 @@ class Ui_MainWindow(object):
         self.stepFillNumber.setMinimumSize(QSize(30, 30))
         self.stepFillNumber.setMaximumSize(QSize(30, 30))
         self.stepFillNumber.setStyleSheet(u"QLabel#stepFillNumber {\n"
-"                          background-color: #94a3b8;\n"
+"                          background-color: #64748b;\n"
 "                          color: #ffffff;\n"
 "                          border: none;\n"
 "                          border-radius: 15px;\n"
 "                          font-weight: bold;\n"
 "                          font-size: 13px;\n"
 "                      }\n"
-"                      QLabel#stepFillNumber[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"                      QLabel#stepFillNumber[stepStatus=\"ready\"] { background-color: #0369a1; }\n"
 "                      QLabel#stepFillNumber[stepStatus=\"done\"] { background-color: #1e293b; }\n"
 "                      QLabel#stepFillNumber[stepStatus=\"running\"] { background-color: #b45309; }")
         self.stepFillNumber.setAlignment(Qt.AlignCenter)
@@ -2056,14 +2097,15 @@ class Ui_MainWindow(object):
         self.stepFillToggle.setSizePolicy(sizePolicy5)
         self.stepFillToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepFillToggle.setStyleSheet(u"QPushButton#stepFillToggle {\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    background: transparent;\n"
 "    text-align: left;\n"
 "    padding: 0px;\n"
 "    font-size: 13px;\n"
 "    font-weight: bold;\n"
 "    color: #0f172a;\n"
-"}")
+"}\n"
+"QPushButton#stepFillToggle:focus:enabled { border-color: #0f172a; }")
         self.stepFillToggle.setCheckable(True)
         self.stepFillToggle.setChecked(True)
 
@@ -2086,7 +2128,7 @@ class Ui_MainWindow(object):
         self.stepFillStatusBadge.setObjectName(u"stepFillStatusBadge")
         self.stepFillStatusBadge.setStyleSheet(u"QLabel#stepFillStatusBadge {\n"
 "                          background-color: #e0f2fe;\n"
-"                          color: #0284c7;\n"
+"                          color: #0369a1;\n"
 "                          border-radius: 9px;\n"
 "                          font-weight: 600;\n"
 "                          font-size: 10px;\n"
@@ -2144,20 +2186,21 @@ class Ui_MainWindow(object):
         self.fillRun.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.fillRun.setStyleSheet(u"QPushButton#fillRun {\n"
 "    font-weight: bold;\n"
-"    background-color: #0284c7;\n"
+"    background-color: #0369a1;\n"
 "    color: #ffffff;\n"
 "    padding: 7px 12px;\n"
 "    border-radius: 6px;\n"
 "    font-size: 13px;\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "}\n"
 "QPushButton#fillRun:hover {\n"
-"    background-color: #0369a1;\n"
+"    background-color: #075985;\n"
 "}\n"
 "QPushButton#fillRun:disabled {\n"
 "    background-color: #e2e8f0;\n"
 "    color: #94a3b8;\n"
-"}")
+"}\n"
+"QPushButton#fillRun:focus:enabled { border-color: #ffffff; }")
 
         self.stepFillBodyLayout.addWidget(self.fillRun)
 
@@ -2198,14 +2241,14 @@ class Ui_MainWindow(object):
         self.additionalToolsNumber.setMinimumSize(QSize(30, 30))
         self.additionalToolsNumber.setMaximumSize(QSize(30, 30))
         self.additionalToolsNumber.setStyleSheet(u"QLabel#additionalToolsNumber {\n"
-"                          background-color: #94a3b8;\n"
+"                          background-color: #64748b;\n"
 "                          color: #ffffff;\n"
 "                          border: none;\n"
 "                          border-radius: 15px;\n"
 "                          font-weight: bold;\n"
 "                          font-size: 13px;\n"
 "                      }\n"
-"                      QLabel#additionalToolsNumber[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"                      QLabel#additionalToolsNumber[stepStatus=\"ready\"] { background-color: #0369a1; }\n"
 "                      QLabel#additionalToolsNumber[stepStatus=\"done\"] { background-color: #1e293b; }\n"
 "                      QLabel#additionalToolsNumber[stepStatus=\"running\"] { background-color: #b45309; }")
         self.additionalToolsNumber.setAlignment(Qt.AlignCenter)
@@ -2223,14 +2266,15 @@ class Ui_MainWindow(object):
         self.additionalToolsToggle.setSizePolicy(sizePolicy5)
         self.additionalToolsToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.additionalToolsToggle.setStyleSheet(u"QPushButton#additionalToolsToggle {\n"
-"                    border: none;\n"
+"                    border: 2px solid transparent;\n"
 "                    background: transparent;\n"
 "                    text-align: left;\n"
 "                    padding: 0px;\n"
 "                    font-size: 13px;\n"
 "                    font-weight: bold;\n"
 "                    color: #0f172a;\n"
-"}")
+"}\n"
+"QPushButton#additionalToolsToggle:focus:enabled { border-color: #0f172a; }")
         self.additionalToolsToggle.setCheckable(True)
         self.additionalToolsToggle.setChecked(True)
 
@@ -2254,7 +2298,7 @@ class Ui_MainWindow(object):
         self.additionalToolsStatusBadge.setVisible(False)
         self.additionalToolsStatusBadge.setStyleSheet(u"QLabel#additionalToolsStatusBadge {\n"
 "                          background-color: #e0f2fe;\n"
-"                          color: #0284c7;\n"
+"                          color: #0369a1;\n"
 "                          border-radius: 9px;\n"
 "                          font-weight: 600;\n"
 "                          font-size: 10px;\n"
@@ -2327,7 +2371,7 @@ class Ui_MainWindow(object):
         self.exportMasks.setStyleSheet(u"QPushButton#exportMasks {\n"
 "                    background-color: #ffffff;\n"
 "                    color: #1e293b;\n"
-"                    border: 1px solid #cbd5e1;\n"
+"                    border: 2px solid #cbd5e1;\n"
 "                    border-radius: 6px;\n"
 "                    padding: 6px 12px;\n"
 "                    font-weight: 500;\n"
@@ -2341,7 +2385,8 @@ class Ui_MainWindow(object):
 "                    background-color: #f8fafc;\n"
 "                    color: #94a3b8;\n"
 "                    border-color: #e2e8f0;\n"
-"}")
+"}\n"
+"QPushButton#exportMasks:focus:enabled { border-color: #0f172a; }")
 
         self.additionalToolsBodyLayout.addWidget(self.exportMasks)
 
@@ -2391,6 +2436,12 @@ class Ui_MainWindow(object):
 
         MainWindow.setCentralWidget(self.centralwidget)
 #if QT_CONFIG(shortcut)
+        self.detectConfidenceLabel.setBuddy(self.detectConfidence)
+        self.detectThresholdLabel.setBuddy(self.detectMergeThreshold)
+        self.detectUseGPULabel.setBuddy(self.detectUseGPU)
+        self.stackAmountLabel.setBuddy(self.stackFadeAmount)
+        self.stackUseGPULabel.setBuddy(self.stackUseGPU)
+        self.stackBatchLabel.setBuddy(self.stackBatchSize)
         self.exportShowDeletedMasksLabel.setBuddy(self.exportShowDeletedMasks)
 #endif // QT_CONFIG(shortcut)
 
@@ -2415,9 +2466,9 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.inputFilesAdd.setText(QCoreApplication.translate("MainWindow", u"+", None))
         self.inputFilesEmpty.setText(QCoreApplication.translate("MainWindow", u"No files yet.", None))
-        self.inputFilesLegendAuto.setText(QCoreApplication.translate("MainWindow", u"Auto", None))
-        self.inputFilesLegendManual.setText(QCoreApplication.translate("MainWindow", u"Manual", None))
-        self.inputFilesLegendDeleted.setText(QCoreApplication.translate("MainWindow", u"Deleted", None))
+        self.inputFilesLegendAuto.setText(QCoreApplication.translate("MainWindow", u"A: Auto", None))
+        self.inputFilesLegendManual.setText(QCoreApplication.translate("MainWindow", u"M: Manual", None))
+        self.inputFilesLegendDeleted.setText(QCoreApplication.translate("MainWindow", u"D: Deleted", None))
         self.outputFilesChevron.setText(QCoreApplication.translate("MainWindow", u"\u25b6", None))
         self.outputFilesToggle.setText(QCoreApplication.translate("MainWindow", u"Output Files", None))
         self.outputFilesCount.setText(QCoreApplication.translate("MainWindow", u"0", None))
@@ -2431,11 +2482,20 @@ class Ui_MainWindow(object):
         self.stepDetectStatusBadge.setText(QCoreApplication.translate("MainWindow", u"\u2713 Ready", None))
         self.stepDetectChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
         self.detectConfidenceLabel.setText(QCoreApplication.translate("MainWindow", u"Confidence threshold", None))
+#if QT_CONFIG(accessibility)
+        self.detectConfidence.setAccessibleName(QCoreApplication.translate("MainWindow", u"Confidence threshold", None))
+#endif // QT_CONFIG(accessibility)
         self.detectMergeLabel.setText(QCoreApplication.translate("MainWindow", u"Merging strategy", None))
         self.detectMergeNMS.setText(QCoreApplication.translate("MainWindow", u"NMS", None))
         self.detectMergeNMM.setText(QCoreApplication.translate("MainWindow", u"Greedy NMM", None))
         self.detectThresholdLabel.setText(QCoreApplication.translate("MainWindow", u"Threshold", None))
+#if QT_CONFIG(accessibility)
+        self.detectMergeThreshold.setAccessibleName(QCoreApplication.translate("MainWindow", u"Merge threshold", None))
+#endif // QT_CONFIG(accessibility)
         self.detectUseGPULabel.setText(QCoreApplication.translate("MainWindow", u"Use GPU", None))
+#if QT_CONFIG(accessibility)
+        self.detectUseGPU.setAccessibleName(QCoreApplication.translate("MainWindow", u"Use GPU for detection", None))
+#endif // QT_CONFIG(accessibility)
         self.detectUseGPU.setText("")
         self.detectError.setText("")
         self.detectRun.setText(QCoreApplication.translate("MainWindow", u"Detect Streaks", None))
@@ -2455,10 +2515,19 @@ class Ui_MainWindow(object):
         self.stackFadeEnd.setText(QCoreApplication.translate("MainWindow", u"End", None))
         self.stackFadeBoth.setText(QCoreApplication.translate("MainWindow", u"Both", None))
         self.stackAmountLabel.setText(QCoreApplication.translate("MainWindow", u"Amount", None))
+#if QT_CONFIG(accessibility)
+        self.stackFadeAmount.setAccessibleName(QCoreApplication.translate("MainWindow", u"Fade amount", None))
+#endif // QT_CONFIG(accessibility)
         self.stackFadeAmount.setSuffix(QCoreApplication.translate("MainWindow", u"%", None))
         self.stackUseGPULabel.setText(QCoreApplication.translate("MainWindow", u"Use GPU", None))
+#if QT_CONFIG(accessibility)
+        self.stackUseGPU.setAccessibleName(QCoreApplication.translate("MainWindow", u"Use GPU for stacking", None))
+#endif // QT_CONFIG(accessibility)
         self.stackUseGPU.setText("")
         self.stackBatchLabel.setText(QCoreApplication.translate("MainWindow", u"Batch size", None))
+#if QT_CONFIG(accessibility)
+        self.stackBatchSize.setAccessibleName(QCoreApplication.translate("MainWindow", u"Batch size", None))
+#endif // QT_CONFIG(accessibility)
         self.stackMemory.setText(QCoreApplication.translate("MainWindow", u"Add input files for a batch suggestion.", None))
         self.stackError.setText("")
         self.stackRun.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))
@@ -2468,11 +2537,11 @@ class Ui_MainWindow(object):
         self.stepReviewStatusBadge.setText(QCoreApplication.translate("MainWindow", u"Ready", None))
         self.stepReviewChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"You can review and edit detected streaks. If you manually add, edit, or delete masks, consider contributing your corrections so that models may be improved.", None))
-        self.reviewStatAutoTitle.setText(QCoreApplication.translate("MainWindow", u"Auto", None))
+        self.reviewStatAutoTitle.setText(QCoreApplication.translate("MainWindow", u"A: Auto", None))
         self.reviewStatAutoNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
-        self.reviewStatManualTitle.setText(QCoreApplication.translate("MainWindow", u"Manual", None))
+        self.reviewStatManualTitle.setText(QCoreApplication.translate("MainWindow", u"M: Manual", None))
         self.reviewStatManualNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
-        self.reviewStatDeletedTitle.setText(QCoreApplication.translate("MainWindow", u"Deleted", None))
+        self.reviewStatDeletedTitle.setText(QCoreApplication.translate("MainWindow", u"D: Deleted", None))
         self.reviewStatDeletedNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
         self.exportShowDeletedMasksLabel.setStyleSheet(QCoreApplication.translate("MainWindow", u"color: #334155; font-size: 12px;", None))
         self.exportShowDeletedMasksLabel.setText(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))

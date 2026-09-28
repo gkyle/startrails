@@ -9,40 +9,46 @@
 }
 QDoubleSpinBox, QSpinBox, QComboBox, QLineEdit {
     background-color: #ffffff;
-    border: 1px solid #cbd5e1;
+    border: 1px solid #64748b;
     border-radius: 4px;
     padding: 4px 6px;
     font-size: 12px;
     color: #0f172a;
 }
 QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus, QLineEdit:focus {
-    border-color: #0284c7;
+    border: 2px solid #0369a1;
+    padding: 3px 5px;
 }
 QCheckBox {
     font-size: 12px;
     color: #1e293b;
     spacing: 6px;
+    border: 2px solid transparent;
 }
 QLabel#error {
     font-size: 11px;
-    color: #ef4444;
+    color: #b91c1c;
 }
 QPushButton#run {
     font-weight: bold;
-    background-color: #0284c7;
+    background-color: #0369a1;
     color: #ffffff;
     padding: 7px 12px;
     border-radius: 6px;
     font-size: 13px;
-    border: none;
+    border: 2px solid transparent;
 }
 QPushButton#run:hover {
-    background-color: #0369a1;
+    background-color: #075985;
 }
 QPushButton#run:disabled {
     background-color: #e2e8f0;
     color: #94a3b8;
-}</string>
+}
+QCheckBox:focus:enabled { border-color: #0f172a; }
+QPushButton#run:focus:enabled { border-color: #ffffff; }
+QDoubleSpinBox::up-arrow, QSpinBox::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }
+QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">
@@ -162,10 +168,13 @@ QPushButton#run:disabled {
       <string>Use GPU</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QCheckBox#useGPU { spacing: 0px; }
-    QCheckBox#useGPU::indicator { width: 36px; height: 20px; }
+      <string notr="true">QCheckBox#useGPU { spacing: 0px;
+    border: 2px solid transparent;
+}
+    QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }
     QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
-    QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }</string>
+    QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }
+QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }</string>
      </property>
     </widget>
    </item>

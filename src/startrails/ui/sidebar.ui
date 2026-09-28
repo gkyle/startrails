@@ -67,7 +67,7 @@ QProgressBar#operationsProgress::chunk {
 QPushButton#newProject, QPushButton#openProject {
     background-color: #ffffff;
     color: #1e293b;
-    border: 1px solid #cbd5e1;
+    border: 2px solid #cbd5e1;
     border-radius: 6px;
     padding: 6px 12px;
     font-weight: 500;
@@ -79,7 +79,8 @@ QPushButton#newProject:hover, QPushButton#openProject:hover {
 }
 QPushButton#newProject:pressed, QPushButton#openProject:pressed {
     background-color: #e2e8f0;
-}</string>
+}
+QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { border-color: #0f172a; }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">

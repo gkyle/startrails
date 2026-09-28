@@ -31,11 +31,12 @@ class Ui_ExportSettings(object):
 "    font-size: 12px;\n"
 "    color: #1e293b;\n"
 "    spacing: 6px;\n"
+"    border: 2px solid transparent;\n"
 "}\n"
 "QPushButton#masks, QPushButton#training {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 2px solid #cbd5e1;\n"
 "    border-radius: 6px;\n"
 "    padding: 6px 12px;\n"
 "    font-weight: 500;\n"
@@ -49,7 +50,9 @@ class Ui_ExportSettings(object):
 "    background-color: #f8fafc;\n"
 "    color: #94a3b8;\n"
 "    border-color: #e2e8f0;\n"
-"}")
+"}\n"
+"QCheckBox:focus:enabled { border-color: #0f172a; }\n"
+"QPushButton#masks:focus:enabled, QPushButton#training:focus:enabled { border-color: #0f172a; }")
         self.layout = QVBoxLayout(exportSettings)
         self.layout.setSpacing(6)
         self.layout.setObjectName(u"layout")

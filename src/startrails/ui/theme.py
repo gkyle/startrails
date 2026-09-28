@@ -32,6 +32,8 @@ _DARK_BACKGROUND = {
     "#f3e8ff": "#35254a",
 }
 _DARK_BORDER = {
+    "#64748b": "#94a3b8", "#0369a1": "#38bdf8",
+    "#0f172a": "#f1f5f9",
     "#cccccc": "#475569",
     "#f1f5f9": "#334155", "#e2e8f0": "#334155",
     "#cbd5e1": "#475569", "#94a3b8": "#64748b",
@@ -59,6 +61,9 @@ def themed_color(light: str, palette: QPalette, role: str = "foreground") -> QCo
 
 
 def dark_stylesheet(source: str) -> str:
+    for direction in ("up", "down"):
+        source = source.replace(f"/arrow_{direction}.svg", f"/arrow_{direction}_dark.svg")
+
     def declaration(match):
         start, space, name, separator, value = match.groups()
         if name in ("color", "selection-color"):
@@ -91,12 +96,12 @@ def theme_palette(dark: bool) -> QPalette:
         QPalette.Text: ("#0f172a", "#f1f5f9"),
         QPalette.Button: ("#f1f5f9", "#263449"),
         QPalette.ButtonText: ("#1e293b", "#e2e8f0"),
-        QPalette.Highlight: ("#0284c7", "#0369a1"),
+        QPalette.Highlight: ("#0369a1", "#0369a1"),
         QPalette.HighlightedText: ("#ffffff", "#ffffff"),
         QPalette.ToolTipBase: ("#ffffff", "#1e293b"),
         QPalette.ToolTipText: ("#0f172a", "#f1f5f9"),
         QPalette.PlaceholderText: ("#64748b", "#94a3b8"),
-        QPalette.Link: ("#0284c7", "#38bdf8"),
+        QPalette.Link: ("#0369a1", "#38bdf8"),
         QPalette.LinkVisited: ("#6b21a8", "#d8b4fe"),
         QPalette.Light: ("#ffffff", "#475569"),
         QPalette.Midlight: ("#f1f5f9", "#334155"),

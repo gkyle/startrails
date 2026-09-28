@@ -73,7 +73,7 @@ class Ui_ProgressOverlay(object):
 "}\n"
 "QPushButton#pushButton_cancelOp {\n"
 "    background-color: rgba(255, 255, 255, 0.05);\n"
-"    border: 1px solid rgba(148, 163, 184, 0.25);\n"
+"    border: 2px solid rgba(148, 163, 184, 0.25);\n"
 "    border-radius: 6px;\n"
 "    color: #f43f5e;\n"
 "    font-weight: bold;\n"
@@ -87,7 +87,8 @@ class Ui_ProgressOverlay(object):
 "    background-color: rgba(244, 63, 94, 0.15);\n"
 "    border-color: #f43f5e;\n"
 "    color: #ff4d6d;\n"
-"}")
+"}\n"
+"QPushButton#pushButton_cancelOp:focus:enabled { border-color: #ffffff; }")
         progressOverlay.setFrameShape(QFrame.StyledPanel)
         self.mainLayout = QVBoxLayout(progressOverlay)
         self.mainLayout.setSpacing(10)

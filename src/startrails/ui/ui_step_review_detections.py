@@ -60,7 +60,7 @@ class Ui_ReviewSettings(object):
 "QLabel#statManualTitle {\n"
 "    font-size: 11px;\n"
 "    font-weight: 600;\n"
-"    color: #0284c7;\n"
+"    color: #0369a1;\n"
 "}\n"
 "QLabel#statDeletedTitle {\n"
 "    font-size: 11px;\n"
@@ -86,7 +86,7 @@ class Ui_ReviewSettings(object):
 "QPushButton#training, QPushButton#findBrightest {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 2px solid #cbd5e1;\n"
 "    border-radius: 6px;\n"
 "    padding: 6px 12px;\n"
 "    font-weight: 500;\n"
@@ -98,8 +98,8 @@ class Ui_ReviewSettings(object):
 "}\n"
 "QPushButton#findBrightest:checked {\n"
 "    background-color: #e0f2fe;\n"
-"    color: #0284c7;\n"
-"    border-color: #0284c7;\n"
+"    color: #0369a1;\n"
+"    border-color: #0369a1;\n"
 "    font-weight: 600;\n"
 "}\n"
 "QPushButton#training:disabled, QPushButton#findBrightest:disabled {\n"
@@ -111,7 +111,8 @@ class Ui_ReviewSettings(object):
 "QFrame#sep1, QFrame#sepFindBrightest {\n"
 "    background-color: #f1f5f9;\n"
 "    max-height: 1px;\n"
-"}")
+"}\n"
+"QPushButton#training:focus:enabled, QPushButton#findBrightest:focus:enabled { border-color: #0f172a; }")
         self.layout = QVBoxLayout(reviewSettings)
         self.layout.setSpacing(8)
         self.layout.setObjectName(u"layout")
@@ -189,10 +190,13 @@ class Ui_ReviewSettings(object):
         self.showDeletedMasks = QCheckBox(reviewSettings)
         self.showDeletedMasks.setObjectName(u"showDeletedMasks")
         self.showDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showDeletedMasks.setStyleSheet(u"QCheckBox#showDeletedMasks { spacing: 0px; }\n"
-"      QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px; }\n"
+        self.showDeletedMasks.setStyleSheet(u"QCheckBox#showDeletedMasks { spacing: 0px;\n"
+"    border: 2px solid transparent;\n"
+"}\n"
+"      QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
 "      QCheckBox#showDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
-"      QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }")
+"      QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
+"QCheckBox#showDeletedMasks:focus:enabled { border-color: #0f172a; }")
 
         self.showDeletedMasksLayout.addWidget(self.showDeletedMasks, 0, Qt.AlignRight)
 

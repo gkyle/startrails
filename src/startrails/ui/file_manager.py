@@ -64,11 +64,11 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
 
                 badges = []
                 if auto:
-                    badges.append((str(auto), color("#dcfce7", "background"), color("#15803d"), color("#bbf7d0", "border")))
+                    badges.append((f"A:{auto}", color("#dcfce7", "background"), color("#15803d"), color("#bbf7d0", "border")))
                 if manual:
-                    badges.append((str(manual), color("#e0f2fe", "background"), color("#0284c7"), color("#bae6fd", "border")))
+                    badges.append((f"M:{manual}", color("#e0f2fe", "background"), color("#0369a1"), color("#bae6fd", "border")))
                 if deleted:
-                    badges.append((str(deleted), color("#fef3c7", "background"), color("#b45309"), color("#fde68a", "border")))
+                    badges.append((f"D:{deleted}", color("#fef3c7", "background"), color("#b45309"), color("#fde68a", "border")))
                 if excluded:
                     badges.append(("Excluded", color("#fee2e2", "background"), color("#b91c1c"), color("#fecaca", "border")))
 
@@ -95,7 +95,7 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
                         painter.drawText(pill_rect, Qt.AlignCenter, text)
                         x += badge_w + 4
                 else:
-                    painter.setPen(color("#94a3b8"))
+                    painter.setPen(color("#64748b"))
                     painter.setFont(QFont("Segoe UI", 9))
                     painter.drawText(option.rect, Qt.AlignVCenter | Qt.AlignLeft, "—")
             else:
@@ -120,6 +120,12 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
                 painter.setPen(text_col)
                 painter.drawText(pill_rect, Qt.AlignCenter, op_text)
 
+        # The custom painter bypasses Qt's default focus primitive. Keep the
+        # current keyboard cell distinguishable from the persistent selection.
+        if option.state & QStyle.State_HasFocus:
+            painter.setBrush(Qt.NoBrush)
+            painter.setPen(QPen(color("#0f172a"), 2))
+            painter.drawRect(option.rect.adjusted(1, 1, -1, -1))
         painter.restore()
 
 
@@ -272,6 +278,7 @@ class FileSection(QFrame):
             self.ui.setupUi(self)
         self.ui.toggle.setText(title)
         self.ui.files.setAccessibleName(title)
+        self.ui.add.setAccessibleName("Add input files")
         self.ui.add.setVisible(inputs)
         if getattr(self.ui, "legend", None) is not None:
             self.ui.legend.setVisible(inputs)
@@ -300,6 +307,12 @@ class FileSection(QFrame):
 
     def eventFilter(self, watched, event):
         if watched is self.ui.files and event.type() == QEvent.KeyPress:
+            if (event.key() == Qt.Key_Menu or
+                    event.key() == Qt.Key_F10 and event.modifiers() & Qt.ShiftModifier):
+                index = self.ui.files.currentIndex()
+                if index.isValid():
+                    self._context_menu(self.ui.files.visualRect(index).center())
+                return True
             if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
                 self._remove()
                 return True

@@ -18,7 +18,7 @@ QFrame#stepCard:hover {
     border-color: #cbd5e1;
 }
 QPushButton#toggle {
-    border: none;
+    border: 2px solid transparent;
     background: transparent;
     text-align: left;
     padding: 0px;
@@ -39,7 +39,8 @@ QLabel#chevron {
 QWidget#body {
     border-top: 1px solid #f1f5f9;
     background: transparent;
-}</string>
+}
+QPushButton#toggle:focus:enabled { border-color: #0f172a; }</string>
   </property>
   <layout class="QVBoxLayout" name="cardLayout">
    <property name="spacing">
@@ -106,14 +107,14 @@ QWidget#body {
         </property>
         <property name="styleSheet">
          <string notr="true">QLabel#number {
-           background-color: #94a3b8;
+           background-color: #64748b;
            color: #ffffff;
            border: none;
            border-radius: 15px;
            font-weight: bold;
            font-size: 13px;
        }
-       QLabel#number[stepStatus="ready"] { background-color: #0284c7; }
+       QLabel#number[stepStatus="ready"] { background-color: #0369a1; }
        QLabel#number[stepStatus="done"] { background-color: #1e293b; }
        QLabel#number[stepStatus="running"] { background-color: #b45309; }</string>
         </property>
@@ -184,7 +185,7 @@ QWidget#body {
         <property name="styleSheet">
          <string notr="true">QLabel#statusBadge {
            background-color: #e0f2fe;
-           color: #0284c7;
+           color: #0369a1;
            border-radius: 9px;
            font-weight: 600;
            font-size: 10px;

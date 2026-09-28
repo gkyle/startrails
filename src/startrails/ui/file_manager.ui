@@ -23,7 +23,7 @@ QLabel#chevron {
     font-weight: bold;
 }
 QToolButton#toggle {
-    border: none;
+    border: 2px solid transparent;
     background: transparent;
     font-weight: bold;
     font-size: 12px;
@@ -40,7 +40,7 @@ QLabel#count {
     min-width: 14px;
 }
 QPushButton#add {
-    border: none;
+    border: 2px solid transparent;
     border-radius: 3px;
     font-weight: bold;
     font-size: 13px;
@@ -80,7 +80,7 @@ QHeaderView::section {
     padding: 3px 6px;
 }
 QLabel#empty {
-    color: #94a3b8;
+    color: #64748b;
     font-size: 12px;
     font-style: italic;
     padding: 12px;
@@ -105,7 +105,9 @@ QMenu::separator {
     height: 1px;
     background-color: #e2e8f0;
     margin: 4px 6px;
-}</string>
+}
+QToolButton#toggle:focus:enabled { border-color: #0f172a; }
+QPushButton#add:focus:enabled { border-color: #0f172a; }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">
@@ -384,7 +386,7 @@ QMenu::separator {
 }</string>
             </property>
             <property name="text">
-             <string>Auto</string>
+             <string>A: Auto</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
@@ -396,7 +398,7 @@ QMenu::separator {
             <property name="styleSheet">
              <string notr="true">QLabel#legendManual {
     background-color: #e0f2fe;
-    color: #0284c7;
+    color: #0369a1;
     border: 1px solid #bae6fd;
     border-radius: 4px;
     font-size: 11px;
@@ -407,7 +409,7 @@ QMenu::separator {
 }</string>
             </property>
             <property name="text">
-             <string>Manual</string>
+             <string>M: Manual</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
@@ -430,7 +432,7 @@ QMenu::separator {
 }</string>
             </property>
             <property name="text">
-             <string>Deleted</string>
+             <string>D: Deleted</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>

@@ -9,20 +9,21 @@
 }
 QPushButton#run {
     font-weight: bold;
-    background-color: #0284c7;
+    background-color: #0369a1;
     color: #ffffff;
     padding: 7px 12px;
     border-radius: 6px;
     font-size: 13px;
-    border: none;
+    border: 2px solid transparent;
 }
 QPushButton#run:hover {
-    background-color: #0369a1;
+    background-color: #075985;
 }
 QPushButton#run:disabled {
     background-color: #e2e8f0;
     color: #94a3b8;
-}</string>
+}
+QPushButton#run:focus:enabled { border-color: #ffffff; }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">

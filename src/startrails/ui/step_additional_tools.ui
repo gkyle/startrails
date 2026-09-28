@@ -19,7 +19,7 @@ QLabel#masksHint {
 QPushButton#masks {
     background-color: #ffffff;
     color: #1e293b;
-    border: 1px solid #cbd5e1;
+    border: 2px solid #cbd5e1;
     border-radius: 6px;
     padding: 6px 12px;
     font-weight: 500;
@@ -33,7 +33,8 @@ QPushButton#masks:disabled {
     background-color: #f8fafc;
     color: #94a3b8;
     border-color: #e2e8f0;
-}</string>
+}
+QPushButton#masks:focus:enabled { border-color: #0f172a; }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">

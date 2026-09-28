@@ -43,7 +43,7 @@ class Ui_FileSection(object):
 "    font-weight: bold;\n"
 "}\n"
 "QToolButton#toggle {\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    background: transparent;\n"
 "    font-weight: bold;\n"
 "    font-size: 12px;\n"
@@ -60,7 +60,7 @@ class Ui_FileSection(object):
 "    min-width: 14px;\n"
 "}\n"
 "QPushButton#add {\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    border-radius: 3px;\n"
 "    font-weight: bold;\n"
 "    font-size: 13px;\n"
@@ -71,9 +71,9 @@ class Ui_FileSection(object):
 "    min-height: 20px;\n"
 "    max-height: 20px;\n"
 "}\n"
-"QPushButton#add:hover {\n"
-"    backgr"
-                        "ound-color: #e2e8f0;\n"
+"QPus"
+                        "hButton#add:hover {\n"
+"    background-color: #e2e8f0;\n"
 "    color: #0f172a;\n"
 "}\n"
 "QTreeView#files {\n"
@@ -101,7 +101,7 @@ class Ui_FileSection(object):
 "    padding: 3px 6px;\n"
 "}\n"
 "QLabel#empty {\n"
-"    color: #94a3b8;\n"
+"    color: #64748b;\n"
 "    font-size: 12px;\n"
 "    font-style: italic;\n"
 "    padding: 12px;\n"
@@ -115,9 +115,9 @@ class Ui_FileSection(object):
 "QMenu::item {\n"
 "    padding: 6px 20px 6px 12px;\n"
 "    border-radius: 4px;\n"
-"    font-size: 12px;\n"
-"    color: #0f172a;"
-                        "\n"
+"    font-s"
+                        "ize: 12px;\n"
+"    color: #0f172a;\n"
 "}\n"
 "QMenu::item:selected {\n"
 "    background-color: #f1f5f9;\n"
@@ -127,7 +127,9 @@ class Ui_FileSection(object):
 "    height: 1px;\n"
 "    background-color: #e2e8f0;\n"
 "    margin: 4px 6px;\n"
-"}")
+"}\n"
+"QToolButton#toggle:focus:enabled { border-color: #0f172a; }\n"
+"QPushButton#add:focus:enabled { border-color: #0f172a; }")
         self.layout = QVBoxLayout(fileSection)
         self.layout.setSpacing(2)
         self.layout.setObjectName(u"layout")
@@ -252,7 +254,7 @@ class Ui_FileSection(object):
         self.legendManual.setObjectName(u"legendManual")
         self.legendManual.setStyleSheet(u"QLabel#legendManual {\n"
 "    background-color: #e0f2fe;\n"
-"    color: #0284c7;\n"
+"    color: #0369a1;\n"
 "    border: 1px solid #bae6fd;\n"
 "    border-radius: 4px;\n"
 "    font-size: 11px;\n"
@@ -311,8 +313,8 @@ class Ui_FileSection(object):
         self.add.setToolTip(QCoreApplication.translate("FileSection", u"Add files\u2026", None))
 #endif // QT_CONFIG(tooltip)
         self.empty.setText(QCoreApplication.translate("FileSection", u"No files yet.", None))
-        self.legendAuto.setText(QCoreApplication.translate("FileSection", u"Auto", None))
-        self.legendManual.setText(QCoreApplication.translate("FileSection", u"Manual", None))
-        self.legendDeleted.setText(QCoreApplication.translate("FileSection", u"Deleted", None))
+        self.legendAuto.setText(QCoreApplication.translate("FileSection", u"A: Auto", None))
+        self.legendManual.setText(QCoreApplication.translate("FileSection", u"M: Manual", None))
+        self.legendDeleted.setText(QCoreApplication.translate("FileSection", u"D: Deleted", None))
         pass
     # retranslateUi

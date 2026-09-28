@@ -28,20 +28,21 @@ class Ui_FillSettings(object):
 "}\n"
 "QPushButton#run {\n"
 "    font-weight: bold;\n"
-"    background-color: #0284c7;\n"
+"    background-color: #0369a1;\n"
 "    color: #ffffff;\n"
 "    padding: 7px 12px;\n"
 "    border-radius: 6px;\n"
 "    font-size: 13px;\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "}\n"
 "QPushButton#run:hover {\n"
-"    background-color: #0369a1;\n"
+"    background-color: #075985;\n"
 "}\n"
 "QPushButton#run:disabled {\n"
 "    background-color: #e2e8f0;\n"
 "    color: #94a3b8;\n"
-"}")
+"}\n"
+"QPushButton#run:focus:enabled { border-color: #ffffff; }")
         self.layout = QVBoxLayout(fillSettings)
         self.layout.setSpacing(8)
         self.layout.setObjectName(u"layout")

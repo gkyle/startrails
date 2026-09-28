@@ -38,7 +38,7 @@ class Ui_ToolsSettings(object):
 "QPushButton#masks {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 2px solid #cbd5e1;\n"
 "    border-radius: 6px;\n"
 "    padding: 6px 12px;\n"
 "    font-weight: 500;\n"
@@ -52,7 +52,8 @@ class Ui_ToolsSettings(object):
 "    background-color: #f8fafc;\n"
 "    color: #94a3b8;\n"
 "    border-color: #e2e8f0;\n"
-"}")
+"}\n"
+"QPushButton#masks:focus:enabled { border-color: #0f172a; }")
         self.layout = QVBoxLayout(toolsSettings)
         self.layout.setSpacing(8)
         self.layout.setObjectName(u"layout")

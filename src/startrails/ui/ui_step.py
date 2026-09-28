@@ -36,7 +36,7 @@ class Ui_StepCard(object):
 "    border-color: #cbd5e1;\n"
 "}\n"
 "QPushButton#toggle {\n"
-"    border: none;\n"
+"    border: 2px solid transparent;\n"
 "    background: transparent;\n"
 "    text-align: left;\n"
 "    padding: 0px;\n"
@@ -57,7 +57,8 @@ class Ui_StepCard(object):
 "QWidget#body {\n"
 "    border-top: 1px solid #f1f5f9;\n"
 "    background: transparent;\n"
-"}")
+"}\n"
+"QPushButton#toggle:focus:enabled { border-color: #0f172a; }")
         self.cardLayout = QVBoxLayout(stepCard)
         self.cardLayout.setSpacing(0)
         self.cardLayout.setObjectName(u"cardLayout")
@@ -80,14 +81,14 @@ class Ui_StepCard(object):
         self.number.setMaximumSize(QSize(30, 30))
         self.number.setAlignment(Qt.AlignCenter)
         self.number.setStyleSheet(u"QLabel#number {\n"
-"           background-color: #94a3b8;\n"
+"           background-color: #64748b;\n"
 "           color: #ffffff;\n"
 "           border: none;\n"
 "           border-radius: 15px;\n"
 "           font-weight: bold;\n"
 "           font-size: 13px;\n"
 "       }\n"
-"       QLabel#number[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"       QLabel#number[stepStatus=\"ready\"] { background-color: #0369a1; }\n"
 "       QLabel#number[stepStatus=\"done\"] { background-color: #1e293b; }\n"
 "       QLabel#number[stepStatus=\"running\"] { background-color: #b45309; }")
         self.number.setProperty(u"stepStatus", u"ready")
@@ -125,7 +126,7 @@ class Ui_StepCard(object):
         self.statusBadge.setAlignment(Qt.AlignCenter)
         self.statusBadge.setStyleSheet(u"QLabel#statusBadge {\n"
 "           background-color: #e0f2fe;\n"
-"           color: #0284c7;\n"
+"           color: #0369a1;\n"
 "           border-radius: 9px;\n"
 "           font-weight: 600;\n"
 "           font-size: 10px;\n"

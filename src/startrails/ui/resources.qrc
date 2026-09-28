@@ -1,5 +1,9 @@
 <RCC>
  <qresource prefix="/startrails/ui">
+  <file alias="arrow_up.svg">icons/arrow_up.svg</file>
+  <file alias="arrow_down.svg">icons/arrow_down.svg</file>
+  <file alias="arrow_up_dark.svg">icons/arrow_up_dark.svg</file>
+  <file alias="arrow_down_dark.svg">icons/arrow_down_dark.svg</file>
   <file alias="star.svg">icons/star.svg</file>
   <file alias="document.svg">icons/document.svg</file>
   <file alias="document_dark.svg">icons/document_dark.svg</file>

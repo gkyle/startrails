@@ -39,7 +39,7 @@ QLabel#statAutoTitle {
 QLabel#statManualTitle {
     font-size: 11px;
     font-weight: 600;
-    color: #0284c7;
+    color: #0369a1;
 }
 QLabel#statDeletedTitle {
     font-size: 11px;
@@ -64,7 +64,7 @@ QLabel#statDeletedNum {
 QPushButton#training, QPushButton#findBrightest {
     background-color: #ffffff;
     color: #1e293b;
-    border: 1px solid #cbd5e1;
+    border: 2px solid #cbd5e1;
     border-radius: 6px;
     padding: 6px 12px;
     font-weight: 500;
@@ -76,8 +76,8 @@ QPushButton#training:hover, QPushButton#findBrightest:hover {
 }
 QPushButton#findBrightest:checked {
     background-color: #e0f2fe;
-    color: #0284c7;
-    border-color: #0284c7;
+    color: #0369a1;
+    border-color: #0369a1;
     font-weight: 600;
 }
 QPushButton#training:disabled, QPushButton#findBrightest:disabled {
@@ -88,7 +88,8 @@ QPushButton#training:disabled, QPushButton#findBrightest:disabled {
 QFrame#sep1, QFrame#sepFindBrightest {
     background-color: #f1f5f9;
     max-height: 1px;
-}</string>
+}
+QPushButton#training:focus:enabled, QPushButton#findBrightest:focus:enabled { border-color: #0f172a; }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">
@@ -239,10 +240,13 @@ QFrame#sep1, QFrame#sepFindBrightest {
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="styleSheet">
-        <string notr="true">QCheckBox#showDeletedMasks { spacing: 0px; }
-      QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px; }
+        <string notr="true">QCheckBox#showDeletedMasks { spacing: 0px;
+    border: 2px solid transparent;
+}
+      QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }
       QCheckBox#showDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
-      QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }</string>
+      QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }
+QCheckBox#showDeletedMasks:focus:enabled { border-color: #0f172a; }</string>
        </property>
        <property name="text">
         <string />

@@ -12,11 +12,12 @@ QCheckBox {
     font-size: 12px;
     color: #1e293b;
     spacing: 6px;
+    border: 2px solid transparent;
 }
 QPushButton#masks, QPushButton#training {
     background-color: #ffffff;
     color: #1e293b;
-    border: 1px solid #cbd5e1;
+    border: 2px solid #cbd5e1;
     border-radius: 6px;
     padding: 6px 12px;
     font-weight: 500;
@@ -30,7 +31,9 @@ QPushButton#masks:disabled, QPushButton#training:disabled {
     background-color: #f8fafc;
     color: #94a3b8;
     border-color: #e2e8f0;
-}</string>
+}
+QCheckBox:focus:enabled { border-color: #0f172a; }
+QPushButton#masks:focus:enabled, QPushButton#training:focus:enabled { border-color: #0f172a; }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">

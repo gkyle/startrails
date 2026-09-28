@@ -83,7 +83,7 @@ class Ui_Sidebar(object):
 "QPushButton#newProject, QPushButton#openProject {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
+"    border: 2px solid #cbd5e1;\n"
 "    border-radius: 6px;\n"
 "    padding: 6px 12px;\n"
 "    font-weight: 500;\n"
@@ -95,7 +95,8 @@ class Ui_Sidebar(object):
 "}\n"
 "QPushButton#newProject:pressed, QPushButton#openProject:pressed {\n"
 "    background-color: #e2e8f0;\n"
-"}")
+"}\n"
+"QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { border-color: #0f172a; }")
         self.layout = QVBoxLayout(sidebar)
         self.layout.setSpacing(0)
         self.layout.setObjectName(u"layout")
