@@ -1,28 +1,7 @@
 """Behavior for Designer-authored operation cards and settings."""
 from types import SimpleNamespace
-from pathlib import Path
 from PySide6.QtCore import Qt, QSignalBlocker, QObject, Signal
 from PySide6.QtWidgets import QFrame, QWidget, QButtonGroup
-
-ICONS_DIR = Path(__file__).resolve().parent / "icons_darktheme"
-_SWITCH_ON = (ICONS_DIR / "switch_on.png").as_posix()
-_SWITCH_OFF = (ICONS_DIR / "switch_off.png").as_posix()
-
-SWITCH_STYLE = f"""
-QCheckBox {{
-    spacing: 0px;
-}}
-QCheckBox::indicator {{
-    width: 36px;
-    height: 20px;
-}}
-QCheckBox::indicator:unchecked {{
-    image: url({_SWITCH_OFF});
-}}
-QCheckBox::indicator:checked {{
-    image: url({_SWITCH_ON});
-}}
-"""
 
 
 class SegmentedButtonGroup(QObject):
@@ -105,10 +84,6 @@ class StepCard(QFrame):
         if self.ui.number is not None:
             self.ui.number.setVisible(True)
             self.ui.number.setText(str(number or ""))
-            if not self.has_number:
-                self.ui.number.setStyleSheet(
-                    "background-color: #94a3b8; color: #ffffff; border: none; border-radius: 15px;"
-                )
         if not self.has_number and self.ui.statusBadge is not None:
             self.ui.statusBadge.setVisible(False)
         self.ui.toggle.toggled.connect(self.setExpanded)
@@ -147,44 +122,21 @@ class StepCard(QFrame):
         self._update_status_appearance()
 
     def _update_status_appearance(self):
-        if not getattr(self, "has_number", True) or not self.ui.number or not self.ui.number.text():
-            return
-        if self._status == "done":
-            if self.ui.statusBadge is not None:
-                self.ui.statusBadge.setVisible(True)
-                self.ui.statusBadge.setText("✓ Done")
-                self.ui.statusBadge.setStyleSheet(
-                    "background-color: #dcfce7; color: #15803d; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
-                )
-            self.ui.number.setStyleSheet(
-                "background-color: #1e293b; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
-            )
-        elif self._status == "running":
-            if self.ui.statusBadge is not None:
-                self.ui.statusBadge.setVisible(True)
-                self.ui.statusBadge.setText("⏳ Running")
-                self.ui.statusBadge.setStyleSheet(
-                    "background-color: #fef3c7; color: #b45309; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
-                )
-            self.ui.number.setStyleSheet(
-                "background-color: #b45309; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
-            )
-        elif self._status == "locked":
-            if self.ui.statusBadge is not None:
-                self.ui.statusBadge.setVisible(False)
-            self.ui.number.setStyleSheet(
-                "background-color: #94a3b8; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
-            )
-        else:  # "ready"
-            if self.ui.statusBadge is not None:
-                self.ui.statusBadge.setVisible(True)
-                self.ui.statusBadge.setText("✓ Ready")
-                self.ui.statusBadge.setStyleSheet(
-                    "background-color: #e0f2fe; color: #0284c7; border-radius: 9px; font-weight: 600; font-size: 10px; padding: 2px 8px; font-family: 'Segoe UI', 'Segoe UI Symbol', sans-serif;"
-                )
-            self.ui.number.setStyleSheet(
-                "background-color: #0284c7; color: #ffffff; border-radius: 15px; font-weight: bold; font-size: 13px;"
-            )
+        # Appearance lives in the forms; only the current state changes here.
+        status = self._status if self.has_number else "neutral"
+        for widget in (self.ui.number, self.ui.statusBadge):
+            if widget is not None and widget.property("stepStatus") != status:
+                widget.setProperty("stepStatus", status)
+                widget.style().unpolish(widget)
+                widget.style().polish(widget)
+                widget.update()
+        if self.ui.statusBadge is not None:
+            self.ui.statusBadge.setVisible(self.has_number and status != "locked")
+            if self.has_number:
+                self.ui.statusBadge.setText({
+                    "done": "\u2713 Done",
+                    "running": "\u23f3 Running",
+                }.get(status, "\u2713 Ready"))
 
 
 class DetectSettings(QWidget):
@@ -218,7 +170,6 @@ class DetectSettings(QWidget):
                     [self.ui.detectMergeNMS, self.ui.detectMergeNMM], parent=self
                 )
         self._first_file = None
-        self.ui.useGPU.setStyleSheet(SWITCH_STYLE)
         self.ui.useGPU.toggled.connect(self.suggest_device)
         self.reset()
 
@@ -313,7 +264,6 @@ class StackSettings(QWidget):
                 )
         self._first_file = None
         self._has_masks = None
-        self.ui.useGPU.setStyleSheet(SWITCH_STYLE)
         self.ui.useGPU.toggled.connect(self.suggest_batch)
         self.ui.fade.currentIndexChanged.connect(lambda index: self.ui.fadeAmount.setEnabled(index != 0))
         self.reset()
@@ -410,8 +360,6 @@ class ReviewSettings(QWidget):
         else:
             self.ui = Ui_ReviewSettings()
             self.ui.setupUi(self)
-        if self.ui.showDeletedMasks is not None:
-            self.ui.showDeletedMasks.setStyleSheet(SWITCH_STYLE)
 
     def set_counts(self, auto: int, manual: int, deleted: int):
         if getattr(self.ui, "statAutoNum", None) is not None:

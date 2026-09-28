@@ -17,13 +17,6 @@
 QFrame#stepCard:hover {
     border-color: #cbd5e1;
 }
-QLabel#number {
-    background-color: #0284c7;
-    color: #ffffff;
-    border-radius: 15px;
-    font-weight: bold;
-    font-size: 13px;
-}
 QPushButton#toggle {
     border: none;
     background: transparent;
@@ -36,15 +29,6 @@ QPushButton#toggle {
 QLabel#subtitle {
     font-size: 10px;
     color: #64748b;
-}
-QLabel#statusBadge {
-    background-color: #e0f2fe;
-    color: #0284c7;
-    border-radius: 9px;
-    font-weight: 600;
-    font-size: 10px;
-    padding: 2px 8px;
-    font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
 }
 QLabel#chevron {
     font-size: 9px;
@@ -120,6 +104,22 @@ QWidget#body {
         <property name="alignment">
          <set>Qt::AlignCenter</set>
         </property>
+        <property name="styleSheet">
+         <string notr="true">QLabel#number {
+           background-color: #94a3b8;
+           color: #ffffff;
+           border: none;
+           border-radius: 15px;
+           font-weight: bold;
+           font-size: 13px;
+       }
+       QLabel#number[stepStatus="ready"] { background-color: #0284c7; }
+       QLabel#number[stepStatus="done"] { background-color: #1e293b; }
+       QLabel#number[stepStatus="running"] { background-color: #b45309; }</string>
+        </property>
+        <property name="stepStatus" stdset="0">
+         <string notr="true">ready</string>
+        </property>
        </widget>
       </item>
       <item>
@@ -180,6 +180,22 @@ QWidget#body {
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">QLabel#statusBadge {
+           background-color: #e0f2fe;
+           color: #0284c7;
+           border-radius: 9px;
+           font-weight: 600;
+           font-size: 10px;
+           padding: 2px 8px;
+           font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
+       }
+       QLabel#statusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
+       QLabel#statusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
+        </property>
+        <property name="stepStatus" stdset="0">
+         <string notr="true">ready</string>
         </property>
        </widget>
       </item>

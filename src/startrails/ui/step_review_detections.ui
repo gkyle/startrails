@@ -239,16 +239,10 @@ QFrame#sep1, QFrame#sepFindBrightest {
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="styleSheet">
-        <string>   QCheckBox#showDeletedMasks::indicator {
-       width: 36px;
-       height: 20px;
-   }
-   QCheckBox#showDeletedMasks::indicator:unchecked {
-       image: url(src/startrails/ui/icons_darktheme/switch_off.png);
-   }
-   QCheckBox#showDeletedMasks::indicator:checked {
-       image: url(src/startrails/ui/icons_darktheme/switch_on.png);
-   }</string>
+        <string notr="true">QCheckBox#showDeletedMasks { spacing: 0px; }
+      QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px; }
+      QCheckBox#showDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
+      QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }</string>
        </property>
        <property name="text">
         <string />
@@ -345,6 +339,8 @@ QFrame#sep1, QFrame#sepFindBrightest {
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

@@ -1,0 +1,6 @@
+<RCC>
+ <qresource prefix="/startrails/ui">
+  <file alias="switch_on.png">icons_darktheme/switch_on.png</file>
+  <file alias="switch_off.png">icons_darktheme/switch_off.png</file>
+ </qresource>
+</RCC>

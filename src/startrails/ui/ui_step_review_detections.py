@@ -18,6 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout,
     QLabel, QPushButton, QSizePolicy, QVBoxLayout,
     QWidget)
+from . import resources_rc
 
 class Ui_ReviewSettings(object):
     def setupUi(self, reviewSettings):
@@ -188,6 +189,10 @@ class Ui_ReviewSettings(object):
         self.showDeletedMasks = QCheckBox(reviewSettings)
         self.showDeletedMasks.setObjectName(u"showDeletedMasks")
         self.showDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.showDeletedMasks.setStyleSheet(u"QCheckBox#showDeletedMasks { spacing: 0px; }\n"
+"      QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px; }\n"
+"      QCheckBox#showDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
+"      QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }")
 
         self.showDeletedMasksLayout.addWidget(self.showDeletedMasks, 0, Qt.AlignRight)
 
@@ -261,16 +266,6 @@ class Ui_ReviewSettings(object):
         self.statDeletedNum.setText(QCoreApplication.translate("ReviewSettings", u"0", None))
         self.showDeletedMasksLabel.setText(QCoreApplication.translate("ReviewSettings", u"Show Deleted Masks", None))
         self.showDeletedMasksLabel.setStyleSheet(QCoreApplication.translate("ReviewSettings", u"color: #334155; font-size: 12px;", None))
-        self.showDeletedMasks.setStyleSheet(QCoreApplication.translate("ReviewSettings", u"   QCheckBox#showDeletedMasks::indicator {\n"
-"       width: 36px;\n"
-"       height: 20px;\n"
-"   }\n"
-"   QCheckBox#showDeletedMasks::indicator:unchecked {\n"
-"       image: url(src/startrails/ui/icons_darktheme/switch_off.png);\n"
-"   }\n"
-"   QCheckBox#showDeletedMasks::indicator:checked {\n"
-"       image: url(src/startrails/ui/icons_darktheme/switch_on.png);\n"
-"   }", None))
         self.showDeletedMasks.setText("")
 #if QT_CONFIG(accessibility)
         self.showDeletedMasks.setAccessibleName(QCoreApplication.translate("ReviewSettings", u"Show Deleted Masks", None))

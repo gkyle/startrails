@@ -35,13 +35,6 @@ class Ui_StepCard(object):
 "QFrame#stepCard:hover {\n"
 "    border-color: #cbd5e1;\n"
 "}\n"
-"QLabel#number {\n"
-"    background-color: #0284c7;\n"
-"    color: #ffffff;\n"
-"    border-radius: 15px;\n"
-"    font-weight: bold;\n"
-"    font-size: 13px;\n"
-"}\n"
 "QPushButton#toggle {\n"
 "    border: none;\n"
 "    background: transparent;\n"
@@ -55,21 +48,11 @@ class Ui_StepCard(object):
 "    font-size: 10px;\n"
 "    color: #64748b;\n"
 "}\n"
-"QLabel#statusBadge {\n"
-"    background-color: #e0f2fe;\n"
-"    color: #0284c7;\n"
-"    border-radius: 9px;\n"
-"    font-weight: 600;\n"
-"    font-size: 10px;\n"
-"    padding: 2px 8px;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
-"}\n"
 "QLabel#chevron {\n"
 "    font-size: 9px;\n"
 "    font-weight: bold;\n"
 "    color: #64748b;\n"
-"    font-family: \"Seg"
-                        "oe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
 "}\n"
 "QWidget#body {\n"
 "    border-top: 1px solid #f1f5f9;\n"
@@ -96,6 +79,18 @@ class Ui_StepCard(object):
         self.number.setMinimumSize(QSize(30, 30))
         self.number.setMaximumSize(QSize(30, 30))
         self.number.setAlignment(Qt.AlignCenter)
+        self.number.setStyleSheet(u"QLabel#number {\n"
+"           background-color: #94a3b8;\n"
+"           color: #ffffff;\n"
+"           border: none;\n"
+"           border-radius: 15px;\n"
+"           font-weight: bold;\n"
+"           font-size: 13px;\n"
+"       }\n"
+"       QLabel#number[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"       QLabel#number[stepStatus=\"done\"] { background-color: #1e293b; }\n"
+"       QLabel#number[stepStatus=\"running\"] { background-color: #b45309; }")
+        self.number.setProperty(u"stepStatus", u"ready")
 
         self.headerLayout.addWidget(self.number)
 
@@ -128,6 +123,18 @@ class Ui_StepCard(object):
         self.statusBadge = QLabel(self.headerWidget)
         self.statusBadge.setObjectName(u"statusBadge")
         self.statusBadge.setAlignment(Qt.AlignCenter)
+        self.statusBadge.setStyleSheet(u"QLabel#statusBadge {\n"
+"           background-color: #e0f2fe;\n"
+"           color: #0284c7;\n"
+"           border-radius: 9px;\n"
+"           font-weight: 600;\n"
+"           font-size: 10px;\n"
+"           padding: 2px 8px;\n"
+"           font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"       }\n"
+"       QLabel#statusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
+"       QLabel#statusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
+        self.statusBadge.setProperty(u"stepStatus", u"ready")
 
         self.headerLayout.addWidget(self.statusBadge)
 

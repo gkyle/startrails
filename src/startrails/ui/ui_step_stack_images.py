@@ -18,6 +18,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFormLayout,
     QHBoxLayout, QLabel, QPushButton, QSizePolicy,
     QSpacerItem, QSpinBox, QVBoxLayout, QWidget)
+from . import resources_rc
 
 class Ui_StackSettings(object):
     def setupUi(self, stackSettings):
@@ -143,6 +144,10 @@ class Ui_StackSettings(object):
         self.gpuBatchRow.setObjectName(u"gpuBatchRow")
         self.useGPU = QCheckBox(stackSettings)
         self.useGPU.setObjectName(u"useGPU")
+        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px; }\n"
+"      QCheckBox#useGPU::indicator { width: 36px; height: 20px; }\n"
+"      QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
+"      QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }")
 
         self.gpuBatchRow.addWidget(self.useGPU)
 

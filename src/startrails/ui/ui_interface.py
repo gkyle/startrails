@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QButtonGroup, QC
     QProgressBar, QPushButton, QScrollArea, QSizePolicy,
     QSpacerItem, QSpinBox, QSplitter, QToolButton,
     QTreeView, QVBoxLayout, QWidget)
+from . import resources_rc
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -868,13 +869,18 @@ class Ui_MainWindow(object):
         self.stepDetectNumber.setMinimumSize(QSize(30, 30))
         self.stepDetectNumber.setMaximumSize(QSize(30, 30))
         self.stepDetectNumber.setStyleSheet(u"QLabel#stepDetectNumber {\n"
-"    background-color: #0284c7;\n"
-"    color: #ffffff;\n"
-"    border-radius: 15px;\n"
-"    font-weight: bold;\n"
-"    font-size: 13px;\n"
-"}")
+"                          background-color: #94a3b8;\n"
+"                          color: #ffffff;\n"
+"                          border: none;\n"
+"                          border-radius: 15px;\n"
+"                          font-weight: bold;\n"
+"                          font-size: 13px;\n"
+"                      }\n"
+"                      QLabel#stepDetectNumber[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"                      QLabel#stepDetectNumber[stepStatus=\"done\"] { background-color: #1e293b; }\n"
+"                      QLabel#stepDetectNumber[stepStatus=\"running\"] { background-color: #b45309; }")
         self.stepDetectNumber.setAlignment(Qt.AlignCenter)
+        self.stepDetectNumber.setProperty(u"stepStatus", u"ready")
 
         self.stepDetectHeaderLayout.addWidget(self.stepDetectNumber)
 
@@ -920,15 +926,18 @@ class Ui_MainWindow(object):
         self.stepDetectStatusBadge = QLabel(self.stepDetectHeader)
         self.stepDetectStatusBadge.setObjectName(u"stepDetectStatusBadge")
         self.stepDetectStatusBadge.setStyleSheet(u"QLabel#stepDetectStatusBadge {\n"
-"    background-color: #e0f2fe;\n"
-"    color: #0284c7;\n"
-"    border-radius: 9px;\n"
-"    font-weight: 600;\n"
-"    font-size: 10px;\n"
-"    padding: 2px 8px;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
-"}")
+"                          background-color: #e0f2fe;\n"
+"                          color: #0284c7;\n"
+"                          border-radius: 9px;\n"
+"                          font-weight: 600;\n"
+"                          font-size: 10px;\n"
+"                          padding: 2px 8px;\n"
+"                          font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"                      }\n"
+"                      QLabel#stepDetectStatusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
+"                      QLabel#stepDetectStatusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
         self.stepDetectStatusBadge.setAlignment(Qt.AlignCenter)
+        self.stepDetectStatusBadge.setProperty(u"stepStatus", u"ready")
 
         self.stepDetectHeaderLayout.addWidget(self.stepDetectStatusBadge)
 
@@ -1104,19 +1113,10 @@ class Ui_MainWindow(object):
         sizePolicy6.setHeightForWidth(self.detectUseGPU.sizePolicy().hasHeightForWidth())
         self.detectUseGPU.setSizePolicy(sizePolicy6)
         self.detectUseGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.detectUseGPU.setStyleSheet(u"QCheckBox#detectUseGPU {\n"
-"    spacing: 0px;\n"
-"}\n"
-"QCheckBox#detectUseGPU::indicator {\n"
-"    width: 36px;\n"
-"    height: 20px;\n"
-"}\n"
-"QCheckBox#detectUseGPU::indicator:unchecked {\n"
-"    image: url(src/startrails/ui/icons_darktheme/switch_off.png);\n"
-"}\n"
-"QCheckBox#detectUseGPU::indicator:checked {\n"
-"    image: url(src/startrails/ui/icons_darktheme/switch_on.png);\n"
-"}")
+        self.detectUseGPU.setStyleSheet(u"QCheckBox#detectUseGPU { spacing: 0px; }\n"
+"                        QCheckBox#detectUseGPU::indicator { width: 36px; height: 20px; }\n"
+"                        QCheckBox#detectUseGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
+"                        QCheckBox#detectUseGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }")
         self.detectUseGPU.setChecked(True)
 
         self.stepDetectFields.addWidget(self.detectUseGPU, 3, 1, 1, 1, Qt.AlignRight)
@@ -1196,13 +1196,18 @@ class Ui_MainWindow(object):
         self.stepStackNumber.setMinimumSize(QSize(30, 30))
         self.stepStackNumber.setMaximumSize(QSize(30, 30))
         self.stepStackNumber.setStyleSheet(u"QLabel#stepStackNumber {\n"
-"    background-color: #0284c7;\n"
-"    color: #ffffff;\n"
-"    border-radius: 15px;\n"
-"    font-weight: bold;\n"
-"    font-size: 13px;\n"
-"}")
+"                          background-color: #94a3b8;\n"
+"                          color: #ffffff;\n"
+"                          border: none;\n"
+"                          border-radius: 15px;\n"
+"                          font-weight: bold;\n"
+"                          font-size: 13px;\n"
+"                      }\n"
+"                      QLabel#stepStackNumber[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"                      QLabel#stepStackNumber[stepStatus=\"done\"] { background-color: #1e293b; }\n"
+"                      QLabel#stepStackNumber[stepStatus=\"running\"] { background-color: #b45309; }")
         self.stepStackNumber.setAlignment(Qt.AlignCenter)
+        self.stepStackNumber.setProperty(u"stepStatus", u"ready")
 
         self.stepStackHeaderLayout.addWidget(self.stepStackNumber)
 
@@ -1245,15 +1250,18 @@ class Ui_MainWindow(object):
         self.stepStackStatusBadge = QLabel(self.stepStackHeader)
         self.stepStackStatusBadge.setObjectName(u"stepStackStatusBadge")
         self.stepStackStatusBadge.setStyleSheet(u"QLabel#stepStackStatusBadge {\n"
-"    background-color: #e0f2fe;\n"
-"    color: #0284c7;\n"
-"    border-radius: 9px;\n"
-"    font-weight: 600;\n"
-"    font-size: 10px;\n"
-"    padding: 2px 8px;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
-"}")
+"                          background-color: #e0f2fe;\n"
+"                          color: #0284c7;\n"
+"                          border-radius: 9px;\n"
+"                          font-weight: 600;\n"
+"                          font-size: 10px;\n"
+"                          padding: 2px 8px;\n"
+"                          font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"                      }\n"
+"                      QLabel#stepStackStatusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
+"                      QLabel#stepStackStatusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
         self.stepStackStatusBadge.setAlignment(Qt.AlignCenter)
+        self.stepStackStatusBadge.setProperty(u"stepStatus", u"ready")
 
         self.stepStackHeaderLayout.addWidget(self.stepStackStatusBadge)
 
@@ -1505,19 +1513,10 @@ class Ui_MainWindow(object):
         sizePolicy6.setHeightForWidth(self.stackUseGPU.sizePolicy().hasHeightForWidth())
         self.stackUseGPU.setSizePolicy(sizePolicy6)
         self.stackUseGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.stackUseGPU.setStyleSheet(u"QCheckBox#stackUseGPU {\n"
-"    spacing: 0px;\n"
-"}\n"
-"QCheckBox#stackUseGPU::indicator {\n"
-"    width: 36px;\n"
-"    height: 20px;\n"
-"}\n"
-"QCheckBox#stackUseGPU::indicator:unchecked {\n"
-"    image: url(src/startrails/ui/icons_darktheme/switch_off.png);\n"
-"}\n"
-"QCheckBox#stackUseGPU::indicator:checked {\n"
-"    image: url(src/startrails/ui/icons_darktheme/switch_on.png);\n"
-"}")
+        self.stackUseGPU.setStyleSheet(u"QCheckBox#stackUseGPU { spacing: 0px; }\n"
+"                        QCheckBox#stackUseGPU::indicator { width: 36px; height: 20px; }\n"
+"                        QCheckBox#stackUseGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
+"                        QCheckBox#stackUseGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }")
         self.stackUseGPU.setChecked(True)
 
         self.stepStackFields.addWidget(self.stackUseGPU, 4, 1, 1, 1, Qt.AlignRight)
@@ -1638,13 +1637,18 @@ class Ui_MainWindow(object):
         self.stepReviewNumber.setMinimumSize(QSize(30, 30))
         self.stepReviewNumber.setMaximumSize(QSize(30, 30))
         self.stepReviewNumber.setStyleSheet(u"QLabel#stepReviewNumber {\n"
-"    background-color: #94a3b8;\n"
-"    color: #ffffff;\n"
-"    border-radius: 15px;\n"
-"    font-weight: bold;\n"
-"    font-size: 13px;\n"
-"}")
+"                          background-color: #94a3b8;\n"
+"                          color: #ffffff;\n"
+"                          border: none;\n"
+"                          border-radius: 15px;\n"
+"                          font-weight: bold;\n"
+"                          font-size: 13px;\n"
+"                      }\n"
+"                      QLabel#stepReviewNumber[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"                      QLabel#stepReviewNumber[stepStatus=\"done\"] { background-color: #1e293b; }\n"
+"                      QLabel#stepReviewNumber[stepStatus=\"running\"] { background-color: #b45309; }")
         self.stepReviewNumber.setAlignment(Qt.AlignCenter)
+        self.stepReviewNumber.setProperty(u"stepStatus", u"locked")
 
         self.stepReviewHeaderLayout.addWidget(self.stepReviewNumber)
 
@@ -1686,13 +1690,18 @@ class Ui_MainWindow(object):
         self.stepReviewStatusBadge = QLabel(self.stepReviewHeader)
         self.stepReviewStatusBadge.setObjectName(u"stepReviewStatusBadge")
         self.stepReviewStatusBadge.setStyleSheet(u"QLabel#stepReviewStatusBadge {\n"
-"    border-radius: 9px;\n"
-"    font-weight: 600;\n"
-"    font-size: 10px;\n"
-"    padding: 2px 8px;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
-"}")
+"                          background-color: #e0f2fe;\n"
+"                          color: #0284c7;\n"
+"                          border-radius: 9px;\n"
+"                          font-weight: 600;\n"
+"                          font-size: 10px;\n"
+"                          padding: 2px 8px;\n"
+"                          font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"                      }\n"
+"                      QLabel#stepReviewStatusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
+"                      QLabel#stepReviewStatusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
         self.stepReviewStatusBadge.setAlignment(Qt.AlignCenter)
+        self.stepReviewStatusBadge.setProperty(u"stepStatus", u"locked")
 
         self.stepReviewHeaderLayout.addWidget(self.stepReviewStatusBadge)
 
@@ -1852,6 +1861,10 @@ class Ui_MainWindow(object):
         self.exportShowDeletedMasks = QCheckBox(self.stepReviewBody)
         self.exportShowDeletedMasks.setObjectName(u"exportShowDeletedMasks")
         self.exportShowDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.exportShowDeletedMasks.setStyleSheet(u"QCheckBox#exportShowDeletedMasks { spacing: 0px; }\n"
+"                        QCheckBox#exportShowDeletedMasks::indicator { width: 36px; height: 20px; }\n"
+"                        QCheckBox#exportShowDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
+"                        QCheckBox#exportShowDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }")
 
         self.exportShowDeletedMasksLayout.addWidget(self.exportShowDeletedMasks, 0, Qt.AlignRight)
 
@@ -2018,13 +2031,18 @@ class Ui_MainWindow(object):
         self.stepFillNumber.setMinimumSize(QSize(30, 30))
         self.stepFillNumber.setMaximumSize(QSize(30, 30))
         self.stepFillNumber.setStyleSheet(u"QLabel#stepFillNumber {\n"
-"    background-color: #94a3b8;\n"
-"    color: #ffffff;\n"
-"    border-radius: 15px;\n"
-"    font-weight: bold;\n"
-"    font-size: 13px;\n"
-"}")
+"                          background-color: #94a3b8;\n"
+"                          color: #ffffff;\n"
+"                          border: none;\n"
+"                          border-radius: 15px;\n"
+"                          font-weight: bold;\n"
+"                          font-size: 13px;\n"
+"                      }\n"
+"                      QLabel#stepFillNumber[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"                      QLabel#stepFillNumber[stepStatus=\"done\"] { background-color: #1e293b; }\n"
+"                      QLabel#stepFillNumber[stepStatus=\"running\"] { background-color: #b45309; }")
         self.stepFillNumber.setAlignment(Qt.AlignCenter)
+        self.stepFillNumber.setProperty(u"stepStatus", u"locked")
 
         self.stepFillHeaderLayout.addWidget(self.stepFillNumber)
 
@@ -2067,15 +2085,18 @@ class Ui_MainWindow(object):
         self.stepFillStatusBadge = QLabel(self.stepFillHeader)
         self.stepFillStatusBadge.setObjectName(u"stepFillStatusBadge")
         self.stepFillStatusBadge.setStyleSheet(u"QLabel#stepFillStatusBadge {\n"
-"    background-color: #e0f2fe;\n"
-"    color: #0284c7;\n"
-"    border-radius: 9px;\n"
-"    font-weight: 600;\n"
-"    font-size: 10px;\n"
-"    padding: 2px 8px;\n"
-"    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
-"}")
+"                          background-color: #e0f2fe;\n"
+"                          color: #0284c7;\n"
+"                          border-radius: 9px;\n"
+"                          font-weight: 600;\n"
+"                          font-size: 10px;\n"
+"                          padding: 2px 8px;\n"
+"                          font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"                      }\n"
+"                      QLabel#stepFillStatusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
+"                      QLabel#stepFillStatusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
         self.stepFillStatusBadge.setAlignment(Qt.AlignCenter)
+        self.stepFillStatusBadge.setProperty(u"stepStatus", u"locked")
 
         self.stepFillHeaderLayout.addWidget(self.stepFillStatusBadge)
 
@@ -2177,13 +2198,18 @@ class Ui_MainWindow(object):
         self.additionalToolsNumber.setMinimumSize(QSize(30, 30))
         self.additionalToolsNumber.setMaximumSize(QSize(30, 30))
         self.additionalToolsNumber.setStyleSheet(u"QLabel#additionalToolsNumber {\n"
-"    background-color: #94a3b8;\n"
-"    color: #ffffff;\n"
-"    border-radius: 15px;\n"
-"    font-weight: bold;\n"
-"    font-size: 13px;\n"
-"}")
+"                          background-color: #94a3b8;\n"
+"                          color: #ffffff;\n"
+"                          border: none;\n"
+"                          border-radius: 15px;\n"
+"                          font-weight: bold;\n"
+"                          font-size: 13px;\n"
+"                      }\n"
+"                      QLabel#additionalToolsNumber[stepStatus=\"ready\"] { background-color: #0284c7; }\n"
+"                      QLabel#additionalToolsNumber[stepStatus=\"done\"] { background-color: #1e293b; }\n"
+"                      QLabel#additionalToolsNumber[stepStatus=\"running\"] { background-color: #b45309; }")
         self.additionalToolsNumber.setAlignment(Qt.AlignCenter)
+        self.additionalToolsNumber.setProperty(u"stepStatus", u"neutral")
 
         self.additionalToolsHeaderLayout.addWidget(self.additionalToolsNumber)
 
@@ -2227,15 +2253,18 @@ class Ui_MainWindow(object):
         self.additionalToolsStatusBadge.setObjectName(u"additionalToolsStatusBadge")
         self.additionalToolsStatusBadge.setVisible(False)
         self.additionalToolsStatusBadge.setStyleSheet(u"QLabel#additionalToolsStatusBadge {\n"
-"                    background-color: #e0f2fe;\n"
-"                    color: #0284c7;\n"
-"                    border-radius: 9px;\n"
-"                    font-weight: 600;\n"
-"                    font-size: 10px;\n"
-"                    padding: 2px 8px;\n"
-"                    font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
-"}")
+"                          background-color: #e0f2fe;\n"
+"                          color: #0284c7;\n"
+"                          border-radius: 9px;\n"
+"                          font-weight: 600;\n"
+"                          font-size: 10px;\n"
+"                          padding: 2px 8px;\n"
+"                          font-family: \"Segoe UI\", \"Segoe UI Symbol\", sans-serif;\n"
+"                      }\n"
+"                      QLabel#additionalToolsStatusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
+"                      QLabel#additionalToolsStatusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
         self.additionalToolsStatusBadge.setAlignment(Qt.AlignCenter)
+        self.additionalToolsStatusBadge.setProperty(u"stepStatus", u"neutral")
 
         self.additionalToolsHeaderLayout.addWidget(self.additionalToolsStatusBadge)
 
@@ -2450,19 +2479,6 @@ class Ui_MainWindow(object):
 #if QT_CONFIG(accessibility)
         self.exportShowDeletedMasks.setAccessibleName(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))
 #endif // QT_CONFIG(accessibility)
-        self.exportShowDeletedMasks.setStyleSheet(QCoreApplication.translate("MainWindow", u"QCheckBox#exportShowDeletedMasks {\n"
-"                         spacing: 0px;\n"
-"                     }\n"
-"                     QCheckBox#exportShowDeletedMasks::indicator {\n"
-"                         width: 36px;\n"
-"                         height: 20px;\n"
-"                     }\n"
-"                     QCheckBox#exportShowDeletedMasks::indicator:unchecked {\n"
-"                         image: url(src/startrails/ui/icons_darktheme/switch_off.png);\n"
-"                     }\n"
-"                     QCheckBox#exportShowDeletedMasks::indicator:checked {\n"
-"                         image: url(src/startrails/ui/icons_darktheme/switch_on.png);\n"
-"                     }", None))
         self.exportShowDeletedMasks.setText("")
         self.reviewFindBrightestHeading.setText(QCoreApplication.translate("MainWindow", u"Locate Streaks", None))
         self.reviewFindBrightestHint.setText(QCoreApplication.translate("MainWindow", u"Click on a streak in a stacked or gap-filled image to locate its source frame.", None))

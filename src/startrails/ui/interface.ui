@@ -1600,18 +1600,25 @@ QFrame#stepDetect:hover {
                        </property>
                        <property name="styleSheet">
                         <string notr="true">QLabel#stepDetectNumber {
-    background-color: #0284c7;
-    color: #ffffff;
-    border-radius: 15px;
-    font-weight: bold;
-    font-size: 13px;
-}</string>
+                          background-color: #94a3b8;
+                          color: #ffffff;
+                          border: none;
+                          border-radius: 15px;
+                          font-weight: bold;
+                          font-size: 13px;
+                      }
+                      QLabel#stepDetectNumber[stepStatus="ready"] { background-color: #0284c7; }
+                      QLabel#stepDetectNumber[stepStatus="done"] { background-color: #1e293b; }
+                      QLabel#stepDetectNumber[stepStatus="running"] { background-color: #b45309; }</string>
                        </property>
                        <property name="text">
                         <string>1</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
+                       </property>
+                       <property name="stepStatus" stdset="0">
+                        <string notr="true">ready</string>
                        </property>
                       </widget>
                      </item>
@@ -1687,20 +1694,25 @@ QFrame#stepDetect:hover {
                       <widget class="QLabel" name="stepDetectStatusBadge">
                        <property name="styleSheet">
                         <string notr="true">QLabel#stepDetectStatusBadge {
-    background-color: #e0f2fe;
-    color: #0284c7;
-    border-radius: 9px;
-    font-weight: 600;
-    font-size: 10px;
-    padding: 2px 8px;
-    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
-}</string>
+                          background-color: #e0f2fe;
+                          color: #0284c7;
+                          border-radius: 9px;
+                          font-weight: 600;
+                          font-size: 10px;
+                          padding: 2px 8px;
+                          font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
+                      }
+                      QLabel#stepDetectStatusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
+                      QLabel#stepDetectStatusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
                        </property>
                        <property name="text">
                         <string>✓ Ready</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
+                       </property>
+                       <property name="stepStatus" stdset="0">
+                        <string notr="true">ready</string>
                        </property>
                       </widget>
                      </item>
@@ -1983,22 +1995,13 @@ QDoubleSpinBox#detectMergeThreshold:focus {
                           <cursorShape>PointingHandCursor</cursorShape>
                          </property>
                          <property name="styleSheet">
-                          <string notr="true">QCheckBox#detectUseGPU {
-    spacing: 0px;
-}
-QCheckBox#detectUseGPU::indicator {
-    width: 36px;
-    height: 20px;
-}
-QCheckBox#detectUseGPU::indicator:unchecked {
-    image: url(src/startrails/ui/icons_darktheme/switch_off.png);
-}
-QCheckBox#detectUseGPU::indicator:checked {
-    image: url(src/startrails/ui/icons_darktheme/switch_on.png);
-}</string>
+                          <string notr="true">QCheckBox#detectUseGPU { spacing: 0px; }
+                        QCheckBox#detectUseGPU::indicator { width: 36px; height: 20px; }
+                        QCheckBox#detectUseGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
+                        QCheckBox#detectUseGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }</string>
                          </property>
                          <property name="text">
-                          <string/>
+                          <string />
                          </property>
                          <property name="checked">
                           <bool>true</bool>
@@ -2143,18 +2146,25 @@ QFrame#stepStack:hover {
                        </property>
                        <property name="styleSheet">
                         <string notr="true">QLabel#stepStackNumber {
-    background-color: #0284c7;
-    color: #ffffff;
-    border-radius: 15px;
-    font-weight: bold;
-    font-size: 13px;
-}</string>
+                          background-color: #94a3b8;
+                          color: #ffffff;
+                          border: none;
+                          border-radius: 15px;
+                          font-weight: bold;
+                          font-size: 13px;
+                      }
+                      QLabel#stepStackNumber[stepStatus="ready"] { background-color: #0284c7; }
+                      QLabel#stepStackNumber[stepStatus="done"] { background-color: #1e293b; }
+                      QLabel#stepStackNumber[stepStatus="running"] { background-color: #b45309; }</string>
                        </property>
                        <property name="text">
                         <string>2</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
+                       </property>
+                       <property name="stepStatus" stdset="0">
+                        <string notr="true">ready</string>
                        </property>
                       </widget>
                      </item>
@@ -2230,20 +2240,25 @@ QFrame#stepStack:hover {
                       <widget class="QLabel" name="stepStackStatusBadge">
                        <property name="styleSheet">
                         <string notr="true">QLabel#stepStackStatusBadge {
-    background-color: #e0f2fe;
-    color: #0284c7;
-    border-radius: 9px;
-    font-weight: 600;
-    font-size: 10px;
-    padding: 2px 8px;
-    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
-}</string>
+                          background-color: #e0f2fe;
+                          color: #0284c7;
+                          border-radius: 9px;
+                          font-weight: 600;
+                          font-size: 10px;
+                          padding: 2px 8px;
+                          font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
+                      }
+                      QLabel#stepStackStatusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
+                      QLabel#stepStackStatusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
                        </property>
                        <property name="text">
                         <string>✓ Ready</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
+                       </property>
+                       <property name="stepStatus" stdset="0">
+                        <string notr="true">ready</string>
                        </property>
                       </widget>
                      </item>
@@ -2655,22 +2670,13 @@ QSpinBox#stackFadeAmount:disabled {
                           <cursorShape>PointingHandCursor</cursorShape>
                          </property>
                          <property name="styleSheet">
-                          <string notr="true">QCheckBox#stackUseGPU {
-    spacing: 0px;
-}
-QCheckBox#stackUseGPU::indicator {
-    width: 36px;
-    height: 20px;
-}
-QCheckBox#stackUseGPU::indicator:unchecked {
-    image: url(src/startrails/ui/icons_darktheme/switch_off.png);
-}
-QCheckBox#stackUseGPU::indicator:checked {
-    image: url(src/startrails/ui/icons_darktheme/switch_on.png);
-}</string>
+                          <string notr="true">QCheckBox#stackUseGPU { spacing: 0px; }
+                        QCheckBox#stackUseGPU::indicator { width: 36px; height: 20px; }
+                        QCheckBox#stackUseGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
+                        QCheckBox#stackUseGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }</string>
                          </property>
                          <property name="text">
-                          <string/>
+                          <string />
                          </property>
                          <property name="checked">
                           <bool>true</bool>
@@ -2873,18 +2879,25 @@ QFrame#stepReview:hover {
                        </property>
                        <property name="styleSheet">
                         <string notr="true">QLabel#stepReviewNumber {
-    background-color: #94a3b8;
-    color: #ffffff;
-    border-radius: 15px;
-    font-weight: bold;
-    font-size: 13px;
-}</string>
+                          background-color: #94a3b8;
+                          color: #ffffff;
+                          border: none;
+                          border-radius: 15px;
+                          font-weight: bold;
+                          font-size: 13px;
+                      }
+                      QLabel#stepReviewNumber[stepStatus="ready"] { background-color: #0284c7; }
+                      QLabel#stepReviewNumber[stepStatus="done"] { background-color: #1e293b; }
+                      QLabel#stepReviewNumber[stepStatus="running"] { background-color: #b45309; }</string>
                        </property>
                        <property name="text">
                         <string>3</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
+                       </property>
+                       <property name="stepStatus" stdset="0">
+                        <string notr="true">locked</string>
                        </property>
                       </widget>
                      </item>
@@ -2957,18 +2970,25 @@ QFrame#stepReview:hover {
                       <widget class="QLabel" name="stepReviewStatusBadge">
                        <property name="styleSheet">
                         <string notr="true">QLabel#stepReviewStatusBadge {
-    border-radius: 9px;
-    font-weight: 600;
-    font-size: 10px;
-    padding: 2px 8px;
-    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
-}</string>
+                          background-color: #e0f2fe;
+                          color: #0284c7;
+                          border-radius: 9px;
+                          font-weight: 600;
+                          font-size: 10px;
+                          padding: 2px 8px;
+                          font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
+                      }
+                      QLabel#stepReviewStatusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
+                      QLabel#stepReviewStatusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
                        </property>
                        <property name="text">
                         <string>Ready</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
+                       </property>
+                       <property name="stepStatus" stdset="0">
+                        <string notr="true">locked</string>
                        </property>
                       </widget>
                      </item>
@@ -3245,22 +3265,13 @@ QFrame#stepReview:hover {
                           <string>Show Deleted Masks</string>
                          </property>
                          <property name="styleSheet">
-                          <string>QCheckBox#exportShowDeletedMasks {
-                         spacing: 0px;
-                     }
-                     QCheckBox#exportShowDeletedMasks::indicator {
-                         width: 36px;
-                         height: 20px;
-                     }
-                     QCheckBox#exportShowDeletedMasks::indicator:unchecked {
-                         image: url(src/startrails/ui/icons_darktheme/switch_off.png);
-                     }
-                     QCheckBox#exportShowDeletedMasks::indicator:checked {
-                         image: url(src/startrails/ui/icons_darktheme/switch_on.png);
-                     }</string>
+                          <string notr="true">QCheckBox#exportShowDeletedMasks { spacing: 0px; }
+                        QCheckBox#exportShowDeletedMasks::indicator { width: 36px; height: 20px; }
+                        QCheckBox#exportShowDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
+                        QCheckBox#exportShowDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }</string>
                          </property>
                          <property name="text">
-                          <string/>
+                          <string />
                          </property>
                         </widget>
                        </item>
@@ -3528,18 +3539,25 @@ QFrame#stepFill:hover {
                        </property>
                        <property name="styleSheet">
                         <string notr="true">QLabel#stepFillNumber {
-    background-color: #94a3b8;
-    color: #ffffff;
-    border-radius: 15px;
-    font-weight: bold;
-    font-size: 13px;
-}</string>
+                          background-color: #94a3b8;
+                          color: #ffffff;
+                          border: none;
+                          border-radius: 15px;
+                          font-weight: bold;
+                          font-size: 13px;
+                      }
+                      QLabel#stepFillNumber[stepStatus="ready"] { background-color: #0284c7; }
+                      QLabel#stepFillNumber[stepStatus="done"] { background-color: #1e293b; }
+                      QLabel#stepFillNumber[stepStatus="running"] { background-color: #b45309; }</string>
                        </property>
                        <property name="text">
                         <string>4</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
+                       </property>
+                       <property name="stepStatus" stdset="0">
+                        <string notr="true">locked</string>
                        </property>
                       </widget>
                      </item>
@@ -3615,20 +3633,25 @@ QFrame#stepFill:hover {
                       <widget class="QLabel" name="stepFillStatusBadge">
                        <property name="styleSheet">
                         <string notr="true">QLabel#stepFillStatusBadge {
-    background-color: #e0f2fe;
-    color: #0284c7;
-    border-radius: 9px;
-    font-weight: 600;
-    font-size: 10px;
-    padding: 2px 8px;
-    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
-}</string>
+                          background-color: #e0f2fe;
+                          color: #0284c7;
+                          border-radius: 9px;
+                          font-weight: 600;
+                          font-size: 10px;
+                          padding: 2px 8px;
+                          font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
+                      }
+                      QLabel#stepFillStatusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
+                      QLabel#stepFillStatusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
                        </property>
                        <property name="text">
                         <string>Locked</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
+                       </property>
+                       <property name="stepStatus" stdset="0">
+                        <string notr="true">locked</string>
                        </property>
                       </widget>
                      </item>
@@ -3828,18 +3851,25 @@ QFrame#additionalTools:hover {
                        </property>
                        <property name="styleSheet">
                         <string notr="true">QLabel#additionalToolsNumber {
-    background-color: #94a3b8;
-    color: #ffffff;
-    border-radius: 15px;
-    font-weight: bold;
-    font-size: 13px;
-}</string>
+                          background-color: #94a3b8;
+                          color: #ffffff;
+                          border: none;
+                          border-radius: 15px;
+                          font-weight: bold;
+                          font-size: 13px;
+                      }
+                      QLabel#additionalToolsNumber[stepStatus="ready"] { background-color: #0284c7; }
+                      QLabel#additionalToolsNumber[stepStatus="done"] { background-color: #1e293b; }
+                      QLabel#additionalToolsNumber[stepStatus="running"] { background-color: #b45309; }</string>
                        </property>
                        <property name="text">
-                        <string/>
+                        <string />
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
+                       </property>
+                       <property name="stepStatus" stdset="0">
+                        <string notr="true">neutral</string>
                        </property>
                       </widget>
                      </item>
@@ -3918,20 +3948,25 @@ QFrame#additionalTools:hover {
                        </property>
                        <property name="styleSheet">
                         <string notr="true">QLabel#additionalToolsStatusBadge {
-                    background-color: #e0f2fe;
-                    color: #0284c7;
-                    border-radius: 9px;
-                    font-weight: 600;
-                    font-size: 10px;
-                    padding: 2px 8px;
-                    font-family: &quot;Segoe UI&quot;, &quot;Segoe UI Symbol&quot;, sans-serif;
-}</string>
+                          background-color: #e0f2fe;
+                          color: #0284c7;
+                          border-radius: 9px;
+                          font-weight: 600;
+                          font-size: 10px;
+                          padding: 2px 8px;
+                          font-family: "Segoe UI", "Segoe UI Symbol", sans-serif;
+                      }
+                      QLabel#additionalToolsStatusBadge[stepStatus="done"] { background-color: #dcfce7; color: #15803d; }
+                      QLabel#additionalToolsStatusBadge[stepStatus="running"] { background-color: #fef3c7; color: #b45309; }</string>
                        </property>
                        <property name="text">
                         <string>Locked</string>
                        </property>
                        <property name="alignment">
                         <set>Qt::AlignCenter</set>
+                       </property>
+                       <property name="stepStatus" stdset="0">
+                        <string notr="true">neutral</string>
                        </property>
                       </widget>
                      </item>
@@ -4143,7 +4178,9 @@ QPushButton#exportMasks:disabled {
    </layout>
   </widget>
  </widget>
- <resources/>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
  <connections/>
  <buttongroups>
   <buttongroup name="stackStreaksGroup"/>
