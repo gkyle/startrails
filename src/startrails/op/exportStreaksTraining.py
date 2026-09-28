@@ -32,6 +32,11 @@ class ExportStreaksDetectTraining(Observable):
             for future in as_completed(futures):
                 future.result()
                 self.updateJob(1)
+                if self.shouldInterrupt():
+                    for f in futures:
+                        f.cancel()
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    break
 
     def _processMaskCrops(self, file: InputFile, outputDir: str, masks, prefix: str, 
                           exportAsNegative: bool = False, addBorder: bool = False) -> int:

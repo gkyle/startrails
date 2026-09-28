@@ -11,13 +11,20 @@ class AsyncWorker(QRunnable):
         self.work = work
 
     def run(self):
-        if not QThread.currentThread().isInterruptionRequested():
-            self.work()
+        try:
+            if not QThread.currentThread().isInterruptionRequested():
+                self.work()
+        finally:
+            try:
+                self.signals.finishProgress.emit()
+            except RuntimeError:
+                pass
 
 
 class Signals(QObject):
-    startProgress: Signal = Signal(int, str)
+    startProgress: Signal = Signal(object, object, object)
     incrementProgress: Signal = Signal(object, int, int, int, bool, object)
+    finishProgress: Signal = Signal()
 
     showFile: Signal = Signal(File)
     updateGPUStats: Signal = Signal()

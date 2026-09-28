@@ -101,9 +101,12 @@ class App:
         file = self.appendOutputFile(basename, filename, "Stacked", fadeGradient=fadeGradient)
         stackImages.addObserver(progressBar)
         self.activeOperation = stackImages
-        stackImages.stack(filteredInputFiles, file, satellitesRemoved, fade,
-                          fadeGradient=fadeGradient, batchSize=batchSize)
-        stackImages.removeObserver(progressBar)
+        try:
+            stackImages.stack(filteredInputFiles, file, satellitesRemoved, fade,
+                              fadeGradient=fadeGradient, batchSize=batchSize)
+        finally:
+            self.activeOperation = None
+            stackImages.removeObserver(progressBar)
         self.saveProject()
         return file
 
@@ -111,8 +114,11 @@ class App:
         detectStreaks = dsm.DetectStreaks(useGPU)
         detectStreaks.addObserver(progressBar)
         self.activeOperation = detectStreaks
-        detectStreaks.detectStreaks(self.getInputFileList(), confThreshold, mergeMethod, mergeThreshold)
-        detectStreaks.removeObserver(progressBar)
+        try:
+            detectStreaks.detectStreaks(self.getInputFileList(), confThreshold, mergeMethod, mergeThreshold)
+        finally:
+            self.activeOperation = None
+            detectStreaks.removeObserver(progressBar)
         self.saveProject()
 
     def doFindBrightFrame(self, x, y, basisFile: OutputFile, progressBar):
@@ -120,21 +126,32 @@ class App:
         findBrightFrame = FindBrightFrame()
         findBrightFrame.addObserver(progressBar)
         self.activeOperation = findBrightFrame
-        file = findBrightFrame.findBrightFrame(filteredInputFiles, x, y, basisFile.fadeGradient)
-        findBrightFrame.removeObserver(progressBar)
+        try:
+            file = findBrightFrame.findBrightFrame(filteredInputFiles, x, y, basisFile.fadeGradient)
+        finally:
+            self.activeOperation = None
+            findBrightFrame.removeObserver(progressBar)
         return file
 
     def doExportTrainingStreaks(self, outDir: str, progressBar):
         exportStreaksTraining = ExportStreaksDetectTraining()
         exportStreaksTraining.addObserver(progressBar)
-        exportStreaksTraining.cropAndLabelFiles(self.getInputFileList(), outDir)
-        exportStreaksTraining.removeObserver(progressBar)
+        self.activeOperation = exportStreaksTraining
+        try:
+            exportStreaksTraining.cropAndLabelFiles(self.getInputFileList(), outDir)
+        finally:
+            self.activeOperation = None
+            exportStreaksTraining.removeObserver(progressBar)
 
     def doExportMaskedImages(self, outDir: str, progressBar):
         exportMaskedImages = ExportMaskedImages()
         exportMaskedImages.addObserver(progressBar)
-        exportMaskedImages.exportMaskedImages(self.getInputFileList(), outDir)
-        exportMaskedImages.removeObserver(progressBar)
+        self.activeOperation = exportMaskedImages
+        try:
+            exportMaskedImages.exportMaskedImages(self.getInputFileList(), outDir)
+        finally:
+            self.activeOperation = None
+            exportMaskedImages.removeObserver(progressBar)
 
     def doFillGaps(self, file: OutputFile, progressBar):
         fillGaps = fgm.FillGaps()
@@ -146,8 +163,11 @@ class App:
         fileFillGapsMask = self.appendOutputFile(
             os.path.basename(fileNameFillGapsMask), fileNameFillGapsMask, "FillGapsMask")
         self.activeOperation = fillGaps
-        fillGaps.fillGaps(file, fileFillGaps, fileFillGapsMask)
-        fillGaps.removeObserver(progressBar)
+        try:
+            fillGaps.fillGaps(file, fileFillGaps, fileFillGapsMask)
+        finally:
+            self.activeOperation = None
+            fillGaps.removeObserver(progressBar)
         fileFillGaps.fadeGradient = file.fadeGradient
         fileFillGapsMask.fadeGradient = file.fadeGradient
         self.saveProject()

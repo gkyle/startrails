@@ -96,75 +96,6 @@ class Ui_MainWindow(object):
 
         self.gridLayout.addWidget(self.frame, 0, 0, 1, 1)
 
-        self.frame_2 = QFrame(self.toolbar)
-        self.frame_2.setObjectName(u"frame_2")
-        sizePolicy.setHeightForWidth(self.frame_2.sizePolicy().hasHeightForWidth())
-        self.frame_2.setSizePolicy(sizePolicy)
-        self.frame_2.setFrameShape(QFrame.NoFrame)
-        self.frame_2.setFrameShadow(QFrame.Raised)
-        self.horizontalLayout_11 = QHBoxLayout(self.frame_2)
-        self.horizontalLayout_11.setObjectName(u"horizontalLayout_11")
-        self.horizontalLayout_11.setContentsMargins(-1, -1, 0, -1)
-        self.label_progressBar = QLabel(self.frame_2)
-        self.label_progressBar.setObjectName(u"label_progressBar")
-        self.label_progressBar.setStyleSheet(u"QLabel#label_progressBar {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"}")
-
-        self.horizontalLayout_11.addWidget(self.label_progressBar)
-
-        self.progressBar = QProgressBar(self.frame_2)
-        self.progressBar.setObjectName(u"progressBar")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(1)
-        sizePolicy1.setHeightForWidth(self.progressBar.sizePolicy().hasHeightForWidth())
-        self.progressBar.setSizePolicy(sizePolicy1)
-        self.progressBar.setMinimumSize(QSize(300, 28))
-        self.progressBar.setMaximumSize(QSize(300, 28))
-        font1 = QFont()
-        font1.setPointSize(10)
-        self.progressBar.setFont(font1)
-        self.progressBar.setStyleSheet(u"QProgressBar#progressBar {\n"
-"    background-color: #e2e8f0;\n"
-"    border-radius: 4px;\n"
-"    border: none;\n"
-"    max-height: 28px;\n"
-"    min-height: 28px;\n"
-"    text-align: center;\n"
-"}\n"
-"QProgressBar#progressBar::chunk {\n"
-"    background-color: #0284c7;\n"
-"    border-radius: 4px;\n"
-"}")
-        self.progressBar.setValue(0)
-        self.progressBar.setAlignment(Qt.AlignCenter)
-
-        self.horizontalLayout_11.addWidget(self.progressBar)
-
-        self.pushButton_cancelOp = QPushButton(self.frame_2)
-        self.pushButton_cancelOp.setObjectName(u"pushButton_cancelOp")
-        self.pushButton_cancelOp.setMinimumSize(QSize(30, 0))
-        self.pushButton_cancelOp.setMaximumSize(QSize(30, 16777215))
-        self.pushButton_cancelOp.setStyleSheet(u"QPushButton#pushButton_cancelOp {\n"
-"    background-color: #fee2e2;\n"
-"    color: #dc2626;\n"
-"    border: 1px solid #fecaca;\n"
-"    border-radius: 4px;\n"
-"    font-weight: bold;\n"
-"    font-size: 11px;\n"
-"    padding: 2px 6px;\n"
-"}\n"
-"QPushButton#pushButton_cancelOp:hover {\n"
-"    background-color: #fecaca;\n"
-"}")
-
-        self.horizontalLayout_11.addWidget(self.pushButton_cancelOp)
-
-
-        self.gridLayout.addWidget(self.frame_2, 0, 2, 1, 1, Qt.AlignRight)
-
         self.frame_3 = QFrame(self.toolbar)
         self.frame_3.setObjectName(u"frame_3")
         sizePolicy.setHeightForWidth(self.frame_3.sizePolicy().hasHeightForWidth())
@@ -235,8 +166,8 @@ class Ui_MainWindow(object):
         self.progressBar_gpu_util = QProgressBar(self.frame_gpu_util)
         self.progressBar_gpu_util.setObjectName(u"progressBar_gpu_util")
         self.progressBar_gpu_util.setMinimumSize(QSize(0, 16))
-        font2 = QFont()
-        self.progressBar_gpu_util.setFont(font2)
+        font1 = QFont()
+        self.progressBar_gpu_util.setFont(font1)
         self.progressBar_gpu_util.setStyleSheet(u"QProgressBar#progressBar_gpu_util {\n"
 "    background-color: #f1f5f9;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -270,7 +201,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_18.setContentsMargins(0, 0, 0, 0)
         self.progressBar_gpu_mem = QProgressBar(self.frame_gpu_mem)
         self.progressBar_gpu_mem.setObjectName(u"progressBar_gpu_mem")
-        self.progressBar_gpu_mem.setFont(font2)
+        self.progressBar_gpu_mem.setFont(font1)
         self.progressBar_gpu_mem.setStyleSheet(u"QProgressBar#progressBar_gpu_mem {\n"
 "    background-color: #f1f5f9;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -298,7 +229,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_7.addWidget(self.frame_gpu)
 
 
-        self.gridLayout.addWidget(self.frame_4, 0, 3, 1, 1)
+        self.gridLayout.addWidget(self.frame_4, 0, 2, 1, 1, Qt.AlignRight)
 
 
         self.verticalLayout_5.addWidget(self.toolbar)
@@ -324,11 +255,11 @@ class Ui_MainWindow(object):
         self.sidebarLayout.setContentsMargins(1, 1, 1, 1)
         self.scroll = QScrollArea(self.sidebar)
         self.scroll.setObjectName(u"scroll")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.scroll.sizePolicy().hasHeightForWidth())
-        self.scroll.setSizePolicy(sizePolicy2)
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.scroll.sizePolicy().hasHeightForWidth())
+        self.scroll.setSizePolicy(sizePolicy1)
         self.scroll.setMinimumSize(QSize(0, 0))
         self.scroll.setMaximumSize(QSize(16777215, 16777215))
         self.scroll.setStyleSheet(u"QScrollArea#scroll {\n"
@@ -435,11 +366,11 @@ class Ui_MainWindow(object):
 
         self.inputFilesSection = QFrame(self.content)
         self.inputFilesSection.setObjectName(u"inputFilesSection")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.inputFilesSection.sizePolicy().hasHeightForWidth())
-        self.inputFilesSection.setSizePolicy(sizePolicy3)
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.inputFilesSection.sizePolicy().hasHeightForWidth())
+        self.inputFilesSection.setSizePolicy(sizePolicy2)
         self.inputFilesSection.setStyleSheet(u"QFrame#inputFilesSection {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -454,11 +385,11 @@ class Ui_MainWindow(object):
         self.inputFilesLayout.setContentsMargins(4, 4, 4, 4)
         self.inputFilesHeader = QWidget(self.inputFilesSection)
         self.inputFilesHeader.setObjectName(u"inputFilesHeader")
-        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-        sizePolicy4.setHorizontalStretch(0)
-        sizePolicy4.setVerticalStretch(0)
-        sizePolicy4.setHeightForWidth(self.inputFilesHeader.sizePolicy().hasHeightForWidth())
-        self.inputFilesHeader.setSizePolicy(sizePolicy4)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.inputFilesHeader.sizePolicy().hasHeightForWidth())
+        self.inputFilesHeader.setSizePolicy(sizePolicy3)
         self.inputFilesHeader.setMaximumSize(QSize(16777215, 32))
         self.inputFilesHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.inputFilesHeaderLayout = QHBoxLayout(self.inputFilesHeader)
@@ -501,11 +432,11 @@ class Ui_MainWindow(object):
 
         self.inputFilesCount = QLabel(self.inputFilesHeader)
         self.inputFilesCount.setObjectName(u"inputFilesCount")
-        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        sizePolicy5.setHorizontalStretch(0)
-        sizePolicy5.setVerticalStretch(0)
-        sizePolicy5.setHeightForWidth(self.inputFilesCount.sizePolicy().hasHeightForWidth())
-        self.inputFilesCount.setSizePolicy(sizePolicy5)
+        sizePolicy4 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy4.setHorizontalStretch(0)
+        sizePolicy4.setVerticalStretch(0)
+        sizePolicy4.setHeightForWidth(self.inputFilesCount.sizePolicy().hasHeightForWidth())
+        self.inputFilesCount.setSizePolicy(sizePolicy4)
         self.inputFilesCount.setMaximumSize(QSize(16777215, 18))
         self.inputFilesCount.setStyleSheet(u"QLabel#inputFilesCount {\n"
 "    background-color: #f1f5f9;\n"
@@ -551,16 +482,16 @@ class Ui_MainWindow(object):
 
         self.inputFilesBody = QWidget(self.inputFilesSection)
         self.inputFilesBody.setObjectName(u"inputFilesBody")
-        sizePolicy3.setHeightForWidth(self.inputFilesBody.sizePolicy().hasHeightForWidth())
-        self.inputFilesBody.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.inputFilesBody.sizePolicy().hasHeightForWidth())
+        self.inputFilesBody.setSizePolicy(sizePolicy2)
         self.inputFilesBodyLayout = QVBoxLayout(self.inputFilesBody)
         self.inputFilesBodyLayout.setSpacing(6)
         self.inputFilesBodyLayout.setObjectName(u"inputFilesBodyLayout")
         self.inputFilesBodyLayout.setContentsMargins(4, 2, 4, 4)
         self.inputFilesTree = QTreeView(self.inputFilesBody)
         self.inputFilesTree.setObjectName(u"inputFilesTree")
-        sizePolicy4.setHeightForWidth(self.inputFilesTree.sizePolicy().hasHeightForWidth())
-        self.inputFilesTree.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.inputFilesTree.sizePolicy().hasHeightForWidth())
+        self.inputFilesTree.setSizePolicy(sizePolicy3)
         self.inputFilesTree.setMaximumSize(QSize(16777215, 220))
         self.inputFilesTree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.inputFilesTree.setStyleSheet(u"QTreeView#inputFilesTree {\n"
@@ -624,8 +555,8 @@ class Ui_MainWindow(object):
 
         self.inputFilesLegend = QWidget(self.inputFilesBody)
         self.inputFilesLegend.setObjectName(u"inputFilesLegend")
-        sizePolicy4.setHeightForWidth(self.inputFilesLegend.sizePolicy().hasHeightForWidth())
-        self.inputFilesLegend.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.inputFilesLegend.sizePolicy().hasHeightForWidth())
+        self.inputFilesLegend.setSizePolicy(sizePolicy3)
         self.inputFilesLegend.setMinimumSize(QSize(0, 20))
         self.inputFilesLegend.setMaximumSize(QSize(16777215, 24))
         self.inputFilesLegendLayout = QHBoxLayout(self.inputFilesLegend)
@@ -702,8 +633,8 @@ class Ui_MainWindow(object):
 
         self.outputFilesSection = QFrame(self.content)
         self.outputFilesSection.setObjectName(u"outputFilesSection")
-        sizePolicy3.setHeightForWidth(self.outputFilesSection.sizePolicy().hasHeightForWidth())
-        self.outputFilesSection.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.outputFilesSection.sizePolicy().hasHeightForWidth())
+        self.outputFilesSection.setSizePolicy(sizePolicy2)
         self.outputFilesSection.setStyleSheet(u"QFrame#outputFilesSection {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -718,8 +649,8 @@ class Ui_MainWindow(object):
         self.outputFilesLayout.setContentsMargins(4, 4, 4, 4)
         self.outputFilesHeader = QWidget(self.outputFilesSection)
         self.outputFilesHeader.setObjectName(u"outputFilesHeader")
-        sizePolicy4.setHeightForWidth(self.outputFilesHeader.sizePolicy().hasHeightForWidth())
-        self.outputFilesHeader.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.outputFilesHeader.sizePolicy().hasHeightForWidth())
+        self.outputFilesHeader.setSizePolicy(sizePolicy3)
         self.outputFilesHeader.setMaximumSize(QSize(16777215, 32))
         self.outputFilesHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.outputFilesHeaderLayout = QHBoxLayout(self.outputFilesHeader)
@@ -762,8 +693,8 @@ class Ui_MainWindow(object):
 
         self.outputFilesCount = QLabel(self.outputFilesHeader)
         self.outputFilesCount.setObjectName(u"outputFilesCount")
-        sizePolicy5.setHeightForWidth(self.outputFilesCount.sizePolicy().hasHeightForWidth())
-        self.outputFilesCount.setSizePolicy(sizePolicy5)
+        sizePolicy4.setHeightForWidth(self.outputFilesCount.sizePolicy().hasHeightForWidth())
+        self.outputFilesCount.setSizePolicy(sizePolicy4)
         self.outputFilesCount.setMaximumSize(QSize(16777215, 18))
         self.outputFilesCount.setStyleSheet(u"QLabel#outputFilesCount {\n"
 "    background-color: #f1f5f9;\n"
@@ -793,8 +724,8 @@ class Ui_MainWindow(object):
 
         self.outputFilesBody = QWidget(self.outputFilesSection)
         self.outputFilesBody.setObjectName(u"outputFilesBody")
-        sizePolicy3.setHeightForWidth(self.outputFilesBody.sizePolicy().hasHeightForWidth())
-        self.outputFilesBody.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.outputFilesBody.sizePolicy().hasHeightForWidth())
+        self.outputFilesBody.setSizePolicy(sizePolicy2)
         self.outputFilesBody.setVisible(False)
         self.outputFilesBodyLayout = QVBoxLayout(self.outputFilesBody)
         self.outputFilesBodyLayout.setSpacing(6)
@@ -802,8 +733,8 @@ class Ui_MainWindow(object):
         self.outputFilesBodyLayout.setContentsMargins(4, 2, 4, 4)
         self.outputFilesTree = QTreeView(self.outputFilesBody)
         self.outputFilesTree.setObjectName(u"outputFilesTree")
-        sizePolicy4.setHeightForWidth(self.outputFilesTree.sizePolicy().hasHeightForWidth())
-        self.outputFilesTree.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.outputFilesTree.sizePolicy().hasHeightForWidth())
+        self.outputFilesTree.setSizePolicy(sizePolicy3)
         self.outputFilesTree.setMaximumSize(QSize(16777215, 220))
         self.outputFilesTree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.outputFilesTree.setStyleSheet(u"QTreeView#outputFilesTree {\n"
@@ -908,8 +839,8 @@ class Ui_MainWindow(object):
 
         self.stepDetect = QFrame(self.content)
         self.stepDetect.setObjectName(u"stepDetect")
-        sizePolicy3.setHeightForWidth(self.stepDetect.sizePolicy().hasHeightForWidth())
-        self.stepDetect.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.stepDetect.sizePolicy().hasHeightForWidth())
+        self.stepDetect.setSizePolicy(sizePolicy2)
         self.stepDetect.setStyleSheet(u"QFrame#stepDetect {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -924,8 +855,8 @@ class Ui_MainWindow(object):
         self.stepDetectLayout.setContentsMargins(0, 0, 0, 0)
         self.stepDetectHeader = QWidget(self.stepDetect)
         self.stepDetectHeader.setObjectName(u"stepDetectHeader")
-        sizePolicy4.setHeightForWidth(self.stepDetectHeader.sizePolicy().hasHeightForWidth())
-        self.stepDetectHeader.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.stepDetectHeader.sizePolicy().hasHeightForWidth())
+        self.stepDetectHeader.setSizePolicy(sizePolicy3)
         self.stepDetectHeader.setMaximumSize(QSize(16777215, 46))
         self.stepDetectHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepDetectHeaderLayout = QHBoxLayout(self.stepDetectHeader)
@@ -953,11 +884,11 @@ class Ui_MainWindow(object):
         self.stepDetectTextColumn.setContentsMargins(0, 0, 0, 0)
         self.stepDetectToggle = QPushButton(self.stepDetectHeader)
         self.stepDetectToggle.setObjectName(u"stepDetectToggle")
-        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        sizePolicy6.setHorizontalStretch(1)
-        sizePolicy6.setVerticalStretch(0)
-        sizePolicy6.setHeightForWidth(self.stepDetectToggle.sizePolicy().hasHeightForWidth())
-        self.stepDetectToggle.setSizePolicy(sizePolicy6)
+        sizePolicy5 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        sizePolicy5.setHorizontalStretch(1)
+        sizePolicy5.setVerticalStretch(0)
+        sizePolicy5.setHeightForWidth(self.stepDetectToggle.sizePolicy().hasHeightForWidth())
+        self.stepDetectToggle.setSizePolicy(sizePolicy5)
         self.stepDetectToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepDetectToggle.setStyleSheet(u"QPushButton#stepDetectToggle {\n"
 "    border: none;\n"
@@ -1167,11 +1098,11 @@ class Ui_MainWindow(object):
 
         self.detectUseGPU = QCheckBox(self.stepDetectBody)
         self.detectUseGPU.setObjectName(u"detectUseGPU")
-        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy7.setHorizontalStretch(0)
-        sizePolicy7.setVerticalStretch(0)
-        sizePolicy7.setHeightForWidth(self.detectUseGPU.sizePolicy().hasHeightForWidth())
-        self.detectUseGPU.setSizePolicy(sizePolicy7)
+        sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy6.setHorizontalStretch(0)
+        sizePolicy6.setVerticalStretch(0)
+        sizePolicy6.setHeightForWidth(self.detectUseGPU.sizePolicy().hasHeightForWidth())
+        self.detectUseGPU.setSizePolicy(sizePolicy6)
         self.detectUseGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.detectUseGPU.setStyleSheet(u"QCheckBox#detectUseGPU {\n"
 "    spacing: 0px;\n"
@@ -1236,8 +1167,8 @@ class Ui_MainWindow(object):
 
         self.stepStack = QFrame(self.content)
         self.stepStack.setObjectName(u"stepStack")
-        sizePolicy3.setHeightForWidth(self.stepStack.sizePolicy().hasHeightForWidth())
-        self.stepStack.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.stepStack.sizePolicy().hasHeightForWidth())
+        self.stepStack.setSizePolicy(sizePolicy2)
         self.stepStack.setStyleSheet(u"QFrame#stepStack {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -1252,8 +1183,8 @@ class Ui_MainWindow(object):
         self.stepStackLayout.setContentsMargins(0, 0, 0, 0)
         self.stepStackHeader = QWidget(self.stepStack)
         self.stepStackHeader.setObjectName(u"stepStackHeader")
-        sizePolicy4.setHeightForWidth(self.stepStackHeader.sizePolicy().hasHeightForWidth())
-        self.stepStackHeader.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.stepStackHeader.sizePolicy().hasHeightForWidth())
+        self.stepStackHeader.setSizePolicy(sizePolicy3)
         self.stepStackHeader.setMaximumSize(QSize(16777215, 46))
         self.stepStackHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepStackHeaderLayout = QHBoxLayout(self.stepStackHeader)
@@ -1281,8 +1212,8 @@ class Ui_MainWindow(object):
         self.stepStackTextColumn.setContentsMargins(0, 0, 0, 0)
         self.stepStackToggle = QPushButton(self.stepStackHeader)
         self.stepStackToggle.setObjectName(u"stepStackToggle")
-        sizePolicy6.setHeightForWidth(self.stepStackToggle.sizePolicy().hasHeightForWidth())
-        self.stepStackToggle.setSizePolicy(sizePolicy6)
+        sizePolicy5.setHeightForWidth(self.stepStackToggle.sizePolicy().hasHeightForWidth())
+        self.stepStackToggle.setSizePolicy(sizePolicy5)
         self.stepStackToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepStackToggle.setStyleSheet(u"QPushButton#stepStackToggle {\n"
 "    border: none;\n"
@@ -1570,8 +1501,8 @@ class Ui_MainWindow(object):
 
         self.stackUseGPU = QCheckBox(self.stepStackBody)
         self.stackUseGPU.setObjectName(u"stackUseGPU")
-        sizePolicy7.setHeightForWidth(self.stackUseGPU.sizePolicy().hasHeightForWidth())
-        self.stackUseGPU.setSizePolicy(sizePolicy7)
+        sizePolicy6.setHeightForWidth(self.stackUseGPU.sizePolicy().hasHeightForWidth())
+        self.stackUseGPU.setSizePolicy(sizePolicy6)
         self.stackUseGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stackUseGPU.setStyleSheet(u"QCheckBox#stackUseGPU {\n"
 "    spacing: 0px;\n"
@@ -1677,8 +1608,8 @@ class Ui_MainWindow(object):
 
         self.stepFill = QFrame(self.content)
         self.stepFill.setObjectName(u"stepFill")
-        sizePolicy3.setHeightForWidth(self.stepFill.sizePolicy().hasHeightForWidth())
-        self.stepFill.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.stepFill.sizePolicy().hasHeightForWidth())
+        self.stepFill.setSizePolicy(sizePolicy2)
         self.stepFill.setStyleSheet(u"QFrame#stepFill {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -1693,8 +1624,8 @@ class Ui_MainWindow(object):
         self.stepFillLayout.setContentsMargins(0, 0, 0, 0)
         self.stepFillHeader = QWidget(self.stepFill)
         self.stepFillHeader.setObjectName(u"stepFillHeader")
-        sizePolicy4.setHeightForWidth(self.stepFillHeader.sizePolicy().hasHeightForWidth())
-        self.stepFillHeader.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.stepFillHeader.sizePolicy().hasHeightForWidth())
+        self.stepFillHeader.setSizePolicy(sizePolicy3)
         self.stepFillHeader.setMaximumSize(QSize(16777215, 46))
         self.stepFillHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepFillHeaderLayout = QHBoxLayout(self.stepFillHeader)
@@ -1722,8 +1653,8 @@ class Ui_MainWindow(object):
         self.stepFillTextColumn.setContentsMargins(0, 0, 0, 0)
         self.stepFillToggle = QPushButton(self.stepFillHeader)
         self.stepFillToggle.setObjectName(u"stepFillToggle")
-        sizePolicy6.setHeightForWidth(self.stepFillToggle.sizePolicy().hasHeightForWidth())
-        self.stepFillToggle.setSizePolicy(sizePolicy6)
+        sizePolicy5.setHeightForWidth(self.stepFillToggle.sizePolicy().hasHeightForWidth())
+        self.stepFillToggle.setSizePolicy(sizePolicy5)
         self.stepFillToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepFillToggle.setStyleSheet(u"QPushButton#stepFillToggle {\n"
 "    border: none;\n"
@@ -1835,8 +1766,8 @@ class Ui_MainWindow(object):
 
         self.stepExport = QFrame(self.content)
         self.stepExport.setObjectName(u"stepExport")
-        sizePolicy3.setHeightForWidth(self.stepExport.sizePolicy().hasHeightForWidth())
-        self.stepExport.setSizePolicy(sizePolicy3)
+        sizePolicy2.setHeightForWidth(self.stepExport.sizePolicy().hasHeightForWidth())
+        self.stepExport.setSizePolicy(sizePolicy2)
         self.stepExport.setStyleSheet(u"QFrame#stepExport {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -1851,8 +1782,8 @@ class Ui_MainWindow(object):
         self.stepExportLayout.setContentsMargins(0, 0, 0, 0)
         self.stepExportHeader = QWidget(self.stepExport)
         self.stepExportHeader.setObjectName(u"stepExportHeader")
-        sizePolicy4.setHeightForWidth(self.stepExportHeader.sizePolicy().hasHeightForWidth())
-        self.stepExportHeader.setSizePolicy(sizePolicy4)
+        sizePolicy3.setHeightForWidth(self.stepExportHeader.sizePolicy().hasHeightForWidth())
+        self.stepExportHeader.setSizePolicy(sizePolicy3)
         self.stepExportHeader.setMaximumSize(QSize(16777215, 46))
         self.stepExportHeader.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepExportHeaderLayout = QHBoxLayout(self.stepExportHeader)
@@ -1865,8 +1796,8 @@ class Ui_MainWindow(object):
         self.stepExportTextColumn.setContentsMargins(0, 0, 0, 0)
         self.stepExportToggle = QPushButton(self.stepExportHeader)
         self.stepExportToggle.setObjectName(u"stepExportToggle")
-        sizePolicy6.setHeightForWidth(self.stepExportToggle.sizePolicy().hasHeightForWidth())
-        self.stepExportToggle.setSizePolicy(sizePolicy6)
+        sizePolicy5.setHeightForWidth(self.stepExportToggle.sizePolicy().hasHeightForWidth())
+        self.stepExportToggle.setSizePolicy(sizePolicy5)
         self.stepExportToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.stepExportToggle.setStyleSheet(u"QPushButton#stepExportToggle {\n"
 "    border: none;\n"
@@ -2024,11 +1955,11 @@ class Ui_MainWindow(object):
         self.canvasLayout.setContentsMargins(0, 0, 0, 0)
         self.canvas_main = QLabel(self.canvasHost)
         self.canvas_main.setObjectName(u"canvas_main")
-        sizePolicy8 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
-        sizePolicy8.setHorizontalStretch(1)
-        sizePolicy8.setVerticalStretch(1)
-        sizePolicy8.setHeightForWidth(self.canvas_main.sizePolicy().hasHeightForWidth())
-        self.canvas_main.setSizePolicy(sizePolicy8)
+        sizePolicy7 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        sizePolicy7.setHorizontalStretch(1)
+        sizePolicy7.setVerticalStretch(1)
+        sizePolicy7.setHeightForWidth(self.canvas_main.sizePolicy().hasHeightForWidth())
+        self.canvas_main.setSizePolicy(sizePolicy7)
         self.canvas_main.setMinimumSize(QSize(200, 160))
         self.canvas_main.setStyleSheet(u"QLabel#canvas_main {\n"
 "    background-color: #0f172a;\n"
@@ -2053,8 +1984,6 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"StarTrails AI", None))
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"StarTrails AI", None))
-        self.label_progressBar.setText("")
-        self.pushButton_cancelOp.setText(QCoreApplication.translate("MainWindow", u"X", None))
         self.label_imageName.setText("")
         self.label_gpu.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
         self.projectTitle.setText(QCoreApplication.translate("MainWindow", u"Project Images", None))
@@ -2137,3 +2066,4 @@ class Ui_MainWindow(object):
         self.exportTraining.setText(QCoreApplication.translate("MainWindow", u"Export Training", None))
         self.canvas_main.setText(QCoreApplication.translate("MainWindow", u"Canvas", None))
     # retranslateUi
+

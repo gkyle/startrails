@@ -13,6 +13,7 @@ import numpy as np
 
 from startrails.app import App
 from startrails.ui.progress import ProgressBarUpdater
+from startrails.ui.progress_overlay import ProgressOverlay
 from startrails.ui.signals import AsyncWorker, getSignals
 from startrails.ui.sidebar import Sidebar
 from startrails.ui.ui_interface import Ui_MainWindow
@@ -41,6 +42,10 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.ui.doCancelOp()
+        if self.ui.op_queue is not None and hasattr(self.ui.op_queue, "clear"):
+            self.ui.op_queue.clear()
+            self.ui.op_queue.waitForDone(1000)
+        self.ui.enqueued_tasks.clear()
         self.timer.stop()
         event.accept()
 
@@ -56,10 +61,16 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.app = app
         self.op_queue = QThreadPool()
         self.op_queue.setMaxThreadCount(1)
+        self.enqueued_tasks = set()
+        self.current_running_task = None
 
         self.readyInputImages = False
         self.readyStreaksRemoved = False
         self.readyManualStreaksRemoved = False
+        self.progressOverlay = None
+        self.progressBar = None
+        self.label_progressBar = None
+        self.pushButton_cancelOp = None
 
         settings = app.getWindowSettings()
         if settings is not None:
@@ -104,13 +115,13 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.pushButton_exportMasks.clicked.connect(self.doExportMasks)
         self.pushButton_exportTraining.clicked.connect(self.doExportTrainingStreaks)
         self.pushButton_fillGaps.clicked.connect(self.doFillGaps)
-        self.pushButton_cancelOp.clicked.connect(self.doCancelOp)
 
         self.checkBox_showDeletedMasks.stateChanged.connect(self.onShowDeletedMasksChanged)
 
         self.signals = getSignals()
         self.signals.startProgress.connect(self.slotStartProgress)
         self.signals.incrementProgress.connect(self.slotIncrementProgressBar)
+        self.signals.finishProgress.connect(self.slotFinishProgress)
         self.signals.updateFile.connect(self.slotUpdateFile)
         self.signals.showFile.connect(self.showFile)
         self.signals.fileMetadataChanged.connect(self.slotFileIndicators)
@@ -124,6 +135,13 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.canvas_main: CanvasLabel = replaceWidget(
             self.canvas_main,
             CanvasLabel("", QPixmap()))
+
+        # Floating progress overlay over canvasHost
+        self.progressOverlay = ProgressOverlay(self.canvasHost)
+        self.progressBar = self.progressOverlay.progressBar
+        self.label_progressBar = self.progressOverlay.label_progressBar
+        self.pushButton_cancelOp = self.progressOverlay.pushButton_cancelOp
+        self.pushButton_cancelOp.clicked.connect(self.doCancelOp)
 
         self.slotUpdateGPUStats()
 
@@ -266,14 +284,101 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.app.toggleExcludeFromStack(file)
         self.inputFiles.model.update_file(file)
 
-    def slotStartProgress(self, total, text):
-        self.progressBar.setRange(0, total)
-        self.progressBar.setValue(0)
-        self.label_progressBar.setText(text)
+    def enqueue_task(self, task_id: str, title: str, total: int, desc: str, work_func):
+        if task_id in self.enqueued_tasks:
+            return False
+
+        self.enqueued_tasks.add(task_id)
+
+        # Show the overlay immediately on the GUI thread if no other task is already running
+        if len(self.enqueued_tasks) == 1:
+            self.slotStartProgress(title, total, desc)
+
+        def run_task():
+            # If we start a task, we should show the overlay
+            if hasattr(self.signals, "startProgress"):
+                try:
+                    self.signals.startProgress.emit(title, total, desc)
+                except RuntimeError:
+                    pass
+            self.current_running_task = task_id
+            try:
+                work_func()
+            finally:
+                if self.current_running_task == task_id:
+                    self.current_running_task = None
+                self.enqueued_tasks.discard(task_id)
+
+        worker = AsyncWorker(run_task)
+        self.op_queue.start(worker)
+        return True
+
+    @Slot(object, object, object)
+    def slotStartProgress(self, *args, **kwargs):
+        title = kwargs.get("title", "Processing")
+        total = kwargs.get("total", 0)
+        desc = kwargs.get("desc", "")
+
+        if len(args) == 1:
+            if isinstance(args[0], int):
+                total = args[0]
+            else:
+                desc = str(args[0])
+        elif len(args) == 2:
+            if isinstance(args[0], int):
+                total = args[0]
+                desc = str(args[1])
+            else:
+                title = str(args[0])
+                if isinstance(args[1], int):
+                    total = args[1]
+                else:
+                    desc = str(args[1])
+        elif len(args) >= 3:
+            title = str(args[0])
+            total = int(args[1]) if args[1] is not None else 0
+            desc = str(args[2])
+
+        if self.progressOverlay is not None:
+            self.progressOverlay.start(title=title, total=total, desc=desc)
+        elif self.progressBar is not None:
+            self.progressBar.setRange(0, total)
+            self.progressBar.setValue(0)
+            if self.label_progressBar is not None:
+                self.label_progressBar.setText(desc)
+
+    @Slot()
+    def slotFinishProgress(self):
+        if self.progressOverlay is not None:
+            self.progressOverlay.finish()
 
     def slotIncrementProgressBar(self, progressUpdater: ProgressBarUpdater, total: int, increment: int, count: int, done: bool, data: Optional[File]):
         progressUpdater.total = total
         progressUpdater.update(increment)
+        if self.progressOverlay is not None:
+            if done or (total > 0 and count >= total):
+                self.progressOverlay.finish()
+            else:
+                elapsed = None
+                remaining = None
+                if hasattr(progressUpdater, "_time") and hasattr(progressUpdater, "start_t"):
+                    try:
+                        elapsed = progressUpdater._time() - progressUpdater.start_t
+                        fmt_dict = getattr(progressUpdater, "format_dict", {}) or {}
+                        rate = fmt_dict.get('rate') or (
+                            progressUpdater.n / elapsed if elapsed > 0 else 0
+                        )
+                        remaining = (total - progressUpdater.n) / rate if rate > 0 else 0
+                    except Exception:
+                        pass
+                desc = getattr(progressUpdater, "desc", "")
+                n = getattr(progressUpdater, "n", count)
+                self.progressOverlay.update_progress(
+                    n, total,
+                    elapsed=elapsed,
+                    remaining=remaining,
+                    desc=desc
+                )
         if data is not None:
             if isinstance(data, np.ndarray):
                 # In-memory preview update
@@ -325,27 +430,46 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.updateFillEligibility()
 
     def doFindBrightFrame(self, file, x, y):
+        files = self.app.getInputFileList()
+        total = len(list(files))
+
         def f(fileList):
             total = len(list(fileList))
             progressUpdater = ProgressBarUpdater(
                 self.progressBar, self.label_progressBar, total=total, desc="Finding Brightest:")
             brightFile = self.app.doFindBrightFrame(x, y, file, progressUpdater.tick)
             if brightFile is not None:
-                self.signals.showFile.emit(brightFile)
+                try:
+                    self.signals.showFile.emit(brightFile)
+                except RuntimeError:
+                    pass
 
-        worker = AsyncWorker(partial(f, self.app.getInputFileList()))
-        self.op_queue.start(worker)
+        self.enqueue_task(
+            "findBrightFrame",
+            "Find Brightest Frame",
+            total,
+            "Searching brightest frame...",
+            partial(f, self.app.getInputFileList())
+        )
 
     def doFillGaps(self):
         def f():
             progressUpdater = ProgressBarUpdater(
                 self.progressBar, self.label_progressBar, total=1, desc="Filling Gaps:")
             fileFillGaps = self.app.doFillGaps(self.currentFile, progressUpdater.tick)
-            self.signals.refreshReadiness.emit()
-            self.signals.drawOutputFileList.emit(fileFillGaps)
+            try:
+                self.signals.refreshReadiness.emit()
+                self.signals.drawOutputFileList.emit(fileFillGaps)
+            except RuntimeError:
+                pass
 
-        worker = AsyncWorker(f)
-        self.op_queue.start(worker)
+        self.enqueue_task(
+            "fillGaps",
+            "Fill Gaps",
+            1,
+            "Filling gaps...",
+            f
+        )
 
     def doStack(self, _=None):
         QApplication.processEvents()
@@ -354,15 +478,26 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             return
         streaksRemoved = settings.pop("streaksRemoved")
 
+        files = self.app.getInputFileList()
+        total = len(list(files))
+
         def f(fileList):
             total = len(list(fileList))
             progressUpdater = ProgressBarUpdater(
                 self.progressBar, self.label_progressBar, total=total, desc="Stacking:")
             file = self.app.doStack(streaksRemoved, progressUpdater.tick, **settings)
-            self.signals.drawOutputFileList.emit(file)
+            try:
+                self.signals.drawOutputFileList.emit(file)
+            except RuntimeError:
+                pass
 
-        worker = AsyncWorker(partial(f, self.app.getInputFileList()))
-        self.op_queue.start(worker)
+        self.enqueue_task(
+            "stack",
+            "Stack Images",
+            total,
+            f"Processing frame 1 of {total}",
+            partial(f, self.app.getInputFileList())
+        )
 
     def doExportTrainingStreaks(self):
 
@@ -377,31 +512,51 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         if reply != QMessageBox.StandardButton.Yes:
             return
 
-        def f(folderName):
-            if folderName:
-                total = len(list(self.app.getInputFileList()))
-                progressUpdater = ProgressBarUpdater(
-                    self.progressBar, self.label_progressBar, total=total, desc="Exporting Training Labels:")
-                self.app.doExportTrainingStreaks(folderName, progressUpdater.tick)
-
         folderName = QFileDialog.getExistingDirectory(caption="Choose folder to save mask files")
-        worker = AsyncWorker(partial(f, folderName))
-        self.op_queue.start(worker)
+        if not folderName:
+            return
+        files = self.app.getInputFileList()
+        total = len(list(files))
+
+        def f(folderName):
+            total = len(list(self.app.getInputFileList()))
+            progressUpdater = ProgressBarUpdater(
+                self.progressBar, self.label_progressBar, total=total, desc="Exporting Training Labels:")
+            self.app.doExportTrainingStreaks(folderName, progressUpdater.tick)
+
+        self.enqueue_task(
+            "exportTraining",
+            "Export Training Data",
+            total,
+            f"Exporting sample 1 of {total}",
+            partial(f, folderName)
+        )
 
     def doDetectStreaks(self):
         settings = self.sidebar.detect.values()
         if settings is None:
             return
 
+        files = self.app.getInputFileList()
+        total = len(list(files))
+
         def f(fileList):
             total = len(list(fileList))
             progressUpdater = ProgressBarUpdater(
                 self.progressBar, self.label_progressBar, total=total, desc="Removing Streaks:")
             self.app.doDetectStreaks(progressUpdater.tick, **settings)
-            self.signals.refreshReadiness.emit()
+            try:
+                self.signals.refreshReadiness.emit()
+            except RuntimeError:
+                pass
 
-        worker = AsyncWorker(partial(f, self.app.getInputFileList()))
-        self.op_queue.start(worker)
+        self.enqueue_task(
+            "detectStreaks",
+            "Detect Streaks",
+            total,
+            f"Processing frame 1 of {total}",
+            partial(f, self.app.getInputFileList())
+        )
 
     def doNewProject(self):
         QApplication.processEvents()
@@ -424,19 +579,31 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             self.resetProjectView()
 
     def doExportMasks(self):
-        def f(folderName):
-            if folderName:
-                total = len(list(self.app.getInputFileList()))
-                progressUpdater = ProgressBarUpdater(
-                    self.progressBar, self.label_progressBar, total=total, desc="Exporting Training Labels:")
-                self.app.doExportMaskedImages(folderName, progressUpdater.tick)
-
         folderName = QFileDialog.getExistingDirectory(caption="Choose folder to save mask files")
-        worker = AsyncWorker(partial(f, folderName), True)
-        self.op_queue.start(worker)
+        if not folderName:
+            return
+        files = self.app.getInputFileList()
+        total = len(list(files))
+
+        def f(folderName):
+            total = len(list(self.app.getInputFileList()))
+            progressUpdater = ProgressBarUpdater(
+                self.progressBar, self.label_progressBar, total=total, desc="Exporting Training Labels:")
+            self.app.doExportMaskedImages(folderName, progressUpdater.tick)
+
+        self.enqueue_task(
+            "exportMasks",
+            "Export Artifacts",
+            total,
+            f"Exporting mask 1 of {total}",
+            partial(f, folderName)
+        )
 
     def doCancelOp(self):
         self.app.doInterruptOperation()
+        if self.progressOverlay is not None:
+            self.progressOverlay.label_progressBar.setText("Cancelling...")
+            self.progressOverlay.pushButton_cancelOp.setEnabled(False)
 
 
 def replaceWidget(placeHolder: QWidget, newWidget: QWidget):
