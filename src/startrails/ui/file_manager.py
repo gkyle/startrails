@@ -137,13 +137,14 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
 class FileModel(QAbstractTableModel):
     summaryChanged = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, inputs=None):
         super().__init__(parent)
         self.files = []
         self._rows = {}
         self._states = {}
         self.mask_files = set()
         self.manual_files = set()
+        self._inputs = inputs
 
     def rowCount(self, parent=QModelIndex()):
         return 0 if parent.isValid() else len(self.files)
@@ -154,7 +155,10 @@ class FileModel(QAbstractTableModel):
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if orientation == Qt.Horizontal:
             if role == Qt.DisplayRole:
-                return ("Filename", "Annotations / status")[section]
+                if self._inputs:
+                    return ("Filename", "Annotations")[section]
+                else:
+                    return ("Filename", "Type")[section]
             if role == Qt.ToolTipRole and section == 1:
                 return "A: automatic masks · M: manual masks · D: manually deleted masks"
 
@@ -293,7 +297,7 @@ class FileSection(QFrame):
         else:
             self.ui.icon.setPixmap(QIcon(":/startrails/ui/document_output.svg").pixmap(16, 16))
 
-        self.model = FileModel(self)
+        self.model = FileModel(self, inputs=self._inputs)
         self.ui.files.setModel(self.model)
         self.delegate = AnnotationBadgeDelegate(self.ui.files)
         self.ui.files.setItemDelegate(self.delegate)

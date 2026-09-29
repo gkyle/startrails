@@ -237,8 +237,8 @@ class Ui_MainWindow(object):
 
         self.bodySplitter = QSplitter(self.vframe)
         self.bodySplitter.setObjectName(u"bodySplitter")
-        self.bodySplitter.setHandleWidth(0)
         self.bodySplitter.setOrientation(Qt.Horizontal)
+        self.bodySplitter.setHandleWidth(0)
         self.bodySplitter.setChildrenCollapsible(False)
         self.sidebar = QWidget(self.bodySplitter)
         self.sidebar.setObjectName(u"sidebar")
@@ -290,7 +290,7 @@ class Ui_MainWindow(object):
         self.scroll.setWidgetResizable(True)
         self.content = QWidget()
         self.content.setObjectName(u"content")
-        self.content.setGeometry(QRect(0, -619, 381, 1765))
+        self.content.setGeometry(QRect(0, -694, 317, 1840))
         self.content.setMinimumSize(QSize(0, 0))
         self.content.setStyleSheet(u"QWidget#content {\n"
 "    background-color: #f8fafc;\n"
@@ -895,6 +895,7 @@ class Ui_MainWindow(object):
         sizePolicy5.setHeightForWidth(self.stepDetectToggle.sizePolicy().hasHeightForWidth())
         self.stepDetectToggle.setSizePolicy(sizePolicy5)
         self.stepDetectToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepDetectToggle.setFocusPolicy(Qt.NoFocus)
         self.stepDetectToggle.setStyleSheet(u"QPushButton#stepDetectToggle {\n"
 "    border: 2px solid transparent;\n"
 "    background: transparent;\n"
@@ -1230,6 +1231,7 @@ class Ui_MainWindow(object):
         sizePolicy5.setHeightForWidth(self.stepStackToggle.sizePolicy().hasHeightForWidth())
         self.stepStackToggle.setSizePolicy(sizePolicy5)
         self.stepStackToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepStackToggle.setFocusPolicy(Qt.NoFocus)
         self.stepStackToggle.setStyleSheet(u"QPushButton#stepStackToggle {\n"
 "    border: 2px solid transparent;\n"
 "    background: transparent;\n"
@@ -1686,6 +1688,7 @@ class Ui_MainWindow(object):
         sizePolicy5.setHeightForWidth(self.stepReviewToggle.sizePolicy().hasHeightForWidth())
         self.stepReviewToggle.setSizePolicy(sizePolicy5)
         self.stepReviewToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepReviewToggle.setFocusPolicy(Qt.NoFocus)
         self.stepReviewToggle.setStyleSheet(u"QPushButton#stepReviewToggle {\n"
 "    border: 2px solid transparent;\n"
 "    background: transparent;\n"
@@ -2084,6 +2087,7 @@ class Ui_MainWindow(object):
         sizePolicy5.setHeightForWidth(self.stepFillToggle.sizePolicy().hasHeightForWidth())
         self.stepFillToggle.setSizePolicy(sizePolicy5)
         self.stepFillToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stepFillToggle.setFocusPolicy(Qt.NoFocus)
         self.stepFillToggle.setStyleSheet(u"QPushButton#stepFillToggle {\n"
 "    border: 2px solid transparent;\n"
 "    background: transparent;\n"
@@ -2251,6 +2255,7 @@ class Ui_MainWindow(object):
         sizePolicy5.setHeightForWidth(self.additionalToolsToggle.sizePolicy().hasHeightForWidth())
         self.additionalToolsToggle.setSizePolicy(sizePolicy5)
         self.additionalToolsToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.additionalToolsToggle.setFocusPolicy(Qt.NoFocus)
         self.additionalToolsToggle.setStyleSheet(u"QPushButton#additionalToolsToggle {\n"
 "                    border: 2px solid transparent;\n"
 "                    background: transparent;\n"

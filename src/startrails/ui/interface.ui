@@ -446,11 +446,11 @@ QProgressBar#progressBar_gpu_mem::chunk {
        </item>
        <item>
         <widget class="QSplitter" name="bodySplitter">
-         <property name="handleWidth">
-          <number>0</number>
-         </property>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="handleWidth">
+          <number>0</number>
          </property>
          <property name="childrenCollapsible">
           <bool>false</bool>
@@ -547,9 +547,9 @@ QScrollBar:horizontal {
               <property name="geometry">
                <rect>
                 <x>0</x>
-                <y>-619</y>
-                <width>381</width>
-                <height>1765</height>
+                <y>-694</y>
+                <width>317</width>
+                <height>1840</height>
                </rect>
               </property>
               <property name="minimumSize">
@@ -1649,6 +1649,9 @@ QFrame#stepDetect:hover {
                          <property name="cursor">
                           <cursorShape>PointingHandCursor</cursorShape>
                          </property>
+                         <property name="focusPolicy">
+                          <enum>Qt::NoFocus</enum>
+                         </property>
                          <property name="styleSheet">
                           <string notr="true">QPushButton#stepDetectToggle {
     border: 2px solid transparent;
@@ -1790,9 +1793,6 @@ QPushButton#stepDetectToggle:focus:enabled { border-color: #0f172a; }</string>
                        </property>
                        <item row="0" column="0">
                         <widget class="QLabel" name="detectConfidenceLabel">
-                         <property name="buddy">
-                          <cstring>detectConfidence</cstring>
-                         </property>
                          <property name="styleSheet">
                           <string notr="true">QLabel#detectConfidenceLabel {
     color: #334155;
@@ -1801,6 +1801,9 @@ QPushButton#stepDetectToggle:focus:enabled { border-color: #0f172a; }</string>
                          </property>
                          <property name="text">
                           <string>Confidence</string>
+                         </property>
+                         <property name="buddy">
+                          <cstring>detectConfidence</cstring>
                          </property>
                         </widget>
                        </item>
@@ -1937,9 +1940,6 @@ QPushButton#detectMergeNMS:checked:focus:enabled, QPushButton#detectMergeNMM:che
                        </item>
                        <item row="2" column="0">
                         <widget class="QLabel" name="detectThresholdLabel">
-                         <property name="buddy">
-                          <cstring>detectMergeThreshold</cstring>
-                         </property>
                          <property name="styleSheet">
                           <string notr="true">QLabel#detectThresholdLabel {
     color: #334155;
@@ -1951,6 +1951,9 @@ QPushButton#detectMergeNMS:checked:focus:enabled, QPushButton#detectMergeNMM:che
                          </property>
                          <property name="text">
                           <string>Threshold</string>
+                         </property>
+                         <property name="buddy">
+                          <cstring>detectMergeThreshold</cstring>
                          </property>
                         </widget>
                        </item>
@@ -1990,9 +1993,6 @@ QDoubleSpinBox#detectMergeThreshold::down-arrow { image: url(:/startrails/ui/arr
                        </item>
                        <item row="3" column="0">
                         <widget class="QLabel" name="detectUseGPULabel">
-                         <property name="buddy">
-                          <cstring>detectUseGPU</cstring>
-                         </property>
                          <property name="styleSheet">
                           <string notr="true">QLabel#detectUseGPULabel {
     color: #334155;
@@ -2002,13 +2002,13 @@ QDoubleSpinBox#detectMergeThreshold::down-arrow { image: url(:/startrails/ui/arr
                          <property name="text">
                           <string>Use GPU</string>
                          </property>
+                         <property name="buddy">
+                          <cstring>detectUseGPU</cstring>
+                         </property>
                         </widget>
                        </item>
                        <item row="3" column="1" alignment="Qt::AlignRight">
                         <widget class="QCheckBox" name="detectUseGPU">
-                         <property name="accessibleName">
-                          <string>Use GPU for detection</string>
-                         </property>
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                            <horstretch>0</horstretch>
@@ -2017,6 +2017,9 @@ QDoubleSpinBox#detectMergeThreshold::down-arrow { image: url(:/startrails/ui/arr
                          </property>
                          <property name="cursor">
                           <cursorShape>PointingHandCursor</cursorShape>
+                         </property>
+                         <property name="accessibleName">
+                          <string>Use GPU for detection</string>
                          </property>
                          <property name="styleSheet">
                           <string notr="true">QCheckBox#detectUseGPU { spacing: 0px;
@@ -2223,6 +2226,9 @@ QFrame#stepStack:hover {
                          </property>
                          <property name="cursor">
                           <cursorShape>PointingHandCursor</cursorShape>
+                         </property>
+                         <property name="focusPolicy">
+                          <enum>Qt::NoFocus</enum>
                          </property>
                          <property name="styleSheet">
                           <string notr="true">QPushButton#stepStackToggle {
@@ -2629,9 +2635,6 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
                        </item>
                        <item row="3" column="0">
                         <widget class="QLabel" name="stackAmountLabel">
-                         <property name="buddy">
-                          <cstring>stackFadeAmount</cstring>
-                         </property>
                          <property name="styleSheet">
                           <string notr="true">QLabel#stackAmountLabel {
     color: #334155;
@@ -2643,6 +2646,9 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
                          </property>
                          <property name="text">
                           <string>Amount</string>
+                         </property>
+                         <property name="buddy">
+                          <cstring>stackFadeAmount</cstring>
                          </property>
                         </widget>
                        </item>
@@ -2687,9 +2693,6 @@ QSpinBox#stackFadeAmount::down-arrow { image: url(:/startrails/ui/arrow_down.svg
                        </item>
                        <item row="4" column="0">
                         <widget class="QLabel" name="stackUseGPULabel">
-                         <property name="buddy">
-                          <cstring>stackUseGPU</cstring>
-                         </property>
                          <property name="styleSheet">
                           <string notr="true">QLabel#stackUseGPULabel {
     color: #334155;
@@ -2699,13 +2702,13 @@ QSpinBox#stackFadeAmount::down-arrow { image: url(:/startrails/ui/arrow_down.svg
                          <property name="text">
                           <string>Use GPU</string>
                          </property>
+                         <property name="buddy">
+                          <cstring>stackUseGPU</cstring>
+                         </property>
                         </widget>
                        </item>
                        <item row="4" column="1" alignment="Qt::AlignRight">
                         <widget class="QCheckBox" name="stackUseGPU">
-                         <property name="accessibleName">
-                          <string>Use GPU for stacking</string>
-                         </property>
                          <property name="sizePolicy">
                           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                            <horstretch>0</horstretch>
@@ -2714,6 +2717,9 @@ QSpinBox#stackFadeAmount::down-arrow { image: url(:/startrails/ui/arrow_down.svg
                          </property>
                          <property name="cursor">
                           <cursorShape>PointingHandCursor</cursorShape>
+                         </property>
+                         <property name="accessibleName">
+                          <string>Use GPU for stacking</string>
                          </property>
                          <property name="styleSheet">
                           <string notr="true">QCheckBox#stackUseGPU { spacing: 0px;
@@ -2725,7 +2731,7 @@ QSpinBox#stackFadeAmount::down-arrow { image: url(:/startrails/ui/arrow_down.svg
 QCheckBox#stackUseGPU:focus:enabled { border-color: #0f172a; }</string>
                          </property>
                          <property name="text">
-                          <string />
+                          <string/>
                          </property>
                          <property name="checked">
                           <bool>true</bool>
@@ -2734,9 +2740,6 @@ QCheckBox#stackUseGPU:focus:enabled { border-color: #0f172a; }</string>
                        </item>
                        <item row="5" column="0">
                         <widget class="QLabel" name="stackBatchLabel">
-                         <property name="buddy">
-                          <cstring>stackBatchSize</cstring>
-                         </property>
                          <property name="styleSheet">
                           <string notr="true">QLabel#stackBatchLabel {
     color: #334155;
@@ -2745,6 +2748,9 @@ QCheckBox#stackUseGPU:focus:enabled { border-color: #0f172a; }</string>
                          </property>
                          <property name="text">
                           <string>Batch size</string>
+                         </property>
+                         <property name="buddy">
+                          <cstring>stackBatchSize</cstring>
                          </property>
                         </widget>
                        </item>
@@ -2987,6 +2993,9 @@ QFrame#stepReview:hover {
                          </property>
                          <property name="cursor">
                           <cursorShape>PointingHandCursor</cursorShape>
+                         </property>
+                         <property name="focusPolicy">
+                          <enum>Qt::NoFocus</enum>
                          </property>
                          <property name="styleSheet">
                           <string notr="true">QPushButton#stepReviewToggle {
@@ -3652,6 +3661,9 @@ QFrame#stepFill:hover {
                          <property name="cursor">
                           <cursorShape>PointingHandCursor</cursorShape>
                          </property>
+                         <property name="focusPolicy">
+                          <enum>Qt::NoFocus</enum>
+                         </property>
                          <property name="styleSheet">
                           <string notr="true">QPushButton#stepFillToggle {
     border: 2px solid transparent;
@@ -3963,6 +3975,9 @@ QFrame#additionalTools:hover {
                          </property>
                          <property name="cursor">
                           <cursorShape>PointingHandCursor</cursorShape>
+                         </property>
+                         <property name="focusPolicy">
+                          <enum>Qt::NoFocus</enum>
                          </property>
                          <property name="styleSheet">
                           <string notr="true">QPushButton#additionalToolsToggle {
