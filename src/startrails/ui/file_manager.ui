@@ -26,9 +26,12 @@ QFrame#fileSection:hover {
     border-color: #cbd5e1;
 }
 QLabel#chevron {
-    font-size: 10px;
-    color: #64748b;
-    font-weight: bold;
+    min-width: 14px;
+    max-width: 14px;
+    image: url(:/startrails/ui/chevron_right.svg);
+}
+QLabel#chevron[expanded="true"] {
+    image: url(:/startrails/ui/chevron_down.svg);
 }
 QToolButton#toggle {
     border: 2px solid transparent;
@@ -168,8 +171,23 @@ QPushButton#add:focus:enabled { border-color: #0f172a; }</string>
       </property>
       <item>
        <widget class="QLabel" name="chevron">
+        <property name="minimumSize">
+         <size>
+          <width>14</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>14</width>
+          <height>16777215</height>
+         </size>
+        </property>
         <property name="text">
-         <string>▶</string>
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>

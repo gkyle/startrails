@@ -106,7 +106,9 @@ class StepCard(QFrame):
     def setExpanded(self, expanded):
         with QSignalBlocker(self.ui.toggle):
             self.ui.toggle.setChecked(expanded)
-        self.ui.chevron.setText("▼" if expanded else "▶")
+        self.ui.chevron.setProperty("expanded", expanded)
+        self.ui.chevron.style().unpolish(self.ui.chevron)
+        self.ui.chevron.style().polish(self.ui.chevron)
         self.ui.body.setVisible(expanded)
         target = self.frame if getattr(self, "frame", None) is not None else self
         if not expanded:

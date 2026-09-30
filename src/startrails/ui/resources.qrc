@@ -10,5 +10,9 @@
   <file alias="document_output.svg">icons/document_output.svg</file>
   <file alias="switch_on.svg">icons/switch_on.svg</file>
   <file alias="switch_off.svg">icons/switch_off.svg</file>
+  <file alias="chevron_down.svg">icons/chevron_down.svg</file>
+  <file alias="chevron_right.svg">icons/chevron_right.svg</file>
+  <file alias="chevron_down_dark.svg">icons/chevron_down_dark.svg</file>
+  <file alias="chevron_right_dark.svg">icons/chevron_right_dark.svg</file>
  </qresource>
 </RCC>

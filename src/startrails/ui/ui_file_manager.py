@@ -39,9 +39,12 @@ class Ui_fileSection(object):
 "    border-color: #cbd5e1;\n"
 "}\n"
 "QLabel#chevron {\n"
-"    font-size: 10px;\n"
-"    color: #64748b;\n"
-"    font-weight: bold;\n"
+"    min-width: 14px;\n"
+"    max-width: 14px;\n"
+"    image: url(:/startrails/ui/chevron_right.svg);\n"
+"}\n"
+"QLabel#chevron[expanded=\"true\"] {\n"
+"    image: url(:/startrails/ui/chevron_down.svg);\n"
 "}\n"
 "QToolButton#toggle {\n"
 "    border: 2px solid transparent;\n"
@@ -66,14 +69,14 @@ class Ui_fileSection(object):
 "    font-weight: bold;\n"
 "    font-size: 13px;\n"
 "    color: #475569;\n"
-"    background: transparent;\n"
+"    background: "
+                        "transparent;\n"
 "    min-width: 20px;\n"
 "    max-width: 20px;\n"
 "    min-height: 20px;\n"
 "    max-height: 20px;\n"
 "}\n"
-"QPus"
-                        "hButton#add:hover {\n"
+"QPushButton#add:hover {\n"
 "    background-color: #e2e8f0;\n"
 "    color: #0f172a;\n"
 "}\n"
@@ -110,14 +113,14 @@ class Ui_fileSection(object):
 "QMenu {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
+"    border-radius: "
+                        "6px;\n"
 "    padding: 4px;\n"
 "}\n"
 "QMenu::item {\n"
 "    padding: 6px 20px 6px 12px;\n"
 "    border-radius: 4px;\n"
-"    font-s"
-                        "ize: 12px;\n"
+"    font-size: 12px;\n"
 "    color: #0f172a;\n"
 "}\n"
 "QMenu::item:selected {\n"
@@ -150,6 +153,9 @@ class Ui_fileSection(object):
         self.header.setContentsMargins(6, 4, 6, 4)
         self.chevron = QLabel(self.headerWidget)
         self.chevron.setObjectName(u"chevron")
+        self.chevron.setMinimumSize(QSize(14, 0))
+        self.chevron.setMaximumSize(QSize(14, 16777215))
+        self.chevron.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.header.addWidget(self.chevron)
 
@@ -306,7 +312,7 @@ class Ui_fileSection(object):
     # setupUi
 
     def retranslateUi(self, fileSection):
-        self.chevron.setText(QCoreApplication.translate("fileSection", u"\u25b6", None))
+        self.chevron.setText("")
         self.icon.setText("")
         self.toggle.setText(QCoreApplication.translate("fileSection", u"Input Files", None))
 #if QT_CONFIG(accessibility)

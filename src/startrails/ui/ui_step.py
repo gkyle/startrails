@@ -50,9 +50,12 @@ class Ui_StepCard(object):
 "    color: #64748b;\n"
 "}\n"
 "QLabel#chevron {\n"
-"    font-size: 9px;\n"
-"    font-weight: bold;\n"
-"    color: #64748b;\n"
+"    min-width: 14px;\n"
+"    max-width: 14px;\n"
+"    image: url(:/startrails/ui/chevron_down.svg);\n"
+"}\n"
+"QLabel#chevron[expanded=\"false\"] {\n"
+"    image: url(:/startrails/ui/chevron_right.svg);\n"
 "}\n"
 "QWidget#body {\n"
 "    border-top: 1px solid #f1f5f9;\n"
@@ -170,7 +173,7 @@ class Ui_StepCard(object):
         self.toggle.setText(QCoreApplication.translate("StepCard", u"Step Title", None))
         self.subtitle.setText(QCoreApplication.translate("StepCard", u"Ready", None))
         self.statusBadge.setText(QCoreApplication.translate("StepCard", u"\u2713 Ready", None))
-        self.chevron.setText(QCoreApplication.translate("StepCard", u"\u25bc", None))
+        self.chevron.setText("")
         pass
     # retranslateUi
 
