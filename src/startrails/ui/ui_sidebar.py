@@ -220,3 +220,5 @@ class Ui_Sidebar(object):
         self.operationsProgressLabel.setText(QCoreApplication.translate("Sidebar", u"0 of 4 steps complete", None))
         pass
     # retranslateUi
+
+Ui_sidebar = Ui_Sidebar

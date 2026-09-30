@@ -22,20 +22,33 @@ class Ui_ToolsSettings(object):
     def setupUi(self, toolsSettings):
         if not toolsSettings.objectName():
             toolsSettings.setObjectName(u"toolsSettings")
-        toolsSettings.setStyleSheet(u"QLabel#masksHeading {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #475569;\n"
-"    text-transform: uppercase;\n"
-"    letter-spacing: 0.5px;\n"
-"    margin-top: 2px;\n"
-"}\n"
-"QLabel#masksHint {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"    line-height: 1.3;\n"
-"}\n"
-"QPushButton#masks {\n"
+        self.layout = QVBoxLayout(toolsSettings)
+        self.layout.setSpacing(8)
+        self.layout.setObjectName(u"layout")
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.masksHeading = QLabel(toolsSettings)
+        self.masksHeading.setObjectName(u"masksHeading")
+        self.masksHeading.setStyleSheet(u"font-size: 11px;\n"
+"font-weight: 600;\n"
+"color: #475569;\n"
+"text-transform: uppercase;\n"
+"letter-spacing: 0.5px;\n"
+"margin-top: 2px;")
+
+        self.layout.addWidget(self.masksHeading)
+
+        self.masksHint = QLabel(toolsSettings)
+        self.masksHint.setObjectName(u"masksHint")
+        self.masksHint.setStyleSheet(u"font-size: 11px;\n"
+"color: #64748b;\n"
+"line-height: 1.3;")
+        self.masksHint.setWordWrap(True)
+
+        self.layout.addWidget(self.masksHint)
+
+        self.masks = QPushButton(toolsSettings)
+        self.masks.setObjectName(u"masks")
+        self.masks.setStyleSheet(u"QPushButton#masks {\n"
 "    background-color: #ffffff;\n"
 "    color: #1e293b;\n"
 "    border: 2px solid #cbd5e1;\n"
@@ -54,23 +67,6 @@ class Ui_ToolsSettings(object):
 "    border-color: #e2e8f0;\n"
 "}\n"
 "QPushButton#masks:focus:enabled { border-color: #0f172a; }")
-        self.layout = QVBoxLayout(toolsSettings)
-        self.layout.setSpacing(8)
-        self.layout.setObjectName(u"layout")
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.masksHeading = QLabel(toolsSettings)
-        self.masksHeading.setObjectName(u"masksHeading")
-
-        self.layout.addWidget(self.masksHeading)
-
-        self.masksHint = QLabel(toolsSettings)
-        self.masksHint.setObjectName(u"masksHint")
-        self.masksHint.setWordWrap(True)
-
-        self.layout.addWidget(self.masksHint)
-
-        self.masks = QPushButton(toolsSettings)
-        self.masks.setObjectName(u"masks")
         self.masks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.masks.setEnabled(False)
 
@@ -91,3 +87,5 @@ class Ui_ToolsSettings(object):
 #endif // QT_CONFIG(tooltip)
         pass
     # retranslateUi
+
+Ui_toolsSettings = Ui_ToolsSettings

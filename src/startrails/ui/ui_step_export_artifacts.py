@@ -22,43 +22,22 @@ class Ui_ExportSettings(object):
     def setupUi(self, exportSettings):
         if not exportSettings.objectName():
             exportSettings.setObjectName(u"exportSettings")
-        exportSettings.setStyleSheet(u"QLabel#hint {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"    line-height: 1.4;\n"
-"}\n"
-"QCheckBox {\n"
+        exportSettings.setStyleSheet(u"QCheckBox {\n"
 "    font-size: 12px;\n"
 "    color: #1e293b;\n"
 "    spacing: 6px;\n"
 "    border: 2px solid transparent;\n"
 "}\n"
-"QPushButton#masks, QPushButton#training {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 2px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#masks:hover, QPushButton#training:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#masks:disabled, QPushButton#training:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
-"QCheckBox:focus:enabled { border-color: #0f172a; }\n"
-"QPushButton#masks:focus:enabled, QPushButton#training:focus:enabled { border-color: #0f172a; }")
+"QCheckBox:focus:enabled { border-color: #0f172a; }")
         self.layout = QVBoxLayout(exportSettings)
         self.layout.setSpacing(6)
         self.layout.setObjectName(u"layout")
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.hint = QLabel(exportSettings)
         self.hint.setObjectName(u"hint")
+        self.hint.setStyleSheet(u"font-size: 11px;\n"
+"color: #64748b;\n"
+"line-height: 1.4;")
         self.hint.setWordWrap(True)
 
         self.layout.addWidget(self.hint)
@@ -70,6 +49,25 @@ class Ui_ExportSettings(object):
 
         self.masks = QPushButton(exportSettings)
         self.masks.setObjectName(u"masks")
+        self.masks.setStyleSheet(u"QPushButton#masks {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 2px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#masks:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#masks:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}\n"
+"QPushButton#masks:focus:enabled { border-color: #0f172a; }")
         self.masks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.masks.setEnabled(False)
 
@@ -77,6 +75,25 @@ class Ui_ExportSettings(object):
 
         self.training = QPushButton(exportSettings)
         self.training.setObjectName(u"training")
+        self.training.setStyleSheet(u"QPushButton#training {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 2px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#training:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#training:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}\n"
+"QPushButton#training:focus:enabled { border-color: #0f172a; }")
         self.training.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.training.setEnabled(False)
 
@@ -101,3 +118,5 @@ class Ui_ExportSettings(object):
 #endif // QT_CONFIG(tooltip)
         pass
     # retranslateUi
+
+Ui_exportSettings = Ui_ExportSettings

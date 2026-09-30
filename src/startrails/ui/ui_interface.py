@@ -288,3 +288,5 @@ class Ui_MainWindow(object):
         self.label_gpu.setText(QCoreApplication.translate("MainWindow", u"TextLabel", None))
         self.canvas_main.setText(QCoreApplication.translate("MainWindow", u"Canvas", None))
     # retranslateUi
+
+Ui_mainWindow = Ui_MainWindow

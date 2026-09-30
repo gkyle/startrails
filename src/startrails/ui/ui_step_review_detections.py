@@ -20,99 +20,11 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout,
     QWidget)
 from . import resources_rc
 
-class Ui_ReviewSettings(object):
+class Ui_reviewSettings(object):
     def setupUi(self, reviewSettings):
         if not reviewSettings.objectName():
             reviewSettings.setObjectName(u"reviewSettings")
-        reviewSettings.setStyleSheet(u"QLabel#contributeHeading, QLabel#findBrightestHeading {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #475569;\n"
-"    text-transform: uppercase;\n"
-"    letter-spacing: 0.5px;\n"
-"    margin-top: 2px;\n"
-"}\n"
-"QLabel#contributeHint, QLabel#findBrightestHint {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"    line-height: 1.3;\n"
-"}\n"
-"QFrame#statAuto {\n"
-"    background-color: #f0fdf4;\n"
-"    border: 1px solid #bbf7d0;\n"
-"    border-radius: 6px;\n"
-"}\n"
-"QFrame#statManual {\n"
-"    background-color: #f0f9ff;\n"
-"    border: 1px solid #bae6fd;\n"
-"    border-radius: 6px;\n"
-"}\n"
-"QFrame#statDeleted {\n"
-"    background-color: #fffbeb;\n"
-"    border: 1px solid #fde68a;\n"
-"    border-radius: 6px;\n"
-"}\n"
-"QLabel#statAutoTitle {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #15803d;\n"
-"}\n"
-"QLabel#statManualTitle {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #0369a1;\n"
-"}\n"
-"QLabel#statDeletedTitle {\n"
-"    font-size: 11px;\n"
-"  "
-                        "  font-weight: 600;\n"
-"    color: #b45309;\n"
-"}\n"
-"QLabel#statAutoNum {\n"
-"    font-size: 17px;\n"
-"    font-weight: bold;\n"
-"    color: #166534;\n"
-"}\n"
-"QLabel#statManualNum {\n"
-"    font-size: 17px;\n"
-"    font-weight: bold;\n"
-"    color: #0369a1;\n"
-"}\n"
-"QLabel#statDeletedNum {\n"
-"    font-size: 17px;\n"
-"    font-weight: bold;\n"
-"    color: #92400e;\n"
-"}\n"
-"QPushButton#training, QPushButton#findBrightest {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 2px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#training:hover, QPushButton#findBrightest:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#findBrightest:checked {\n"
-"    background-color: #e0f2fe;\n"
-"    color: #0369a1;\n"
-"    border-color: #0369a1;\n"
-"    font-weight: 600;\n"
-"}\n"
-"QPushButton#training:disabled, QPushButton#findBrightest:disabled {\n"
-"    backgroun"
-                        "d-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
-"QFrame#sep1, QFrame#sepFindBrightest {\n"
-"    background-color: #f1f5f9;\n"
-"    max-height: 1px;\n"
-"}\n"
-"QPushButton#training:focus:enabled, QPushButton#findBrightest:focus:enabled { border-color: #0f172a; }")
+        reviewSettings.resize(222, 334)
         self.layout = QVBoxLayout(reviewSettings)
         self.layout.setSpacing(8)
         self.layout.setObjectName(u"layout")
@@ -122,57 +34,89 @@ class Ui_ReviewSettings(object):
         self.countsLayout.setObjectName(u"countsLayout")
         self.statAuto = QFrame(reviewSettings)
         self.statAuto.setObjectName(u"statAuto")
+        self.statAuto.setStyleSheet(u"background-color: #f0fdf4;\n"
+"border-radius: 6px;\n"
+"padding: 1px;\n"
+"\n"
+"")
         self.statAutoLayout = QVBoxLayout(self.statAuto)
-        self.statAutoLayout.setSpacing(2)
+        self.statAutoLayout.setSpacing(0)
         self.statAutoLayout.setObjectName(u"statAutoLayout")
-        self.statAutoLayout.setContentsMargins(6, 6, 6, 6)
+        self.statAutoLayout.setContentsMargins(2, 2, 2, 2)
         self.statAutoTitle = QLabel(self.statAuto)
         self.statAutoTitle.setObjectName(u"statAutoTitle")
+        self.statAutoTitle.setStyleSheet(u"font-size: 11px;\n"
+"font-weight: 600;\n"
+"color: #15803d;")
 
-        self.statAutoLayout.addWidget(self.statAutoTitle, 0, Qt.AlignCenter)
+        self.statAutoLayout.addWidget(self.statAutoTitle)
 
         self.statAutoNum = QLabel(self.statAuto)
         self.statAutoNum.setObjectName(u"statAutoNum")
+        font = QFont()
+        font.setBold(True)
+        self.statAutoNum.setFont(font)
+        self.statAutoNum.setStyleSheet(u"font-size: 11px;\n"
+"font-weight: bold;\n"
+"color: #166534;")
 
-        self.statAutoLayout.addWidget(self.statAutoNum, 0, Qt.AlignCenter)
+        self.statAutoLayout.addWidget(self.statAutoNum)
 
 
         self.countsLayout.addWidget(self.statAuto)
 
         self.statManual = QFrame(reviewSettings)
         self.statManual.setObjectName(u"statManual")
+        self.statManual.setStyleSheet(u"background-color: #f0f9ff;\n"
+"border-radius: 6px;\n"
+"padding: 1px;")
         self.statManualLayout = QVBoxLayout(self.statManual)
-        self.statManualLayout.setSpacing(2)
+        self.statManualLayout.setSpacing(0)
         self.statManualLayout.setObjectName(u"statManualLayout")
-        self.statManualLayout.setContentsMargins(6, 6, 6, 6)
+        self.statManualLayout.setContentsMargins(2, 2, 2, 2)
         self.statManualTitle = QLabel(self.statManual)
         self.statManualTitle.setObjectName(u"statManualTitle")
+        self.statManualTitle.setStyleSheet(u"font-size: 11px;\n"
+"font-weight: 600;\n"
+"color: #0369a1;")
 
-        self.statManualLayout.addWidget(self.statManualTitle, 0, Qt.AlignCenter)
+        self.statManualLayout.addWidget(self.statManualTitle)
 
         self.statManualNum = QLabel(self.statManual)
         self.statManualNum.setObjectName(u"statManualNum")
+        self.statManualNum.setStyleSheet(u"font-size: 11px;\n"
+"font-weight: bold;\n"
+"color: #0369a1;")
 
-        self.statManualLayout.addWidget(self.statManualNum, 0, Qt.AlignCenter)
+        self.statManualLayout.addWidget(self.statManualNum)
 
 
         self.countsLayout.addWidget(self.statManual)
 
         self.statDeleted = QFrame(reviewSettings)
         self.statDeleted.setObjectName(u"statDeleted")
+        self.statDeleted.setStyleSheet(u"background-color: #fffbeb;\n"
+"border-radius: 6px;\n"
+"padding: 1px;")
         self.statDeletedLayout = QVBoxLayout(self.statDeleted)
-        self.statDeletedLayout.setSpacing(2)
+        self.statDeletedLayout.setSpacing(0)
         self.statDeletedLayout.setObjectName(u"statDeletedLayout")
-        self.statDeletedLayout.setContentsMargins(6, 6, 6, 6)
+        self.statDeletedLayout.setContentsMargins(2, 2, 2, 2)
         self.statDeletedTitle = QLabel(self.statDeleted)
         self.statDeletedTitle.setObjectName(u"statDeletedTitle")
+        self.statDeletedTitle.setStyleSheet(u"font-size: 11px;\n"
+"font-weight: 600;\n"
+"color: #b45309;")
 
-        self.statDeletedLayout.addWidget(self.statDeletedTitle, 0, Qt.AlignCenter)
+        self.statDeletedLayout.addWidget(self.statDeletedTitle)
 
         self.statDeletedNum = QLabel(self.statDeleted)
         self.statDeletedNum.setObjectName(u"statDeletedNum")
+        self.statDeletedNum.setStyleSheet(u"font-size: 11px;\n"
+"font-weight: bold;\n"
+"color: #92400e;")
 
-        self.statDeletedLayout.addWidget(self.statDeletedNum, 0, Qt.AlignCenter)
+        self.statDeletedLayout.addWidget(self.statDeletedNum)
 
 
         self.countsLayout.addWidget(self.statDeleted)
@@ -184,71 +128,131 @@ class Ui_ReviewSettings(object):
         self.showDeletedMasksLayout.setObjectName(u"showDeletedMasksLayout")
         self.showDeletedMasksLabel = QLabel(reviewSettings)
         self.showDeletedMasksLabel.setObjectName(u"showDeletedMasksLabel")
+        self.showDeletedMasksLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.showDeletedMasksLayout.addWidget(self.showDeletedMasksLabel)
 
         self.showDeletedMasks = QCheckBox(reviewSettings)
         self.showDeletedMasks.setObjectName(u"showDeletedMasks")
         self.showDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showDeletedMasks.setStyleSheet(u"QCheckBox#showDeletedMasks { spacing: 0px;\n"
-"    border: 2px solid transparent;\n"
-"}\n"
-"      QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
-"      QCheckBox#showDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
-"      QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
-"QCheckBox#showDeletedMasks:focus:enabled { border-color: #0f172a; }")
 
-        self.showDeletedMasksLayout.addWidget(self.showDeletedMasks, 0, Qt.AlignRight)
+        self.showDeletedMasksLayout.addWidget(self.showDeletedMasks, 0, Qt.AlignmentFlag.AlignRight)
 
 
         self.layout.addLayout(self.showDeletedMasksLayout)
 
         self.sepFindBrightest = QFrame(reviewSettings)
         self.sepFindBrightest.setObjectName(u"sepFindBrightest")
-        self.sepFindBrightest.setFrameShape(QFrame.HLine)
+        self.sepFindBrightest.setStyleSheet(u"background-color: #f1f5f9;\n"
+"max-height: 1px;")
+        self.sepFindBrightest.setFrameShape(QFrame.Shape.HLine)
 
         self.layout.addWidget(self.sepFindBrightest)
 
         self.findBrightestHeading = QLabel(reviewSettings)
         self.findBrightestHeading.setObjectName(u"findBrightestHeading")
+        self.findBrightestHeading.setStyleSheet(u"font-size: 11px;\n"
+"font-weight: 600;\n"
+"color: #475569;\n"
+"text-transform: uppercase;\n"
+"letter-spacing: 0.5px;\n"
+"margin-top: 2px;")
 
         self.layout.addWidget(self.findBrightestHeading)
 
         self.findBrightestHint = QLabel(reviewSettings)
         self.findBrightestHint.setObjectName(u"findBrightestHint")
+        self.findBrightestHint.setStyleSheet(u"font-size: 11px;\n"
+"color: #64748b;\n"
+"line-height: 1.3;")
         self.findBrightestHint.setWordWrap(True)
 
         self.layout.addWidget(self.findBrightestHint)
 
         self.findBrightest = QPushButton(reviewSettings)
         self.findBrightest.setObjectName(u"findBrightest")
-        self.findBrightest.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.findBrightest.setCheckable(True)
         self.findBrightest.setEnabled(False)
+        self.findBrightest.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.findBrightest.setStyleSheet(u"QPushButton#findBrightest {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 2px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#findBrightest:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#findBrightest:checked {\n"
+"    background-color: #e0f2fe;\n"
+"    color: #0369a1;\n"
+"    border-color: #0369a1;\n"
+"    font-weight: 600;\n"
+"}\n"
+"QPushButton#findBrightest:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}\n"
+"QPushButton#findBrightest:focus:enabled { border-color: #0f172a; }")
+        self.findBrightest.setCheckable(True)
 
         self.layout.addWidget(self.findBrightest)
 
         self.sep1 = QFrame(reviewSettings)
         self.sep1.setObjectName(u"sep1")
-        self.sep1.setFrameShape(QFrame.HLine)
+        self.sep1.setStyleSheet(u"background-color: #f1f5f9;\n"
+"max-height: 1px;")
+        self.sep1.setFrameShape(QFrame.Shape.HLine)
 
         self.layout.addWidget(self.sep1)
 
         self.contributeHeading = QLabel(reviewSettings)
         self.contributeHeading.setObjectName(u"contributeHeading")
+        self.contributeHeading.setStyleSheet(u"font-size: 11px;\n"
+"font-weight: 600;\n"
+"color: #475569;\n"
+"text-transform: uppercase;\n"
+"letter-spacing: 0.5px;\n"
+"margin-top: 2px;")
 
         self.layout.addWidget(self.contributeHeading)
 
         self.contributeHint = QLabel(reviewSettings)
         self.contributeHint.setObjectName(u"contributeHint")
+        self.contributeHint.setStyleSheet(u"font-size: 11px;\n"
+"color: #64748b;\n"
+"line-height: 1.3;")
         self.contributeHint.setWordWrap(True)
 
         self.layout.addWidget(self.contributeHint)
 
         self.training = QPushButton(reviewSettings)
         self.training.setObjectName(u"training")
-        self.training.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.training.setEnabled(False)
+        self.training.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.training.setStyleSheet(u"QPushButton#training {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 2px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#training:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#training:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}\n"
+"QPushButton#training:focus:enabled { border-color: #0f172a; }")
 
         self.layout.addWidget(self.training)
 
@@ -262,29 +266,30 @@ class Ui_ReviewSettings(object):
     # setupUi
 
     def retranslateUi(self, reviewSettings):
-        self.statAutoTitle.setText(QCoreApplication.translate("ReviewSettings", u"\u25cf Auto", None))
-        self.statAutoNum.setText(QCoreApplication.translate("ReviewSettings", u"0", None))
-        self.statManualTitle.setText(QCoreApplication.translate("ReviewSettings", u"\u25cf Manual", None))
-        self.statManualNum.setText(QCoreApplication.translate("ReviewSettings", u"0", None))
-        self.statDeletedTitle.setText(QCoreApplication.translate("ReviewSettings", u"\u25cf Deleted", None))
-        self.statDeletedNum.setText(QCoreApplication.translate("ReviewSettings", u"0", None))
-        self.showDeletedMasksLabel.setText(QCoreApplication.translate("ReviewSettings", u"Show Deleted Masks", None))
-        self.showDeletedMasksLabel.setStyleSheet(QCoreApplication.translate("ReviewSettings", u"color: #334155; font-size: 12px;", None))
-        self.showDeletedMasks.setText("")
+        self.statAutoTitle.setText(QCoreApplication.translate("reviewSettings", u"Auto", None))
+        self.statAutoNum.setText(QCoreApplication.translate("reviewSettings", u"0", None))
+        self.statManualTitle.setText(QCoreApplication.translate("reviewSettings", u"Manual", None))
+        self.statManualNum.setText(QCoreApplication.translate("reviewSettings", u"0", None))
+        self.statDeletedTitle.setText(QCoreApplication.translate("reviewSettings", u"Deleted", None))
+        self.statDeletedNum.setText(QCoreApplication.translate("reviewSettings", u"0", None))
+        self.showDeletedMasksLabel.setText(QCoreApplication.translate("reviewSettings", u"Show Deleted Masks", None))
 #if QT_CONFIG(accessibility)
-        self.showDeletedMasks.setAccessibleName(QCoreApplication.translate("ReviewSettings", u"Show Deleted Masks", None))
+        self.showDeletedMasks.setAccessibleName(QCoreApplication.translate("reviewSettings", u"Show Deleted Masks", None))
 #endif // QT_CONFIG(accessibility)
-        self.findBrightestHeading.setText(QCoreApplication.translate("ReviewSettings", u"Locate Streaks", None))
-        self.findBrightestHint.setText(QCoreApplication.translate("ReviewSettings", u"Click on a streak in a stacked or gap-filled image to locate its source frame.", None))
-        self.findBrightest.setText(QCoreApplication.translate("ReviewSettings", u"Find Brightest", None))
+        self.showDeletedMasks.setText("")
+        self.findBrightestHeading.setText(QCoreApplication.translate("reviewSettings", u"Locate Streaks", None))
+        self.findBrightestHint.setText(QCoreApplication.translate("reviewSettings", u"Click on a streak in a stacked or gap-filled image to locate its source frame.", None))
 #if QT_CONFIG(tooltip)
-        self.findBrightest.setToolTip(QCoreApplication.translate("ReviewSettings", u"Select a stacked or gap-filled output image to enable finding the brightest frame at a point.", None))
+        self.findBrightest.setToolTip(QCoreApplication.translate("reviewSettings", u"Select a stacked or gap-filled output image to enable finding the brightest frame at a point.", None))
 #endif // QT_CONFIG(tooltip)
-        self.contributeHeading.setText(QCoreApplication.translate("ReviewSettings", u"Optional: Contribute Corrections", None))
-        self.contributeHint.setText(QCoreApplication.translate("ReviewSettings", u"Export manual additions and deletions to help improve future streak detection models.", None))
-        self.training.setText(QCoreApplication.translate("ReviewSettings", u"Export Training", None))
+        self.findBrightest.setText(QCoreApplication.translate("reviewSettings", u"Find Brightest", None))
+        self.contributeHeading.setText(QCoreApplication.translate("reviewSettings", u"Optional: Contribute Corrections", None))
+        self.contributeHint.setText(QCoreApplication.translate("reviewSettings", u"Export manual additions and deletions to help improve future streak detection models.", None))
 #if QT_CONFIG(tooltip)
-        self.training.setToolTip(QCoreApplication.translate("ReviewSettings", u"Requires manually added or deleted streak masks.", None))
+        self.training.setToolTip(QCoreApplication.translate("reviewSettings", u"Requires manually added or deleted streak masks.", None))
 #endif // QT_CONFIG(tooltip)
+        self.training.setText(QCoreApplication.translate("reviewSettings", u"Export Training", None))
         pass
     # retranslateUi
+
+Ui_ReviewSettings = Ui_reviewSettings

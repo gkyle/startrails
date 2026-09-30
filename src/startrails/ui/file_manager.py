@@ -65,11 +65,11 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
 
                 badges = []
                 if auto:
-                    badges.append((f"A:{auto}", color("#dcfce7", "background"), color("#15803d"), color("#bbf7d0", "border")))
+                    badges.append((f"{auto}", color("#dcfce7", "background"), color("#15803d"), color("#bbf7d0", "border")))
                 if manual:
-                    badges.append((f"M:{manual}", color("#e0f2fe", "background"), color("#0369a1"), color("#bae6fd", "border")))
+                    badges.append((f"{manual}", color("#e0f2fe", "background"), color("#0369a1"), color("#bae6fd", "border")))
                 if deleted:
-                    badges.append((f"D:{deleted}", color("#fef3c7", "background"), color("#b45309"), color("#fde68a", "border")))
+                    badges.append((f"{deleted}", color("#fef3c7", "background"), color("#b45309"), color("#fde68a", "border")))
                 if excluded:
                     badges.append(("Excluded", color("#fee2e2", "background"), color("#b91c1c"), color("#fecaca", "border")))
 
@@ -160,7 +160,7 @@ class FileModel(QAbstractTableModel):
                 else:
                     return ("Filename", "Type")[section]
             if role == Qt.ToolTipRole and section == 1:
-                return "A: automatic masks · M: manual masks · D: manually deleted masks"
+                return "automatic masks · manual masks · manually deleted masks"
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid() or not 0 <= index.row() < len(self.files):

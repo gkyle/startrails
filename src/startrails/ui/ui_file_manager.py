@@ -20,10 +20,11 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QFrame, QHBoxLay
     QSpacerItem, QToolButton, QTreeView, QVBoxLayout,
     QWidget)
 
-class Ui_FileSection(object):
+class Ui_fileSection(object):
     def setupUi(self, fileSection):
         if not fileSection.objectName():
             fileSection.setObjectName(u"fileSection")
+        fileSection.resize(274, 318)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -156,7 +157,7 @@ class Ui_FileSection(object):
         self.icon.setObjectName(u"icon")
         self.icon.setMinimumSize(QSize(16, 16))
         self.icon.setMaximumSize(QSize(16, 16))
-        self.icon.setAlignment(Qt.AlignCenter)
+        self.icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.header.addWidget(self.icon)
 
@@ -175,7 +176,7 @@ class Ui_FileSection(object):
         sizePolicy2.setHeightForWidth(self.count.sizePolicy().hasHeightForWidth())
         self.count.setSizePolicy(sizePolicy2)
         self.count.setMaximumSize(QSize(16777215, 18))
-        self.count.setAlignment(Qt.AlignCenter)
+        self.count.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.header.addWidget(self.count)
 
@@ -206,19 +207,19 @@ class Ui_FileSection(object):
         self.files.setSizePolicy(sizePolicy1)
         self.files.setMinimumSize(QSize(0, 0))
         self.files.setMaximumSize(QSize(16777215, 220))
-        self.files.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.files.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.files.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.files.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.files.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.files.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.files.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.files.setTextElideMode(Qt.TextElideMode.ElideMiddle)
         self.files.setRootIsDecorated(False)
         self.files.setUniformRowHeights(True)
-        self.files.setTextElideMode(Qt.ElideMiddle)
-        self.files.setContextMenuPolicy(Qt.CustomContextMenu)
 
         self.bodyLayout.addWidget(self.files)
 
         self.empty = QLabel(self.body)
         self.empty.setObjectName(u"empty")
-        self.empty.setAlignment(Qt.AlignCenter)
+        self.empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty.setWordWrap(True)
 
         self.bodyLayout.addWidget(self.empty)
@@ -233,6 +234,10 @@ class Ui_FileSection(object):
         self.legendLayout.setSpacing(6)
         self.legendLayout.setObjectName(u"legendLayout")
         self.legendLayout.setContentsMargins(4, 2, 4, 2)
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.legendLayout.addItem(self.horizontalSpacer)
+
         self.legendAuto = QLabel(self.legend)
         self.legendAuto.setObjectName(u"legendAuto")
         self.legendAuto.setStyleSheet(u"QLabel#legendAuto {\n"
@@ -246,7 +251,7 @@ class Ui_FileSection(object):
 "    min-height: 16px;\n"
 "    max-height: 16px;\n"
 "}")
-        self.legendAuto.setAlignment(Qt.AlignCenter)
+        self.legendAuto.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.legendLayout.addWidget(self.legendAuto)
 
@@ -263,7 +268,7 @@ class Ui_FileSection(object):
 "    min-height: 16px;\n"
 "    max-height: 16px;\n"
 "}")
-        self.legendManual.setAlignment(Qt.AlignCenter)
+        self.legendManual.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.legendLayout.addWidget(self.legendManual)
 
@@ -280,7 +285,7 @@ class Ui_FileSection(object):
 "    min-height: 16px;\n"
 "    max-height: 16px;\n"
 "}")
-        self.legendDeleted.setAlignment(Qt.AlignCenter)
+        self.legendDeleted.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.legendLayout.addWidget(self.legendDeleted)
 
@@ -301,20 +306,22 @@ class Ui_FileSection(object):
     # setupUi
 
     def retranslateUi(self, fileSection):
-        self.chevron.setText(QCoreApplication.translate("FileSection", u"\u25b6", None))
+        self.chevron.setText(QCoreApplication.translate("fileSection", u"\u25b6", None))
         self.icon.setText("")
-        self.toggle.setText(QCoreApplication.translate("FileSection", u"Input Files", None))
-        self.count.setText(QCoreApplication.translate("FileSection", u"0", None))
+        self.toggle.setText(QCoreApplication.translate("fileSection", u"Input Files", None))
 #if QT_CONFIG(accessibility)
-        self.count.setAccessibleName(QCoreApplication.translate("FileSection", u"File count", None))
+        self.count.setAccessibleName(QCoreApplication.translate("fileSection", u"File count", None))
 #endif // QT_CONFIG(accessibility)
-        self.add.setText(QCoreApplication.translate("FileSection", u"+", None))
+        self.count.setText(QCoreApplication.translate("fileSection", u"0", None))
 #if QT_CONFIG(tooltip)
-        self.add.setToolTip(QCoreApplication.translate("FileSection", u"Add files\u2026", None))
+        self.add.setToolTip(QCoreApplication.translate("fileSection", u"Add files\u2026", None))
 #endif // QT_CONFIG(tooltip)
-        self.empty.setText(QCoreApplication.translate("FileSection", u"No files yet.", None))
-        self.legendAuto.setText(QCoreApplication.translate("FileSection", u"A: Auto", None))
-        self.legendManual.setText(QCoreApplication.translate("FileSection", u"M: Manual", None))
-        self.legendDeleted.setText(QCoreApplication.translate("FileSection", u"D: Deleted", None))
+        self.add.setText(QCoreApplication.translate("fileSection", u"+", None))
+        self.empty.setText(QCoreApplication.translate("fileSection", u"No files yet.", None))
+        self.legendAuto.setText(QCoreApplication.translate("fileSection", u"Auto", None))
+        self.legendManual.setText(QCoreApplication.translate("fileSection", u"Manual", None))
+        self.legendDeleted.setText(QCoreApplication.translate("fileSection", u"Deleted", None))
         pass
     # retranslateUi
+
+Ui_FileSection = Ui_fileSection

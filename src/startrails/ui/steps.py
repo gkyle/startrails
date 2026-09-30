@@ -302,6 +302,12 @@ class StackSettings(QWidget):
                 self.ui.fade = SegmentedButtonGroup(
                     [self.ui.stackFadeOff, self.ui.stackFadeStart, self.ui.stackFadeEnd, self.ui.stackFadeBoth], parent=self
                 )
+        for attr in ("run", "advancedToggle", "advancedBody", "useGPU", "useGPULabel", "batchSize", "batchLabel", "fadeAmount", "amountLabel", "memory", "error", "method", "methodLabel", "streaksLabel", "fadeLabel", "streaks", "fade"):
+            stack_attr = f"stack{attr[0].upper()}{attr[1:]}"
+            if hasattr(self.ui, stack_attr) and not hasattr(self.ui, attr):
+                setattr(self.ui, attr, getattr(self.ui, stack_attr))
+            elif hasattr(self.ui, attr) and not hasattr(self.ui, stack_attr):
+                setattr(self.ui, stack_attr, getattr(self.ui, attr))
         self._first_file = None
         self._has_masks = None
         if getattr(self.ui, "advancedToggle", None) is not None:

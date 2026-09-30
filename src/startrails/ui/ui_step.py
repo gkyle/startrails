@@ -19,15 +19,16 @@ from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
     QPushButton, QSizePolicy, QVBoxLayout, QWidget)
 
 class Ui_StepCard(object):
-    def setupUi(self, stepCard):
-        if not stepCard.objectName():
-            stepCard.setObjectName(u"stepCard")
+    def setupUi(self, StepCard):
+        if not StepCard.objectName():
+            StepCard.setObjectName(u"StepCard")
+        StepCard.resize(208, 75)
         sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(stepCard.sizePolicy().hasHeightForWidth())
-        stepCard.setSizePolicy(sizePolicy)
-        stepCard.setStyleSheet(u"QFrame#stepCard {\n"
+        sizePolicy.setHeightForWidth(StepCard.sizePolicy().hasHeightForWidth())
+        StepCard.setSizePolicy(sizePolicy)
+        StepCard.setStyleSheet(u"QFrame#stepCard {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
 "    border-radius: 8px;\n"
@@ -58,11 +59,11 @@ class Ui_StepCard(object):
 "    background: transparent;\n"
 "}\n"
 "QPushButton#toggle:focus:enabled { border-color: #0f172a; }")
-        self.cardLayout = QVBoxLayout(stepCard)
+        self.cardLayout = QVBoxLayout(StepCard)
         self.cardLayout.setSpacing(0)
         self.cardLayout.setObjectName(u"cardLayout")
         self.cardLayout.setContentsMargins(0, 0, 0, 0)
-        self.headerWidget = QWidget(stepCard)
+        self.headerWidget = QWidget(StepCard)
         self.headerWidget.setObjectName(u"headerWidget")
         sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         sizePolicy1.setHorizontalStretch(0)
@@ -78,7 +79,6 @@ class Ui_StepCard(object):
         self.number.setObjectName(u"number")
         self.number.setMinimumSize(QSize(30, 30))
         self.number.setMaximumSize(QSize(30, 30))
-        self.number.setAlignment(Qt.AlignCenter)
         self.number.setStyleSheet(u"QLabel#number {\n"
 "           background-color: #64748b;\n"
 "           color: #ffffff;\n"
@@ -90,6 +90,7 @@ class Ui_StepCard(object):
 "       QLabel#number[stepStatus=\"ready\"] { background-color: #0369a1; }\n"
 "       QLabel#number[stepStatus=\"done\"] { background-color: #1e293b; }\n"
 "       QLabel#number[stepStatus=\"running\"] { background-color: #b45309; }")
+        self.number.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.number.setProperty(u"stepStatus", u"ready")
 
         self.headerLayout.addWidget(self.number)
@@ -106,6 +107,7 @@ class Ui_StepCard(object):
         sizePolicy2.setHeightForWidth(self.toggle.sizePolicy().hasHeightForWidth())
         self.toggle.setSizePolicy(sizePolicy2)
         self.toggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.toggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.toggle.setCheckable(True)
         self.toggle.setChecked(True)
 
@@ -122,7 +124,6 @@ class Ui_StepCard(object):
 
         self.statusBadge = QLabel(self.headerWidget)
         self.statusBadge.setObjectName(u"statusBadge")
-        self.statusBadge.setAlignment(Qt.AlignCenter)
         self.statusBadge.setStyleSheet(u"QLabel#statusBadge {\n"
 "           background-color: #e0f2fe;\n"
 "           color: #0369a1;\n"
@@ -133,6 +134,7 @@ class Ui_StepCard(object):
 "       }\n"
 "       QLabel#statusBadge[stepStatus=\"done\"] { background-color: #dcfce7; color: #15803d; }\n"
 "       QLabel#statusBadge[stepStatus=\"running\"] { background-color: #fef3c7; color: #b45309; }")
+        self.statusBadge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.statusBadge.setProperty(u"stepStatus", u"ready")
 
         self.headerLayout.addWidget(self.statusBadge)
@@ -141,14 +143,14 @@ class Ui_StepCard(object):
         self.chevron.setObjectName(u"chevron")
         self.chevron.setMinimumSize(QSize(14, 0))
         self.chevron.setMaximumSize(QSize(14, 16777215))
-        self.chevron.setAlignment(Qt.AlignCenter)
+        self.chevron.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.headerLayout.addWidget(self.chevron)
 
 
         self.cardLayout.addWidget(self.headerWidget)
 
-        self.body = QWidget(stepCard)
+        self.body = QWidget(StepCard)
         self.body.setObjectName(u"body")
         self.contentLayout = QVBoxLayout(self.body)
         self.contentLayout.setSpacing(6)
@@ -158,12 +160,12 @@ class Ui_StepCard(object):
         self.cardLayout.addWidget(self.body)
 
 
-        self.retranslateUi(stepCard)
+        self.retranslateUi(StepCard)
 
-        QMetaObject.connectSlotsByName(stepCard)
+        QMetaObject.connectSlotsByName(StepCard)
     # setupUi
 
-    def retranslateUi(self, stepCard):
+    def retranslateUi(self, StepCard):
         self.number.setText(QCoreApplication.translate("StepCard", u"1", None))
         self.toggle.setText(QCoreApplication.translate("StepCard", u"Step Title", None))
         self.subtitle.setText(QCoreApplication.translate("StepCard", u"Ready", None))
@@ -171,3 +173,5 @@ class Ui_StepCard(object):
         self.chevron.setText(QCoreApplication.translate("StepCard", u"\u25bc", None))
         pass
     # retranslateUi
+
+Ui_stepCard = Ui_StepCard

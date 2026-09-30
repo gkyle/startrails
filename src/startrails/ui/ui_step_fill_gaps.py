@@ -22,11 +22,21 @@ class Ui_FillSettings(object):
     def setupUi(self, fillSettings):
         if not fillSettings.objectName():
             fillSettings.setObjectName(u"fillSettings")
-        fillSettings.setStyleSheet(u"QLabel#target {\n"
-"    font-size: 12px;\n"
-"    color: #475569;\n"
-"}\n"
-"QPushButton#run {\n"
+        self.layout = QVBoxLayout(fillSettings)
+        self.layout.setSpacing(8)
+        self.layout.setObjectName(u"layout")
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.target = QLabel(fillSettings)
+        self.target.setObjectName(u"target")
+        self.target.setStyleSheet(u"font-size: 12px;\n"
+"color: #475569;")
+        self.target.setWordWrap(True)
+
+        self.layout.addWidget(self.target)
+
+        self.run = QPushButton(fillSettings)
+        self.run.setObjectName(u"run")
+        self.run.setStyleSheet(u"QPushButton#run {\n"
 "    font-weight: bold;\n"
 "    background-color: #0369a1;\n"
 "    color: #ffffff;\n"
@@ -43,18 +53,6 @@ class Ui_FillSettings(object):
 "    color: #94a3b8;\n"
 "}\n"
 "QPushButton#run:focus:enabled { border-color: #ffffff; }")
-        self.layout = QVBoxLayout(fillSettings)
-        self.layout.setSpacing(8)
-        self.layout.setObjectName(u"layout")
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.target = QLabel(fillSettings)
-        self.target.setObjectName(u"target")
-        self.target.setWordWrap(True)
-
-        self.layout.addWidget(self.target)
-
-        self.run = QPushButton(fillSettings)
-        self.run.setObjectName(u"run")
         self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.run.setEnabled(False)
 
@@ -71,3 +69,5 @@ class Ui_FillSettings(object):
         self.run.setText(QCoreApplication.translate("FillSettings", u"Fill Gaps", None))
         pass
     # retranslateUi
+
+Ui_fillSettings = Ui_FillSettings
