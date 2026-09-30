@@ -214,6 +214,12 @@ color: #92400e;</string>
        <property name="accessibleName">
         <string>Show Deleted Masks</string>
        </property>
+       <property name="styleSheet">
+        <string notr="true">QCheckBox#showDeletedMasks { spacing: 0px;}
+QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px;}
+QCheckBox#showDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
+QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }</string>
+       </property>
        <property name="text">
         <string/>
        </property>

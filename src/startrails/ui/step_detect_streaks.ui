@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="styleSheet">
-    <string notr="true">QLabel {
+   <string notr="true">QLabel {
     color: #334155;
     font-size: 12px;
 }
@@ -35,7 +35,7 @@ QCheckBox {
 }
 QDoubleSpinBox::up-arrow, QSpinBox::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }
 QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }</string>
-   </property>
+  </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">
     <number>6</number>
@@ -59,8 +59,14 @@ QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/ar
      </property>
      <item>
       <widget class="QPushButton" name="run">
-    <property name="styleSheet">
-     <string notr="true">QPushButton#run {
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton#run {
     font-weight: bold;
     background-color: #0369a1;
     color: #ffffff;
@@ -82,12 +88,6 @@ QPushButton#run:disabled {
     color: #94a3b8;
 }
 QPushButton#run:focus:enabled { border-color: #ffffff; }</string>
-    </property>
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="cursor">
-        <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="text">
         <string>Detect Streaks</string>
@@ -96,8 +96,20 @@ QPushButton#run:focus:enabled { border-color: #ffffff; }</string>
      </item>
      <item>
       <widget class="QToolButton" name="advancedToggle">
-    <property name="styleSheet">
-     <string notr="true">QToolButton#advancedToggle {
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::NoFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string>Advanced settings</string>
+       </property>
+       <property name="accessibleName">
+        <string>Advanced settings</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QToolButton#advancedToggle {
     background-color: #0369a1;
     color: #ffffff;
     padding: 0px;
@@ -123,18 +135,6 @@ QToolButton#advancedToggle:disabled {
     color: #94a3b8;
     border-left: 1px solid #cbd5e1;
 }</string>
-    </property>
-       <property name="cursor">
-        <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
-       </property>
-       <property name="toolTip">
-        <string>Advanced settings</string>
-       </property>
-       <property name="accessibleName">
-        <string>Advanced settings</string>
        </property>
        <property name="text">
         <string/>
@@ -153,11 +153,7 @@ QToolButton#advancedToggle:disabled {
     </layout>
    </item>
    <item>
-    <widget class="QWidget" name="advancedBody">
-     <property name="visible">
-      <bool>true</bool>
-     </property>
-     <layout class="QVBoxLayout" name="advancedLayout">
+    <layout class="QVBoxLayout" name="advancedLayout">
      <property name="spacing">
       <number>6</number>
      </property>
@@ -225,11 +221,11 @@ QToolButton#advancedToggle:disabled {
        </item>
        <item row="1" column="1" alignment="Qt::AlignmentFlag::AlignRight">
         <widget class="QFrame" name="detectMergeContainer">
-    <property name="styleSheet">
-     <string notr="true">background-color: #f1f5f9;
+         <property name="styleSheet">
+          <string notr="true">background-color: #f1f5f9;
 border-radius: 6px;
 padding: 2px;</string>
-    </property>
+         </property>
          <layout class="QHBoxLayout" name="detectMergeLayout">
           <property name="spacing">
            <number>2</number>
@@ -248,8 +244,11 @@ padding: 2px;</string>
           </property>
           <item>
            <widget class="QPushButton" name="detectMergeNMS">
-    <property name="styleSheet">
-     <string notr="true">QPushButton {
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QPushButton {
     padding: 3px 8px;
     border-radius: 4px;
     border: none;
@@ -272,9 +271,6 @@ QPushButton:focus:enabled {
 QPushButton:checked:focus:enabled {
     border: 1px solid #ffffff;
 }</string>
-    </property>
-            <property name="cursor">
-             <cursorShape>PointingHandCursor</cursorShape>
             </property>
             <property name="text">
              <string>NMS</string>
@@ -292,8 +288,11 @@ QPushButton:checked:focus:enabled {
           </item>
           <item>
            <widget class="QPushButton" name="detectMergeNMM">
-    <property name="styleSheet">
-     <string notr="true">QPushButton {
+            <property name="cursor">
+             <cursorShape>PointingHandCursor</cursorShape>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QPushButton {
     padding: 3px 8px;
     border-radius: 4px;
     border: none;
@@ -316,9 +315,6 @@ QPushButton:focus:enabled {
 QPushButton:checked:focus:enabled {
     border: 1px solid #ffffff;
 }</string>
-    </property>
-            <property name="cursor">
-             <cursorShape>PointingHandCursor</cursorShape>
             </property>
             <property name="text">
              <string>Greedy NMM</string>
@@ -375,20 +371,17 @@ QPushButton:checked:focus:enabled {
        </item>
        <item row="3" column="1" alignment="Qt::AlignmentFlag::AlignRight">
         <widget class="QCheckBox" name="useGPU">
-    <property name="styleSheet">
-     <string notr="true">QCheckBox#useGPU { spacing: 0px;
-    border: 2px solid transparent;
-}
-QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }
-QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
-QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }
-QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }</string>
-    </property>
          <property name="cursor">
           <cursorShape>PointingHandCursor</cursorShape>
          </property>
          <property name="accessibleName">
           <string>Use GPU for detection</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QCheckBox#useGPU { spacing: 0px;}
+QCheckBox#useGPU::indicator { width: 36px; height: 20px; }
+QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
+QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }</string>
          </property>
          <property name="text">
           <string/>
@@ -401,14 +394,13 @@ QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }</string>
       </layout>
      </item>
     </layout>
-    </widget>
    </item>
    <item>
     <widget class="QLabel" name="error">
-    <property name="styleSheet">
-     <string notr="true">font-size: 11px;
+     <property name="styleSheet">
+      <string notr="true">font-size: 11px;
 color: #b91c1c;</string>
-    </property>
+     </property>
      <property name="text">
       <string/>
      </property>

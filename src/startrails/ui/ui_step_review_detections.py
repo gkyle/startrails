@@ -135,6 +135,10 @@ class Ui_reviewSettings(object):
         self.showDeletedMasks = QCheckBox(reviewSettings)
         self.showDeletedMasks.setObjectName(u"showDeletedMasks")
         self.showDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.showDeletedMasks.setStyleSheet(u"QCheckBox#showDeletedMasks { spacing: 0px;}\n"
+"QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px;}\n"
+"QCheckBox#showDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
+"QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }")
 
         self.showDeletedMasksLayout.addWidget(self.showDeletedMasks, 0, Qt.AlignmentFlag.AlignRight)
 

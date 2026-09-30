@@ -2,6 +2,14 @@
 <ui version="4.0">
  <class>StackSettings</class>
  <widget class="QWidget" name="StackSettings">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>258</width>
+    <height>312</height>
+   </rect>
+  </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">
     <number>6</number>
@@ -460,100 +468,88 @@ QToolButton#advancedToggle:disabled {
     </layout>
    </item>
    <item>
-    <widget class="QWidget" name="advancedBody">
-     <property name="visible">
-      <bool>true</bool>
+    <layout class="QVBoxLayout" name="advancedLayout">
+     <property name="spacing">
+      <number>6</number>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QWidget#advancedBody {
-    background: transparent;
-}</string>
+     <property name="leftMargin">
+      <number>0</number>
      </property>
-     <layout class="QVBoxLayout" name="advancedLayout">
-      <property name="spacing">
-       <number>6</number>
-      </property>
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="topMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>0</number>
-      </property>
-      <property name="bottomMargin">
-       <number>0</number>
-      </property>
-      <item>
-       <layout class="QGridLayout" name="gpuBatchGrid" columnstretch="1,2">
-        <property name="spacing">
-         <number>8</number>
-        </property>
-        <item row="0" column="0">
-         <widget class="QLabel" name="useGPULabel">
-          <property name="styleSheet">
-           <string notr="true">QLabel#useGPULabel {
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
+     <item>
+      <layout class="QGridLayout" name="gpuBatchGrid" columnstretch="1,2">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <item row="0" column="0">
+        <widget class="QLabel" name="useGPULabel">
+         <property name="styleSheet">
+          <string notr="true">QLabel#useGPULabel {
     color: #334155;
     font-size: 12px;
 }</string>
-          </property>
-          <property name="text">
-           <string>Use GPU</string>
-          </property>
-          <property name="buddy">
-           <cstring>useGPU</cstring>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1" alignment="Qt::AlignmentFlag::AlignRight">
-         <widget class="QCheckBox" name="useGPU">
-          <property name="cursor">
-           <cursorShape>PointingHandCursor</cursorShape>
-          </property>
-          <property name="accessibleName">
-           <string>Use GPU for stacking</string>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">QCheckBox#useGPU { spacing: 0px;
-    border: 2px solid transparent;
-}
-QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }
-QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
-QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }
-QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }</string>
-          </property>
-          <property name="text">
-           <string/>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="batchLabel">
-          <property name="styleSheet">
-           <string notr="true">QLabel#batchLabel {
+         </property>
+         <property name="text">
+          <string>Use GPU</string>
+         </property>
+         <property name="buddy">
+          <cstring>useGPU</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1" alignment="Qt::AlignmentFlag::AlignRight">
+        <widget class="QCheckBox" name="useGPU">
+         <property name="cursor">
+          <cursorShape>PointingHandCursor</cursorShape>
+         </property>
+         <property name="accessibleName">
+          <string>Use GPU for stacking</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QCheckBox#useGPU { spacing: 0px;}
+QCheckBox#useGPU::indicator { width: 36px; height: 20px; }
+QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
+QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="batchLabel">
+         <property name="styleSheet">
+          <string notr="true">QLabel#batchLabel {
     color: #334155;
     font-size: 12px;
 }</string>
-          </property>
-          <property name="text">
-           <string>&amp;Batch size</string>
-          </property>
-          <property name="buddy">
-           <cstring>batchSize</cstring>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1" alignment="Qt::AlignmentFlag::AlignRight">
-         <widget class="QSpinBox" name="batchSize">
-          <property name="accessibleName">
-           <string>Batch size</string>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">QSpinBox#batchSize {
+         </property>
+         <property name="text">
+          <string>&amp;Batch size</string>
+         </property>
+         <property name="buddy">
+          <cstring>batchSize</cstring>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1" alignment="Qt::AlignmentFlag::AlignRight">
+        <widget class="QSpinBox" name="batchSize">
+         <property name="accessibleName">
+          <string>Batch size</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QSpinBox#batchSize {
     background-color: #ffffff;
     border: 1px solid #64748b;
     border-radius: 4px;
@@ -569,39 +565,38 @@ QSpinBox#batchSize:focus {
 }
 QSpinBox#batchSize::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }
 QSpinBox#batchSize::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }</string>
-          </property>
-          <property name="minimum">
-           <number>1</number>
-          </property>
-          <property name="maximum">
-           <number>2147483647</number>
-          </property>
-          <property name="value">
-           <number>16</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item>
-       <widget class="QLabel" name="memory">
-        <property name="styleSheet">
-         <string notr="true">QLabel#memory {
+         </property>
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>2147483647</number>
+         </property>
+         <property name="value">
+          <number>16</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QLabel" name="memory">
+       <property name="styleSheet">
+        <string notr="true">QLabel#memory {
     font-size: 11px;
     color: #64748b;
     padding-top: 2px;
 }</string>
-        </property>
-        <property name="text">
-         <string>Add input files for a batch suggestion.</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
+       </property>
+       <property name="text">
+        <string>Add input files for a batch suggestion.</string>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QLabel" name="error">
@@ -626,7 +621,7 @@ QSpinBox#batchSize::down-arrow { image: url(:/startrails/ui/arrow_down.svg); wid
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="stackStreaksGroup"/>
   <buttongroup name="stackFadeGroup"/>
+  <buttongroup name="stackStreaksGroup"/>
  </buttongroups>
 </ui>

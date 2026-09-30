@@ -8,7 +8,7 @@
   <file alias="document.svg">icons/document.svg</file>
   <file alias="document_dark.svg">icons/document_dark.svg</file>
   <file alias="document_output.svg">icons/document_output.svg</file>
-  <file alias="switch_on.png">icons_darktheme/switch_on.png</file>
-  <file alias="switch_off.png">icons_darktheme/switch_off.png</file>
+  <file alias="switch_on.svg">icons/switch_on.svg</file>
+  <file alias="switch_off.svg">icons/switch_off.svg</file>
  </qresource>
 </RCC>

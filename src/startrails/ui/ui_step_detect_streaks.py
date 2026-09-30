@@ -59,6 +59,8 @@ class Ui_DetectSettings(object):
         self.runLayout.setObjectName(u"runLayout")
         self.run = QPushButton(DetectSettings)
         self.run.setObjectName(u"run")
+        self.run.setEnabled(False)
+        self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.run.setStyleSheet(u"QPushButton#run {\n"
 "    font-weight: bold;\n"
 "    background-color: #0369a1;\n"
@@ -81,13 +83,13 @@ class Ui_DetectSettings(object):
 "    color: #94a3b8;\n"
 "}\n"
 "QPushButton#run:focus:enabled { border-color: #ffffff; }")
-        self.run.setEnabled(False)
-        self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         self.runLayout.addWidget(self.run)
 
         self.advancedToggle = QToolButton(DetectSettings)
         self.advancedToggle.setObjectName(u"advancedToggle")
+        self.advancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.advancedToggle.setStyleSheet(u"QToolButton#advancedToggle {\n"
 "    background-color: #0369a1;\n"
 "    color: #ffffff;\n"
@@ -114,8 +116,6 @@ class Ui_DetectSettings(object):
 "    color: #94a3b8;\n"
 "    border-left: 1px solid #cbd5e1;\n"
 "}")
-        self.advancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.advancedToggle.setCheckable(True)
         self.advancedToggle.setChecked(True)
         self.advancedToggle.setArrowType(Qt.ArrowType.DownArrow)
@@ -125,10 +125,7 @@ class Ui_DetectSettings(object):
 
         self.layout.addLayout(self.runLayout)
 
-        self.advancedBody = QWidget(DetectSettings)
-        self.advancedBody.setObjectName(u"advancedBody")
-        self.advancedBody.setVisible(True)
-        self.advancedLayout = QVBoxLayout(self.advancedBody)
+        self.advancedLayout = QVBoxLayout()
         self.advancedLayout.setSpacing(6)
         self.advancedLayout.setObjectName(u"advancedLayout")
         self.advancedLayout.setContentsMargins(0, 0, 0, 0)
@@ -136,12 +133,12 @@ class Ui_DetectSettings(object):
         self.fields.setSpacing(8)
         self.fields.setObjectName(u"fields")
         self.fields.setContentsMargins(0, 0, 0, 0)
-        self.confidenceLabel = QLabel(self.advancedBody)
+        self.confidenceLabel = QLabel(DetectSettings)
         self.confidenceLabel.setObjectName(u"confidenceLabel")
 
         self.fields.addWidget(self.confidenceLabel, 0, 0, 1, 1)
 
-        self.confidence = QDoubleSpinBox(self.advancedBody)
+        self.confidence = QDoubleSpinBox(DetectSettings)
         self.confidence.setObjectName(u"confidence")
         self.confidence.setMaximum(1.000000000000000)
         self.confidence.setSingleStep(0.050000000000000)
@@ -149,12 +146,12 @@ class Ui_DetectSettings(object):
 
         self.fields.addWidget(self.confidence, 0, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
 
-        self.mergeLabel = QLabel(self.advancedBody)
+        self.mergeLabel = QLabel(DetectSettings)
         self.mergeLabel.setObjectName(u"mergeLabel")
 
         self.fields.addWidget(self.mergeLabel, 1, 0, 1, 1)
 
-        self.detectMergeContainer = QFrame(self.advancedBody)
+        self.detectMergeContainer = QFrame(DetectSettings)
         self.detectMergeContainer.setObjectName(u"detectMergeContainer")
         self.detectMergeContainer.setStyleSheet(u"background-color: #f1f5f9;\n"
 "border-radius: 6px;\n"
@@ -168,6 +165,7 @@ class Ui_DetectSettings(object):
         self.detectMergeGroup.setObjectName(u"detectMergeGroup")
         self.detectMergeGroup.addButton(self.detectMergeNMS)
         self.detectMergeNMS.setObjectName(u"detectMergeNMS")
+        self.detectMergeNMS.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.detectMergeNMS.setStyleSheet(u"QPushButton {\n"
 "    padding: 3px 8px;\n"
 "    border-radius: 4px;\n"
@@ -191,7 +189,6 @@ class Ui_DetectSettings(object):
 "QPushButton:checked:focus:enabled {\n"
 "    border: 1px solid #ffffff;\n"
 "}")
-        self.detectMergeNMS.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.detectMergeNMS.setCheckable(True)
         self.detectMergeNMS.setChecked(True)
 
@@ -200,6 +197,7 @@ class Ui_DetectSettings(object):
         self.detectMergeNMM = QPushButton(self.detectMergeContainer)
         self.detectMergeGroup.addButton(self.detectMergeNMM)
         self.detectMergeNMM.setObjectName(u"detectMergeNMM")
+        self.detectMergeNMM.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.detectMergeNMM.setStyleSheet(u"QPushButton {\n"
 "    padding: 3px 8px;\n"
 "    border-radius: 4px;\n"
@@ -223,7 +221,6 @@ class Ui_DetectSettings(object):
 "QPushButton:checked:focus:enabled {\n"
 "    border: 1px solid #ffffff;\n"
 "}")
-        self.detectMergeNMM.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.detectMergeNMM.setCheckable(True)
 
         self.detectMergeLayout.addWidget(self.detectMergeNMM)
@@ -231,12 +228,12 @@ class Ui_DetectSettings(object):
 
         self.fields.addWidget(self.detectMergeContainer, 1, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
 
-        self.thresholdLabel = QLabel(self.advancedBody)
+        self.thresholdLabel = QLabel(DetectSettings)
         self.thresholdLabel.setObjectName(u"thresholdLabel")
 
         self.fields.addWidget(self.thresholdLabel, 2, 0, 1, 1)
 
-        self.mergeThreshold = QDoubleSpinBox(self.advancedBody)
+        self.mergeThreshold = QDoubleSpinBox(DetectSettings)
         self.mergeThreshold.setObjectName(u"mergeThreshold")
         self.mergeThreshold.setMaximum(1.000000000000000)
         self.mergeThreshold.setSingleStep(0.050000000000000)
@@ -244,21 +241,18 @@ class Ui_DetectSettings(object):
 
         self.fields.addWidget(self.mergeThreshold, 2, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
 
-        self.useGPULabel = QLabel(self.advancedBody)
+        self.useGPULabel = QLabel(DetectSettings)
         self.useGPULabel.setObjectName(u"useGPULabel")
 
         self.fields.addWidget(self.useGPULabel, 3, 0, 1, 1)
 
-        self.useGPU = QCheckBox(self.advancedBody)
+        self.useGPU = QCheckBox(DetectSettings)
         self.useGPU.setObjectName(u"useGPU")
-        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;\n"
-"    border: 2px solid transparent;\n"
-"}\n"
-"QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
-"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
-"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
-"QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }")
         self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
+"QCheckBox#useGPU::indicator { width: 36px; height: 20px; }\n"
+"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
+"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }")
         self.useGPU.setChecked(True)
 
         self.fields.addWidget(self.useGPU, 3, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
@@ -269,7 +263,7 @@ class Ui_DetectSettings(object):
         self.advancedLayout.addLayout(self.fields)
 
 
-        self.layout.addWidget(self.advancedBody)
+        self.layout.addLayout(self.advancedLayout)
 
         self.error = QLabel(DetectSettings)
         self.error.setObjectName(u"error")

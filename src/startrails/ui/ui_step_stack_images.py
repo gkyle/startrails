@@ -25,6 +25,7 @@ class Ui_StackSettings(object):
     def setupUi(self, StackSettings):
         if not StackSettings.objectName():
             StackSettings.setObjectName(u"StackSettings")
+        StackSettings.resize(258, 312)
         self.layout = QVBoxLayout(StackSettings)
         self.layout.setSpacing(6)
         self.layout.setObjectName(u"layout")
@@ -321,20 +322,14 @@ class Ui_StackSettings(object):
 
         self.layout.addLayout(self.runLayout)
 
-        self.advancedBody = QWidget(StackSettings)
-        self.advancedBody.setObjectName(u"advancedBody")
-        self.advancedBody.setVisible(True)
-        self.advancedBody.setStyleSheet(u"QWidget#advancedBody {\n"
-"    background: transparent;\n"
-"}")
-        self.advancedLayout = QVBoxLayout(self.advancedBody)
+        self.advancedLayout = QVBoxLayout()
         self.advancedLayout.setSpacing(6)
         self.advancedLayout.setObjectName(u"advancedLayout")
         self.advancedLayout.setContentsMargins(0, 0, 0, 0)
         self.gpuBatchGrid = QGridLayout()
         self.gpuBatchGrid.setSpacing(8)
         self.gpuBatchGrid.setObjectName(u"gpuBatchGrid")
-        self.useGPULabel = QLabel(self.advancedBody)
+        self.useGPULabel = QLabel(StackSettings)
         self.useGPULabel.setObjectName(u"useGPULabel")
         self.useGPULabel.setStyleSheet(u"QLabel#useGPULabel {\n"
 "    color: #334155;\n"
@@ -343,21 +338,18 @@ class Ui_StackSettings(object):
 
         self.gpuBatchGrid.addWidget(self.useGPULabel, 0, 0, 1, 1)
 
-        self.useGPU = QCheckBox(self.advancedBody)
+        self.useGPU = QCheckBox(StackSettings)
         self.useGPU.setObjectName(u"useGPU")
         self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;\n"
-"    border: 2px solid transparent;\n"
-"}\n"
-"QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
-"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
-"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
-"QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }")
+        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
+"QCheckBox#useGPU::indicator { width: 36px; height: 20px; }\n"
+"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
+"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }")
         self.useGPU.setChecked(True)
 
         self.gpuBatchGrid.addWidget(self.useGPU, 0, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
 
-        self.batchLabel = QLabel(self.advancedBody)
+        self.batchLabel = QLabel(StackSettings)
         self.batchLabel.setObjectName(u"batchLabel")
         self.batchLabel.setStyleSheet(u"QLabel#batchLabel {\n"
 "    color: #334155;\n"
@@ -366,7 +358,7 @@ class Ui_StackSettings(object):
 
         self.gpuBatchGrid.addWidget(self.batchLabel, 1, 0, 1, 1)
 
-        self.batchSize = QSpinBox(self.advancedBody)
+        self.batchSize = QSpinBox(StackSettings)
         self.batchSize.setObjectName(u"batchSize")
         self.batchSize.setStyleSheet(u"QSpinBox#batchSize {\n"
 "    background-color: #ffffff;\n"
@@ -395,7 +387,7 @@ class Ui_StackSettings(object):
 
         self.advancedLayout.addLayout(self.gpuBatchGrid)
 
-        self.memory = QLabel(self.advancedBody)
+        self.memory = QLabel(StackSettings)
         self.memory.setObjectName(u"memory")
         self.memory.setStyleSheet(u"QLabel#memory {\n"
 "    font-size: 11px;\n"
@@ -407,7 +399,7 @@ class Ui_StackSettings(object):
         self.advancedLayout.addWidget(self.memory)
 
 
-        self.layout.addWidget(self.advancedBody)
+        self.layout.addLayout(self.advancedLayout)
 
         self.error = QLabel(StackSettings)
         self.error.setObjectName(u"error")
