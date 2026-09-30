@@ -255,13 +255,10 @@ class Ui_DetectSettings(object):
         self.useGPU.setObjectName(u"useGPU")
         self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.useGPU.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;\n"
-"    border: 2px solid transparent;\n"
-"}\n"
-"QCheckBox#useGPU::indicator { width: 36px; height: 20px; border: 1px solid #64748b; border-radius: 10px; }\n"
+        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
+"QCheckBox#useGPU::indicator { width: 36px; height: 20px; }\n"
 "QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
-"QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }")
+"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }")
         self.useGPU.setChecked(True)
 
         self.fields.addWidget(self.useGPU, 3, 1, 1, 1, Qt.AlignmentFlag.AlignRight)

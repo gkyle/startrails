@@ -523,13 +523,10 @@ QToolButton#advancedToggle:disabled {
            <string>Use GPU for stacking</string>
           </property>
           <property name="styleSheet">
-           <string notr="true">QCheckBox#useGPU { spacing: 0px;
-    border: 2px solid transparent;
-}
-QCheckBox#useGPU::indicator { width: 36px; height: 20px; border: 1px solid #64748b; border-radius: 10px; }
+           <string notr="true">QCheckBox#useGPU { spacing: 0px;}
+QCheckBox#useGPU::indicator { width: 36px; height: 20px; }
 QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
-QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }</string>
+QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }</string>
           </property>
           <property name="text">
            <string/>
