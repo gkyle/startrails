@@ -24,7 +24,7 @@ class Ui_reviewSettings(object):
     def setupUi(self, reviewSettings):
         if not reviewSettings.objectName():
             reviewSettings.setObjectName(u"reviewSettings")
-        reviewSettings.resize(222, 334)
+        reviewSettings.resize(222, 349)
         self.layout = QVBoxLayout(reviewSettings)
         self.layout.setSpacing(8)
         self.layout.setObjectName(u"layout")
@@ -265,8 +265,8 @@ class Ui_reviewSettings(object):
 
         self.sourceLookupStatus = QLabel(reviewSettings)
         self.sourceLookupStatus.setObjectName(u"sourceLookupStatus")
-        self.sourceLookupStatus.setWordWrap(True)
         self.sourceLookupStatus.setStyleSheet(u"color: #64748b; font-size: 11px;")
+        self.sourceLookupStatus.setWordWrap(True)
 
         self.layout.addWidget(self.sourceLookupStatus)
 
@@ -350,7 +350,7 @@ class Ui_reviewSettings(object):
 #if QT_CONFIG(tooltip)
         self.findBrightest.setToolTip(QCoreApplication.translate("reviewSettings", u"Select a stacked or gap-filled output, then click a streak to locate its original source images.", None))
 #endif // QT_CONFIG(tooltip)
-        self.findBrightest.setText(QCoreApplication.translate("reviewSettings", u"Locate Source", None))
+        self.findBrightest.setText(QCoreApplication.translate("reviewSettings", u"Locate Source Frame", None))
         self.nextSource.setText(QCoreApplication.translate("reviewSettings", u"Next Candidate", None))
         self.backToStack.setText(QCoreApplication.translate("reviewSettings", u"Back to Stack", None))
         self.sourceLookupStatus.setText("")

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>222</width>
-    <height>334</height>
+    <height>349</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="layout">
@@ -307,7 +307,7 @@ QPushButton#findBrightest:disabled {
 QPushButton#findBrightest:focus:enabled { border-color: #0f172a; }</string>
      </property>
      <property name="text">
-      <string>Locate Source</string>
+      <string>Locate Source Frame</string>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -318,9 +318,6 @@ QPushButton#findBrightest:focus:enabled { border-color: #0f172a; }</string>
     <layout class="QHBoxLayout" name="sourceNavigationLayout">
      <item>
       <widget class="QPushButton" name="nextSource">
-       <property name="text">
-        <string>Next Candidate</string>
-       </property>
        <property name="enabled">
         <bool>false</bool>
        </property>
@@ -348,13 +345,13 @@ QPushButton#nextSource:disabled {
 }
 QPushButton#nextSource:focus:enabled { border-color: #0f172a; }</string>
        </property>
+       <property name="text">
+        <string>Next Candidate</string>
+       </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="backToStack">
-       <property name="text">
-        <string>Back to Stack</string>
-       </property>
        <property name="enabled">
         <bool>false</bool>
        </property>
@@ -382,22 +379,26 @@ QPushButton#backToStack:disabled {
 }
 QPushButton#backToStack:focus:enabled { border-color: #0f172a; }</string>
        </property>
+       <property name="text">
+        <string>Back to Stack</string>
+       </property>
       </widget>
      </item>
     </layout>
    </item>
    <item>
     <widget class="QLabel" name="sourceLookupStatus">
+     <property name="styleSheet">
+      <string notr="true">color: #64748b; font-size: 11px;</string>
+     </property>
      <property name="text">
       <string/>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
      </property>
-     <property name="styleSheet">
-      <string notr="true">color: #64748b; font-size: 11px;</string>
-     </property>
-    </widget></item>
+    </widget>
+   </item>
    <item>
     <widget class="QFrame" name="sep1">
      <property name="styleSheet">
