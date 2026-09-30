@@ -290,7 +290,7 @@ class Ui_MainWindow(object):
         self.scroll.setWidgetResizable(True)
         self.content = QWidget()
         self.content.setObjectName(u"content")
-        self.content.setGeometry(QRect(0, -694, 317, 1840))
+        self.content.setGeometry(QRect(0, -631, 317, 1777))
         self.content.setMinimumSize(QSize(0, 0))
         self.content.setStyleSheet(u"QWidget#content {\n"
 "    background-color: #f8fafc;\n"
@@ -967,11 +967,92 @@ class Ui_MainWindow(object):
         self.stepDetectBodyLayout.setSpacing(6)
         self.stepDetectBodyLayout.setObjectName(u"stepDetectBodyLayout")
         self.stepDetectBodyLayout.setContentsMargins(16, 8, 16, 10)
+        self.detectRunGroup = QHBoxLayout()
+        self.detectRunGroup.setSpacing(0)
+        self.detectRunGroup.setObjectName(u"detectRunGroup")
+        self.detectRun = QPushButton(self.stepDetectBody)
+        self.detectRun.setObjectName(u"detectRun")
+        self.detectRun.setEnabled(False)
+        self.detectRun.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.detectRun.setStyleSheet(u"QPushButton#detectRun {\n"
+"    font-weight: bold;\n"
+"    background-color: #0369a1;\n"
+"    color: #ffffff;\n"
+"    padding: 0px 12px;\n"
+"    border-top-left-radius: 6px;\n"
+"    border-bottom-left-radius: 6px;\n"
+"    border-top-right-radius: 0px;\n"
+"    border-bottom-right-radius: 0px;\n"
+"    font-size: 13px;\n"
+"    border: 2px solid transparent;\n"
+"    min-height: 34px;\n"
+"    max-height: 34px;\n"
+"}\n"
+"QPushButton#detectRun:hover {\n"
+"    background-color: #075985;\n"
+"}\n"
+"QPushButton#detectRun:disabled {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #94a3b8;\n"
+"}\n"
+"QPushButton#detectRun:focus:enabled { border-color: #ffffff; }")
+
+        self.detectRunGroup.addWidget(self.detectRun)
+
+        self.detectAdvancedToggle = QToolButton(self.stepDetectBody)
+        self.detectAdvancedToggle.setObjectName(u"detectAdvancedToggle")
+        self.detectAdvancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.detectAdvancedToggle.setFocusPolicy(Qt.NoFocus)
+        self.detectAdvancedToggle.setStyleSheet(u"QToolButton#detectAdvancedToggle {\n"
+"    background-color: #0369a1;\n"
+"    color: #ffffff;\n"
+"    padding: 0px;\n"
+"    border-top-left-radius: 0px;\n"
+"    border-bottom-left-radius: 0px;\n"
+"    border-top-right-radius: 6px;\n"
+"    border-bottom-right-radius: 6px;\n"
+"    border: 2px solid transparent;\n"
+"    border-left: 1px solid #075985;\n"
+"    min-height: 34px;\n"
+"    max-height: 34px;\n"
+"    min-width: 28px;\n"
+"    max-width: 28px;\n"
+"}\n"
+"QToolButton#detectAdvancedToggle:hover {\n"
+"    background-color: #075985;\n"
+"}\n"
+"QToolButton#detectAdvancedToggle:focus:enabled {\n"
+"    border-color: #ffffff;\n"
+"}\n"
+"QToolButton#detectAdvancedToggle:disabled {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #94a3b8;\n"
+"    border-left: 1px solid #cbd5e1;\n"
+"}")
+        self.detectAdvancedToggle.setCheckable(True)
+        self.detectAdvancedToggle.setChecked(True)
+        self.detectAdvancedToggle.setArrowType(Qt.DownArrow)
+
+        self.detectRunGroup.addWidget(self.detectAdvancedToggle)
+
+
+        self.stepDetectBodyLayout.addLayout(self.detectRunGroup)
+
+        self.detectAdvancedBody = QWidget(self.stepDetectBody)
+        self.detectAdvancedBody.setObjectName(u"detectAdvancedBody")
+        self.detectAdvancedBody.setVisible(True)
+        self.detectAdvancedBody.setStyleSheet(u"QWidget#detectAdvancedBody {\n"
+"    background: transparent;\n"
+"}")
+        self.detectAdvancedLayout = QVBoxLayout(self.detectAdvancedBody)
+        self.detectAdvancedLayout.setSpacing(6)
+        self.detectAdvancedLayout.setObjectName(u"detectAdvancedLayout")
+        self.detectAdvancedLayout.setContentsMargins(0, 0, 0, 0)
         self.stepDetectFields = QGridLayout()
         self.stepDetectFields.setSpacing(8)
         self.stepDetectFields.setObjectName(u"stepDetectFields")
         self.stepDetectFields.setContentsMargins(0, 0, 0, 0)
-        self.detectConfidenceLabel = QLabel(self.stepDetectBody)
+        self.detectConfidenceLabel = QLabel(self.detectAdvancedBody)
         self.detectConfidenceLabel.setObjectName(u"detectConfidenceLabel")
         self.detectConfidenceLabel.setStyleSheet(u"QLabel#detectConfidenceLabel {\n"
 "    color: #334155;\n"
@@ -980,7 +1061,7 @@ class Ui_MainWindow(object):
 
         self.stepDetectFields.addWidget(self.detectConfidenceLabel, 0, 0, 1, 1)
 
-        self.detectConfidence = QDoubleSpinBox(self.stepDetectBody)
+        self.detectConfidence = QDoubleSpinBox(self.detectAdvancedBody)
         self.detectConfidence.setObjectName(u"detectConfidence")
         self.detectConfidence.setStyleSheet(u"QDoubleSpinBox#detectConfidence {\n"
 "    background-color: #ffffff;\n"
@@ -1004,7 +1085,7 @@ class Ui_MainWindow(object):
 
         self.stepDetectFields.addWidget(self.detectConfidence, 0, 1, 1, 1, Qt.AlignRight)
 
-        self.detectMergeLabel = QLabel(self.stepDetectBody)
+        self.detectMergeLabel = QLabel(self.detectAdvancedBody)
         self.detectMergeLabel.setObjectName(u"detectMergeLabel")
         self.detectMergeLabel.setStyleSheet(u"QLabel#detectMergeLabel {\n"
 "    color: #334155;\n"
@@ -1013,7 +1094,7 @@ class Ui_MainWindow(object):
 
         self.stepDetectFields.addWidget(self.detectMergeLabel, 1, 0, 1, 1)
 
-        self.detectMergeContainer = QFrame(self.stepDetectBody)
+        self.detectMergeContainer = QFrame(self.detectAdvancedBody)
         self.detectMergeContainer.setObjectName(u"detectMergeContainer")
         self.detectMergeContainer.setStyleSheet(u"QFrame#detectMergeContainer {\n"
 "    background-color: #f1f5f9;\n"
@@ -1067,7 +1148,7 @@ class Ui_MainWindow(object):
 
         self.stepDetectFields.addWidget(self.detectMergeContainer, 1, 1, 1, 1, Qt.AlignRight)
 
-        self.detectThresholdLabel = QLabel(self.stepDetectBody)
+        self.detectThresholdLabel = QLabel(self.detectAdvancedBody)
         self.detectThresholdLabel.setObjectName(u"detectThresholdLabel")
         self.detectThresholdLabel.setStyleSheet(u"QLabel#detectThresholdLabel {\n"
 "    color: #334155;\n"
@@ -1079,7 +1160,7 @@ class Ui_MainWindow(object):
 
         self.stepDetectFields.addWidget(self.detectThresholdLabel, 2, 0, 1, 1)
 
-        self.detectMergeThreshold = QDoubleSpinBox(self.stepDetectBody)
+        self.detectMergeThreshold = QDoubleSpinBox(self.detectAdvancedBody)
         self.detectMergeThreshold.setObjectName(u"detectMergeThreshold")
         self.detectMergeThreshold.setStyleSheet(u"QDoubleSpinBox#detectMergeThreshold {\n"
 "    background-color: #ffffff;\n"
@@ -1103,7 +1184,7 @@ class Ui_MainWindow(object):
 
         self.stepDetectFields.addWidget(self.detectMergeThreshold, 2, 1, 1, 1, Qt.AlignRight)
 
-        self.detectUseGPULabel = QLabel(self.stepDetectBody)
+        self.detectUseGPULabel = QLabel(self.detectAdvancedBody)
         self.detectUseGPULabel.setObjectName(u"detectUseGPULabel")
         self.detectUseGPULabel.setStyleSheet(u"QLabel#detectUseGPULabel {\n"
 "    color: #334155;\n"
@@ -1112,7 +1193,7 @@ class Ui_MainWindow(object):
 
         self.stepDetectFields.addWidget(self.detectUseGPULabel, 3, 0, 1, 1)
 
-        self.detectUseGPU = QCheckBox(self.stepDetectBody)
+        self.detectUseGPU = QCheckBox(self.detectAdvancedBody)
         self.detectUseGPU.setObjectName(u"detectUseGPU")
         sizePolicy6 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         sizePolicy6.setHorizontalStretch(0)
@@ -1120,6 +1201,7 @@ class Ui_MainWindow(object):
         sizePolicy6.setHeightForWidth(self.detectUseGPU.sizePolicy().hasHeightForWidth())
         self.detectUseGPU.setSizePolicy(sizePolicy6)
         self.detectUseGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.detectUseGPU.setFocusPolicy(Qt.NoFocus)
         self.detectUseGPU.setStyleSheet(u"QCheckBox#detectUseGPU { spacing: 0px;\n"
 "    border: 2px solid transparent;\n"
 "}\n"
@@ -1134,7 +1216,10 @@ class Ui_MainWindow(object):
         self.stepDetectFields.setColumnStretch(0, 1)
         self.stepDetectFields.setColumnStretch(1, 2)
 
-        self.stepDetectBodyLayout.addLayout(self.stepDetectFields)
+        self.detectAdvancedLayout.addLayout(self.stepDetectFields)
+
+
+        self.stepDetectBodyLayout.addWidget(self.detectAdvancedBody)
 
         self.detectError = QLabel(self.stepDetectBody)
         self.detectError.setObjectName(u"detectError")
@@ -1145,30 +1230,6 @@ class Ui_MainWindow(object):
         self.detectError.setWordWrap(True)
 
         self.stepDetectBodyLayout.addWidget(self.detectError)
-
-        self.detectRun = QPushButton(self.stepDetectBody)
-        self.detectRun.setObjectName(u"detectRun")
-        self.detectRun.setEnabled(False)
-        self.detectRun.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.detectRun.setStyleSheet(u"QPushButton#detectRun {\n"
-"    font-weight: bold;\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    padding: 7px 12px;\n"
-"    border-radius: 6px;\n"
-"    font-size: 13px;\n"
-"    border: 2px solid transparent;\n"
-"}\n"
-"QPushButton#detectRun:hover {\n"
-"    background-color: #075985;\n"
-"}\n"
-"QPushButton#detectRun:disabled {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #94a3b8;\n"
-"}\n"
-"QPushButton#detectRun:focus:enabled { border-color: #ffffff; }")
-
-        self.stepDetectBodyLayout.addWidget(self.detectRun)
 
 
         self.stepDetectLayout.addWidget(self.stepDetectBody)
@@ -1302,7 +1363,7 @@ class Ui_MainWindow(object):
         self.stepStackBodyLayout = QVBoxLayout(self.stepStackBody)
         self.stepStackBodyLayout.setSpacing(6)
         self.stepStackBodyLayout.setObjectName(u"stepStackBodyLayout")
-        self.stepStackBodyLayout.setContentsMargins(16, 8, 16, 10)
+        self.stepStackBodyLayout.setContentsMargins(16, 6, 16, 10)
         self.stepStackFields = QGridLayout()
         self.stepStackFields.setSpacing(8)
         self.stepStackFields.setObjectName(u"stepStackFields")
@@ -1519,20 +1580,110 @@ class Ui_MainWindow(object):
 
         self.stepStackFields.addWidget(self.stackFadeAmount, 3, 1, 1, 1, Qt.AlignRight)
 
-        self.stackUseGPULabel = QLabel(self.stepStackBody)
+        self.stepStackFields.setColumnStretch(0, 1)
+        self.stepStackFields.setColumnStretch(1, 2)
+
+        self.stepStackBodyLayout.addLayout(self.stepStackFields)
+
+        self.stackRunGroup = QHBoxLayout()
+        self.stackRunGroup.setSpacing(0)
+        self.stackRunGroup.setObjectName(u"stackRunGroup")
+        self.stackRun = QPushButton(self.stepStackBody)
+        self.stackRun.setObjectName(u"stackRun")
+        self.stackRun.setEnabled(False)
+        self.stackRun.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackRun.setStyleSheet(u"QPushButton#stackRun {\n"
+"    font-weight: bold;\n"
+"    background-color: #0369a1;\n"
+"    color: #ffffff;\n"
+"    padding: 0px 12px;\n"
+"    border-top-left-radius: 6px;\n"
+"    border-bottom-left-radius: 6px;\n"
+"    border-top-right-radius: 0px;\n"
+"    border-bottom-right-radius: 0px;\n"
+"    font-size: 13px;\n"
+"    border: 2px solid transparent;\n"
+"    min-height: 34px;\n"
+"    max-height: 34px;\n"
+"}\n"
+"QPushButton#stackRun:hover {\n"
+"    background-color: #075985;\n"
+"}\n"
+"QPushButton#stackRun:disabled {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #94a3b8;\n"
+"}\n"
+"QPushButton#stackRun:focus:enabled { border-color: #ffffff; }")
+
+        self.stackRunGroup.addWidget(self.stackRun)
+
+        self.stackAdvancedToggle = QToolButton(self.stepStackBody)
+        self.stackAdvancedToggle.setObjectName(u"stackAdvancedToggle")
+        self.stackAdvancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackAdvancedToggle.setFocusPolicy(Qt.NoFocus)
+        self.stackAdvancedToggle.setStyleSheet(u"QToolButton#stackAdvancedToggle {\n"
+"    background-color: #0369a1;\n"
+"    color: #ffffff;\n"
+"    padding: 0px;\n"
+"    border-top-left-radius: 0px;\n"
+"    border-bottom-left-radius: 0px;\n"
+"    border-top-right-radius: 6px;\n"
+"    border-bottom-right-radius: 6px;\n"
+"    border: 2px solid transparent;\n"
+"    border-left: 1px solid #075985;\n"
+"    min-height: 34px;\n"
+"    max-height: 34px;\n"
+"    min-width: 28px;\n"
+"    max-width: 28px;\n"
+"}\n"
+"QToolButton#stackAdvancedToggle:hover {\n"
+"    background-color: #075985;\n"
+"}\n"
+"QToolButton#stackAdvancedToggle:focus:enabled {\n"
+"    border-color: #ffffff;\n"
+"}\n"
+"QToolButton#stackAdvancedToggle:disabled {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #94a3b8;\n"
+"    border-left: 1px solid #cbd5e1;\n"
+"}")
+        self.stackAdvancedToggle.setCheckable(True)
+        self.stackAdvancedToggle.setChecked(True)
+        self.stackAdvancedToggle.setArrowType(Qt.DownArrow)
+
+        self.stackRunGroup.addWidget(self.stackAdvancedToggle)
+
+
+        self.stepStackBodyLayout.addLayout(self.stackRunGroup)
+
+        self.stackAdvancedBody = QWidget(self.stepStackBody)
+        self.stackAdvancedBody.setObjectName(u"stackAdvancedBody")
+        self.stackAdvancedBody.setVisible(True)
+        self.stackAdvancedBody.setStyleSheet(u"QWidget#stackAdvancedBody {\n"
+"    background: transparent;\n"
+"}")
+        self.stackAdvancedLayout = QVBoxLayout(self.stackAdvancedBody)
+        self.stackAdvancedLayout.setSpacing(6)
+        self.stackAdvancedLayout.setObjectName(u"stackAdvancedLayout")
+        self.stackAdvancedLayout.setContentsMargins(0, 0, 0, 0)
+        self.stackAdvancedFields = QGridLayout()
+        self.stackAdvancedFields.setSpacing(8)
+        self.stackAdvancedFields.setObjectName(u"stackAdvancedFields")
+        self.stackUseGPULabel = QLabel(self.stackAdvancedBody)
         self.stackUseGPULabel.setObjectName(u"stackUseGPULabel")
         self.stackUseGPULabel.setStyleSheet(u"QLabel#stackUseGPULabel {\n"
 "    color: #334155;\n"
 "    font-size: 12px;\n"
 "}")
 
-        self.stepStackFields.addWidget(self.stackUseGPULabel, 4, 0, 1, 1)
+        self.stackAdvancedFields.addWidget(self.stackUseGPULabel, 0, 0, 1, 1)
 
-        self.stackUseGPU = QCheckBox(self.stepStackBody)
+        self.stackUseGPU = QCheckBox(self.stackAdvancedBody)
         self.stackUseGPU.setObjectName(u"stackUseGPU")
         sizePolicy6.setHeightForWidth(self.stackUseGPU.sizePolicy().hasHeightForWidth())
         self.stackUseGPU.setSizePolicy(sizePolicy6)
         self.stackUseGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.stackUseGPU.setFocusPolicy(Qt.NoFocus)
         self.stackUseGPU.setStyleSheet(u"QCheckBox#stackUseGPU { spacing: 0px;\n"
 "    border: 2px solid transparent;\n"
 "}\n"
@@ -1542,18 +1693,18 @@ class Ui_MainWindow(object):
 "QCheckBox#stackUseGPU:focus:enabled { border-color: #0f172a; }")
         self.stackUseGPU.setChecked(True)
 
-        self.stepStackFields.addWidget(self.stackUseGPU, 4, 1, 1, 1, Qt.AlignRight)
+        self.stackAdvancedFields.addWidget(self.stackUseGPU, 0, 1, 1, 1, Qt.AlignRight)
 
-        self.stackBatchLabel = QLabel(self.stepStackBody)
+        self.stackBatchLabel = QLabel(self.stackAdvancedBody)
         self.stackBatchLabel.setObjectName(u"stackBatchLabel")
         self.stackBatchLabel.setStyleSheet(u"QLabel#stackBatchLabel {\n"
 "    color: #334155;\n"
 "    font-size: 12px;\n"
 "}")
 
-        self.stepStackFields.addWidget(self.stackBatchLabel, 5, 0, 1, 1)
+        self.stackAdvancedFields.addWidget(self.stackBatchLabel, 1, 0, 1, 1)
 
-        self.stackBatchSize = QSpinBox(self.stepStackBody)
+        self.stackBatchSize = QSpinBox(self.stackAdvancedBody)
         self.stackBatchSize.setObjectName(u"stackBatchSize")
         self.stackBatchSize.setStyleSheet(u"QSpinBox#stackBatchSize {\n"
 "    background-color: #ffffff;\n"
@@ -1575,14 +1726,14 @@ class Ui_MainWindow(object):
         self.stackBatchSize.setMaximum(2147483647)
         self.stackBatchSize.setValue(16)
 
-        self.stepStackFields.addWidget(self.stackBatchSize, 5, 1, 1, 1, Qt.AlignRight)
+        self.stackAdvancedFields.addWidget(self.stackBatchSize, 1, 1, 1, 1, Qt.AlignRight)
 
-        self.stepStackFields.setColumnStretch(0, 1)
-        self.stepStackFields.setColumnStretch(1, 2)
+        self.stackAdvancedFields.setColumnStretch(0, 1)
+        self.stackAdvancedFields.setColumnStretch(1, 2)
 
-        self.stepStackBodyLayout.addLayout(self.stepStackFields)
+        self.stackAdvancedLayout.addLayout(self.stackAdvancedFields)
 
-        self.stackMemory = QLabel(self.stepStackBody)
+        self.stackMemory = QLabel(self.stackAdvancedBody)
         self.stackMemory.setObjectName(u"stackMemory")
         self.stackMemory.setStyleSheet(u"QLabel#stackMemory {\n"
 "    font-size: 11px;\n"
@@ -1591,7 +1742,10 @@ class Ui_MainWindow(object):
 "}")
         self.stackMemory.setWordWrap(True)
 
-        self.stepStackBodyLayout.addWidget(self.stackMemory)
+        self.stackAdvancedLayout.addWidget(self.stackMemory)
+
+
+        self.stepStackBodyLayout.addWidget(self.stackAdvancedBody)
 
         self.stackError = QLabel(self.stepStackBody)
         self.stackError.setObjectName(u"stackError")
@@ -1602,30 +1756,6 @@ class Ui_MainWindow(object):
         self.stackError.setWordWrap(True)
 
         self.stepStackBodyLayout.addWidget(self.stackError)
-
-        self.stackRun = QPushButton(self.stepStackBody)
-        self.stackRun.setObjectName(u"stackRun")
-        self.stackRun.setEnabled(False)
-        self.stackRun.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.stackRun.setStyleSheet(u"QPushButton#stackRun {\n"
-"    font-weight: bold;\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    padding: 7px 12px;\n"
-"    border-radius: 6px;\n"
-"    font-size: 13px;\n"
-"    border: 2px solid transparent;\n"
-"}\n"
-"QPushButton#stackRun:hover {\n"
-"    background-color: #075985;\n"
-"}\n"
-"QPushButton#stackRun:disabled {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #94a3b8;\n"
-"}\n"
-"QPushButton#stackRun:focus:enabled { border-color: #ffffff; }")
-
-        self.stepStackBodyLayout.addWidget(self.stackRun)
 
 
         self.stepStackLayout.addWidget(self.stepStackBody)
@@ -1756,20 +1886,9 @@ class Ui_MainWindow(object):
 "    background: transparent;\n"
 "}")
         self.stepReviewBodyLayout = QVBoxLayout(self.stepReviewBody)
-        self.stepReviewBodyLayout.setSpacing(8)
+        self.stepReviewBodyLayout.setSpacing(6)
         self.stepReviewBodyLayout.setObjectName(u"stepReviewBodyLayout")
         self.stepReviewBodyLayout.setContentsMargins(10, 8, 10, 10)
-        self.label = QLabel(self.stepReviewBody)
-        self.label.setObjectName(u"label")
-        self.label.setStyleSheet(u"QLabel {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"    line-height: 1.3;\n"
-"}")
-        self.label.setWordWrap(True)
-
-        self.stepReviewBodyLayout.addWidget(self.label)
-
         self.reviewCountsLayout = QHBoxLayout()
         self.reviewCountsLayout.setSpacing(6)
         self.reviewCountsLayout.setObjectName(u"reviewCountsLayout")
@@ -1796,8 +1915,9 @@ class Ui_MainWindow(object):
 
         self.reviewStatAutoNum = QLabel(self.reviewStatAuto)
         self.reviewStatAutoNum.setObjectName(u"reviewStatAutoNum")
+        self.reviewStatAutoNum.setFont(font)
         self.reviewStatAutoNum.setStyleSheet(u"QLabel#reviewStatAutoNum {\n"
-"    font-size: 17px;\n"
+"    font-size: 11px;\n"
 "    font-weight: bold;\n"
 "    color: #166534;\n"
 "}")
@@ -1831,7 +1951,7 @@ class Ui_MainWindow(object):
         self.reviewStatManualNum = QLabel(self.reviewStatManual)
         self.reviewStatManualNum.setObjectName(u"reviewStatManualNum")
         self.reviewStatManualNum.setStyleSheet(u"QLabel#reviewStatManualNum {\n"
-"    font-size: 17px;\n"
+"    font-size: 11px;\n"
 "    font-weight: bold;\n"
 "    color: #0369a1;\n"
 "}")
@@ -1865,7 +1985,7 @@ class Ui_MainWindow(object):
         self.reviewStatDeletedNum = QLabel(self.reviewStatDeleted)
         self.reviewStatDeletedNum.setObjectName(u"reviewStatDeletedNum")
         self.reviewStatDeletedNum.setStyleSheet(u"QLabel#reviewStatDeletedNum {\n"
-"    font-size: 17px;\n"
+"    font-size: 11px;\n"
 "    font-weight: bold;\n"
 "    color: #92400e;\n"
 "}")
@@ -1888,6 +2008,7 @@ class Ui_MainWindow(object):
         self.exportShowDeletedMasks = QCheckBox(self.stepReviewBody)
         self.exportShowDeletedMasks.setObjectName(u"exportShowDeletedMasks")
         self.exportShowDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.exportShowDeletedMasks.setFocusPolicy(Qt.NoFocus)
         self.exportShowDeletedMasks.setStyleSheet(u"QCheckBox#exportShowDeletedMasks { spacing: 0px;\n"
 "    border: 2px solid transparent;\n"
 "}\n"
@@ -2231,7 +2352,6 @@ class Ui_MainWindow(object):
         self.additionalToolsNumber.setMinimumSize(QSize(30, 30))
         self.additionalToolsNumber.setMaximumSize(QSize(30, 30))
         self.additionalToolsNumber.setStyleSheet(u"QLabel#additionalToolsNumber {\n"
-"                          background-color: #64748b;\n"
 "                          color: #ffffff;\n"
 "                          border: none;\n"
 "                          border-radius: 15px;\n"
@@ -2470,6 +2590,14 @@ class Ui_MainWindow(object):
         self.stepDetectSubtitle.setText(QCoreApplication.translate("MainWindow", u"Ready to detect streaks", None))
         self.stepDetectStatusBadge.setText(QCoreApplication.translate("MainWindow", u"\u2713 Ready", None))
         self.stepDetectChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
+        self.detectRun.setText(QCoreApplication.translate("MainWindow", u"Detect Streaks", None))
+#if QT_CONFIG(tooltip)
+        self.detectAdvancedToggle.setToolTip(QCoreApplication.translate("MainWindow", u"Advanced settings", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(accessibility)
+        self.detectAdvancedToggle.setAccessibleName(QCoreApplication.translate("MainWindow", u"Advanced settings", None))
+#endif // QT_CONFIG(accessibility)
+        self.detectAdvancedToggle.setText("")
         self.detectConfidenceLabel.setText(QCoreApplication.translate("MainWindow", u"Confidence", None))
 #if QT_CONFIG(accessibility)
         self.detectConfidence.setAccessibleName(QCoreApplication.translate("MainWindow", u"Confidence threshold", None))
@@ -2487,7 +2615,6 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(accessibility)
         self.detectUseGPU.setText("")
         self.detectError.setText("")
-        self.detectRun.setText(QCoreApplication.translate("MainWindow", u"Detect Streaks", None))
         self.stepStackNumber.setText(QCoreApplication.translate("MainWindow", u"2", None))
         self.stepStackToggle.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))
         self.stepStackSubtitle.setText(QCoreApplication.translate("MainWindow", u"Ready \u00b7 detection is optional", None))
@@ -2508,6 +2635,14 @@ class Ui_MainWindow(object):
         self.stackFadeAmount.setAccessibleName(QCoreApplication.translate("MainWindow", u"Fade amount", None))
 #endif // QT_CONFIG(accessibility)
         self.stackFadeAmount.setSuffix(QCoreApplication.translate("MainWindow", u"%", None))
+        self.stackRun.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))
+#if QT_CONFIG(tooltip)
+        self.stackAdvancedToggle.setToolTip(QCoreApplication.translate("MainWindow", u"Advanced settings", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(accessibility)
+        self.stackAdvancedToggle.setAccessibleName(QCoreApplication.translate("MainWindow", u"Advanced settings", None))
+#endif // QT_CONFIG(accessibility)
+        self.stackAdvancedToggle.setText("")
         self.stackUseGPULabel.setText(QCoreApplication.translate("MainWindow", u"Use GPU", None))
 #if QT_CONFIG(accessibility)
         self.stackUseGPU.setAccessibleName(QCoreApplication.translate("MainWindow", u"Use GPU for stacking", None))
@@ -2519,18 +2654,16 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(accessibility)
         self.stackMemory.setText(QCoreApplication.translate("MainWindow", u"Add input files for a batch suggestion.", None))
         self.stackError.setText("")
-        self.stackRun.setText(QCoreApplication.translate("MainWindow", u"Stack Images", None))
         self.stepReviewNumber.setText(QCoreApplication.translate("MainWindow", u"3", None))
         self.stepReviewToggle.setText(QCoreApplication.translate("MainWindow", u"Review and Correct", None))
         self.stepReviewSubtitle.setText(QCoreApplication.translate("MainWindow", u"0 corrections", None))
         self.stepReviewStatusBadge.setText(QCoreApplication.translate("MainWindow", u"Ready", None))
         self.stepReviewChevron.setText(QCoreApplication.translate("MainWindow", u"\u25bc", None))
-        self.label.setText(QCoreApplication.translate("MainWindow", u"You can review and edit detected streaks. If you manually add, edit, or delete masks, consider contributing your corrections so that models may be improved.", None))
-        self.reviewStatAutoTitle.setText(QCoreApplication.translate("MainWindow", u"A: Auto", None))
+        self.reviewStatAutoTitle.setText(QCoreApplication.translate("MainWindow", u"Auto", None))
         self.reviewStatAutoNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
-        self.reviewStatManualTitle.setText(QCoreApplication.translate("MainWindow", u"M: Manual", None))
+        self.reviewStatManualTitle.setText(QCoreApplication.translate("MainWindow", u"Manual", None))
         self.reviewStatManualNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
-        self.reviewStatDeletedTitle.setText(QCoreApplication.translate("MainWindow", u"D: Deleted", None))
+        self.reviewStatDeletedTitle.setText(QCoreApplication.translate("MainWindow", u"Deleted", None))
         self.reviewStatDeletedNum.setText(QCoreApplication.translate("MainWindow", u"0", None))
         self.exportShowDeletedMasksLabel.setStyleSheet(QCoreApplication.translate("MainWindow", u"color: #334155; font-size: 12px;", None))
         self.exportShowDeletedMasksLabel.setText(QCoreApplication.translate("MainWindow", u"Show Deleted Masks", None))

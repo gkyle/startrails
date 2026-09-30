@@ -155,6 +155,9 @@ class DetectSettings(QWidget):
             else:
                 merge_method = getattr(ui, "detectMergeMethod", None)
 
+            advanced_toggle = getattr(ui, "detectAdvancedToggle", getattr(ui, "advancedToggle", None))
+            advanced_body = getattr(ui, "detectAdvancedBody", getattr(ui, "advancedBody", None))
+
             self.ui = SimpleNamespace(
                 confidenceLabel=ui.detectConfidenceLabel,
                 confidence=ui.detectConfidence,
@@ -165,6 +168,8 @@ class DetectSettings(QWidget):
                 useGPU=ui.detectUseGPU,
                 error=ui.detectError,
                 run=ui.detectRun,
+                advancedToggle=advanced_toggle,
+                advancedBody=advanced_body,
             )
         else:
             self.ui = Ui_DetectSettings()
@@ -174,8 +179,25 @@ class DetectSettings(QWidget):
                     [self.ui.detectMergeNMS, self.ui.detectMergeNMM], parent=self
                 )
         self._first_file = None
+        if getattr(self.ui, "advancedToggle", None) is not None:
+            self.ui.advancedToggle.toggled.connect(self._toggle_advanced)
+            self.ui.advancedToggle.setChecked(False)
+            self._toggle_advanced(False)
         self.ui.useGPU.toggled.connect(self.suggest_device)
         self.reset()
+
+    def _toggle_advanced(self, checked):
+        body = getattr(self.ui, "advancedBody", None)
+        if body is not None:
+            body.setVisible(checked)
+        toggle = getattr(self.ui, "advancedToggle", None)
+        if toggle is not None:
+            toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
+            toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
+        self.updateGeometry()
+        if body is not None and body.parentWidget() is not None:
+            body.parentWidget().updateGeometry()
+            body.parentWidget().adjustSize()
 
     def reset(self):
         self.ui.confidence.setValue(0.3)
@@ -239,6 +261,9 @@ class StackSettings(QWidget):
             else:
                 fade_widget = getattr(ui, "stackFade", None)
 
+            advanced_toggle = getattr(ui, "stackAdvancedToggle", getattr(ui, "advancedToggle", None))
+            advanced_body = getattr(ui, "stackAdvancedBody", getattr(ui, "advancedBody", None))
+
             self.ui = SimpleNamespace(
                 methodLabel=ui.stackMethodLabel,
                 method=ui.stackMethod,
@@ -254,6 +279,8 @@ class StackSettings(QWidget):
                 memory=ui.stackMemory,
                 error=ui.stackError,
                 run=ui.stackRun,
+                advancedToggle=advanced_toggle,
+                advancedBody=advanced_body,
             )
         else:
             self.ui = Ui_StackSettings()
@@ -268,9 +295,26 @@ class StackSettings(QWidget):
                 )
         self._first_file = None
         self._has_masks = None
+        if getattr(self.ui, "advancedToggle", None) is not None:
+            self.ui.advancedToggle.toggled.connect(self._toggle_advanced)
+            self.ui.advancedToggle.setChecked(False)
+            self._toggle_advanced(False)
         self.ui.useGPU.toggled.connect(self.suggest_batch)
         self.ui.fade.currentIndexChanged.connect(lambda index: self.ui.fadeAmount.setEnabled(index != 0))
         self.reset()
+
+    def _toggle_advanced(self, checked):
+        body = getattr(self.ui, "advancedBody", None)
+        if body is not None:
+            body.setVisible(checked)
+        toggle = getattr(self.ui, "advancedToggle", None)
+        if toggle is not None:
+            toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
+            toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
+        self.updateGeometry()
+        if body is not None and body.parentWidget() is not None:
+            body.parentWidget().updateGeometry()
+            body.parentWidget().adjustSize()
 
     def reset(self):
         self.ui.fade.setCurrentIndex(3)

@@ -37,10 +37,15 @@ QPushButton#run {
     font-weight: bold;
     background-color: #0369a1;
     color: #ffffff;
-    padding: 7px 12px;
-    border-radius: 6px;
+    padding: 0px 12px;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
     font-size: 13px;
     border: 2px solid transparent;
+    min-height: 34px;
+    max-height: 34px;
 }
 QPushButton#run:hover {
     background-color: #075985;
@@ -49,8 +54,34 @@ QPushButton#run:disabled {
     background-color: #e2e8f0;
     color: #94a3b8;
 }
-QCheckBox:focus:enabled { border-color: #0f172a; }
 QPushButton#run:focus:enabled { border-color: #ffffff; }
+QToolButton#advancedToggle {
+    background-color: #0369a1;
+    color: #ffffff;
+    padding: 0px;
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    border: 2px solid transparent;
+    border-left: 1px solid #075985;
+    min-height: 34px;
+    max-height: 34px;
+    min-width: 28px;
+    max-width: 28px;
+}
+QToolButton#advancedToggle:hover {
+    background-color: #075985;
+}
+QToolButton#advancedToggle:focus:enabled {
+    border-color: #ffffff;
+}
+QToolButton#advancedToggle:disabled {
+    background-color: #e2e8f0;
+    color: #94a3b8;
+    border-left: 1px solid #cbd5e1;
+}
+QCheckBox:focus:enabled { border-color: #0f172a; }
 QDoubleSpinBox::up-arrow, QSpinBox::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }
 QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }</string>
   </property>
@@ -200,72 +231,132 @@ QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/ar
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="gpuBatchRow">
+    <layout class="QHBoxLayout" name="runLayout">
      <property name="spacing">
-      <number>6</number>
+      <number>0</number>
      </property>
      <item>
-      <widget class="QCheckBox" name="useGPU">
-       <property name="text">
-        <string>Use GPU</string>
+      <widget class="QPushButton" name="run">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
        </property>
-       <property name="styleSheet">
-        <string notr="true">QCheckBox#useGPU { spacing: 0px;
-    border: 2px solid transparent;
-}
-      QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }
-      QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
-      QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }
-QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }</string>
+       <property name="text">
+        <string>Stack Images</string>
+       </property>
+       <property name="enabled">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
      <item>
-      <spacer name="gpuBatchSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+      <widget class="QToolButton" name="advancedToggle">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
        </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>0</height>
-        </size>
+       <property name="focusPolicy">
+        <enum>Qt::StrongFocus</enum>
        </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QLabel" name="batchLabel">
+       <property name="toolTip">
+        <string>Advanced settings</string>
+       </property>
+       <property name="accessibleName">
+        <string>Advanced settings</string>
+       </property>
        <property name="text">
-        <string>&amp;Batch size</string>
+        <string/>
        </property>
-       <property name="buddy">
-        <cstring>batchSize</cstring>
+       <property name="checkable">
+        <bool>true</bool>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QSpinBox" name="batchSize">
-       <property name="minimum">
-        <number>1</number>
+       <property name="checked">
+        <bool>true</bool>
        </property>
-       <property name="maximum">
-        <number>2147483647</number>
-       </property>
-       <property name="value">
-        <number>1</number>
+       <property name="arrowType">
+        <enum>Qt::DownArrow</enum>
        </property>
       </widget>
      </item>
     </layout>
    </item>
    <item>
-    <widget class="QLabel" name="memory">
-     <property name="text">
-      <string>Add input files for a batch suggestion.</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
+    <widget class="QWidget" name="advancedBody">
+     <property name="visible"><bool>true</bool></property>
+     <layout class="QVBoxLayout" name="advancedLayout">
+      <property name="spacing"><number>6</number></property>
+      <property name="leftMargin"><number>0</number></property>
+      <property name="topMargin"><number>0</number></property>
+      <property name="rightMargin"><number>0</number></property>
+      <property name="bottomMargin"><number>0</number></property>
+      <item>
+       <layout class="QHBoxLayout" name="gpuBatchRow">
+        <property name="spacing">
+         <number>6</number>
+        </property>
+        <item>
+         <widget class="QCheckBox" name="useGPU">
+          <property name="text">
+           <string>Use GPU</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QCheckBox#useGPU { spacing: 0px;
+    border: 2px solid transparent;
+}
+      QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }
+      QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
+      QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }
+QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="gpuBatchSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>0</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="batchLabel">
+          <property name="text">
+           <string>&amp;Batch size</string>
+          </property>
+          <property name="buddy">
+           <cstring>batchSize</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="batchSize">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>2147483647</number>
+          </property>
+          <property name="value">
+           <number>1</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="memory">
+        <property name="text">
+         <string>Add input files for a batch suggestion.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>
@@ -275,19 +366,6 @@ QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="run">
-     <property name="cursor">
-      <cursorShape>PointingHandCursor</cursorShape>
-     </property>
-     <property name="text">
-      <string>Stack Images</string>
-     </property>
-     <property name="enabled">
-      <bool>false</bool>
      </property>
     </widget>
    </item>

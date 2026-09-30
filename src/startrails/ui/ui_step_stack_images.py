@@ -17,7 +17,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFormLayout,
     QHBoxLayout, QLabel, QPushButton, QSizePolicy,
-    QSpacerItem, QSpinBox, QVBoxLayout, QWidget)
+    QSpacerItem, QSpinBox, QToolButton, QVBoxLayout,
+    QWidget)
 from . import resources_rc
 
 class Ui_StackSettings(object):
@@ -58,21 +59,53 @@ class Ui_StackSettings(object):
 "    font-weight: bold;\n"
 "    background-color: #0369a1;\n"
 "    color: #ffffff;\n"
-"    padding: 7px 12px;\n"
-"    border-radius: 6px;\n"
-"    font-size: 13px;\n"
+"    padding: 0px 12px;\n"
+"    border-top-left-radius: 6px;\n"
+"    border-bottom-left-radius: 6px;\n"
+"    border-top-right-radius: 0px;\n"
+"    border-bottom-right-radius: 0px;\n"
+"    font-"
+                        "size: 13px;\n"
 "    border: 2px solid transparent;\n"
+"    min-height: 34px;\n"
+"    max-height: 34px;\n"
 "}\n"
 "QPushButton#run:hover {\n"
 "    background-color: #075985;\n"
 "}\n"
-""
-                        "QPushButton#run:disabled {\n"
+"QPushButton#run:disabled {\n"
 "    background-color: #e2e8f0;\n"
 "    color: #94a3b8;\n"
 "}\n"
-"QCheckBox:focus:enabled { border-color: #0f172a; }\n"
 "QPushButton#run:focus:enabled { border-color: #ffffff; }\n"
+"QToolButton#advancedToggle {\n"
+"    background-color: #0369a1;\n"
+"    color: #ffffff;\n"
+"    padding: 0px;\n"
+"    border-top-left-radius: 0px;\n"
+"    border-bottom-left-radius: 0px;\n"
+"    border-top-right-radius: 6px;\n"
+"    border-bottom-right-radius: 6px;\n"
+"    border: 2px solid transparent;\n"
+"    border-left: 1px solid #075985;\n"
+"    min-height: 34px;\n"
+"    max-height: 34px;\n"
+"    min-width: 28px;\n"
+"    max-width: 28px;\n"
+"}\n"
+"QToolButton#advancedToggle:hover {\n"
+"    background-color: #075985;\n"
+"}\n"
+"QToolButton#advancedToggle:focus:enabled {\n"
+"    border-color: #ffffff;\n"
+"}\n"
+"QToolButton#advancedToggle:disabled {\n"
+"    background-color: #"
+                        "e2e8f0;\n"
+"    color: #94a3b8;\n"
+"    border-left: 1px solid #cbd5e1;\n"
+"}\n"
+"QCheckBox:focus:enabled { border-color: #0f172a; }\n"
 "QDoubleSpinBox::up-arrow, QSpinBox::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }\n"
 "QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }")
         self.layout = QVBoxLayout(stackSettings)
@@ -145,10 +178,40 @@ class Ui_StackSettings(object):
 
         self.layout.addLayout(self.fields)
 
+        self.runLayout = QHBoxLayout()
+        self.runLayout.setSpacing(0)
+        self.runLayout.setObjectName(u"runLayout")
+        self.run = QPushButton(stackSettings)
+        self.run.setObjectName(u"run")
+        self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.run.setEnabled(False)
+
+        self.runLayout.addWidget(self.run)
+
+        self.advancedToggle = QToolButton(stackSettings)
+        self.advancedToggle.setObjectName(u"advancedToggle")
+        self.advancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.advancedToggle.setFocusPolicy(Qt.StrongFocus)
+        self.advancedToggle.setCheckable(True)
+        self.advancedToggle.setChecked(True)
+        self.advancedToggle.setArrowType(Qt.DownArrow)
+
+        self.runLayout.addWidget(self.advancedToggle)
+
+
+        self.layout.addLayout(self.runLayout)
+
+        self.advancedBody = QWidget(stackSettings)
+        self.advancedBody.setObjectName(u"advancedBody")
+        self.advancedBody.setVisible(True)
+        self.advancedLayout = QVBoxLayout(self.advancedBody)
+        self.advancedLayout.setSpacing(6)
+        self.advancedLayout.setObjectName(u"advancedLayout")
+        self.advancedLayout.setContentsMargins(0, 0, 0, 0)
         self.gpuBatchRow = QHBoxLayout()
         self.gpuBatchRow.setSpacing(6)
         self.gpuBatchRow.setObjectName(u"gpuBatchRow")
-        self.useGPU = QCheckBox(stackSettings)
+        self.useGPU = QCheckBox(self.advancedBody)
         self.useGPU.setObjectName(u"useGPU")
         self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;\n"
 "    border: 2px solid transparent;\n"
@@ -164,12 +227,12 @@ class Ui_StackSettings(object):
 
         self.gpuBatchRow.addItem(self.gpuBatchSpacer)
 
-        self.batchLabel = QLabel(stackSettings)
+        self.batchLabel = QLabel(self.advancedBody)
         self.batchLabel.setObjectName(u"batchLabel")
 
         self.gpuBatchRow.addWidget(self.batchLabel)
 
-        self.batchSize = QSpinBox(stackSettings)
+        self.batchSize = QSpinBox(self.advancedBody)
         self.batchSize.setObjectName(u"batchSize")
         self.batchSize.setMinimum(1)
         self.batchSize.setMaximum(2147483647)
@@ -178,26 +241,22 @@ class Ui_StackSettings(object):
         self.gpuBatchRow.addWidget(self.batchSize)
 
 
-        self.layout.addLayout(self.gpuBatchRow)
+        self.advancedLayout.addLayout(self.gpuBatchRow)
 
-        self.memory = QLabel(stackSettings)
+        self.memory = QLabel(self.advancedBody)
         self.memory.setObjectName(u"memory")
         self.memory.setWordWrap(True)
 
-        self.layout.addWidget(self.memory)
+        self.advancedLayout.addWidget(self.memory)
+
+
+        self.layout.addWidget(self.advancedBody)
 
         self.error = QLabel(stackSettings)
         self.error.setObjectName(u"error")
         self.error.setWordWrap(True)
 
         self.layout.addWidget(self.error)
-
-        self.run = QPushButton(stackSettings)
-        self.run.setObjectName(u"run")
-        self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.run.setEnabled(False)
-
-        self.layout.addWidget(self.run)
 
 #if QT_CONFIG(shortcut)
         self.streaksLabel.setBuddy(self.streaks)
@@ -232,10 +291,17 @@ class Ui_StackSettings(object):
         self.amountLabel.setToolTip(QCoreApplication.translate("StackSettings", u"Fade amount", None))
 #endif // QT_CONFIG(tooltip)
         self.fadeAmount.setSuffix(QCoreApplication.translate("StackSettings", u"%", None))
+        self.run.setText(QCoreApplication.translate("StackSettings", u"Stack Images", None))
+#if QT_CONFIG(tooltip)
+        self.advancedToggle.setToolTip(QCoreApplication.translate("StackSettings", u"Advanced settings", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(accessibility)
+        self.advancedToggle.setAccessibleName(QCoreApplication.translate("StackSettings", u"Advanced settings", None))
+#endif // QT_CONFIG(accessibility)
+        self.advancedToggle.setText("")
         self.useGPU.setText(QCoreApplication.translate("StackSettings", u"Use GPU", None))
         self.batchLabel.setText(QCoreApplication.translate("StackSettings", u"&Batch size", None))
         self.memory.setText(QCoreApplication.translate("StackSettings", u"Add input files for a batch suggestion.", None))
         self.error.setText("")
-        self.run.setText(QCoreApplication.translate("StackSettings", u"Stack Images", None))
         pass
     # retranslateUi
