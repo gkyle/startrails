@@ -93,10 +93,72 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         if settings is not None:
             self.persistentSettings = settings
 
+    def __getattr__(self, name):
+        sidebar = self.__dict__.get("sidebar")
+        if sidebar is not None:
+            if hasattr(sidebar.ui, name):
+                return getattr(sidebar.ui, name)
+            if hasattr(sidebar, name):
+                return getattr(sidebar, name)
+
+            sections = [
+                getattr(sidebar, "detect", None),
+                getattr(sidebar, "stack", None),
+                getattr(sidebar, "review", None),
+                getattr(sidebar, "fill", None),
+                getattr(sidebar, "tools", None),
+                getattr(sidebar, "inputs", None),
+                getattr(sidebar, "outputs", None),
+                getattr(sidebar, "detectCard", None),
+                getattr(sidebar, "stackCard", None),
+                getattr(sidebar, "reviewCard", None),
+                getattr(sidebar, "fillCard", None),
+                getattr(sidebar, "toolsCard", None),
+            ]
+            for s in sections:
+                if s is not None:
+                    if hasattr(s, "ui") and hasattr(s.ui, name):
+                        return getattr(s.ui, name)
+                    if hasattr(s, name):
+                        return getattr(s, name)
+
+            prefix_map = [
+                ("inputFiles", getattr(sidebar, "inputs", None)),
+                ("outputFiles", getattr(sidebar, "outputs", None)),
+                ("stepDetect", getattr(sidebar, "detectCard", None)),
+                ("stepStack", getattr(sidebar, "stackCard", None)),
+                ("stepReview", getattr(sidebar, "reviewCard", None)),
+                ("stepFill", getattr(sidebar, "fillCard", None)),
+                ("additionalTools", getattr(sidebar, "toolsCard", None)),
+                ("detect", getattr(sidebar, "detect", None)),
+                ("stack", getattr(sidebar, "stack", None)),
+                ("review", getattr(sidebar, "review", None)),
+                ("fill", getattr(sidebar, "fill", None)),
+            ]
+            for prefix, target in prefix_map:
+                if target is not None and name.startswith(prefix):
+                    remainder = name[len(prefix):]
+                    if remainder:
+                        cand = remainder[0].lower() + remainder[1:]
+                        if hasattr(target, "ui"):
+                            if hasattr(target.ui, cand):
+                                return getattr(target.ui, cand)
+                            if hasattr(target.ui, name):
+                                return getattr(target.ui, name)
+                        if hasattr(target, cand):
+                            return getattr(target, cand)
+                        if hasattr(target, name):
+                            return getattr(target, name)
+
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
     def setupUi(self, MainWindow):
         super().setupUi(MainWindow)
         self.setParent(MainWindow)
-        self.sidebar = Sidebar(self.app, self)
+        if hasattr(self, "sidebar") and isinstance(self.sidebar, Sidebar):
+            self.sidebar.init_app(self.app)
+        else:
+            self.sidebar = Sidebar(self.app, self)
         self.bodySplitter.setSizes([self.bodySplitter.widget(0).maximumWidth(), 1000])
         self.bodySplitter.setStretchFactor(0, 0)
         self.bodySplitter.setStretchFactor(1, 1)

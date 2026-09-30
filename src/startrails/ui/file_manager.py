@@ -265,7 +265,10 @@ class FileSection(QFrame):
     excludeFile = Signal(File)
     addRequested = Signal()
 
-    def __init__(self, title, inputs=False, parent=None, ui=None, prefix=None):
+    def __init__(self, title="Files", inputs=False, parent=None, ui=None, prefix=None):
+        if isinstance(title, QWidget) and parent is None:
+            parent = title
+            title = "Files"
         super().__init__(parent)
         self._inputs = inputs
         self.frame = getattr(ui, f"{prefix}Section") if ui and prefix else self

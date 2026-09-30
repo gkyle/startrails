@@ -58,7 +58,10 @@ from .ui_step_additional_tools import Ui_ToolsSettings
 class StepCard(QFrame):
     expanded = Signal()
 
-    def __init__(self, title, body, number=None, expanded=False, parent=None, ui=None, prefix=None):
+    def __init__(self, title="Step", body=None, number=None, expanded=False, parent=None, ui=None, prefix=None):
+        if isinstance(title, QWidget) and parent is None:
+            parent = title
+            title = "Step"
         super().__init__(parent)
         self.has_number = number is not None
         self._status = "ready"
@@ -144,7 +147,10 @@ class StepCard(QFrame):
 
 
 class DetectSettings(QWidget):
-    def __init__(self, app, parent=None, ui=None):
+    def __init__(self, app=None, parent=None, ui=None):
+        if isinstance(app, QWidget) and parent is None:
+            parent = app
+            app = None
         super().__init__(parent)
         self.app = app
         if ui is not None:
@@ -209,7 +215,7 @@ class DetectSettings(QWidget):
         self.refresh_inputs()
 
     def refresh_inputs(self):
-        files = self.app.getInputFileList()
+        files = self.app.getInputFileList() if (self.app and hasattr(self.app, "getInputFileList")) else []
         first = files[0] if files else None
         self.ui.run.setEnabled(bool(files))
         self.ui.useGPU.setEnabled(bool(files))
@@ -218,7 +224,7 @@ class DetectSettings(QWidget):
             self.suggest_device(True)
 
     def suggest_device(self, use_gpu):
-        if self._first_file is None:
+        if self._first_file is None or not self.app or not hasattr(self.app, "stackSuggestBatchSize"):
             return
         try:
             _, _, available = self.app.stackSuggestBatchSize(self._first_file, use_gpu)
@@ -243,7 +249,10 @@ class DetectSettings(QWidget):
 
 
 class StackSettings(QWidget):
-    def __init__(self, app, parent=None, ui=None):
+    def __init__(self, app=None, parent=None, ui=None):
+        if isinstance(app, QWidget) and parent is None:
+            parent = app
+            app = None
         super().__init__(parent)
         self.app = app
         if ui is not None:
@@ -334,7 +343,7 @@ class StackSettings(QWidget):
             self._has_masks = available
 
     def refresh_inputs(self):
-        files = self.app.getInputFileList()
+        files = self.app.getInputFileList() if (self.app and hasattr(self.app, "getInputFileList")) else []
         first = files[0] if files else None
         self.ui.run.setEnabled(bool(files))
         self.ui.useGPU.setEnabled(bool(files))
@@ -345,7 +354,7 @@ class StackSettings(QWidget):
             self.ui.memory.setText("Add input files for a batch suggestion.")
 
     def suggest_batch(self, use_gpu):
-        if self._first_file is None:
+        if self._first_file is None or not self.app or not hasattr(self.app, "stackSuggestBatchSize"):
             return
         try:
             size, memory, available = self.app.stackSuggestBatchSize(self._first_file, use_gpu)
@@ -391,6 +400,9 @@ class FillSettings(QWidget):
 
 class ReviewSettings(QWidget):
     def __init__(self, app=None, parent=None, ui=None):
+        if isinstance(app, QWidget) and parent is None:
+            parent = app
+            app = None
         super().__init__(parent)
         self.app = app
         if ui is not None:

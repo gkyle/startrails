@@ -7,10 +7,13 @@ from .steps import StepCard, DetectSettings, ReviewSettings, StackSettings, Fill
 
 
 class Sidebar(QWidget):
-    def __init__(self, app, parent=None, ui=None):
+    def __init__(self, parent=None, app=None, ui=None):
+        if not isinstance(parent, QWidget) and parent is not None:
+            # Called as Sidebar(app, parent) or Sidebar(app)
+            app, parent = parent, app
         super().__init__(parent if isinstance(parent, QWidget) else None)
         self.app = app
-        if ui is None and hasattr(parent, "sidebar"):
+        if ui is None and hasattr(parent, "sidebar") and not isinstance(parent, Sidebar):
             ui = parent
 
         if ui is not None:
@@ -71,8 +74,21 @@ class Sidebar(QWidget):
             if card is not expanded_card and card.ui.toggle.isChecked():
                 card.setExpanded(False)
 
+    def init_app(self, app):
+        self.app = app
+        if hasattr(self, "detect") and self.detect is not None:
+            self.detect.app = app
+            self.detect.reset()
+        if hasattr(self, "stack") and self.stack is not None:
+            self.stack.app = app
+            self.stack.reset()
+        if hasattr(self, "review") and self.review is not None:
+            self.review.app = app
+            self.review.reset()
+        self.update_operations_progress(app)
+
     def refresh_review_counts(self):
-        inputs = self.app.getInputFileList() if hasattr(self.app, "getInputFileList") else []
+        inputs = self.app.getInputFileList() if (self.app and hasattr(self.app, "getInputFileList")) else []
         auto_count = sum(len(f.streaksMasks) for f in inputs if hasattr(f, "streaksMasks") and f.streaksMasks)
         manual_count = sum(len(f.streaksManualMasks) for f in inputs if hasattr(f, "streaksManualMasks") and f.streaksManualMasks)
         deleted_count = sum(len(f.streaksManualDeletedMasks) for f in inputs if hasattr(f, "streaksManualDeletedMasks") and f.streaksManualDeletedMasks)
@@ -89,10 +105,12 @@ class Sidebar(QWidget):
         self.review.reset()
         self.stack.reset()
 
-    def update_operations_progress(self, app, current_file=None):
+    def update_operations_progress(self, app=None, current_file=None):
         """Update progress bar, status labels, and step status badges."""
-        inputs = app.getInputFileList() if hasattr(app, "getInputFileList") else []
-        outputs = app.getOutputFileList() if hasattr(app, "getOutputFileList") else []
+        if app is None:
+            app = self.app
+        inputs = app.getInputFileList() if (app and hasattr(app, "getInputFileList")) else []
+        outputs = app.getOutputFileList() if (app and hasattr(app, "getOutputFileList")) else []
         has_inputs = bool(inputs)
         has_masks = any(len(f.streaksMasks) > 0 or len(f.streaksManualMasks) > 0 for f in inputs)
         has_stacked = any(isinstance(f, OutputFile) and f.operation == "Stacked" for f in outputs)

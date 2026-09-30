@@ -215,6 +215,9 @@ QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/ar
        </item>
        <item>
         <widget class="QSpinBox" name="fadeAmount">
+          <property name="accessibleName">
+           <string>Fade amount</string>
+          </property>
          <property name="suffix">
           <string>%</string>
          </property>
@@ -288,40 +291,43 @@ QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/ar
       <property name="rightMargin"><number>0</number></property>
       <property name="bottomMargin"><number>0</number></property>
       <item>
-       <layout class="QHBoxLayout" name="gpuBatchRow">
+       <layout class="QGridLayout" name="gpuBatchGrid" columnstretch="1,2">
         <property name="spacing">
-         <number>6</number>
+         <number>8</number>
         </property>
-        <item>
-         <widget class="QCheckBox" name="useGPU">
+        <item row="0" column="0">
+         <widget class="QLabel" name="useGPULabel">
           <property name="text">
            <string>Use GPU</string>
+          </property>
+          <property name="buddy">
+           <cstring>useGPU</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1" alignment="Qt::AlignRight">
+         <widget class="QCheckBox" name="useGPU">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="accessibleName">
+           <string>Use GPU for stacking</string>
+          </property>
+          <property name="text">
+           <string/>
           </property>
           <property name="styleSheet">
            <string notr="true">QCheckBox#useGPU { spacing: 0px;
     border: 2px solid transparent;
 }
-      QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }
-      QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
-      QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }
+QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }
+QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }
+QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }
 QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }</string>
           </property>
          </widget>
         </item>
-        <item>
-         <spacer name="gpuBatchSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>0</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
+        <item row="1" column="0">
          <widget class="QLabel" name="batchLabel">
           <property name="text">
            <string>&amp;Batch size</string>
@@ -331,8 +337,11 @@ QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }</string>
           </property>
          </widget>
         </item>
-        <item>
+        <item row="1" column="1" alignment="Qt::AlignRight">
          <widget class="QSpinBox" name="batchSize">
+          <property name="accessibleName">
+           <string>Batch size</string>
+          </property>
           <property name="minimum">
            <number>1</number>
           </property>

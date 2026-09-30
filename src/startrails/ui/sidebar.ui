@@ -4,8 +4,14 @@
  <widget class="QWidget" name="sidebar">
   <property name="minimumSize">
    <size>
-    <width>380</width>
+    <width>320</width>
     <height>0</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>320</width>
+    <height>16777215</height>
    </size>
   </property>
   <property name="styleSheet">

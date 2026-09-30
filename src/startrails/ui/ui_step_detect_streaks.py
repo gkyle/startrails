@@ -15,9 +15,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDoubleSpinBox,
-    QFormLayout, QHBoxLayout, QLabel, QPushButton,
-    QSizePolicy, QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QDoubleSpinBox,
+    QFrame, QGridLayout, QHBoxLayout, QLabel,
+    QPushButton, QSizePolicy, QToolButton, QVBoxLayout,
+    QWidget)
 from . import resources_rc
 
 class Ui_DetectSettings(object):
@@ -100,7 +101,40 @@ class Ui_DetectSettings(object):
 "    border-left: 1px solid #cbd5e1;\n"
 ""
                         "}\n"
-"QCheckBox:focus:enabled { border-color: #0f172a; }\n"
+"QFrame#detectMergeContainer {\n"
+"    background-color: #f1f5f9;\n"
+"    border-radius: 5px;\n"
+"    padding: 2px;\n"
+"}\n"
+"QPushButton#detectMergeNMS, QPushButton#detectMergeNMM {\n"
+"    background-color: transparent;\n"
+"    color: #334155;\n"
+"    border: 2px solid transparent;\n"
+"    border-radius: 4px;\n"
+"    font-size: 12px;\n"
+"    font-weight: 500;\n"
+"    padding: 4px 12px;\n"
+"    min-height: 18px;\n"
+"}\n"
+"QPushButton#detectMergeNMS:checked, QPushButton#detectMergeNMM:checked {\n"
+"    background-color: #0369a1;\n"
+"    color: #ffffff;\n"
+"    font-weight: 600;\n"
+"}\n"
+"QPushButton#detectMergeNMS:hover:!checked, QPushButton#detectMergeNMM:hover:!checked {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #0f172a;\n"
+"}\n"
+"QPushButton#detectMergeNMS:focus:enabled, QPushButton#detectMergeNMM:focus:enabled { border-color: #0f172a; }\n"
+"QPushButton#detectMergeNMS:checked:focus:enabled, QPushButton#detectMergeNMM:checked:focus:enabled { border-color: #ffffff; }\n"
+"QCheckBox#useGPU { spacin"
+                        "g: 0px;\n"
+"    border: 2px solid transparent;\n"
+"}\n"
+"QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
+"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
+"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
+"QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }\n"
 "QDoubleSpinBox::up-arrow, QSpinBox::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }\n"
 "QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }")
         self.layout = QVBoxLayout(detectSettings)
@@ -137,16 +171,14 @@ class Ui_DetectSettings(object):
         self.advancedLayout.setSpacing(6)
         self.advancedLayout.setObjectName(u"advancedLayout")
         self.advancedLayout.setContentsMargins(0, 0, 0, 0)
-        self.fields = QFormLayout()
+        self.fields = QGridLayout()
+        self.fields.setSpacing(8)
         self.fields.setObjectName(u"fields")
-        self.fields.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-        self.fields.setRowWrapPolicy(QFormLayout.WrapLongRows)
-        self.fields.setHorizontalSpacing(8)
-        self.fields.setVerticalSpacing(6)
+        self.fields.setContentsMargins(0, 0, 0, 0)
         self.confidenceLabel = QLabel(self.advancedBody)
         self.confidenceLabel.setObjectName(u"confidenceLabel")
 
-        self.fields.setWidget(0, QFormLayout.LabelRole, self.confidenceLabel)
+        self.fields.addWidget(self.confidenceLabel, 0, 0, 1, 1)
 
         self.confidence = QDoubleSpinBox(self.advancedBody)
         self.confidence.setObjectName(u"confidence")
@@ -154,27 +186,45 @@ class Ui_DetectSettings(object):
         self.confidence.setSingleStep(0.050000000000000)
         self.confidence.setValue(0.300000000000000)
 
-        self.fields.setWidget(0, QFormLayout.FieldRole, self.confidence)
+        self.fields.addWidget(self.confidence, 0, 1, 1, 1, Qt.AlignRight)
 
         self.mergeLabel = QLabel(self.advancedBody)
         self.mergeLabel.setObjectName(u"mergeLabel")
 
-        self.fields.setWidget(1, QFormLayout.LabelRole, self.mergeLabel)
+        self.fields.addWidget(self.mergeLabel, 1, 0, 1, 1)
 
-        self.mergeRow = QHBoxLayout()
-        self.mergeRow.setSpacing(6)
-        self.mergeRow.setObjectName(u"mergeRow")
-        self.mergeMethod = QComboBox(self.advancedBody)
-        self.mergeMethod.addItem("")
-        self.mergeMethod.addItem("")
-        self.mergeMethod.setObjectName(u"mergeMethod")
+        self.detectMergeContainer = QFrame(self.advancedBody)
+        self.detectMergeContainer.setObjectName(u"detectMergeContainer")
+        self.detectMergeLayout = QHBoxLayout(self.detectMergeContainer)
+        self.detectMergeLayout.setSpacing(2)
+        self.detectMergeLayout.setObjectName(u"detectMergeLayout")
+        self.detectMergeLayout.setContentsMargins(0, 0, 0, 0)
+        self.detectMergeNMS = QPushButton(self.detectMergeContainer)
+        self.detectMergeGroup = QButtonGroup(detectSettings)
+        self.detectMergeGroup.setObjectName(u"detectMergeGroup")
+        self.detectMergeGroup.addButton(self.detectMergeNMS)
+        self.detectMergeNMS.setObjectName(u"detectMergeNMS")
+        self.detectMergeNMS.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.detectMergeNMS.setCheckable(True)
+        self.detectMergeNMS.setChecked(True)
 
-        self.mergeRow.addWidget(self.mergeMethod)
+        self.detectMergeLayout.addWidget(self.detectMergeNMS)
+
+        self.detectMergeNMM = QPushButton(self.detectMergeContainer)
+        self.detectMergeGroup.addButton(self.detectMergeNMM)
+        self.detectMergeNMM.setObjectName(u"detectMergeNMM")
+        self.detectMergeNMM.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.detectMergeNMM.setCheckable(True)
+
+        self.detectMergeLayout.addWidget(self.detectMergeNMM)
+
+
+        self.fields.addWidget(self.detectMergeContainer, 1, 1, 1, 1, Qt.AlignRight)
 
         self.thresholdLabel = QLabel(self.advancedBody)
         self.thresholdLabel.setObjectName(u"thresholdLabel")
 
-        self.mergeRow.addWidget(self.thresholdLabel)
+        self.fields.addWidget(self.thresholdLabel, 2, 0, 1, 1)
 
         self.mergeThreshold = QDoubleSpinBox(self.advancedBody)
         self.mergeThreshold.setObjectName(u"mergeThreshold")
@@ -182,25 +232,24 @@ class Ui_DetectSettings(object):
         self.mergeThreshold.setSingleStep(0.050000000000000)
         self.mergeThreshold.setValue(0.200000000000000)
 
-        self.mergeRow.addWidget(self.mergeThreshold)
+        self.fields.addWidget(self.mergeThreshold, 2, 1, 1, 1, Qt.AlignRight)
 
+        self.useGPULabel = QLabel(self.advancedBody)
+        self.useGPULabel.setObjectName(u"useGPULabel")
 
-        self.fields.setLayout(1, QFormLayout.FieldRole, self.mergeRow)
-
-
-        self.advancedLayout.addLayout(self.fields)
+        self.fields.addWidget(self.useGPULabel, 3, 0, 1, 1)
 
         self.useGPU = QCheckBox(self.advancedBody)
         self.useGPU.setObjectName(u"useGPU")
-        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;\n"
-"    border: 2px solid transparent;\n"
-"}\n"
-"    QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
-"    QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
-"    QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
-"QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }")
+        self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.useGPU.setChecked(True)
 
-        self.advancedLayout.addWidget(self.useGPU)
+        self.fields.addWidget(self.useGPU, 3, 1, 1, 1, Qt.AlignRight)
+
+        self.fields.setColumnStretch(0, 1)
+        self.fields.setColumnStretch(1, 2)
+
+        self.advancedLayout.addLayout(self.fields)
 
 
         self.layout.addWidget(self.advancedBody)
@@ -213,8 +262,8 @@ class Ui_DetectSettings(object):
 
 #if QT_CONFIG(shortcut)
         self.confidenceLabel.setBuddy(self.confidence)
-        self.mergeLabel.setBuddy(self.mergeMethod)
         self.thresholdLabel.setBuddy(self.mergeThreshold)
+        self.useGPULabel.setBuddy(self.useGPU)
 #endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(detectSettings)
@@ -231,16 +280,25 @@ class Ui_DetectSettings(object):
         self.advancedToggle.setAccessibleName(QCoreApplication.translate("DetectSettings", u"Advanced settings", None))
 #endif // QT_CONFIG(accessibility)
         self.advancedToggle.setText("")
-        self.confidenceLabel.setText(QCoreApplication.translate("DetectSettings", u"&Confidence", None))
-        self.mergeLabel.setText(QCoreApplication.translate("DetectSettings", u"&Merging", None))
-        self.mergeMethod.setItemText(0, QCoreApplication.translate("DetectSettings", u"NMS", None))
-        self.mergeMethod.setItemText(1, QCoreApplication.translate("DetectSettings", u"Greedy NMM", None))
-
-        self.thresholdLabel.setText(QCoreApplication.translate("DetectSettings", u"&Threshold", None))
+        self.confidenceLabel.setText(QCoreApplication.translate("DetectSettings", u"Confidence", None))
+#if QT_CONFIG(accessibility)
+        self.confidence.setAccessibleName(QCoreApplication.translate("DetectSettings", u"Confidence threshold", None))
+#endif // QT_CONFIG(accessibility)
+        self.mergeLabel.setText(QCoreApplication.translate("DetectSettings", u"Merging", None))
+        self.detectMergeNMS.setText(QCoreApplication.translate("DetectSettings", u"NMS", None))
+        self.detectMergeNMM.setText(QCoreApplication.translate("DetectSettings", u"Greedy NMM", None))
+        self.thresholdLabel.setText(QCoreApplication.translate("DetectSettings", u"Threshold", None))
 #if QT_CONFIG(tooltip)
         self.thresholdLabel.setToolTip(QCoreApplication.translate("DetectSettings", u"Merge threshold", None))
 #endif // QT_CONFIG(tooltip)
-        self.useGPU.setText(QCoreApplication.translate("DetectSettings", u"Use GPU", None))
+#if QT_CONFIG(accessibility)
+        self.mergeThreshold.setAccessibleName(QCoreApplication.translate("DetectSettings", u"Merge threshold", None))
+#endif // QT_CONFIG(accessibility)
+        self.useGPULabel.setText(QCoreApplication.translate("DetectSettings", u"Use GPU", None))
+#if QT_CONFIG(accessibility)
+        self.useGPU.setAccessibleName(QCoreApplication.translate("DetectSettings", u"Use GPU for detection", None))
+#endif // QT_CONFIG(accessibility)
+        self.useGPU.setText("")
         self.error.setText("")
         pass
     # retranslateUi

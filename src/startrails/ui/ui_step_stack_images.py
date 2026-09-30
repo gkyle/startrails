@@ -16,8 +16,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFormLayout,
-    QHBoxLayout, QLabel, QPushButton, QSizePolicy,
-    QSpacerItem, QSpinBox, QToolButton, QVBoxLayout,
+    QGridLayout, QHBoxLayout, QLabel, QPushButton,
+    QSizePolicy, QSpinBox, QToolButton, QVBoxLayout,
     QWidget)
 from . import resources_rc
 
@@ -208,29 +208,31 @@ class Ui_StackSettings(object):
         self.advancedLayout.setSpacing(6)
         self.advancedLayout.setObjectName(u"advancedLayout")
         self.advancedLayout.setContentsMargins(0, 0, 0, 0)
-        self.gpuBatchRow = QHBoxLayout()
-        self.gpuBatchRow.setSpacing(6)
-        self.gpuBatchRow.setObjectName(u"gpuBatchRow")
+        self.gpuBatchGrid = QGridLayout()
+        self.gpuBatchGrid.setSpacing(8)
+        self.gpuBatchGrid.setObjectName(u"gpuBatchGrid")
+        self.useGPULabel = QLabel(self.advancedBody)
+        self.useGPULabel.setObjectName(u"useGPULabel")
+
+        self.gpuBatchGrid.addWidget(self.useGPULabel, 0, 0, 1, 1)
+
         self.useGPU = QCheckBox(self.advancedBody)
         self.useGPU.setObjectName(u"useGPU")
+        self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;\n"
 "    border: 2px solid transparent;\n"
 "}\n"
-"      QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
-"      QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
-"      QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
+"QCheckBox#useGPU::indicator { width: 36px; height: 20px;  border: 1px solid #64748b; border-radius: 10px; }\n"
+"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.png); }\n"
+"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.png); }\n"
 "QCheckBox#useGPU:focus:enabled { border-color: #0f172a; }")
 
-        self.gpuBatchRow.addWidget(self.useGPU)
-
-        self.gpuBatchSpacer = QSpacerItem(20, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.gpuBatchRow.addItem(self.gpuBatchSpacer)
+        self.gpuBatchGrid.addWidget(self.useGPU, 0, 1, 1, 1, Qt.AlignRight)
 
         self.batchLabel = QLabel(self.advancedBody)
         self.batchLabel.setObjectName(u"batchLabel")
 
-        self.gpuBatchRow.addWidget(self.batchLabel)
+        self.gpuBatchGrid.addWidget(self.batchLabel, 1, 0, 1, 1)
 
         self.batchSize = QSpinBox(self.advancedBody)
         self.batchSize.setObjectName(u"batchSize")
@@ -238,10 +240,12 @@ class Ui_StackSettings(object):
         self.batchSize.setMaximum(2147483647)
         self.batchSize.setValue(1)
 
-        self.gpuBatchRow.addWidget(self.batchSize)
+        self.gpuBatchGrid.addWidget(self.batchSize, 1, 1, 1, 1, Qt.AlignRight)
 
+        self.gpuBatchGrid.setColumnStretch(0, 1)
+        self.gpuBatchGrid.setColumnStretch(1, 2)
 
-        self.advancedLayout.addLayout(self.gpuBatchRow)
+        self.advancedLayout.addLayout(self.gpuBatchGrid)
 
         self.memory = QLabel(self.advancedBody)
         self.memory.setObjectName(u"memory")
@@ -262,6 +266,7 @@ class Ui_StackSettings(object):
         self.streaksLabel.setBuddy(self.streaks)
         self.fadeLabel.setBuddy(self.fade)
         self.amountLabel.setBuddy(self.fadeAmount)
+        self.useGPULabel.setBuddy(self.useGPU)
         self.batchLabel.setBuddy(self.batchSize)
 #endif // QT_CONFIG(shortcut)
 
@@ -290,6 +295,9 @@ class Ui_StackSettings(object):
 #if QT_CONFIG(tooltip)
         self.amountLabel.setToolTip(QCoreApplication.translate("StackSettings", u"Fade amount", None))
 #endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(accessibility)
+        self.fadeAmount.setAccessibleName(QCoreApplication.translate("StackSettings", u"Fade amount", None))
+#endif // QT_CONFIG(accessibility)
         self.fadeAmount.setSuffix(QCoreApplication.translate("StackSettings", u"%", None))
         self.run.setText(QCoreApplication.translate("StackSettings", u"Stack Images", None))
 #if QT_CONFIG(tooltip)
@@ -299,8 +307,15 @@ class Ui_StackSettings(object):
         self.advancedToggle.setAccessibleName(QCoreApplication.translate("StackSettings", u"Advanced settings", None))
 #endif // QT_CONFIG(accessibility)
         self.advancedToggle.setText("")
-        self.useGPU.setText(QCoreApplication.translate("StackSettings", u"Use GPU", None))
+        self.useGPULabel.setText(QCoreApplication.translate("StackSettings", u"Use GPU", None))
+#if QT_CONFIG(accessibility)
+        self.useGPU.setAccessibleName(QCoreApplication.translate("StackSettings", u"Use GPU for stacking", None))
+#endif // QT_CONFIG(accessibility)
+        self.useGPU.setText("")
         self.batchLabel.setText(QCoreApplication.translate("StackSettings", u"&Batch size", None))
+#if QT_CONFIG(accessibility)
+        self.batchSize.setAccessibleName(QCoreApplication.translate("StackSettings", u"Batch size", None))
+#endif // QT_CONFIG(accessibility)
         self.memory.setText(QCoreApplication.translate("StackSettings", u"Add input files for a batch suggestion.", None))
         self.error.setText("")
         pass
