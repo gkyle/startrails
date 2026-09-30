@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DetectSettings</class>
+ <widget class="QWidget" name="DetectSettings">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>232</width>
+    <height>204</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QLabel {
+    color: #334155;
+    font-size: 12px;
+}
+QDoubleSpinBox, QSpinBox, QComboBox, QLineEdit {
+    background-color: #ffffff;
+    border: 1px solid #64748b;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 12px;
+    color: #0f172a;
+}
+QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus, QLineEdit:focus {
+    border: 2px solid #0369a1;
+    padding: 3px 5px;
+}
+QCheckBox {
+    font-size: 12px;
+    color: #1e293b;
+    spacing: 6px;
+    border: 2px solid transparent;
+}
+QDoubleSpinBox::up-arrow, QSpinBox::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }
+QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }</string>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing">
+    <number>6</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="runLayout">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="run">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton#run {
+    font-weight: bold;
+    background-color: #0369a1;
+    color: #ffffff;
+    padding: 0px 12px;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+    font-size: 13px;
+    border: 2px solid transparent;
+    min-height: 34px;
+    max-height: 34px;
+}
+QPushButton#run:hover {
+    background-color: #075985;
+}
+QPushButton#run:disabled {
+    background-color: #e2e8f0;
+    color: #94a3b8;
+}
+QPushButton#run:focus:enabled { border-color: #ffffff; }</string>
+       </property>
+       <property name="text">
+        <string>Detect Streaks</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="advancedToggle">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::NoFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string>Advanced settings</string>
+       </property>
+       <property name="accessibleName">
+        <string>Advanced settings</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QToolButton#advancedToggle {
+    background-color: #0369a1;
+    color: #ffffff;
+    padding: 0px;
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    border: 2px solid transparent;
+    border-left: 1px solid #075985;
+    min-height: 34px;
+    max-height: 34px;
+    min-width: 28px;
+    max-width: 28px;
+}
+QToolButton#advancedToggle:hover {
+    background-color: #075985;
+}
+QToolButton#advancedToggle:focus:enabled {
+    border-color: #ffffff;
+}
+QToolButton#advancedToggle:disabled {
+    background-color: #e2e8f0;
+    color: #94a3b8;
+    border-left: 1px solid #cbd5e1;
+}</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+       <property name="arrowType">
+        <enum>Qt::ArrowType::DownArrow</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QWidget" name="advancedBody" native="true">
+     <property name="styleSheet">
+      <string notr="true">QWidget#advancedBody {
+    background: transparent;
+}</string>
+     </property>
+     <layout class="QVBoxLayout" name="advancedLayout">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <layout class="QGridLayout" name="fields" columnstretch="1,2">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="confidenceLabel">
+          <property name="text">
+           <string>Confidence</string>
+          </property>
+          <property name="buddy">
+           <cstring>confidence</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1" alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QDoubleSpinBox" name="confidence">
+          <property name="accessibleName">
+           <string>Confidence threshold</string>
+          </property>
+          <property name="maximum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="value">
+           <double>0.300000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="mergeLabel">
+          <property name="text">
+           <string>Merging</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1" alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QFrame" name="detectMergeContainer">
+          <property name="styleSheet">
+           <string notr="true">background-color: #f1f5f9;
+border-radius: 6px;
+padding: 2px;</string>
+          </property>
+          <layout class="QHBoxLayout" name="detectMergeLayout">
+           <property name="spacing">
+            <number>2</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QPushButton" name="detectMergeNMS">
+             <property name="cursor">
+              <cursorShape>PointingHandCursor</cursorShape>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QPushButton {
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: none;
+    font-size: 11px;
+    font-weight: 500;
+    color: #334155;
+}
+QPushButton:checked {
+    background-color: #0369a1;
+    color: #ffffff;
+    font-weight: bold;
+}
+QPushButton:hover:!checked {
+    background-color: #e2e8f0;
+    color: #0f172a;
+}
+QPushButton:focus:enabled {
+    border: 1px solid #0f172a;
+}
+QPushButton:checked:focus:enabled {
+    border: 1px solid #ffffff;
+}</string>
+             </property>
+             <property name="text">
+              <string>NMS</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">detectMergeGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="detectMergeNMM">
+             <property name="cursor">
+              <cursorShape>PointingHandCursor</cursorShape>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QPushButton {
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: none;
+    font-size: 11px;
+    font-weight: 500;
+    color: #334155;
+}
+QPushButton:checked {
+    background-color: #0369a1;
+    color: #ffffff;
+    font-weight: bold;
+}
+QPushButton:hover:!checked {
+    background-color: #e2e8f0;
+    color: #0f172a;
+}
+QPushButton:focus:enabled {
+    border: 1px solid #0f172a;
+}
+QPushButton:checked:focus:enabled {
+    border: 1px solid #ffffff;
+}</string>
+             </property>
+             <property name="text">
+              <string>Greedy NMM</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">detectMergeGroup</string>
+             </attribute>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="thresholdLabel">
+          <property name="toolTip">
+           <string>Merge threshold</string>
+          </property>
+          <property name="text">
+           <string>Threshold</string>
+          </property>
+          <property name="buddy">
+           <cstring>mergeThreshold</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1" alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QDoubleSpinBox" name="mergeThreshold">
+          <property name="accessibleName">
+           <string>Merge threshold</string>
+          </property>
+          <property name="maximum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="value">
+           <double>0.200000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="useGPULabel">
+          <property name="text">
+           <string>Use GPU</string>
+          </property>
+          <property name="buddy">
+           <cstring>useGPU</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1" alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QCheckBox" name="useGPU">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::FocusPolicy::NoFocus</enum>
+          </property>
+          <property name="accessibleName">
+           <string>Use GPU for detection</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QCheckBox#useGPU { spacing: 0px;}
+QCheckBox#useGPU::indicator { width: 36px; height: 20px; }
+QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
+QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="error">
+     <property name="styleSheet">
+      <string notr="true">font-size: 11px;
+color: #b91c1c;</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
+ <buttongroups>
+  <buttongroup name="detectMergeGroup"/>
+ </buttongroups>
+</ui>

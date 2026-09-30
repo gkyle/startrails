@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FillSettings</class>
+ <widget class="QWidget" name="fillSettings">
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing">
+    <number>8</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="target">
+    <property name="styleSheet">
+     <string notr="true">font-size: 12px;
+color: #475569;</string>
+    </property>
+     <property name="text">
+      <string>Select a stacked output image to fill its gaps.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="run">
+    <property name="styleSheet">
+     <string notr="true">QPushButton#run {
+    font-weight: bold;
+    background-color: #0369a1;
+    color: #ffffff;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 2px solid transparent;
+}
+QPushButton#run:hover {
+    background-color: #075985;
+}
+QPushButton#run:disabled {
+    background-color: #e2e8f0;
+    color: #94a3b8;
+}
+QPushButton#run:focus:enabled { border-color: #ffffff; }</string>
+    </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Fill Gaps</string>
+     </property>
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

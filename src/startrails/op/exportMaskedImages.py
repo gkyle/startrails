@@ -19,6 +19,11 @@ class ExportMaskedImages(Observable):
             for future in as_completed(futures):
                 future.result()
                 self.updateJob(1)
+                if self.shouldInterrupt():
+                    for f in futures:
+                        f.cancel()
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    break
 
     def exportMaskedImage(self, file: InputFile, outputDir):
         masks = file.streaksMasks + file.streaksManualMasks

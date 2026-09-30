@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ToolsSettings</class>
+ <widget class="QWidget" name="toolsSettings">
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing">
+    <number>8</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="masksHeading">
+    <property name="styleSheet">
+     <string notr="true">font-size: 11px;
+font-weight: 600;
+color: #475569;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+margin-top: 2px;</string>
+    </property>
+     <property name="text">
+      <string>Export Masks</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="masksHint">
+    <property name="styleSheet">
+     <string notr="true">font-size: 11px;
+color: #64748b;
+line-height: 1.3;</string>
+    </property>
+     <property name="text">
+      <string>Save detected streak masks as image files.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="masks">
+    <property name="styleSheet">
+     <string notr="true">QPushButton#masks {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#masks:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#masks:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+QPushButton#masks:focus:enabled { border-color: #0f172a; }</string>
+    </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="text">
+      <string>Export Masks</string>
+     </property>
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="toolTip">
+      <string>Requires automatic or manual streak masks.</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

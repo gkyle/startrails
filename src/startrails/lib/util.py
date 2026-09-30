@@ -60,10 +60,11 @@ class Observable():
                 data)
 
     def requestInterrupt(self):
-        self.job.interrupt = True
+        if self.job is not None:
+            self.job.interrupt = True
 
     def shouldInterrupt(self):
-        return self.job.interrupt
+        return self.job.interrupt if self.job is not None else False
 
     def addObserver(self, observer):
         self.observers.append(observer)

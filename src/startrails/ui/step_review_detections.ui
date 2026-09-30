@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>reviewSettings</class>
+ <widget class="QWidget" name="reviewSettings">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>222</width>
+    <height>334</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing">
+    <number>8</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="countsLayout">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <item>
+      <widget class="QFrame" name="statAuto">
+       <property name="styleSheet">
+        <string notr="true">background-color: #f0fdf4;
+border-radius: 6px;
+padding: 1px;
+
+</string>
+       </property>
+       <layout class="QVBoxLayout" name="statAutoLayout">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>2</number>
+        </property>
+        <property name="topMargin">
+         <number>2</number>
+        </property>
+        <property name="rightMargin">
+         <number>2</number>
+        </property>
+        <property name="bottomMargin">
+         <number>2</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="statAutoTitle">
+          <property name="styleSheet">
+           <string notr="true">font-size: 11px;
+font-weight: 600;
+color: #15803d;</string>
+          </property>
+          <property name="text">
+           <string>Auto</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="statAutoNum">
+          <property name="font">
+           <font>
+            <pointsize>-1</pointsize>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">font-size: 11px;
+font-weight: bold;
+color: #166534;</string>
+          </property>
+          <property name="text">
+           <string>0</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="statManual">
+       <property name="styleSheet">
+        <string notr="true">background-color: #f0f9ff;
+border-radius: 6px;
+padding: 1px;</string>
+       </property>
+       <layout class="QVBoxLayout" name="statManualLayout">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>2</number>
+        </property>
+        <property name="topMargin">
+         <number>2</number>
+        </property>
+        <property name="rightMargin">
+         <number>2</number>
+        </property>
+        <property name="bottomMargin">
+         <number>2</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="statManualTitle">
+          <property name="styleSheet">
+           <string notr="true">font-size: 11px;
+font-weight: 600;
+color: #0369a1;</string>
+          </property>
+          <property name="text">
+           <string>Manual</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="statManualNum">
+          <property name="styleSheet">
+           <string notr="true">font-size: 11px;
+font-weight: bold;
+color: #0369a1;</string>
+          </property>
+          <property name="text">
+           <string>0</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QFrame" name="statDeleted">
+       <property name="styleSheet">
+        <string notr="true">background-color: #fffbeb;
+border-radius: 6px;
+padding: 1px;</string>
+       </property>
+       <layout class="QVBoxLayout" name="statDeletedLayout">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>2</number>
+        </property>
+        <property name="topMargin">
+         <number>2</number>
+        </property>
+        <property name="rightMargin">
+         <number>2</number>
+        </property>
+        <property name="bottomMargin">
+         <number>2</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="statDeletedTitle">
+          <property name="styleSheet">
+           <string notr="true">font-size: 11px;
+font-weight: 600;
+color: #b45309;</string>
+          </property>
+          <property name="text">
+           <string>Deleted</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="statDeletedNum">
+          <property name="styleSheet">
+           <string notr="true">font-size: 11px;
+font-weight: bold;
+color: #92400e;</string>
+          </property>
+          <property name="text">
+           <string>0</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="showDeletedMasksLayout">
+     <item>
+      <widget class="QLabel" name="showDeletedMasksLabel">
+       <property name="styleSheet">
+        <string notr="true">color: #334155; font-size: 12px;</string>
+       </property>
+       <property name="text">
+        <string>Show Deleted Masks</string>
+       </property>
+       <property name="buddy">
+        <cstring>showDeletedMasks</cstring>
+       </property>
+      </widget>
+     </item>
+     <item alignment="Qt::AlignmentFlag::AlignRight">
+      <widget class="QCheckBox" name="showDeletedMasks">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="accessibleName">
+        <string>Show Deleted Masks</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QCheckBox#showDeletedMasks { spacing: 0px;}
+QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px;}
+QCheckBox#showDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
+QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QFrame" name="sepFindBrightest">
+     <property name="styleSheet">
+      <string notr="true">background-color: #f1f5f9;
+max-height: 1px;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::HLine</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="findBrightestHeading">
+     <property name="styleSheet">
+      <string notr="true">font-size: 11px;
+font-weight: 600;
+color: #475569;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+margin-top: 2px;</string>
+     </property>
+     <property name="text">
+      <string>Locate Streaks</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="findBrightestHint">
+     <property name="styleSheet">
+      <string notr="true">font-size: 11px;
+color: #64748b;
+line-height: 1.3;</string>
+     </property>
+     <property name="text">
+      <string>Click on a streak in a stacked or gap-filled image to locate its source frame.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="findBrightest">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="toolTip">
+      <string>Select a stacked or gap-filled output image to enable finding the brightest frame at a point.</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton#findBrightest {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#findBrightest:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#findBrightest:checked {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border-color: #0369a1;
+    font-weight: 600;
+}
+QPushButton#findBrightest:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+QPushButton#findBrightest:focus:enabled { border-color: #0f172a; }</string>
+     </property>
+     <property name="text">
+      <string>Find Brightest</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="sep1">
+     <property name="styleSheet">
+      <string notr="true">background-color: #f1f5f9;
+max-height: 1px;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::HLine</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="contributeHeading">
+     <property name="styleSheet">
+      <string notr="true">font-size: 11px;
+font-weight: 600;
+color: #475569;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+margin-top: 2px;</string>
+     </property>
+     <property name="text">
+      <string>Optional: Contribute Corrections</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="contributeHint">
+     <property name="styleSheet">
+      <string notr="true">font-size: 11px;
+color: #64748b;
+line-height: 1.3;</string>
+     </property>
+     <property name="text">
+      <string>Export manual additions and deletions to help improve future streak detection models.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="training">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="toolTip">
+      <string>Requires manually added or deleted streak masks.</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton#training {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#training:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#training:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+QPushButton#training:focus:enabled { border-color: #0f172a; }</string>
+     </property>
+     <property name="text">
+      <string>Export Training</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

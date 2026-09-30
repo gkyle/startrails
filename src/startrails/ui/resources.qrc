@@ -1,0 +1,18 @@
+<RCC>
+ <qresource prefix="/startrails/ui">
+  <file alias="arrow_up.svg">icons/arrow_up.svg</file>
+  <file alias="arrow_down.svg">icons/arrow_down.svg</file>
+  <file alias="arrow_up_dark.svg">icons/arrow_up_dark.svg</file>
+  <file alias="arrow_down_dark.svg">icons/arrow_down_dark.svg</file>
+  <file alias="star.svg">icons/star.svg</file>
+  <file alias="document.svg">icons/document.svg</file>
+  <file alias="document_dark.svg">icons/document_dark.svg</file>
+  <file alias="document_output.svg">icons/document_output.svg</file>
+  <file alias="switch_on.svg">icons/switch_on.svg</file>
+  <file alias="switch_off.svg">icons/switch_off.svg</file>
+  <file alias="chevron_down.svg">icons/chevron_down.svg</file>
+  <file alias="chevron_right.svg">icons/chevron_right.svg</file>
+  <file alias="chevron_down_dark.svg">icons/chevron_down_dark.svg</file>
+  <file alias="chevron_right_dark.svg">icons/chevron_right_dark.svg</file>
+ </qresource>
+</RCC>

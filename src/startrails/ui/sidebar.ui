@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Sidebar</class>
+ <widget class="QWidget" name="sidebar">
+  <property name="minimumSize">
+   <size>
+    <width>320</width>
+    <height>0</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>320</width>
+    <height>16777215</height>
+   </size>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget#sidebar {
+    background-color: #f8fafc;
+}
+QScrollArea#scroll {
+    border: none;
+    background: transparent;
+}
+QWidget#content {
+    background-color: #f8fafc;
+}
+QScrollBar:vertical {
+    border: none;
+    background: #f1f5f9;
+    width: 6px;
+    border-radius: 3px;
+    margin: 2px 0px 2px 0px;
+}
+QScrollBar::handle:vertical {
+    background: #cbd5e1;
+    min-height: 24px;
+    border-radius: 3px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #94a3b8;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+QScrollBar:horizontal {
+    height: 0px;
+}
+QLabel#projectTitle, QLabel#operationsTitle {
+    font-size: 15px;
+    font-weight: bold;
+    color: #0f172a;
+}
+QLabel#operationsProgressLabel {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 500;
+}
+QProgressBar#operationsProgress {
+    background-color: #e2e8f0;
+    border-radius: 3px;
+    max-height: 6px;
+    min-height: 6px;
+    border: none;
+}
+QProgressBar#operationsProgress::chunk {
+    background-color: #16a34a;
+    border-radius: 3px;
+}
+QPushButton#newProject, QPushButton#openProject {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#newProject:hover, QPushButton#openProject:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#newProject:pressed, QPushButton#openProject:pressed {
+    background-color: #e2e8f0;
+}
+QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { border-color: #0f172a; }</string>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QScrollArea" name="scroll">
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <property name="horizontalScrollBarPolicy">
+      <enum>Qt::ScrollBarAlwaysOff</enum>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="content">
+      <layout class="QVBoxLayout" name="contentLayout">
+       <property name="spacing">
+        <number>8</number>
+       </property>
+       <property name="leftMargin">
+        <number>8</number>
+       </property>
+       <property name="topMargin">
+        <number>8</number>
+       </property>
+       <property name="rightMargin">
+        <number>8</number>
+       </property>
+       <property name="bottomMargin">
+        <number>8</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="projectTitle">
+         <property name="text">
+          <string>Project Images</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="projectActions">
+         <property name="spacing">
+          <number>6</number>
+         </property>
+         <item>
+          <widget class="QPushButton" name="newProject">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
+           <property name="text">
+            <string>New Project</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="openProject">
+           <property name="cursor">
+            <cursorShape>PointingHandCursor</cursorShape>
+           </property>
+           <property name="text">
+            <string>Open Project</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="inputLayout"/>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="outputLayout"/>
+       </item>
+       <item>
+        <widget class="QWidget" name="operationsHeaderWidget" native="true">
+         <layout class="QVBoxLayout" name="operationsHeaderLayout">
+          <property name="spacing">
+           <number>3</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>4</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="operationsTitle">
+            <property name="text">
+             <string>Operations</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="operationsProgressLabel">
+            <property name="text">
+             <string>0 of 4 steps complete</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QProgressBar" name="operationsProgress">
+            <property name="maximum">
+             <number>4</number>
+            </property>
+            <property name="value">
+             <number>0</number>
+            </property>
+            <property name="textVisible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="detectLayout"/>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="stackLayout"/>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="reviewLayout"/>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="fillLayout"/>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="toolsLayout"/>
+       </item>
+       <item>
+        <spacer name="bottomSpace">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
