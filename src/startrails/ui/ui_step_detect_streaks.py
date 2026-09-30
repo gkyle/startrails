@@ -25,7 +25,7 @@ class Ui_DetectSettings(object):
     def setupUi(self, DetectSettings):
         if not DetectSettings.objectName():
             DetectSettings.setObjectName(u"DetectSettings")
-        DetectSettings.resize(232, 215)
+        DetectSettings.resize(232, 204)
         DetectSettings.setStyleSheet(u"QLabel {\n"
 "    color: #334155;\n"
 "    font-size: 12px;\n"
@@ -125,7 +125,12 @@ class Ui_DetectSettings(object):
 
         self.layout.addLayout(self.runLayout)
 
-        self.advancedLayout = QVBoxLayout()
+        self.advancedBody = QWidget(DetectSettings)
+        self.advancedBody.setObjectName(u"advancedBody")
+        self.advancedBody.setStyleSheet(u"QWidget#advancedBody {\n"
+"    background: transparent;\n"
+"}")
+        self.advancedLayout = QVBoxLayout(self.advancedBody)
         self.advancedLayout.setSpacing(6)
         self.advancedLayout.setObjectName(u"advancedLayout")
         self.advancedLayout.setContentsMargins(0, 0, 0, 0)
@@ -133,12 +138,12 @@ class Ui_DetectSettings(object):
         self.fields.setSpacing(8)
         self.fields.setObjectName(u"fields")
         self.fields.setContentsMargins(0, 0, 0, 0)
-        self.confidenceLabel = QLabel(DetectSettings)
+        self.confidenceLabel = QLabel(self.advancedBody)
         self.confidenceLabel.setObjectName(u"confidenceLabel")
 
         self.fields.addWidget(self.confidenceLabel, 0, 0, 1, 1)
 
-        self.confidence = QDoubleSpinBox(DetectSettings)
+        self.confidence = QDoubleSpinBox(self.advancedBody)
         self.confidence.setObjectName(u"confidence")
         self.confidence.setMaximum(1.000000000000000)
         self.confidence.setSingleStep(0.050000000000000)
@@ -146,12 +151,12 @@ class Ui_DetectSettings(object):
 
         self.fields.addWidget(self.confidence, 0, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
 
-        self.mergeLabel = QLabel(DetectSettings)
+        self.mergeLabel = QLabel(self.advancedBody)
         self.mergeLabel.setObjectName(u"mergeLabel")
 
         self.fields.addWidget(self.mergeLabel, 1, 0, 1, 1)
 
-        self.detectMergeContainer = QFrame(DetectSettings)
+        self.detectMergeContainer = QFrame(self.advancedBody)
         self.detectMergeContainer.setObjectName(u"detectMergeContainer")
         self.detectMergeContainer.setStyleSheet(u"background-color: #f1f5f9;\n"
 "border-radius: 6px;\n"
@@ -228,12 +233,12 @@ class Ui_DetectSettings(object):
 
         self.fields.addWidget(self.detectMergeContainer, 1, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
 
-        self.thresholdLabel = QLabel(DetectSettings)
+        self.thresholdLabel = QLabel(self.advancedBody)
         self.thresholdLabel.setObjectName(u"thresholdLabel")
 
         self.fields.addWidget(self.thresholdLabel, 2, 0, 1, 1)
 
-        self.mergeThreshold = QDoubleSpinBox(DetectSettings)
+        self.mergeThreshold = QDoubleSpinBox(self.advancedBody)
         self.mergeThreshold.setObjectName(u"mergeThreshold")
         self.mergeThreshold.setMaximum(1.000000000000000)
         self.mergeThreshold.setSingleStep(0.050000000000000)
@@ -241,14 +246,15 @@ class Ui_DetectSettings(object):
 
         self.fields.addWidget(self.mergeThreshold, 2, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
 
-        self.useGPULabel = QLabel(DetectSettings)
+        self.useGPULabel = QLabel(self.advancedBody)
         self.useGPULabel.setObjectName(u"useGPULabel")
 
         self.fields.addWidget(self.useGPULabel, 3, 0, 1, 1)
 
-        self.useGPU = QCheckBox(DetectSettings)
+        self.useGPU = QCheckBox(self.advancedBody)
         self.useGPU.setObjectName(u"useGPU")
         self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.useGPU.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
 "QCheckBox#useGPU::indicator { width: 36px; height: 20px; }\n"
 "QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
@@ -263,7 +269,7 @@ class Ui_DetectSettings(object):
         self.advancedLayout.addLayout(self.fields)
 
 
-        self.layout.addLayout(self.advancedLayout)
+        self.layout.addWidget(self.advancedBody)
 
         self.error = QLabel(DetectSettings)
         self.error.setObjectName(u"error")

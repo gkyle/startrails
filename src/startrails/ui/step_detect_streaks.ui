@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>232</width>
-    <height>215</height>
+    <height>204</height>
    </rect>
   </property>
   <property name="styleSheet">
@@ -153,102 +153,108 @@ QToolButton#advancedToggle:disabled {
     </layout>
    </item>
    <item>
-    <layout class="QVBoxLayout" name="advancedLayout">
-     <property name="spacing">
-      <number>6</number>
+    <widget class="QWidget" name="advancedBody" native="true">
+     <property name="styleSheet">
+      <string notr="true">QWidget#advancedBody {
+    background: transparent;
+}</string>
      </property>
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
-      <number>0</number>
-     </property>
-     <item>
-      <layout class="QGridLayout" name="fields" columnstretch="1,2">
-       <property name="leftMargin">
-        <number>0</number>
-       </property>
-       <property name="topMargin">
-        <number>0</number>
-       </property>
-       <property name="rightMargin">
-        <number>0</number>
-       </property>
-       <property name="bottomMargin">
-        <number>0</number>
-       </property>
-       <property name="spacing">
-        <number>8</number>
-       </property>
-       <item row="0" column="0">
-        <widget class="QLabel" name="confidenceLabel">
-         <property name="text">
-          <string>Confidence</string>
-         </property>
-         <property name="buddy">
-          <cstring>confidence</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1" alignment="Qt::AlignmentFlag::AlignRight">
-        <widget class="QDoubleSpinBox" name="confidence">
-         <property name="accessibleName">
-          <string>Confidence threshold</string>
-         </property>
-         <property name="maximum">
-          <double>1.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.050000000000000</double>
-         </property>
-         <property name="value">
-          <double>0.300000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="mergeLabel">
-         <property name="text">
-          <string>Merging</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1" alignment="Qt::AlignmentFlag::AlignRight">
-        <widget class="QFrame" name="detectMergeContainer">
-         <property name="styleSheet">
-          <string notr="true">background-color: #f1f5f9;
+     <layout class="QVBoxLayout" name="advancedLayout">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <layout class="QGridLayout" name="fields" columnstretch="1,2">
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="confidenceLabel">
+          <property name="text">
+           <string>Confidence</string>
+          </property>
+          <property name="buddy">
+           <cstring>confidence</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1" alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QDoubleSpinBox" name="confidence">
+          <property name="accessibleName">
+           <string>Confidence threshold</string>
+          </property>
+          <property name="maximum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="value">
+           <double>0.300000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="mergeLabel">
+          <property name="text">
+           <string>Merging</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1" alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QFrame" name="detectMergeContainer">
+          <property name="styleSheet">
+           <string notr="true">background-color: #f1f5f9;
 border-radius: 6px;
 padding: 2px;</string>
-         </property>
-         <layout class="QHBoxLayout" name="detectMergeLayout">
-          <property name="spacing">
-           <number>2</number>
           </property>
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-          <item>
-           <widget class="QPushButton" name="detectMergeNMS">
-            <property name="cursor">
-             <cursorShape>PointingHandCursor</cursorShape>
-            </property>
-            <property name="styleSheet">
-             <string notr="true">QPushButton {
+          <layout class="QHBoxLayout" name="detectMergeLayout">
+           <property name="spacing">
+            <number>2</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QPushButton" name="detectMergeNMS">
+             <property name="cursor">
+              <cursorShape>PointingHandCursor</cursorShape>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QPushButton {
     padding: 3px 8px;
     border-radius: 4px;
     border: none;
@@ -271,28 +277,28 @@ QPushButton:focus:enabled {
 QPushButton:checked:focus:enabled {
     border: 1px solid #ffffff;
 }</string>
-            </property>
-            <property name="text">
-             <string>NMS</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">detectMergeGroup</string>
-            </attribute>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="detectMergeNMM">
-            <property name="cursor">
-             <cursorShape>PointingHandCursor</cursorShape>
-            </property>
-            <property name="styleSheet">
-             <string notr="true">QPushButton {
+             </property>
+             <property name="text">
+              <string>NMS</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">detectMergeGroup</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="detectMergeNMM">
+             <property name="cursor">
+              <cursorShape>PointingHandCursor</cursorShape>
+             </property>
+             <property name="styleSheet">
+              <string notr="true">QPushButton {
     padding: 3px 8px;
     border-radius: 4px;
     border: none;
@@ -315,85 +321,89 @@ QPushButton:focus:enabled {
 QPushButton:checked:focus:enabled {
     border: 1px solid #ffffff;
 }</string>
-            </property>
-            <property name="text">
-             <string>Greedy NMM</string>
-            </property>
-            <property name="checkable">
-             <bool>true</bool>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">detectMergeGroup</string>
-            </attribute>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="thresholdLabel">
-         <property name="toolTip">
-          <string>Merge threshold</string>
-         </property>
-         <property name="text">
-          <string>Threshold</string>
-         </property>
-         <property name="buddy">
-          <cstring>mergeThreshold</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1" alignment="Qt::AlignmentFlag::AlignRight">
-        <widget class="QDoubleSpinBox" name="mergeThreshold">
-         <property name="accessibleName">
-          <string>Merge threshold</string>
-         </property>
-         <property name="maximum">
-          <double>1.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.050000000000000</double>
-         </property>
-         <property name="value">
-          <double>0.200000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="useGPULabel">
-         <property name="text">
-          <string>Use GPU</string>
-         </property>
-         <property name="buddy">
-          <cstring>useGPU</cstring>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1" alignment="Qt::AlignmentFlag::AlignRight">
-        <widget class="QCheckBox" name="useGPU">
-         <property name="cursor">
-          <cursorShape>PointingHandCursor</cursorShape>
-         </property>
-         <property name="accessibleName">
-          <string>Use GPU for detection</string>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">QCheckBox#useGPU { spacing: 0px;}
+             </property>
+             <property name="text">
+              <string>Greedy NMM</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">detectMergeGroup</string>
+             </attribute>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="thresholdLabel">
+          <property name="toolTip">
+           <string>Merge threshold</string>
+          </property>
+          <property name="text">
+           <string>Threshold</string>
+          </property>
+          <property name="buddy">
+           <cstring>mergeThreshold</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1" alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QDoubleSpinBox" name="mergeThreshold">
+          <property name="accessibleName">
+           <string>Merge threshold</string>
+          </property>
+          <property name="maximum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.050000000000000</double>
+          </property>
+          <property name="value">
+           <double>0.200000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="useGPULabel">
+          <property name="text">
+           <string>Use GPU</string>
+          </property>
+          <property name="buddy">
+           <cstring>useGPU</cstring>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1" alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QCheckBox" name="useGPU">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::FocusPolicy::NoFocus</enum>
+          </property>
+          <property name="accessibleName">
+           <string>Use GPU for detection</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QCheckBox#useGPU { spacing: 0px;}
 QCheckBox#useGPU::indicator { width: 36px; height: 20px; }
 QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
 QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-    </layout>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
     <widget class="QLabel" name="error">

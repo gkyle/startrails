@@ -322,14 +322,19 @@ class Ui_StackSettings(object):
 
         self.layout.addLayout(self.runLayout)
 
-        self.advancedLayout = QVBoxLayout()
+        self.advancedBody = QWidget(StackSettings)
+        self.advancedBody.setObjectName(u"advancedBody")
+        self.advancedBody.setStyleSheet(u"QWidget#advancedBody {\n"
+"    background: transparent;\n"
+"}")
+        self.advancedLayout = QVBoxLayout(self.advancedBody)
         self.advancedLayout.setSpacing(6)
         self.advancedLayout.setObjectName(u"advancedLayout")
         self.advancedLayout.setContentsMargins(0, 0, 0, 0)
         self.gpuBatchGrid = QGridLayout()
         self.gpuBatchGrid.setSpacing(8)
         self.gpuBatchGrid.setObjectName(u"gpuBatchGrid")
-        self.useGPULabel = QLabel(StackSettings)
+        self.useGPULabel = QLabel(self.advancedBody)
         self.useGPULabel.setObjectName(u"useGPULabel")
         self.useGPULabel.setStyleSheet(u"QLabel#useGPULabel {\n"
 "    color: #334155;\n"
@@ -338,9 +343,10 @@ class Ui_StackSettings(object):
 
         self.gpuBatchGrid.addWidget(self.useGPULabel, 0, 0, 1, 1)
 
-        self.useGPU = QCheckBox(StackSettings)
+        self.useGPU = QCheckBox(self.advancedBody)
         self.useGPU.setObjectName(u"useGPU")
         self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.useGPU.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
 "QCheckBox#useGPU::indicator { width: 36px; height: 20px; }\n"
 "QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
@@ -349,7 +355,7 @@ class Ui_StackSettings(object):
 
         self.gpuBatchGrid.addWidget(self.useGPU, 0, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
 
-        self.batchLabel = QLabel(StackSettings)
+        self.batchLabel = QLabel(self.advancedBody)
         self.batchLabel.setObjectName(u"batchLabel")
         self.batchLabel.setStyleSheet(u"QLabel#batchLabel {\n"
 "    color: #334155;\n"
@@ -358,7 +364,7 @@ class Ui_StackSettings(object):
 
         self.gpuBatchGrid.addWidget(self.batchLabel, 1, 0, 1, 1)
 
-        self.batchSize = QSpinBox(StackSettings)
+        self.batchSize = QSpinBox(self.advancedBody)
         self.batchSize.setObjectName(u"batchSize")
         self.batchSize.setStyleSheet(u"QSpinBox#batchSize {\n"
 "    background-color: #ffffff;\n"
@@ -387,7 +393,7 @@ class Ui_StackSettings(object):
 
         self.advancedLayout.addLayout(self.gpuBatchGrid)
 
-        self.memory = QLabel(StackSettings)
+        self.memory = QLabel(self.advancedBody)
         self.memory.setObjectName(u"memory")
         self.memory.setStyleSheet(u"QLabel#memory {\n"
 "    font-size: 11px;\n"
@@ -399,7 +405,7 @@ class Ui_StackSettings(object):
         self.advancedLayout.addWidget(self.memory)
 
 
-        self.layout.addLayout(self.advancedLayout)
+        self.layout.addWidget(self.advancedBody)
 
         self.error = QLabel(StackSettings)
         self.error.setObjectName(u"error")
