@@ -18,10 +18,11 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QLabel, QPushButton, QSizePolicy,
     QVBoxLayout, QWidget)
 
-class Ui_FillSettings(object):
+class Ui_fillSettings(object):
     def setupUi(self, fillSettings):
         if not fillSettings.objectName():
             fillSettings.setObjectName(u"fillSettings")
+        fillSettings.resize(117, 91)
         self.layout = QVBoxLayout(fillSettings)
         self.layout.setSpacing(8)
         self.layout.setObjectName(u"layout")
@@ -36,6 +37,9 @@ class Ui_FillSettings(object):
 
         self.run = QPushButton(fillSettings)
         self.run.setObjectName(u"run")
+        self.run.setEnabled(False)
+        self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.run.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.run.setStyleSheet(u"QPushButton#run {\n"
 "    font-weight: bold;\n"
 "    background-color: #0369a1;\n"
@@ -53,8 +57,6 @@ class Ui_FillSettings(object):
 "    color: #94a3b8;\n"
 "}\n"
 "QPushButton#run:focus:enabled { border-color: #ffffff; }")
-        self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.run.setEnabled(False)
 
         self.layout.addWidget(self.run)
 
@@ -65,9 +67,9 @@ class Ui_FillSettings(object):
     # setupUi
 
     def retranslateUi(self, fillSettings):
-        self.target.setText(QCoreApplication.translate("FillSettings", u"Select a stacked output image to fill its gaps.", None))
-        self.run.setText(QCoreApplication.translate("FillSettings", u"Fill Gaps", None))
+        self.target.setText(QCoreApplication.translate("fillSettings", u"Select a stacked output image to fill its gaps.", None))
+        self.run.setText(QCoreApplication.translate("fillSettings", u"Fill Gaps", None))
         pass
     # retranslateUi
 
-Ui_fillSettings = Ui_FillSettings
+Ui_FillSettings = Ui_fillSettings

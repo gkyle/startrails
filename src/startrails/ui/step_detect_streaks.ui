@@ -65,6 +65,9 @@ QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/ar
        <property name="cursor">
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::NoFocus</enum>
+       </property>
        <property name="styleSheet">
         <string notr="true">QPushButton#run {
     font-weight: bold;
@@ -388,9 +391,10 @@ QPushButton:checked:focus:enabled {
           </property>
           <property name="styleSheet">
            <string notr="true">QCheckBox#useGPU { spacing: 0px;}
-QCheckBox#useGPU::indicator { width: 36px; height: 20px; }
+QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }
 QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }</string>
+QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
+</string>
           </property>
           <property name="text">
            <string/>

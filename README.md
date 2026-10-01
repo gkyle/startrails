@@ -44,7 +44,10 @@ To remove a bad detection, shift-click on the polygon.
 
 #### Finding images with undetected streaks
 
-When viewing a stacked image, you can shift-click to search for the input image containing the brightest pixels at that location.
+When viewing a stacked image, click **Locate Source**, then click a streak (or
+Shift-click directly). StarTrails uses a saved source map to open a contributing
+input image at the same position. Use **Next Candidate** to cycle through
+other contributors near the click and **Back to Stack** to return.
 
 <img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_manually_flag_streaks.png" width="100%"/>
 

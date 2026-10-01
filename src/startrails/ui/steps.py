@@ -143,9 +143,9 @@ class StepCard(QFrame):
             self.ui.statusBadge.setVisible(self.has_number and status != "locked")
             if self.has_number:
                 self.ui.statusBadge.setText({
-                    "done": "\u2713 Done",
-                    "running": "\u23f3 Running",
-                }.get(status, "\u2713 Ready"))
+                    "done": "Done",
+                    "running": "Running",
+                }.get(status, "Ready"))
 
 
 class DetectSettings(QWidget):
@@ -423,6 +423,9 @@ class ReviewSettings(QWidget):
                 statDeletedNum=getattr(ui, "reviewStatDeletedNum", None),
                 showDeletedMasks=getattr(ui, "exportShowDeletedMasks", getattr(ui, "showDeletedMasks", None)),
                 findBrightest=getattr(ui, "findBrightest", None),
+                nextSource=ui.nextSource,
+                backToStack=ui.backToStack,
+                sourceLookupStatus=ui.sourceLookupStatus,
                 training=getattr(ui, "exportTraining", getattr(ui, "training", None)),
             )
         else:

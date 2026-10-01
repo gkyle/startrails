@@ -258,6 +258,7 @@ class Ui_StackSettings(object):
         self.run.setObjectName(u"run")
         self.run.setEnabled(False)
         self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.run.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.run.setStyleSheet(u"QPushButton#run {\n"
 "    font-weight: bold;\n"
 "    background-color: #0369a1;\n"
@@ -348,9 +349,10 @@ class Ui_StackSettings(object):
         self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.useGPU.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
-"QCheckBox#useGPU::indicator { width: 36px; height: 20px; }\n"
+"QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
 "QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }")
+"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
+"")
         self.useGPU.setChecked(True)
 
         self.gpuBatchGrid.addWidget(self.useGPU, 0, 1, 1, 1, Qt.AlignmentFlag.AlignRight)

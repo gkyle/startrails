@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>222</width>
-    <height>334</height>
+    <height>349</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="layout">
@@ -277,7 +277,7 @@ line-height: 1.3;</string>
       <cursorShape>PointingHandCursor</cursorShape>
      </property>
      <property name="toolTip">
-      <string>Select a stacked or gap-filled output image to enable finding the brightest frame at a point.</string>
+      <string>Select a stacked or gap-filled output, then click a streak to locate its original source images.</string>
      </property>
      <property name="styleSheet">
       <string notr="true">QPushButton#findBrightest {
@@ -307,9 +307,94 @@ QPushButton#findBrightest:disabled {
 QPushButton#findBrightest:focus:enabled { border-color: #0f172a; }</string>
      </property>
      <property name="text">
-      <string>Find Brightest</string>
+      <string>Locate Source Frame</string>
      </property>
      <property name="checkable">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="sourceNavigationLayout">
+     <item>
+      <widget class="QPushButton" name="nextSource">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton#nextSource {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-weight: 500;
+}
+QPushButton#nextSource:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#nextSource:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+QPushButton#nextSource:focus:enabled { border-color: #0f172a; }</string>
+       </property>
+       <property name="text">
+        <string>Next Candidate</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="backToStack">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton#backToStack {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-weight: 500;
+}
+QPushButton#backToStack:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#backToStack:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+QPushButton#backToStack:focus:enabled { border-color: #0f172a; }</string>
+       </property>
+       <property name="text">
+        <string>Back to Stack</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="sourceLookupStatus">
+     <property name="styleSheet">
+      <string notr="true">color: #64748b; font-size: 11px;</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="wordWrap">
       <bool>true</bool>
      </property>
     </widget>
