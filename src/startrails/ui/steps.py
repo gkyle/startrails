@@ -123,12 +123,20 @@ class StepCard(QFrame):
 
     def setSubtitle(self, text):
         self.ui.subtitle.setText(text)
+        if not self.ui.toggle.isChecked():
+            target = self.frame if getattr(self, "frame", None) is not None else self
+            target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
+            target.updateGeometry()
 
     def setStatus(self, status: str, subtitle: str | None = None):
         self._status = status
         if subtitle is not None:
             self.ui.subtitle.setText(subtitle)
         self._update_status_appearance()
+        if not self.ui.toggle.isChecked():
+            target = self.frame if getattr(self, "frame", None) is not None else self
+            target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
+            target.updateGeometry()
 
     def _update_status_appearance(self):
         # Appearance lives in the forms; only the current state changes here.
@@ -202,10 +210,14 @@ class DetectSettings(QWidget):
         if toggle is not None:
             toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
             toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
-        self.updateGeometry()
-        if body is not None and body.parentWidget() is not None:
-            body.parentWidget().updateGeometry()
-            body.parentWidget().adjustSize()
+        p = self
+        while p is not None:
+            p.updateGeometry()
+            if hasattr(p, "adjustSize"):
+                p.adjustSize()
+            if p.objectName() in ("stepCard", "StepCard") or hasattr(p, "cardLayout"):
+                break
+            p = p.parentWidget()
 
     def reset(self):
         self.ui.confidence.setValue(0.3)
@@ -328,10 +340,14 @@ class StackSettings(QWidget):
         if toggle is not None:
             toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
             toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
-        self.updateGeometry()
-        if body is not None and body.parentWidget() is not None:
-            body.parentWidget().updateGeometry()
-            body.parentWidget().adjustSize()
+        p = self
+        while p is not None:
+            p.updateGeometry()
+            if hasattr(p, "adjustSize"):
+                p.adjustSize()
+            if p.objectName() in ("stepCard", "StepCard") or hasattr(p, "cardLayout"):
+                break
+            p = p.parentWidget()
 
     def reset(self):
         self.ui.fade.setCurrentIndex(3)

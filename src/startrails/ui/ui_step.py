@@ -118,7 +118,7 @@ class Ui_StepCard(object):
 
         self.subtitle = QLabel(self.headerWidget)
         self.subtitle.setObjectName(u"subtitle")
-        self.subtitle.setWordWrap(True)
+        self.subtitle.setWordWrap(False)
 
         self.textColumn.addWidget(self.subtitle)
 
