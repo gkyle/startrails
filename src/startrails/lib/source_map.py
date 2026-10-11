@@ -1,10 +1,12 @@
 """Persistent, per-channel provenance for a particular completed stack."""
 from contextlib import contextmanager
+from collections import OrderedDict
 from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
 import tempfile
+from threading import Lock
 
 import cv2
 import numpy as np
@@ -28,6 +30,39 @@ def source_dtype(count):
 def signature(path):
     stat = Path(path).stat()
     return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
+
+
+class _LookupImageCache:
+    """Bound decoded lookup images by bytes, without retaining open files."""
+
+    def __init__(self, max_bytes=256 * 1024**2):
+        self.max_bytes = max_bytes
+        self._images = OrderedDict()
+        self._bytes = 0
+        self._lock = Lock()
+
+    def read(self, path, stamp):
+        key = os.path.normcase(os.path.abspath(path))
+        with self._lock:
+            cached = self._images.pop(key, None)
+            if cached is not None:
+                old_stamp, image = cached
+                if old_stamp == stamp:
+                    self._images[key] = cached
+                    return image
+                self._bytes -= image.nbytes
+            image = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+            if image is not None and image.nbytes <= self.max_bytes:
+                while self._images and self._bytes + image.nbytes > self.max_bytes:
+                    _, (_, evicted) = self._images.popitem(last=False)
+                    self._bytes -= evicted.nbytes
+                image.setflags(write=False)
+                self._images[key] = (stamp, image)
+                self._bytes += image.nbytes
+            return image
+
+
+_lookup_images = _LookupImageCache()
 
 
 def relative_path(path, directory):
@@ -93,7 +128,7 @@ def snapshot_sources(files, output):
 
 
 def locate_sources(output, files, x, y, radius=6, limit=8):
-    """Read a small map region and one stack image, without decoding input images."""
+    """Read a small map region, reusing unchanged stack and gap-mask images."""
     manifest_path = output_sidecar(output, "sourceMap")
     if manifest_path is None:
         raise SourceMapError("This output has no source map. Build a new stack to use Locate Source.")
@@ -104,7 +139,8 @@ def locate_sources(output, files, x, y, radius=6, limit=8):
         if manifest["version"] != 1:
             raise SourceMapError("This source map uses an unsupported version. Build a new stack.")
         stack_path = manifest_path.parent / manifest["stack"]
-        if signature(stack_path) != manifest["stack_signature"]:
+        stack_stamp = signature(stack_path)
+        if stack_stamp != manifest["stack_signature"]:
             raise SourceMapError("The stacked image has changed since its source map was saved. Build a new stack.")
         owners = np.load(manifest_path.parent / manifest["array"], mmap_mode="r", allow_pickle=False)
         if (list(owners.shape) != manifest["shape"] or owners.dtype.name != manifest["dtype"]
@@ -118,7 +154,7 @@ def locate_sources(output, files, x, y, radius=6, limit=8):
         y0, y1 = max(0, y - radius), min(height, y + radius + 1)
         x0, x1 = max(0, x - radius), min(width, x + radius + 1)
         region = np.array(owners[y0:y1, x0:x1], copy=True)
-        stack = cv2.imread(str(stack_path), cv2.IMREAD_UNCHANGED)
+        stack = _lookup_images.read(stack_path, stack_stamp)
         if stack is None or stack.shape != owners.shape:
             raise SourceMapError("The original stacked image could not be read. Restore it or build a new stack.")
         values = stack[y0:y1, x0:x1].astype(np.float32)
@@ -129,7 +165,8 @@ def locate_sources(output, files, x, y, radius=6, limit=8):
         synthesized = False
         if output.operation == "FillGaps":
             mask_path = output_sidecar(output, "gapMask")
-            mask = cv2.imread(str(mask_path), cv2.IMREAD_UNCHANGED) if mask_path else None
+            mask = (_lookup_images.read(mask_path, signature(mask_path))
+                    if mask_path and mask_path.is_file() else None)
             if mask is None or mask.shape[:2] != (height, width):
                 raise SourceMapError("The gap-fill mask is unavailable. Use Locate Source on the original stack.")
             synthesized = bool(np.any(mask[y, x]))
@@ -152,13 +189,19 @@ def locate_sources(output, files, x, y, radius=6, limit=8):
         ranked = sorted(zip(ids.tolist(), scores.tolist()),
                         key=lambda pair: (pair[0] not in exact_ids, -pair[1], pair[0]))
         by_id = {file.sourceId: file for file in files}
-        by_path = {os.path.normcase(str(Path(file.path).resolve())): file for file in files}
+        by_path = None
         candidates = []
         unavailable = 0
         for source_id, _ in ranked:
             source = manifest["sources"][source_id]
-            source_path = (manifest_path.parent / source["path"]).resolve()
-            file = by_id.get(source["id"]) or by_path.get(os.path.normcase(str(source_path)))
+            file = by_id.get(source["id"])
+            if file is None:
+                # Resolving every path can mean thousands of filesystem/network
+                # calls. Only old/reimported sources need this fallback.
+                if by_path is None:
+                    by_path = {os.path.normcase(str(Path(file.path).resolve())): file for file in files}
+                source_path = (manifest_path.parent / source["path"]).resolve()
+                file = by_path.get(os.path.normcase(str(source_path)))
             try:
                 available = file is not None and signature(file.path) == source["signature"]
             except OSError:
