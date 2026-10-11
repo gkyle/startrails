@@ -299,19 +299,6 @@ wheels = [
 ]
 
 [[package]]
-name = "imageio"
-version = "2.37.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "pillow" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/47/57e897fb7094afb2d26e8b2e4af9a45c7cf1a405acdeeca001fdf2c98501/imageio-2.37.0.tar.gz", hash = "sha256:71b57b3669666272c818497aebba2b4c5f20d5b37c81720e5e1a56d59c492996", size = 389963, upload-time = "2025-01-20T02:42:37.089Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/bd/b394387b598ed84d8d0fa90611a90bee0adc2021820ad5729f7ced74a8e2/imageio-2.37.0-py3-none-any.whl", hash = "sha256:11efa15b87bc7871b61590326b2d635439acc321cf7f8ce996f812543ce10eed", size = 315796, upload-time = "2025-01-20T02:42:34.931Z" },
-]
-
-[[package]]
 name = "jinja2"
 version = "3.1.6"
 source = { registry = "https://pypi.org/simple" }
@@ -351,18 +338,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/39/e9/61e4813b2c97e86b6fdbd4dd824bf72d28bcd8d4849b8084a357bc0dd64d/kiwisolver-1.4.9-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:ed0fecd28cc62c54b262e3736f8bb2512d8dcfdc2bcf08be5f47f96bf405b145", size = 2291817, upload-time = "2025-08-10T21:26:22.812Z" },
     { url = "https://files.pythonhosted.org/packages/a0/41/85d82b0291db7504da3c2defe35c9a8a5c9803a730f297bd823d11d5fb77/kiwisolver-1.4.9-cp312-cp312-win_amd64.whl", hash = "sha256:f68208a520c3d86ea51acf688a3e3002615a7f0238002cccc17affecc86a8a54", size = 73895, upload-time = "2025-08-10T21:26:24.37Z" },
     { url = "https://files.pythonhosted.org/packages/e2/92/5f3068cf15ee5cb624a0c7596e67e2a0bb2adee33f71c379054a491d07da/kiwisolver-1.4.9-cp312-cp312-win_arm64.whl", hash = "sha256:2c1a4f57df73965f3f14df20b80ee29e6a7930a57d2d9e8491a25f676e197c60", size = 64992, upload-time = "2025-08-10T21:26:25.732Z" },
-]
-
-[[package]]
-name = "lazy-loader"
-version = "0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "packaging" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6f/6b/c875b30a1ba490860c93da4cabf479e03f584eba06fe5963f6f6644653d8/lazy_loader-0.4.tar.gz", hash = "sha256:47c75182589b91a4e1a85a136c074285a5ad4d9f39c63e0d7fb76391c4574cd1", size = 15431, upload-time = "2024-04-05T13:03:12.261Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/60/d497a310bde3f01cb805196ac61b7ad6dc5dcf8dce66634dc34364b20b4f/lazy_loader-0.4-py3-none-any.whl", hash = "sha256:342aa8e14d543a154047afb4ba8ef17f5563baad3fc610d7b15b213b0f119efc", size = 12097, upload-time = "2024-04-05T13:03:10.514Z" },
 ]
 
 [[package]]
@@ -1406,29 +1381,6 @@ wheels = [
 ]
 
 [[package]]
-name = "scikit-image"
-version = "0.25.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "imageio" },
-    { name = "lazy-loader" },
-    { name = "networkx" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "pillow" },
-    { name = "scipy" },
-    { name = "tifffile" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/a8/3c0f256012b93dd2cb6fda9245e9f4bff7dc0486880b248005f15ea2255e/scikit_image-0.25.2.tar.gz", hash = "sha256:e5a37e6cd4d0c018a7a55b9d601357e3382826d3888c10d0213fc63bff977dde", size = 22693594, upload-time = "2025-02-18T18:05:24.538Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/35/8c/5df82881284459f6eec796a5ac2a0a304bb3384eec2e73f35cfdfcfbf20c/scikit_image-0.25.2-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:8db8dd03663112783221bf01ccfc9512d1cc50ac9b5b0fe8f4023967564719fb", size = 13986000, upload-time = "2025-02-18T18:04:47.156Z" },
-    { url = "https://files.pythonhosted.org/packages/ce/e6/93bebe1abcdce9513ffec01d8af02528b4c41fb3c1e46336d70b9ed4ef0d/scikit_image-0.25.2-cp312-cp312-macosx_12_0_arm64.whl", hash = "sha256:483bd8cc10c3d8a7a37fae36dfa5b21e239bd4ee121d91cad1f81bba10cfb0ed", size = 13235893, upload-time = "2025-02-18T18:04:51.049Z" },
-    { url = "https://files.pythonhosted.org/packages/53/4b/eda616e33f67129e5979a9eb33c710013caa3aa8a921991e6cc0b22cea33/scikit_image-0.25.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9d1e80107bcf2bf1291acfc0bf0425dceb8890abe9f38d8e94e23497cbf7ee0d", size = 14178389, upload-time = "2025-02-18T18:04:54.245Z" },
-    { url = "https://files.pythonhosted.org/packages/6b/b5/b75527c0f9532dd8a93e8e7cd8e62e547b9f207d4c11e24f0006e8646b36/scikit_image-0.25.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a17e17eb8562660cc0d31bb55643a4da996a81944b82c54805c91b3fe66f4824", size = 15003435, upload-time = "2025-02-18T18:04:57.586Z" },
-    { url = "https://files.pythonhosted.org/packages/34/e3/49beb08ebccda3c21e871b607c1cb2f258c3fa0d2f609fed0a5ba741b92d/scikit_image-0.25.2-cp312-cp312-win_amd64.whl", hash = "sha256:bdd2b8c1de0849964dbc54037f36b4e9420157e67e45a8709a80d727f52c7da2", size = 12899474, upload-time = "2025-02-18T18:05:01.166Z" },
-]
-
-[[package]]
 name = "scipy"
 version = "1.16.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1525,7 +1477,6 @@ dependencies = [
     { name = "psutil" },
     { name = "pyside6" },
     { name = "sahi" },
-    { name = "scikit-image" },
     { name = "shapely" },
     { name = "torch", version = "2.6.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" }, marker = "extra == 'extra-10-startrails-cu124' or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cpu' and extra != 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra != 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps')" },
     { name = "torch", version = "2.7.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-10-startrails-cpu') or (sys_platform == 'darwin' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps')" },
@@ -1575,7 +1526,6 @@ requires-dist = [
     { name = "psutil", specifier = "==6.1.1" },
     { name = "pyside6", specifier = "==6.8.2" },
     { name = "sahi", specifier = "==0.11.20" },
-    { name = "scikit-image", specifier = ">=0.25.2" },
     { name = "shapely", specifier = "==2.0.7" },
     { name = "torch", specifier = ">=2.6.0" },
     { name = "torch", marker = "extra == 'cpu'", specifier = ">=2.6.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "startrails", extra = "cpu" } },
@@ -1643,18 +1593,6 @@ wheels = [
 ]
 
 [[package]]
-name = "tifffile"
-version = "2025.10.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a8/13/1dcd158fdcd99d697ba60af153db5034613011516fc0b37a4ca0b7e61b66/tifffile-2025.10.4.tar.gz", hash = "sha256:2e437c16ab211be5bcdc79f71b4907359115f1f83b5d919e7c297c29725d3e38", size = 369486, upload-time = "2025-10-06T00:14:00.46Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6e/ff/e2f8dae90fb642b4b6f24464a2f96a3dc3b69151c51f7db24433be0f3f56/tifffile-2025.10.4-py3-none-any.whl", hash = "sha256:7687d691e49026053181470cec70fa9250e3a586b2041041297e38b10bbd34e1", size = 230357, upload-time = "2025-10-06T00:13:58.806Z" },
-]
-
-[[package]]
 name = "torch"
 version = "2.6.0+cu124"
 source = { registry = "https://download.pytorch.org/whl/cu124" }
@@ -1688,8 +1626,8 @@ dependencies = [
     { name = "typing-extensions", marker = "extra == 'extra-10-startrails-cu124' or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cpu' and extra != 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra != 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps')" },
 ]
 wheels = [
-    { url = "https://download-r2.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp312-cp312-linux_x86_64.whl", hash = "sha256:a393b506844035c0dac2f30ea8478c343b8e95a429f06f3b3cadfc7f53adb597" },
-    { url = "https://download-r2.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp312-cp312-win_amd64.whl", hash = "sha256:3313061c1fec4c7310cf47944e84513dcd27b6173b72a349bb7ca68d0ee6e9c0" },
+    { url = "https://download-r2.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp312-cp312-linux_x86_64.whl", hash = "sha256:a393b506844035c0dac2f30ea8478c343b8e95a429f06f3b3cadfc7f53adb597", upload-time = "2025-01-30T00:57:08Z" },
+    { url = "https://download-r2.pytorch.org/whl/cu124/torch-2.6.0%2Bcu124-cp312-cp312-win_amd64.whl", hash = "sha256:3313061c1fec4c7310cf47944e84513dcd27b6173b72a349bb7ca68d0ee6e9c0", upload-time = "2025-01-30T00:57:40Z" },
 ]
 
 [[package]]
@@ -1709,7 +1647,7 @@ dependencies = [
     { name = "typing-extensions", marker = "(sys_platform == 'darwin' and extra == 'extra-10-startrails-cpu') or (sys_platform == 'darwin' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps')" },
 ]
 wheels = [
-    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.7.1-cp312-none-macosx_11_0_arm64.whl", hash = "sha256:7b4f8b2b83bd08f7d399025a9a7b323bdbb53d20566f1e0d584689bb92d82f9a" },
+    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.7.1-cp312-none-macosx_11_0_arm64.whl", hash = "sha256:7b4f8b2b83bd08f7d399025a9a7b323bdbb53d20566f1e0d584689bb92d82f9a", upload-time = "2025-06-03T18:28:06Z" },
 ]
 
 [[package]]
@@ -1772,10 +1710,10 @@ dependencies = [
     { name = "typing-extensions", marker = "(sys_platform != 'darwin' and extra == 'extra-10-startrails-cpu') or (sys_platform != 'darwin' and extra != 'extra-10-startrails-cu118' and extra != 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps')" },
 ]
 wheels = [
-    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:3bf2db5adf77b433844f080887ade049c4705ddf9fe1a32023ff84ff735aa5ad" },
-    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:8f8b3cfc53010a4b4a3c7ecb88c212e9decc4f5eeb6af75c3c803937d2d60947" },
-    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-win_amd64.whl", hash = "sha256:0bc887068772233f532b51a3e8c8cfc682ae62bef74bf4e0c53526c8b9e4138f" },
-    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-win_arm64.whl", hash = "sha256:a2618775f32eb4126c5b2050686da52001a08cffa331637d9cf51c8250931e00" },
+    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:3bf2db5adf77b433844f080887ade049c4705ddf9fe1a32023ff84ff735aa5ad", upload-time = "2025-06-03T18:27:57Z" },
+    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:8f8b3cfc53010a4b4a3c7ecb88c212e9decc4f5eeb6af75c3c803937d2d60947", upload-time = "2025-06-03T18:27:57Z" },
+    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-win_amd64.whl", hash = "sha256:0bc887068772233f532b51a3e8c8cfc682ae62bef74bf4e0c53526c8b9e4138f", upload-time = "2025-06-03T18:27:56Z" },
+    { url = "https://download-r2.pytorch.org/whl/cpu/torch-2.7.1%2Bcpu-cp312-cp312-win_arm64.whl", hash = "sha256:a2618775f32eb4126c5b2050686da52001a08cffa331637d9cf51c8250931e00", upload-time = "2025-07-16T16:40:20Z" },
 ]
 
 [[package]]
@@ -1810,8 +1748,8 @@ dependencies = [
     { name = "typing-extensions", marker = "extra == 'extra-10-startrails-cu118' or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps')" },
 ]
 wheels = [
-    { url = "https://download-r2.pytorch.org/whl/cu118/torch-2.7.1%2Bcu118-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:91454dcfdb81f181fdf216d6d6d9912fbd8795578b90384b3b8b8132737072bb" },
-    { url = "https://download-r2.pytorch.org/whl/cu118/torch-2.7.1%2Bcu118-cp312-cp312-win_amd64.whl", hash = "sha256:80855ec840b7b06372ff43535d01393a8ec101842618d1f9ed629572b52aed71" },
+    { url = "https://download-r2.pytorch.org/whl/cu118/torch-2.7.1%2Bcu118-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:91454dcfdb81f181fdf216d6d6d9912fbd8795578b90384b3b8b8132737072bb", upload-time = "2025-06-03T18:28:21Z" },
+    { url = "https://download-r2.pytorch.org/whl/cu118/torch-2.7.1%2Bcu118-cp312-cp312-win_amd64.whl", hash = "sha256:80855ec840b7b06372ff43535d01393a8ec101842618d1f9ed629572b52aed71", upload-time = "2025-06-03T18:28:23Z" },
 ]
 
 [[package]]
@@ -1841,9 +1779,9 @@ dependencies = [
     { name = "typing-extensions", marker = "extra == 'extra-10-startrails-cu133' or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cpu' and extra != 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu118' and extra != 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps')" },
 ]
 wheels = [
-    { url = "https://download-r2.pytorch.org/whl/cu130/torch-2.11.0%2Bcu130-cp312-cp312-manylinux_2_28_aarch64.whl" },
-    { url = "https://download-r2.pytorch.org/whl/cu130/torch-2.11.0%2Bcu130-cp312-cp312-manylinux_2_28_x86_64.whl" },
-    { url = "https://download-r2.pytorch.org/whl/cu130/torch-2.11.0%2Bcu130-cp312-cp312-win_amd64.whl" },
+    { url = "https://download-r2.pytorch.org/whl/cu130/torch-2.11.0%2Bcu130-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:252f237d417fac3ba59b1635815c1f035a8241f2af038f2c076ed430932d89f1", upload-time = "2026-04-27T20:01:46Z" },
+    { url = "https://download-r2.pytorch.org/whl/cu130/torch-2.11.0%2Bcu130-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:96911323dcfcd42028c7e8edde7bdf25bb187753234e8775f0f3f112e86a22db", upload-time = "2026-04-27T20:02:14Z" },
+    { url = "https://download-r2.pytorch.org/whl/cu130/torch-2.11.0%2Bcu130-cp312-cp312-win_amd64.whl", hash = "sha256:ef8beae16d781c3244ef28dc7bee6d8871c26bbde65d5bf66e902cb61972c4ab", upload-time = "2026-04-27T20:03:28Z" },
 ]
 
 [[package]]

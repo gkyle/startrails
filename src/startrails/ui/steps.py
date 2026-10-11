@@ -222,7 +222,7 @@ class DetectSettings(QWidget):
     def reset(self):
         self.ui.confidence.setValue(0.3)
         self.ui.mergeThreshold.setValue(0.2)
-        self.ui.mergeMethod.setCurrentIndex(0)
+        self.ui.mergeMethod.setCurrentIndex(1)
         self._first_file = None
         self.ui.error.clear()
         self.ui.error.hide()
