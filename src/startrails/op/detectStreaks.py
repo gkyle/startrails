@@ -2,7 +2,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import traceback
 from typing import List
 import cv2
-from skimage.draw import polygon
 import numpy as np
 
 import torch
@@ -13,7 +12,6 @@ from sahi.postprocess.combine import NMSPostprocess, NMMPostprocess, GreedyNMMPo
 from sahi.prediction import ObjectPrediction
 from sahi.annotation import Mask
 from sahi.slicing import slice_image
-from typing import List
 
 from startrails.lib.util import Observable
 from startrails.lib.file import InputFile
@@ -149,14 +147,6 @@ def bbox(points):
 
 def shiftPoints(points, shiftXY):
     return [[x + shiftXY[0], y + shiftXY[1]] for x, y in points]
-
-
-def polygonToMask(polygonCoords, imageShape):
-    cols, rows = polygonCoords[:, 0], polygonCoords[:, 1]
-    mask = np.zeros(imageShape, dtype=bool)
-    rr, cc = polygon(rows, cols, imageShape)
-    mask[rr, cc] = True
-    return mask.astype(np.uint8)
 
 
 def getSlices(image, sliceHeight, sliceWidth, overlapHeightRatio, overlapWidthRatio):
