@@ -110,10 +110,10 @@ class DetectStreaks(Observable):
             imgsz = ROI_SIZE * 3
             yoloStdResult = self.predict([img], conf=confThreshold, batchSize=1, imgsz=imgsz)
             sahiStdResult = yolo2sahi(yoloStdResult[0], np.shape(img), [0, 0], postProcessMethod)
-            if len(sahiStdResult) > 0:
-                shiftedStdResult = sahiStdResult[0].get_shifted_object_prediction()
-                shiftedStdResult.obb = sahiStdResult[0].obb
-                objectPredictions.append(shiftedStdResult)
+            for sahiPrediction in sahiStdResult:
+                shiftedPrediction = sahiPrediction.get_shifted_object_prediction()
+                shiftedPrediction.obb = sahiPrediction.obb
+                objectPredictions.append(shiftedPrediction)
 
             if postProcessMethod == "GREEDYNMM":
                 postprocess = GreedyNMMPostprocess(mergeThreshold, "IOS", True)
@@ -192,8 +192,8 @@ def yolo2sahi(result, shape, shift, postProcessMethod):
         prediction.obb = shape
         # Only need mask for nmm and greedy_nmm
         if postProcessMethod == "GREEDYNMM" or postProcessMethod == "NMM":
-            bmask = polygonToMask(np.array(shape), (h, w))
-            prediction.mask = Mask.from_bool_mask(bmask, [h, w])
+            seg = [list(np.array(shape).flatten())]
+            prediction.mask = Mask(segmentation=seg, full_shape=[h, w])
 
         results.append(prediction)
 
@@ -209,13 +209,22 @@ def processResults(results: List[ObjectPrediction], border=0):
                 box -= border
                 masks.append(box)
             elif hasattr(prediction, 'mask') and prediction.mask is not None:
-                imask = prediction.mask.bool_mask.astype(dtype=np.uint8)[:, :, np.newaxis]
-                contours, _ = cv2.findContours(imask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                for contour in contours:
-                    rect = cv2.minAreaRect(contour)
-                    box = cv2.boxPoints(rect).astype(int)
-                    box -= border
-                    masks.append(box)
+                if getattr(prediction.mask, 'segmentation', None):
+                    for seg in prediction.mask.segmentation:
+                        pts = np.array(seg).reshape(-1, 2).astype(np.float32)
+                        if len(pts) >= 3:
+                            rect = cv2.minAreaRect(pts)
+                            box = cv2.boxPoints(rect).astype(int)
+                            box -= border
+                            masks.append(box)
+                else:
+                    imask = prediction.mask.bool_mask.astype(dtype=np.uint8)[:, :, np.newaxis]
+                    contours, _ = cv2.findContours(imask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    for contour in contours:
+                        rect = cv2.minAreaRect(contour)
+                        box = cv2.boxPoints(rect).astype(int)
+                        box -= border
+                        masks.append(box)
             else:
                 print("can't process prediction")
 
