@@ -1,4 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
 import traceback
 from typing import List
 import cv2
@@ -6,8 +6,13 @@ import numpy as np
 
 import torch
 from ultralytics import YOLO
+from ultralytics.cfg import DEFAULT_CFG_DICT
+from ultralytics.models.yolo.obb import OBBPredictor
 from ultralytics.utils import ThreadingLocked
-from sahi.utils.torch import is_torch_cuda_available
+try:
+    from ultralytics.utils.nms import non_max_suppression
+except ImportError:  # Ultralytics 8.3 kept NMS in ops.
+    from ultralytics.utils.ops import non_max_suppression
 from sahi.postprocess.combine import NMSPostprocess, NMMPostprocess, GreedyNMMPostprocess
 from sahi.prediction import ObjectPrediction
 from sahi.annotation import Mask
@@ -25,13 +30,28 @@ DETECT_BATCH_SIZE = 6
 ROI_SIZE = 512
 
 
+class StreaksPredictor(OBBPredictor):
+    def postprocess(self, preds, img, orig_imgs, **kwargs):
+        # This is offline detection: returning empty results for unprocessed
+        # tiles after a wall-clock deadline silently loses streaks. Preserve
+        # YOLO's thresholds/NMS algorithm but finish each bounded batch.
+        predictions = non_max_suppression(
+            preds, self.args.conf, self.args.iou, self.args.classes,
+            self.args.agnostic_nms, max_det=self.args.max_det,
+            nc=len(self.model.names), rotated=True,
+            end2end=getattr(self.model, "end2end", False),
+            max_time_img=float("inf"),
+        )
+        return self.construct_results(predictions, img, orig_imgs)
+
+
 class DetectStreaks(Observable):
     def __init__(self, useGPU=True):
         super().__init__()
         if USE_GPU_IF_AVAILABLE and useGPU:
             if torch.backends.mps.is_available():
                 self.device = 'mps'
-            elif is_torch_cuda_available():
+            elif torch.cuda.is_available():
                 self.device = 'cuda:0'
             else:
                 self.device = 'cpu'
@@ -55,6 +75,10 @@ class DetectStreaks(Observable):
         with ThreadPoolExecutor(max_workers=DETECT_BATCH_SIZE) as executor:
             futures = {executor.submit(processFile, file): file for file in srcFiles}
             for future in as_completed(futures):
+                if self.shouldInterrupt():
+                    for pending in futures:
+                        pending.cancel()
+                    break
                 result = future.result()
                 if completed % showIncrement == 0:
                     self.updateJob(1, result)
@@ -69,8 +93,26 @@ class DetectStreaks(Observable):
 
     @ThreadingLocked()
     def predict(self, images, conf, batchSize, imgsz):
-        return self.model(images, conf=conf, batch=batchSize,
-                          imgsz=imgsz, device=self.device, half=True, verbose=False)
+        # Ultralytics' NumPy-list loader treats the entire list as one batch;
+        # its batch argument does not split tiles. Bound each model invocation
+        # to avoid excessive VRAM use and NMS dropping tiles on its time limit.
+        precision = {"quantize": 16} if "quantize" in DEFAULT_CFG_DICT else {"half": True}
+        results = []
+        for start in range(0, len(images), batchSize):
+            if self.shouldInterrupt():
+                raise CancelledError()
+            batch = images[start:start + batchSize]
+            predictions = self.model(batch, conf=conf, batch=len(batch),
+                                     imgsz=imgsz, device=self.device, verbose=False,
+                                     predictor=StreaksPredictor, **precision)
+            # Later conversion/merging is on the CPU; do not retain every tile's
+            # detection tensors on the GPU until the whole image is finished.
+            results.extend(prediction.cpu() for prediction in predictions)
+            if self.job is not None:
+                # Keep elapsed-time/progress displays alive between completed
+                # files without counting an unfinished image as completed.
+                self.updateJob(0)
+        return results
 
     # Sliced predictions are good at identifying small objects. Standard prediction is good at
     # fully identifying objects that span multiple slices. So we do both and combine.
@@ -80,6 +122,8 @@ class DetectStreaks(Observable):
 
     def detectStreaksInImage(self, file: InputFile, confThreshold: float, postProcessMethod: str, mergeThreshold: float) -> InputFile:
         try:
+            if self.shouldInterrupt():
+                raise CancelledError()
             img = cv2.imread(file.path)
             BORDER = ROI_SIZE // 4
             img = cv2.copyMakeBorder(img, BORDER, BORDER, BORDER, BORDER, cv2.BORDER_CONSTANT, value=[0, 0, 0])
@@ -121,9 +165,15 @@ class DetectStreaks(Observable):
                 postprocess = NMMPostprocess(mergeThreshold, "IOS", True)
 
             # combine
+            if self.shouldInterrupt():
+                raise CancelledError()
             processedObjectPredictions = postprocess(objectPredictions)
+            if self.shouldInterrupt():
+                raise CancelledError()
             file.streaksMasks = processResults(processedObjectPredictions, BORDER)
 
+        except CancelledError:
+            raise
         except Exception as e:
             traceback.print_exc()
 
