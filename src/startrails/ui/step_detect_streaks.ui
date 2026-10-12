@@ -258,7 +258,7 @@ padding: 2px;</string>
              </property>
              <property name="styleSheet">
               <string notr="true">QPushButton {
-    padding: 3px 8px;
+    padding: 3px 4px;
     border-radius: 4px;
     border: none;
     font-size: 11px;
@@ -282,7 +282,7 @@ QPushButton:checked:focus:enabled {
 }</string>
              </property>
              <property name="text">
-              <string>NMS</string>
+              <string> NMS </string>
              </property>
              <property name="checkable">
               <bool>true</bool>
@@ -302,7 +302,7 @@ QPushButton:checked:focus:enabled {
              </property>
              <property name="styleSheet">
               <string notr="true">QPushButton {
-    padding: 3px 8px;
+    padding: 3px 4px;
     border-radius: 4px;
     border: none;
     font-size: 11px;
@@ -326,7 +326,7 @@ QPushButton:checked:focus:enabled {
 }</string>
              </property>
              <property name="text">
-              <string>Greedy NMM</string>
+              <string> Greedy NMM </string>
              </property>
              <property name="checkable">
               <bool>true</bool>
