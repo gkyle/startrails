@@ -1,5 +1,5 @@
 import time
-from PySide6.QtCore import QAbstractTableModel, QEvent, QModelIndex, QRect, QSize, Qt, Signal, QSignalBlocker
+from PySide6.QtCore import QAbstractTableModel, QEvent, QModelIndex, QObject, QRect, QSize, Qt, Signal, QSignalBlocker
 from PySide6.QtGui import QAction, QActionGroup, QBrush, QFont, QIcon, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QHeaderView, QMenu, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QToolButton, QWidget
 
@@ -174,7 +174,7 @@ class FileModel(QAbstractTableModel):
                 ts = file.get_timestamp() if hasattr(file, "get_timestamp") else getattr(file, "timestamp", 0)
                 time_str = ""
                 if ts:
-                    time_str = f"\Date: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))}"
+                    time_str = f"\nDate: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))}"
                 return (f"{file.path}{time_str}\nAutomatic masks: {auto}\nManual masks: {manual}\n"
                         f"Manually deleted masks: {deleted}\n"
                         f"{'Excluded from' if excluded else 'Included in'} stack")
@@ -331,6 +331,40 @@ class FileSection(QFrame):
         if hasattr(self.ui, "sort"):
             self.sort_menu = QMenu(self.ui.sort)
             self.ui.sort.setMenu(self.sort_menu)
+
+            self._group_sort_by = QActionGroup(self.sort_menu)
+            self._group_sort_by.setExclusive(True)
+
+            self._action_sort_date = QAction("Date", self.sort_menu)
+            self._action_sort_date.setCheckable(True)
+            self._group_sort_by.addAction(self._action_sort_date)
+            self.sort_menu.addAction(self._action_sort_date)
+            self._action_sort_date.triggered.connect(lambda: self._request_sort("date", self._sort_order))
+
+            self._action_sort_name = QAction("Filename", self.sort_menu)
+            self._action_sort_name.setCheckable(True)
+            self._group_sort_by.addAction(self._action_sort_name)
+            self.sort_menu.addAction(self._action_sort_name)
+            self._action_sort_name.triggered.connect(lambda: self._request_sort("name", self._sort_order))
+
+            self.sort_menu.addSeparator()
+
+            self._group_sort_order = QActionGroup(self.sort_menu)
+            self._group_sort_order.setExclusive(True)
+
+            self._action_sort_asc = QAction("", self.sort_menu)
+            self._action_sort_asc.setCheckable(True)
+            self._group_sort_order.addAction(self._action_sort_asc)
+            self.sort_menu.addAction(self._action_sort_asc)
+            self._action_sort_asc.triggered.connect(lambda: self._request_sort(self._sort_by, "asc"))
+
+            self._action_sort_desc = QAction("", self.sort_menu)
+            self._action_sort_desc.setCheckable(True)
+            self._group_sort_order.addAction(self._action_sort_desc)
+            self.sort_menu.addAction(self._action_sort_desc)
+            self._action_sort_desc.triggered.connect(lambda: self._request_sort(self._sort_by, "desc"))
+
+            self._update_sort_menu()
             self.sort_menu.aboutToShow.connect(self._update_sort_menu)
 
         self.ui.files.header().setSectionsClickable(True)
@@ -338,46 +372,20 @@ class FileSection(QFrame):
         self.set_sort_state(self._sort_by, self._sort_order)
 
     def _update_sort_menu(self):
-        self.sort_menu.clear()
+        if not hasattr(self, "_action_sort_date"):
+            return
 
-        group_by = QActionGroup(self)
-        group_by.setExclusive(True)
-
-        action_date = QAction("Date", self)
-        action_date.setCheckable(True)
-        action_date.setChecked(self._sort_by == "date")
-        group_by.addAction(action_date)
-        self.sort_menu.addAction(action_date)
-        action_date.triggered.connect(lambda: self._request_sort("date", self._sort_order))
-
-        action_name = QAction("Filename", self)
-        action_name.setCheckable(True)
-        action_name.setChecked(self._sort_by in ("name", "filename"))
-        group_by.addAction(action_name)
-        self.sort_menu.addAction(action_name)
-        action_name.triggered.connect(lambda: self._request_sort("name", self._sort_order))
-
-        self.sort_menu.addSeparator()
-
-        group_order = QActionGroup(self)
-        group_order.setExclusive(True)
+        self._action_sort_date.setChecked(self._sort_by == "date")
+        self._action_sort_name.setChecked(self._sort_by in ("name", "filename"))
 
         asc_label = "Ascending (Oldest first)" if self._sort_by == "date" else "Ascending (A–Z)"
         desc_label = "Descending (Newest first)" if self._sort_by == "date" else "Descending (Z–A)"
 
-        action_asc = QAction(asc_label, self)
-        action_asc.setCheckable(True)
-        action_asc.setChecked(self._sort_order == "asc")
-        group_order.addAction(action_asc)
-        self.sort_menu.addAction(action_asc)
-        action_asc.triggered.connect(lambda: self._request_sort(self._sort_by, "asc"))
+        self._action_sort_asc.setText(asc_label)
+        self._action_sort_asc.setChecked(self._sort_order == "asc")
 
-        action_desc = QAction(desc_label, self)
-        action_desc.setCheckable(True)
-        action_desc.setChecked(self._sort_order == "desc")
-        group_order.addAction(action_desc)
-        self.sort_menu.addAction(action_desc)
-        action_desc.triggered.connect(lambda: self._request_sort(self._sort_by, "desc"))
+        self._action_sort_desc.setText(desc_label)
+        self._action_sort_desc.setChecked(self._sort_order == "desc")
 
     def _request_sort(self, sort_by: str, sort_order: str):
         self.set_sort_state(sort_by, sort_order)
@@ -529,44 +537,48 @@ class FileSection(QFrame):
 
         if self._inputs:
             sort_submenu = menu.addMenu("Sort by")
-
-            group_by = QActionGroup(self)
-            group_by.setExclusive(True)
-
-            act_date = QAction("Date", self)
-            act_date.setCheckable(True)
-            act_date.setChecked(self._sort_by == "date")
-            group_by.addAction(act_date)
-            sort_submenu.addAction(act_date)
-            act_date.triggered.connect(lambda: self._request_sort("date", self._sort_order))
-
-            act_name = QAction("Filename", self)
-            act_name.setCheckable(True)
-            act_name.setChecked(self._sort_by in ("name", "filename"))
-            group_by.addAction(act_name)
-            sort_submenu.addAction(act_name)
-            act_name.triggered.connect(lambda: self._request_sort("name", self._sort_order))
-
-            sort_submenu.addSeparator()
-
-            group_order = QActionGroup(self)
-            group_order.setExclusive(True)
-
-            asc_label = "Ascending (Oldest first)" if self._sort_by == "date" else "Ascending (A–Z)"
-            desc_label = "Descending (Newest first)" if self._sort_by == "date" else "Descending (Z–A)"
-
-            act_asc = QAction(asc_label, self)
-            act_asc.setCheckable(True)
-            act_asc.setChecked(self._sort_order == "asc")
-            group_order.addAction(act_asc)
-            sort_submenu.addAction(act_asc)
-            act_asc.triggered.connect(lambda: self._request_sort(self._sort_by, "asc"))
-
-            act_desc = QAction(desc_label, self)
-            act_desc.setCheckable(True)
-            act_desc.setChecked(self._sort_order == "desc")
-            group_order.addAction(act_desc)
-            sort_submenu.addAction(act_desc)
-            act_desc.triggered.connect(lambda: self._request_sort(self._sort_by, "desc"))
+            self._populate_sort_submenu(sort_submenu)
 
         menu.exec(self.ui.files.viewport().mapToGlobal(pos))
+        menu.deleteLater()
+
+    def _populate_sort_submenu(self, sort_submenu: QMenu):
+        parent = sort_submenu if isinstance(sort_submenu, QObject) else None
+        group_by = QActionGroup(parent)
+        group_by.setExclusive(True)
+
+        act_date = QAction("Date", parent) if parent else QAction("Date")
+        act_date.setCheckable(True)
+        act_date.setChecked(self._sort_by == "date")
+        group_by.addAction(act_date)
+        sort_submenu.addAction(act_date)
+        act_date.triggered.connect(lambda: self._request_sort("date", self._sort_order))
+
+        act_name = QAction("Filename", parent) if parent else QAction("Filename")
+        act_name.setCheckable(True)
+        act_name.setChecked(self._sort_by in ("name", "filename"))
+        group_by.addAction(act_name)
+        sort_submenu.addAction(act_name)
+        act_name.triggered.connect(lambda: self._request_sort("name", self._sort_order))
+
+        sort_submenu.addSeparator()
+
+        group_order = QActionGroup(parent)
+        group_order.setExclusive(True)
+
+        asc_label = "Ascending (Oldest first)" if self._sort_by == "date" else "Ascending (A–Z)"
+        desc_label = "Descending (Newest first)" if self._sort_by == "date" else "Descending (Z–A)"
+
+        act_asc = QAction(asc_label, parent) if parent else QAction(asc_label)
+        act_asc.setCheckable(True)
+        act_asc.setChecked(self._sort_order == "asc")
+        group_order.addAction(act_asc)
+        sort_submenu.addAction(act_asc)
+        act_asc.triggered.connect(lambda: self._request_sort(self._sort_by, "asc"))
+
+        act_desc = QAction(desc_label, parent) if parent else QAction(desc_label)
+        act_desc.setCheckable(True)
+        act_desc.setChecked(self._sort_order == "desc")
+        group_order.addAction(act_desc)
+        sort_submenu.addAction(act_desc)
+        act_desc.triggered.connect(lambda: self._request_sort(self._sort_by, "desc"))
