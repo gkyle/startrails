@@ -66,6 +66,24 @@ QPushButton#add:hover {
     background-color: #e2e8f0;
     color: #0f172a;
 }
+QToolButton#sort {
+    border: 2px solid transparent;
+    border-radius: 3px;
+    background: transparent;
+    min-width: 20px;
+    max-width: 20px;
+    min-height: 20px;
+    max-height: 20px;
+    padding: 0px;
+    qproperty-icon: url(:/startrails/ui/sort.svg);
+    qproperty-iconSize: 14px 14px;
+}
+QToolButton#sort:hover {
+    background-color: #e2e8f0;
+}
+QToolButton#sort::menu-indicator {
+    image: none;
+}
 QTreeView#files {
     border: none;
     background: transparent;
@@ -118,7 +136,8 @@ QMenu::separator {
     margin: 4px 6px;
 }
 QToolButton#toggle:focus:enabled { border-color: #0f172a; }
-QPushButton#add:focus:enabled { border-color: #0f172a; }</string>
+QPushButton#add:focus:enabled { border-color: #0f172a; }
+QToolButton#sort:focus:enabled { border-color: #0f172a; }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">
@@ -263,6 +282,35 @@ QPushButton#add:focus:enabled { border-color: #0f172a; }</string>
          </size>
         </property>
        </spacer>
+      </item>
+      <item>
+       <widget class="QToolButton" name="sort">
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="toolTip">
+         <string>Sort input files…</string>
+        </property>
+        <property name="accessibleName">
+         <string>Sort input files</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="icon">
+         <iconset resource="resources.qrc">
+          <normaloff>:/startrails/ui/sort.svg</normaloff>:/startrails/ui/sort.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>14</width>
+          <height>14</height>
+         </size>
+        </property>
+        <property name="popupMode">
+         <enum>QToolButton::ToolButtonPopupMode::InstantPopup</enum>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QPushButton" name="add">
@@ -499,6 +547,8 @@ QPushButton#add:focus:enabled { border-color: #0f172a; }</string>
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

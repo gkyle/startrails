@@ -1,4 +1,4 @@
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 import jsonpickle
 import os
 
@@ -46,19 +46,47 @@ class App:
     def appendInputFile(self, basename: str, path: str) -> InputFile:
         file = InputFile(basename, path)
         self.project.rawInputFiles.append(file)
-        self.saveProject()
+        self.sortInputFiles()
         return file
 
     def addInputFiles(self, paths: List[str], clear: bool = False) -> None:
         """Import one selection and persist once, keeping existing file objects."""
-        added = [InputFile(os.path.basename(path), path) for path in sorted(paths)]
+        from concurrent.futures import ThreadPoolExecutor
+
+        def make_input(p):
+            return InputFile(os.path.basename(p), p)
+
+        if len(paths) > 16:
+            with ThreadPoolExecutor(max_workers=16) as pool:
+                added = list(pool.map(make_input, paths))
+        else:
+            added = [make_input(p) for p in paths]
+
         if clear:
             self.project.rawInputFiles = []
         self.project.rawInputFiles.extend(added)
         self.sortInputFiles()
 
-    def sortInputFiles(self) -> None:
-        self.project.rawInputFiles.sort(key=lambda file: file.basename)
+    def sortInputFiles(self, sortBy: Optional[str] = None, sortOrder: Optional[str] = None) -> None:
+        if sortBy is not None:
+            self.project.sortBy = sortBy
+        if sortOrder is not None:
+            self.project.sortOrder = sortOrder
+
+        sort_by = getattr(self.project, "sortBy", "date") or "date"
+        sort_order = getattr(self.project, "sortOrder", "asc") or "asc"
+        reverse = (sort_order.lower() == "desc")
+
+        if sort_by in ("name", "filename"):
+            self.project.rawInputFiles.sort(
+                key=lambda file: (file.basename.lower() if file.basename else "", file.get_mtime()),
+                reverse=reverse,
+            )
+        else:  # "date" default
+            self.project.rawInputFiles.sort(
+                key=lambda file: (file.get_mtime(), file.basename.lower() if file.basename else ""),
+                reverse=reverse,
+            )
         self.saveProject()
 
     def removeInputFile(self, file: InputFile) -> None:
@@ -198,8 +226,14 @@ class App:
         try:
             with open(projectFile, "r") as f:
                 self.project = jsonpickle.decode(f.read(), on_missing="error")
+            if not getattr(self.project, "sortBy", None):
+                self.project.sortBy = "date"
+            if not getattr(self.project, "sortOrder", None):
+                self.project.sortOrder = "asc"
             self.state["projectFile"] = self.project.projectFile
             self.saveAppState()
+            if any(getattr(f, "timestamp", 0) == 0 for f in self.project.rawInputFiles):
+                self.sortInputFiles()
         except Exception as e:
             print(e)
             self.project = Project()

@@ -65,6 +65,7 @@ def dark_stylesheet(source: str) -> str:
         source = source.replace(f"/arrow_{direction}.svg", f"/arrow_{direction}_dark.svg")
     for direction in ("down", "right"):
         source = source.replace(f"/chevron_{direction}.svg", f"/chevron_{direction}_dark.svg")
+    source = source.replace("/sort.svg", "/sort_dark.svg")
 
     def declaration(match):
         start, space, name, separator, value = match.groups()

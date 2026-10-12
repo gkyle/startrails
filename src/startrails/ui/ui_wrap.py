@@ -240,6 +240,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             section.removeFile.connect(self.slotRemoveFile)
             section.excludeFile.connect(self.slotExcludeFile)
             self.signals.focusFile.connect(section.focus_file)
+        self.inputFiles.sortRequested.connect(self.slotSortInputFiles)
         self.inputFiles.model.summaryChanged.connect(self.updateReadyStates)
         self.resetProjectView()
 
@@ -278,6 +279,9 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.clearSourceLookup()
         self.showFile(None)
         self.inputFiles.set_files(self.app.getInputFileList())
+        sortBy = getattr(getattr(self.app, "project", None), "sortBy", "date") or "date"
+        sortOrder = getattr(getattr(self.app, "project", None), "sortOrder", "asc") or "asc"
+        self.inputFiles.set_sort_state(sortBy, sortOrder)
         self.outputFiles.set_files(self.app.getOutputFileList())
         self.sidebar.reset_settings()
         self.updateReadyStates()
@@ -288,10 +292,19 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     @Slot(File)
     def slotRefreshInputs(self, focus=None):
         self.inputFiles.set_files(self.app.getInputFileList())
+        sortBy = getattr(getattr(self.app, "project", None), "sortBy", "date") or "date"
+        sortOrder = getattr(getattr(self.app, "project", None), "sortOrder", "asc") or "asc"
+        self.inputFiles.set_sort_state(sortBy, sortOrder)
         self.sidebar.refresh_inputs()
         self.updateReadyStates()
         if focus is not None:
             self.showFile(focus)
+
+    @Slot(str, str)
+    def slotSortInputFiles(self, sortBy: str, sortOrder: str):
+        if hasattr(self.app, "sortInputFiles"):
+            self.app.sortInputFiles(sortBy=sortBy, sortOrder=sortOrder)
+        self.slotRefreshInputs(focus=self.currentFile)
 
     @Slot(File)
     def slotRefreshOutputs(self, focus=None):

@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QFrame, QHBoxLay
     QHeaderView, QLabel, QPushButton, QSizePolicy,
     QSpacerItem, QToolButton, QTreeView, QVBoxLayout,
     QWidget)
+from . import resources_rc
 
 class Ui_fileSection(object):
     def setupUi(self, fileSection):
@@ -80,6 +81,24 @@ class Ui_fileSection(object):
 "    background-color: #e2e8f0;\n"
 "    color: #0f172a;\n"
 "}\n"
+"QToolButton#sort {\n"
+"    border: 2px solid transparent;\n"
+"    border-radius: 3px;\n"
+"    background: transparent;\n"
+"    min-width: 20px;\n"
+"    max-width: 20px;\n"
+"    min-height: 20px;\n"
+"    max-height: 20px;\n"
+"    padding: 0px;\n"
+"    qproperty-icon: url(:/startrails/ui/sort.svg);\n"
+"    qproperty-iconSize: 14px 14px;\n"
+"}\n"
+"QToolButton#sort:hover {\n"
+"    background-color: #e2e8f0;\n"
+"}\n"
+"QToolButton#sort::menu-indicator {\n"
+"    image: none;\n"
+"}\n"
 "QTreeView#files {\n"
 "    border: none;\n"
 "    background: transparent;\n"
@@ -93,7 +112,8 @@ class Ui_fileSection(object):
 "}\n"
 "QTreeView#files::item:selected {\n"
 "    background-color: #eff6ff;\n"
-"    color: #1d4ed8;\n"
+"    co"
+                        "lor: #1d4ed8;\n"
 "}\n"
 "QHeaderView::section {\n"
 "    background-color: #f8fafc;\n"
@@ -113,8 +133,7 @@ class Ui_fileSection(object):
 "QMenu {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #cbd5e1;\n"
-"    border-radius: "
-                        "6px;\n"
+"    border-radius: 6px;\n"
 "    padding: 4px;\n"
 "}\n"
 "QMenu::item {\n"
@@ -133,7 +152,9 @@ class Ui_fileSection(object):
 "    margin: 4px 6px;\n"
 "}\n"
 "QToolButton#toggle:focus:enabled { border-color: #0f172a; }\n"
-"QPushButton#add:focus:enabled { border-color: #0f172a; }")
+"QPushButton#add:focus:enabled { border-color: #0f172a; }\n"
+"QToolButton#sort:focus:enabled { border-c"
+                        "olor: #0f172a; }")
         self.layout = QVBoxLayout(fileSection)
         self.layout.setSpacing(2)
         self.layout.setObjectName(u"layout")
@@ -189,6 +210,17 @@ class Ui_fileSection(object):
         self.headerSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.header.addItem(self.headerSpacer)
+
+        self.sort = QToolButton(self.headerWidget)
+        self.sort.setObjectName(u"sort")
+        self.sort.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        icon1 = QIcon()
+        icon1.addFile(u":/startrails/ui/sort.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.sort.setIcon(icon1)
+        self.sort.setIconSize(QSize(14, 14))
+        self.sort.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        self.header.addWidget(self.sort)
 
         self.add = QPushButton(self.headerWidget)
         self.add.setObjectName(u"add")
@@ -319,6 +351,13 @@ class Ui_fileSection(object):
         self.count.setAccessibleName(QCoreApplication.translate("fileSection", u"File count", None))
 #endif // QT_CONFIG(accessibility)
         self.count.setText(QCoreApplication.translate("fileSection", u"0", None))
+#if QT_CONFIG(tooltip)
+        self.sort.setToolTip(QCoreApplication.translate("fileSection", u"Sort input files\u2026", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(accessibility)
+        self.sort.setAccessibleName(QCoreApplication.translate("fileSection", u"Sort input files", None))
+#endif // QT_CONFIG(accessibility)
+        self.sort.setText("")
 #if QT_CONFIG(tooltip)
         self.add.setToolTip(QCoreApplication.translate("fileSection", u"Add files\u2026", None))
 #endif // QT_CONFIG(tooltip)
