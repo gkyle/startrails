@@ -174,7 +174,7 @@ class FileModel(QAbstractTableModel):
                 ts = file.get_timestamp() if hasattr(file, "get_timestamp") else getattr(file, "timestamp", 0)
                 time_str = ""
                 if ts:
-                    time_str = f"\nModified: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))}"
+                    time_str = f"\Date: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))}"
                 return (f"{file.path}{time_str}\nAutomatic masks: {auto}\nManual masks: {manual}\n"
                         f"Manually deleted masks: {deleted}\n"
                         f"{'Excluded from' if excluded else 'Included in'} stack")
@@ -343,7 +343,7 @@ class FileSection(QFrame):
         group_by = QActionGroup(self)
         group_by.setExclusive(True)
 
-        action_date = QAction("Date Modified", self)
+        action_date = QAction("Date", self)
         action_date.setCheckable(True)
         action_date.setChecked(self._sort_by == "date")
         group_by.addAction(action_date)
@@ -396,13 +396,13 @@ class FileSection(QFrame):
         if self._inputs:
             order_desc = "oldest first" if self._sort_order == "asc" else "newest first"
             if self._sort_by == "date":
-                tip = f"Input files sorted by Date Modified ({order_desc}). Click column header to sort by Filename."
+                tip = f"Input files sorted by Date ({order_desc}). Click column header to sort by Filename."
             else:
                 order_desc = "A–Z" if self._sort_order == "asc" else "Z–A"
                 tip = f"Input files sorted by Filename ({order_desc}). Click column header to reverse."
             header.setToolTip(tip)
             if hasattr(self.ui, "sort"):
-                sort_title = "Date Modified" if self._sort_by == "date" else "Filename"
+                sort_title = "Date" if self._sort_by == "date" else "Filename"
                 self.ui.sort.setToolTip(f"Sort files (currently: {sort_title}, {order_desc})…")
 
     def _on_header_section_clicked(self, logicalIndex: int):
@@ -533,7 +533,7 @@ class FileSection(QFrame):
             group_by = QActionGroup(self)
             group_by.setExclusive(True)
 
-            act_date = QAction("Date Modified", self)
+            act_date = QAction("Date", self)
             act_date.setCheckable(True)
             act_date.setChecked(self._sort_by == "date")
             group_by.addAction(act_date)
