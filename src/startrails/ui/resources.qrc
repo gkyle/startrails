@@ -14,5 +14,7 @@
   <file alias="chevron_right.svg">icons/chevron_right.svg</file>
   <file alias="chevron_down_dark.svg">icons/chevron_down_dark.svg</file>
   <file alias="chevron_right_dark.svg">icons/chevron_right_dark.svg</file>
+  <file alias="sort.svg">icons/sort.svg</file>
+  <file alias="sort_dark.svg">icons/sort_dark.svg</file>
  </qresource>
 </RCC>

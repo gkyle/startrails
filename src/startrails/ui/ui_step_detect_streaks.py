@@ -173,7 +173,7 @@ class Ui_DetectSettings(object):
         self.detectMergeNMS.setObjectName(u"detectMergeNMS")
         self.detectMergeNMS.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.detectMergeNMS.setStyleSheet(u"QPushButton {\n"
-"    padding: 3px 8px;\n"
+"    padding: 3px 4px;\n"
 "    border-radius: 4px;\n"
 "    border: none;\n"
 "    font-size: 11px;\n"
@@ -205,7 +205,7 @@ class Ui_DetectSettings(object):
         self.detectMergeNMM.setObjectName(u"detectMergeNMM")
         self.detectMergeNMM.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.detectMergeNMM.setStyleSheet(u"QPushButton {\n"
-"    padding: 3px 8px;\n"
+"    padding: 3px 4px;\n"
 "    border-radius: 4px;\n"
 "    border: none;\n"
 "    font-size: 11px;\n"
@@ -306,8 +306,8 @@ class Ui_DetectSettings(object):
         self.confidence.setAccessibleName(QCoreApplication.translate("DetectSettings", u"Confidence threshold", None))
 #endif // QT_CONFIG(accessibility)
         self.mergeLabel.setText(QCoreApplication.translate("DetectSettings", u"Merging", None))
-        self.detectMergeNMS.setText(QCoreApplication.translate("DetectSettings", u"NMS", None))
-        self.detectMergeNMM.setText(QCoreApplication.translate("DetectSettings", u"Greedy NMM", None))
+        self.detectMergeNMS.setText(QCoreApplication.translate("DetectSettings", u" NMS ", None))
+        self.detectMergeNMM.setText(QCoreApplication.translate("DetectSettings", u" Greedy NMM ", None))
 #if QT_CONFIG(tooltip)
         self.thresholdLabel.setToolTip(QCoreApplication.translate("DetectSettings", u"Merge threshold", None))
 #endif // QT_CONFIG(tooltip)
