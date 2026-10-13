@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'step_stack_images.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.2
+## Created by: Qt User Interface Compiler version 6.12.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -220,27 +220,7 @@ class Ui_StackSettings(object):
 
         self.fadeAmount = QSpinBox(StackSettings)
         self.fadeAmount.setObjectName(u"fadeAmount")
-        self.fadeAmount.setStyleSheet(u"QSpinBox#fadeAmount {\n"
-"    background-color: #ffffff;\n"
-"    border: 1px solid #64748b;\n"
-"    border-radius: 4px;\n"
-"    padding: 4px 6px;\n"
-"    font-size: 12px;\n"
-"    color: #0f172a;\n"
-"    min-width: 75px;\n"
-"    max-width: 75px;\n"
-"}\n"
-"QSpinBox#fadeAmount:focus {\n"
-"    border: 2px solid #0369a1;\n"
-"    padding: 3px 5px;\n"
-"}\n"
-"QSpinBox#fadeAmount:disabled {\n"
-"    background-color: #f1f5f9;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
-"QSpinBox#fadeAmount::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }\n"
-"QSpinBox#fadeAmount::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }")
+        self.fadeAmount.setStyleSheet(u"")
         self.fadeAmount.setMaximum(100)
         self.fadeAmount.setValue(20)
 
@@ -259,28 +239,6 @@ class Ui_StackSettings(object):
         self.run.setEnabled(False)
         self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.run.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.run.setStyleSheet(u"QPushButton#run {\n"
-"    font-weight: bold;\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    padding: 0px 12px;\n"
-"    border-top-left-radius: 6px;\n"
-"    border-bottom-left-radius: 6px;\n"
-"    border-top-right-radius: 0px;\n"
-"    border-bottom-right-radius: 0px;\n"
-"    font-size: 13px;\n"
-"    border: 2px solid transparent;\n"
-"    min-height: 34px;\n"
-"    max-height: 34px;\n"
-"}\n"
-"QPushButton#run:hover {\n"
-"    background-color: #075985;\n"
-"}\n"
-"QPushButton#run:disabled {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #94a3b8;\n"
-"}\n"
-"QPushButton#run:focus:enabled { border-color: #ffffff; }")
 
         self.runLayout.addWidget(self.run)
 
@@ -288,32 +246,6 @@ class Ui_StackSettings(object):
         self.advancedToggle.setObjectName(u"advancedToggle")
         self.advancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.advancedToggle.setStyleSheet(u"QToolButton#advancedToggle {\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    padding: 0px;\n"
-"    border-top-left-radius: 0px;\n"
-"    border-bottom-left-radius: 0px;\n"
-"    border-top-right-radius: 6px;\n"
-"    border-bottom-right-radius: 6px;\n"
-"    border: 2px solid transparent;\n"
-"    border-left: 1px solid #075985;\n"
-"    min-height: 34px;\n"
-"    max-height: 34px;\n"
-"    min-width: 28px;\n"
-"    max-width: 28px;\n"
-"}\n"
-"QToolButton#advancedToggle:hover {\n"
-"    background-color: #075985;\n"
-"}\n"
-"QToolButton#advancedToggle:focus:enabled {\n"
-"    border-color: #ffffff;\n"
-"}\n"
-"QToolButton#advancedToggle:disabled {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #94a3b8;\n"
-"    border-left: 1px solid #cbd5e1;\n"
-"}")
         self.advancedToggle.setCheckable(True)
         self.advancedToggle.setChecked(True)
         self.advancedToggle.setArrowType(Qt.ArrowType.DownArrow)
@@ -325,9 +257,6 @@ class Ui_StackSettings(object):
 
         self.advancedBody = QWidget(StackSettings)
         self.advancedBody.setObjectName(u"advancedBody")
-        self.advancedBody.setStyleSheet(u"QWidget#advancedBody {\n"
-"    background: transparent;\n"
-"}")
         self.advancedLayout = QVBoxLayout(self.advancedBody)
         self.advancedLayout.setSpacing(6)
         self.advancedLayout.setObjectName(u"advancedLayout")
@@ -368,22 +297,7 @@ class Ui_StackSettings(object):
 
         self.batchSize = QSpinBox(self.advancedBody)
         self.batchSize.setObjectName(u"batchSize")
-        self.batchSize.setStyleSheet(u"QSpinBox#batchSize {\n"
-"    background-color: #ffffff;\n"
-"    border: 1px solid #64748b;\n"
-"    border-radius: 4px;\n"
-"    padding: 4px 6px;\n"
-"    font-size: 12px;\n"
-"    color: #0f172a;\n"
-"    min-width: 75px;\n"
-"    max-width: 75px;\n"
-"}\n"
-"QSpinBox#batchSize:focus {\n"
-"    border: 2px solid #0369a1;\n"
-"    padding: 3px 5px;\n"
-"}\n"
-"QSpinBox#batchSize::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }\n"
-"QSpinBox#batchSize::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }")
+        self.batchSize.setStyleSheet(u"")
         self.batchSize.setMinimum(1)
         self.batchSize.setMaximum(2147483647)
         self.batchSize.setValue(16)
@@ -411,10 +325,6 @@ class Ui_StackSettings(object):
 
         self.error = QLabel(StackSettings)
         self.error.setObjectName(u"error")
-        self.error.setStyleSheet(u"QLabel#error {\n"
-"    font-size: 11px;\n"
-"    color: #b91c1c;\n"
-"}")
         self.error.setWordWrap(True)
 
         self.layout.addWidget(self.error)

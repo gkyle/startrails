@@ -289,14 +289,27 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             self.checkBox_showDeletedMasks = getattr(self.active_view, "checkBox_showDeletedMasks", None)
             self.pushButton_findBrightest = getattr(self.active_view, "pushButton_findBrightest", None)
             self.pushButton_fillGaps = getattr(self.active_view, "pushButton_fillGaps", None)
-            sidebar_widget.setMinimumSize(320, 0)
-            sidebar_widget.setMaximumSize(320, 16777215)
-            self.bodySplitter.setSizes([320, 1000])
-            self.bodySplitter.setStretchFactor(0, 0)
-            self.bodySplitter.setStretchFactor(1, 1)
-            handle = self.bodySplitter.handle(1)
-            if handle is not None:
-                handle.setEnabled(False)
+            if mode_name == "denoise":
+                sidebar_width = 370
+                sidebar_widget.setMinimumSize(350, 0)
+                sidebar_widget.setMaximumSize(450, 16777215)
+                self.bodySplitter.setHandleWidth(4)
+                self.bodySplitter.setSizes([sidebar_width, 1000])
+                self.bodySplitter.setStretchFactor(0, 0)
+                self.bodySplitter.setStretchFactor(1, 1)
+                handle = self.bodySplitter.handle(1)
+                if handle is not None:
+                    handle.setEnabled(True)
+            else:
+                sidebar_widget.setMinimumSize(320, 0)
+                sidebar_widget.setMaximumSize(320, 16777215)
+                self.bodySplitter.setHandleWidth(0)
+                self.bodySplitter.setSizes([320, 1000])
+                self.bodySplitter.setStretchFactor(0, 0)
+                self.bodySplitter.setStretchFactor(1, 1)
+                handle = self.bodySplitter.handle(1)
+                if handle is not None:
+                    handle.setEnabled(False)
 
         self.active_view.bind()
         self.active_view.resetProjectView()

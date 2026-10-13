@@ -37,6 +37,8 @@ class StarTrailsWorkflow(Workflow):
     # -------------------------------------------------------------------------
 
     def getInputFileList(self) -> List[InputFile]:
+        if not hasattr(self.project, "rawInputFiles"):
+            return []
         return self.project.rawInputFiles
 
     get_input_file_list = getInputFileList
@@ -114,6 +116,8 @@ class StarTrailsWorkflow(Workflow):
     # -------------------------------------------------------------------------
 
     def getOutputFileList(self) -> List[OutputFile]:
+        if not hasattr(self.project, "outputFiles"):
+            return []
         return self.project.outputFiles
 
     get_output_file_list = getOutputFileList

@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'sidebar.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.2
+## Created by: Qt User Interface Compiler version 6.12.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -58,46 +58,7 @@ class Ui_Sidebar(object):
 "}\n"
 "QScrollBar:horizontal {\n"
 "    height: 0px;\n"
-"}\n"
-"QLabel#projectTitle, QLabel#operationsTitle {\n"
-"    font-size: 15px;\n"
-"    font-weight: bold;\n"
-"    color: #0f172a;\n"
-"}\n"
-"QLabel#operationsProgressLabel {\n"
-"    font-size: 11px;\n"
-"    color"
-                        ": #64748b;\n"
-"    font-weight: 500;\n"
-"}\n"
-"QProgressBar#operationsProgress {\n"
-"    background-color: #e2e8f0;\n"
-"    border-radius: 3px;\n"
-"    max-height: 6px;\n"
-"    min-height: 6px;\n"
-"    border: none;\n"
-"}\n"
-"QProgressBar#operationsProgress::chunk {\n"
-"    background-color: #16a34a;\n"
-"    border-radius: 3px;\n"
-"}\n"
-"QPushButton#newProject, QPushButton#openProject {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 2px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#newProject:hover, QPushButton#openProject:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#newProject:pressed, QPushButton#openProject:pressed {\n"
-"    background-color: #e2e8f0;\n"
-"}\n"
-"QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { border-color: #0f172a; }")
+"}")
         self.layout = QVBoxLayout(sidebar)
         self.layout.setSpacing(0)
         self.layout.setObjectName(u"layout")
@@ -115,6 +76,11 @@ class Ui_Sidebar(object):
         self.contentLayout.setContentsMargins(8, 8, 8, 8)
         self.projectTitle = QLabel(self.content)
         self.projectTitle.setObjectName(u"projectTitle")
+        self.projectTitle.setStyleSheet(u"QLabel#projectTitle {\n"
+"    font-size: 15px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
 
         self.contentLayout.addWidget(self.projectTitle)
 
@@ -124,12 +90,50 @@ class Ui_Sidebar(object):
         self.newProject = QPushButton(self.content)
         self.newProject.setObjectName(u"newProject")
         self.newProject.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.newProject.setStyleSheet(u"QPushButton#newProject {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 2px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#newProject:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#newProject:pressed {\n"
+"    background-color: #e2e8f0;\n"
+"}\n"
+"QPushButton#newProject:focus:enabled {\n"
+"    border-color: #0f172a;\n"
+"}")
 
         self.projectActions.addWidget(self.newProject)
 
         self.openProject = QPushButton(self.content)
         self.openProject.setObjectName(u"openProject")
         self.openProject.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.openProject.setStyleSheet(u"QPushButton#openProject {\n"
+"    background-color: #ffffff;\n"
+"    color: #1e293b;\n"
+"    border: 2px solid #cbd5e1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#openProject:hover {\n"
+"    background-color: #f1f5f9;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#openProject:pressed {\n"
+"    background-color: #e2e8f0;\n"
+"}\n"
+"QPushButton#openProject:focus:enabled {\n"
+"    border-color: #0f172a;\n"
+"}")
 
         self.projectActions.addWidget(self.openProject)
 
@@ -154,16 +158,37 @@ class Ui_Sidebar(object):
         self.operationsHeaderLayout.setContentsMargins(0, 4, 0, 0)
         self.operationsTitle = QLabel(self.operationsHeaderWidget)
         self.operationsTitle.setObjectName(u"operationsTitle")
+        self.operationsTitle.setStyleSheet(u"QLabel#operationsTitle {\n"
+"    font-size: 15px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
 
         self.operationsHeaderLayout.addWidget(self.operationsTitle)
 
         self.operationsProgressLabel = QLabel(self.operationsHeaderWidget)
         self.operationsProgressLabel.setObjectName(u"operationsProgressLabel")
+        self.operationsProgressLabel.setStyleSheet(u"QLabel#operationsProgressLabel {\n"
+"    font-size: 11px;\n"
+"    color: #64748b;\n"
+"    font-weight: 500;\n"
+"}")
 
         self.operationsHeaderLayout.addWidget(self.operationsProgressLabel)
 
         self.operationsProgress = QProgressBar(self.operationsHeaderWidget)
         self.operationsProgress.setObjectName(u"operationsProgress")
+        self.operationsProgress.setStyleSheet(u"QProgressBar#operationsProgress {\n"
+"    background-color: #e2e8f0;\n"
+"    border-radius: 3px;\n"
+"    max-height: 6px;\n"
+"    min-height: 6px;\n"
+"    border: none;\n"
+"}\n"
+"QProgressBar#operationsProgress::chunk {\n"
+"    background-color: #16a34a;\n"
+"    border-radius: 3px;\n"
+"}")
         self.operationsProgress.setMaximum(4)
         self.operationsProgress.setValue(0)
         self.operationsProgress.setTextVisible(False)

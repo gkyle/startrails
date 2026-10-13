@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DenoiseSkySettings</class>
+ <widget class="QWidget" name="DenoiseSkySettings">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>340</width>
+    <height>436</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing">
+    <number>6</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="modelRow">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="modelLabel">
+       <property name="text">
+        <string>Model:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="modelType">
+       <item>
+        <property name="text">
+         <string>Nightstack (v6 Fine-Tuned)</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>SegFormer (ADE20K Pretrained)</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Heuristic (Classic/Color)</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Auto (Best Available)</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="actLayout">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="detect">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="toolTip">
+        <string>Run automatic celestial sky detection and horizon refinement</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton#detect {
+    font-weight: bold;
+    background-color: #2b5b84;
+    color: #ffffff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    border: 1px solid transparent;
+}
+QPushButton#detect:hover {
+    background-color: #3873a8;
+}
+QPushButton#detect:disabled {
+    background-color: #cbd5e1;
+    color: #94a3b8;
+}</string>
+       </property>
+       <property name="text">
+        <string>Detect Sky</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="refineMask">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="toolTip">
+        <string>Snap mask boundary edges to natural landscape horizon</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton#refineMask {
+    font-weight: bold;
+    background-color: #3b6e4e;
+    color: #ffffff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    border: 1px solid transparent;
+}
+QPushButton#refineMask:hover {
+    background-color: #4b8c63;
+}
+QPushButton#refineMask:disabled {
+    background-color: #cbd5e1;
+    color: #94a3b8;
+}</string>
+       </property>
+       <property name="text">
+        <string>Refine Mask</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="refineParamLayout">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="searchRadiusLabel">
+       <property name="text">
+        <string>Radius:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="searchRadius">
+       <property name="maximumSize">
+        <size>
+         <width>75</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Search ribbon radius around rough boundary (0 = Adaptive)</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="specialValueText">
+        <string>Auto</string>
+       </property>
+       <property name="suffix">
+        <string> px</string>
+       </property>
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>100</number>
+       </property>
+       <property name="value">
+        <number>0</number>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="erosionLabel">
+       <property name="text">
+        <string>Erosion:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="erosionPixels">
+       <property name="maximumSize">
+        <size>
+         <width>75</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Inward erosion radius in pixels to prevent sky mask bleeding onto foreground</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="specialValueText">
+        <string>None (0 px)</string>
+       </property>
+       <property name="suffix">
+        <string> px</string>
+       </property>
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>50</number>
+       </property>
+       <property name="value">
+        <number>5</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="showMaskOverlay">
+     <property name="toolTip">
+      <string>Show sky mask on canvas and enable interactive brush editing tools</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QCheckBox { font-weight: bold; color: #0284c7; margin-top: 2px; }</string>
+     </property>
+     <property name="text">
+      <string>Show &amp; Edit Mask Overlay</string>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="brushLayout">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="brushLabel">
+       <property name="text">
+        <string>Brush:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="brushSlider">
+       <property name="minimum">
+        <number>2</number>
+       </property>
+       <property name="maximum">
+        <number>200</number>
+       </property>
+       <property name="value">
+        <number>25</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="brushRadius">
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="suffix">
+        <string> px</string>
+       </property>
+       <property name="minimum">
+        <number>2</number>
+       </property>
+       <property name="maximum">
+        <number>200</number>
+       </property>
+       <property name="value">
+        <number>25</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="utilLayout">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="clearMask">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="toolTip">
+        <string>Clear the entire sky mask (set to all ground)</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton#clearMask {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 11px;
+    font-weight: 500;
+}
+QPushButton#clearMask:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}</string>
+       </property>
+       <property name="text">
+        <string>Clear</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="fullFrameMask">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="toolTip">
+        <string>Set entire image frame as sky (100% sky for deep sky scenes)</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton#fullFrameMask {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 11px;
+    font-weight: 500;
+}
+QPushButton#fullFrameMask:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}</string>
+       </property>
+       <property name="text">
+        <string>Full Frame</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="brushHint">
+     <property name="styleSheet">
+      <string notr="true">color: #64748b; font-size: 11px;</string>
+     </property>
+     <property name="text">
+      <string>Brush: Left-click paint sky, Right-click erase ground.
+Hotkeys: [ / ] or Ctrl+Wheel to resize.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="error">
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

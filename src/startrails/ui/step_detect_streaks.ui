@@ -7,34 +7,8 @@
     <x>0</x>
     <y>0</y>
     <width>232</width>
-    <height>204</height>
+    <height>206</height>
    </rect>
-  </property>
-  <property name="styleSheet">
-   <string notr="true">QLabel {
-    color: #334155;
-    font-size: 12px;
-}
-QDoubleSpinBox, QSpinBox, QComboBox, QLineEdit {
-    background-color: #ffffff;
-    border: 1px solid #64748b;
-    border-radius: 4px;
-    padding: 4px 6px;
-    font-size: 12px;
-    color: #0f172a;
-}
-QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus, QLineEdit:focus {
-    border: 2px solid #0369a1;
-    padding: 3px 5px;
-}
-QCheckBox {
-    font-size: 12px;
-    color: #1e293b;
-    spacing: 6px;
-    border: 2px solid transparent;
-}
-QDoubleSpinBox::up-arrow, QSpinBox::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }
-QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">
@@ -68,30 +42,6 @@ QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/ar
        <property name="focusPolicy">
         <enum>Qt::FocusPolicy::NoFocus</enum>
        </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton#run {
-    font-weight: bold;
-    background-color: #0369a1;
-    color: #ffffff;
-    padding: 0px 12px;
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
-    border-top-right-radius: 0px;
-    border-bottom-right-radius: 0px;
-    font-size: 13px;
-    border: 2px solid transparent;
-    min-height: 34px;
-    max-height: 34px;
-}
-QPushButton#run:hover {
-    background-color: #075985;
-}
-QPushButton#run:disabled {
-    background-color: #e2e8f0;
-    color: #94a3b8;
-}
-QPushButton#run:focus:enabled { border-color: #ffffff; }</string>
-       </property>
        <property name="text">
         <string>Detect Streaks</string>
        </property>
@@ -111,34 +61,6 @@ QPushButton#run:focus:enabled { border-color: #ffffff; }</string>
        <property name="accessibleName">
         <string>Advanced settings</string>
        </property>
-       <property name="styleSheet">
-        <string notr="true">QToolButton#advancedToggle {
-    background-color: #0369a1;
-    color: #ffffff;
-    padding: 0px;
-    border-top-left-radius: 0px;
-    border-bottom-left-radius: 0px;
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
-    border: 2px solid transparent;
-    border-left: 1px solid #075985;
-    min-height: 34px;
-    max-height: 34px;
-    min-width: 28px;
-    max-width: 28px;
-}
-QToolButton#advancedToggle:hover {
-    background-color: #075985;
-}
-QToolButton#advancedToggle:focus:enabled {
-    border-color: #ffffff;
-}
-QToolButton#advancedToggle:disabled {
-    background-color: #e2e8f0;
-    color: #94a3b8;
-    border-left: 1px solid #cbd5e1;
-}</string>
-       </property>
        <property name="text">
         <string/>
        </property>
@@ -157,11 +79,6 @@ QToolButton#advancedToggle:disabled {
    </item>
    <item>
     <widget class="QWidget" name="advancedBody" native="true">
-     <property name="styleSheet">
-      <string notr="true">QWidget#advancedBody {
-    background: transparent;
-}</string>
-     </property>
      <layout class="QVBoxLayout" name="advancedLayout">
       <property name="spacing">
        <number>6</number>
@@ -209,6 +126,9 @@ QToolButton#advancedToggle:disabled {
          <widget class="QDoubleSpinBox" name="confidence">
           <property name="accessibleName">
            <string>Confidence threshold</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"/>
           </property>
           <property name="maximum">
            <double>1.000000000000000</double>
@@ -357,6 +277,9 @@ QPushButton:checked:focus:enabled {
           <property name="accessibleName">
            <string>Merge threshold</string>
           </property>
+          <property name="styleSheet">
+           <string notr="true"/>
+          </property>
           <property name="maximum">
            <double>1.000000000000000</double>
           </property>
@@ -411,10 +334,6 @@ QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg);
    </item>
    <item>
     <widget class="QLabel" name="error">
-     <property name="styleSheet">
-      <string notr="true">font-size: 11px;
-color: #b91c1c;</string>
-     </property>
      <property name="text">
       <string/>
      </property>
