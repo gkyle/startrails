@@ -10,10 +10,9 @@ from startrails.lib.util import Observable, imread
 from startrails.lib.denoise.config import DenoiseConfig
 from startrails.lib.denoise.profiler import PipelineProfiler
 from startrails.lib.denoise.io.mask import MaskHandler
-from startrails.lib.denoise.io.sky_detector import AutoSkyDetector
-from startrails.lib.denoise.io.mask_refiner import MaskRefiner
-from startrails.lib.denoise.alignment.detector import StarDetector
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
+from startrails.op.denoise.detect_sky import DetectSky
+from startrails.op.denoise.refine_mask import RefineMask
 from startrails.op.denoise.align_stars import AlignStars, AlignResult
 from startrails.op.denoise.stack_denoise import StackDenoise
 from startrails.op.denoise.compose_horizon import ComposeHorizon
@@ -26,7 +25,7 @@ ProgressCallback = Callable[[float, str], None]
 class DenoisePipeline(Observable):
     """Orchestrates image calibration, sky detection, alignment, stacking, and composition."""
 
-    def __init__(self, config: DenoiseConfig):
+    def __init__(self, config: Optional[DenoiseConfig] = None):
         super().__init__()
         self.config = config
         self.last_profile: Optional[PipelineProfiler] = None
@@ -34,15 +33,29 @@ class DenoisePipeline(Observable):
         self.last_gradient_mask: Optional[np.ndarray] = None
 
     def _get_base_image_path(self) -> Path:
+        if self.config is None:
+            raise ValueError("No configuration provided.")
         return AlignStars.get_base_image_path(self.config)
+
+    def _resolve_refined_mask_export_path(self) -> Optional[Path]:
+        if self.config is None or not (self.config.export_refined_mask and self.config.output_path):
+            return None
+        out_p = Path(self.config.output_path).resolve()
+        return (
+            Path(self.config.refined_mask_path).resolve()
+            if self.config.refined_mask_path
+            else out_p.parent / f"{out_p.stem}.refined_mask.png"
+        )
 
     def _load_base_and_mask(
         self,
         calibrate_fn: Callable[[np.ndarray], np.ndarray],
         profiler: Optional[PipelineProfiler] = None,
         _report: Optional[ProgressCallback] = None,
-    ) -> Tuple[np.ndarray, Optional[bytes], Optional[np.ndarray], Optional[np.ndarray], Tuple[int, int]]:
+    ) -> Tuple[np.ndarray, Optional[bytes], Optional[np.ndarray], Tuple[int, int]]:
         """Load and calibrate base image, load/auto-detect/refine sky mask."""
+        if self.config is None:
+            raise ValueError("No configuration provided.")
         if profiler is None:
             profiler = PipelineProfiler()
 
@@ -68,66 +81,62 @@ class DenoisePipeline(Observable):
             model_name = self.config.auto_mask_model or "auto"
             report(0.18, f"Running auto sky detection ({model_name})...")
             with profiler.measure("2a. Automatic Sky Detection"):
-                coarse_sky = AutoSkyDetector.detect(
+                detect_op = DetectSky()
+                coarse_sky = detect_op.detect(
                     base_calibrated,
                     model_type=model_name,
                     model_path=self.config.auto_mask_path,
                     device="auto",
                 )
             report(0.19, "Refining detected sky mask to natural horizon...")
+            mask_out = self._resolve_refined_mask_export_path()
+            if mask_out:
+                report(0.20, f"Exporting refined mask: {mask_out.name}...")
             with profiler.measure("2b. Sky Mask Refinement"):
-                sky_mask = MaskRefiner.refine(
+                refine_op = RefineMask()
+                sky_mask = refine_op.refine(
                     base_calibrated,
                     coarse_sky,
                     search_radius=self.config.mask_search_radius,
                     erosion_pixels=self.config.mask_erosion_pixels,
                     foliage_protection=self.config.mask_foliage_protection,
+                    export_path=mask_out,
                 )
-            if self.config.export_refined_mask and self.config.output_path:
-                out_p = Path(self.config.output_path).resolve()
-                mask_out = (
-                    Path(self.config.refined_mask_path).resolve()
-                    if self.config.refined_mask_path
-                    else out_p.parent / f"{out_p.stem}.refined_mask.png"
-                )
-                report(0.20, f"Exporting refined mask: {mask_out.name}...")
-                MaskHandler.save_mask(sky_mask, mask_out)
+            if mask_out:
                 self.config.refined_mask_path = mask_out
                 logger.info(f"Exported automatic refined mask to {mask_out}")
         elif self.config.refine_sky_mask and sky_mask is not None:
             report(0.19, "Refining sky mask edges to natural horizon...")
+            mask_out = self._resolve_refined_mask_export_path()
+            if mask_out:
+                report(0.20, f"Exporting refined mask: {mask_out.name}...")
             with profiler.measure("2b. Sky Mask Refinement"):
-                sky_mask = MaskRefiner.refine(
+                refine_op = RefineMask()
+                sky_mask = refine_op.refine(
                     base_calibrated,
                     sky_mask,
                     search_radius=self.config.mask_search_radius,
                     erosion_pixels=self.config.mask_erosion_pixels,
                     foliage_protection=self.config.mask_foliage_protection,
+                    export_path=mask_out,
                 )
-            if self.config.export_refined_mask and self.config.output_path:
-                out_p = Path(self.config.output_path).resolve()
-                mask_out = (
-                    Path(self.config.refined_mask_path).resolve()
-                    if self.config.refined_mask_path
-                    else out_p.parent / f"{out_p.stem}.refined_mask.png"
-                )
-                report(0.20, f"Exporting refined mask: {mask_out.name}...")
-                MaskHandler.save_mask(sky_mask, mask_out)
+            if mask_out:
                 self.config.refined_mask_path = mask_out
                 logger.info(f"Exported refined mask to {mask_out}")
 
-        eroded_sky_mask = StarDetector.prepare_sky_mask(sky_mask)
-        return base_calibrated, None, sky_mask, eroded_sky_mask, (h, w)
+        return base_calibrated, None, sky_mask, (h, w)
 
     def compute_homographies(self, progress_callback: Optional[ProgressCallback] = None) -> dict[Path, np.ndarray]:
         """Compute and cache alignment homographies for all star images."""
+        if self.config is None:
+            raise ValueError("No configuration provided.")
         align_op = AlignStars()
         if progress_callback:
             def _cb(total, inc, count, done, data):
                 progress_callback(count / max(1, total), f"Aligned frame {count}/{total}")
             align_op.addObserver(_cb)
 
-        result = align_op.align(self.config, warp_frames=False)
+        align_op.align(self.config, warp_frames=False)
         return self.config.homographies
 
     def stack_base_frames(
@@ -136,6 +145,9 @@ class DenoisePipeline(Observable):
         profiler: Optional[PipelineProfiler] = None,
     ) -> Tuple[HorizonCompositor, List[np.ndarray], Optional[bytes]]:
         """Calibrate, align, and stack base sky and ground frames."""
+        if self.config is None:
+            raise ValueError("No configuration provided.")
+
         def _report(progress: float, message: str):
             if progress_callback:
                 progress_callback(progress, message)
@@ -150,7 +162,7 @@ class DenoisePipeline(Observable):
         calibrate_fn = AlignStars.prepare_calibrator(self.config)
 
         with profiler.measure("1 & 2. Frame Loading & Mask Preparation"):
-            base_calibrated, base_icc, sky_mask, eroded_sky_mask, (h, w) = self._load_base_and_mask(
+            base_calibrated, base_icc, sky_mask, (h, w) = self._load_base_and_mask(
                 calibrate_fn, profiler=profiler, _report=_report
             )
 
@@ -166,7 +178,12 @@ class DenoisePipeline(Observable):
             align_op.addObserver(_align_cb)
 
         with profiler.measure("3. Frame Alignment & Warping"):
-            align_result = align_op.align(self.config, warp_frames=True, sky_mask=sky_mask)
+            align_result = align_op.align(
+                self.config,
+                warp_frames=True,
+                sky_mask=sky_mask,
+                base_calibrated=base_calibrated,
+            )
 
         if align_result is None or self.shouldInterrupt():
             raise RuntimeError("Pipeline cancelled during alignment")
@@ -190,12 +207,21 @@ class DenoisePipeline(Observable):
         self.last_compositor = compositor
         return compositor, align_result.sky_coverages, None
 
-    def run(self, progress_callback: Optional[ProgressCallback] = None) -> Path:
+    def run(
+        self,
+        config: Optional[DenoiseConfig] = None,
+        progress_callback: Optional[ProgressCallback] = None,
+    ) -> Path:
         """Run the complete denoise pipeline according to configuration.
 
         Returns:
             output_path: Path to the generated stacked image
         """
+        if config is not None:
+            self.config = config
+        if self.config is None:
+            raise ValueError("No configuration provided.")
+
         def _report(progress: float, message: str):
             if progress_callback:
                 progress_callback(progress, message)
@@ -230,10 +256,7 @@ class DenoisePipeline(Observable):
                 write_output=True,
             )
 
-        if self.config.export_gradient_mask and sky_coverages:
-            h, w = stacked.shape[:2]
-            sky_mask = MaskHandler.create_mask(shape=(h, w), mask_path=self.config.mask_path, mask_array=self.config.mask_array)
-            self.last_gradient_mask = MaskHandler.compute_gradient_mask(sky_coverages, sky_mask=sky_mask)
+        self.last_gradient_mask = compose_op.last_gradient_mask
 
         _report(1.0, f"Stacking completed successfully: {written_path}")
         self.updateJob(100, written_path)

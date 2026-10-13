@@ -19,6 +19,7 @@ class ComposeHorizon(Observable):
 
     def __init__(self):
         super().__init__()
+        self.last_gradient_mask: Optional[np.ndarray] = None
 
     def compose(
         self,
@@ -51,9 +52,6 @@ class ComposeHorizon(Observable):
         if self.shouldInterrupt():
             return None
 
-        if self.shouldInterrupt():
-            return None
-
         written_path: Optional[Path] = None
         if write_output and config.output_path:
             output_path = Path(config.output_path).resolve()
@@ -70,6 +68,7 @@ class ComposeHorizon(Observable):
                 gradient_mask = MaskHandler.compute_gradient_mask(sky_coverages, sky_mask=sky_mask)
                 MaskHandler.save_mask(gradient_mask, grad_mask_out)
                 config.gradient_mask_path = grad_mask_out
+                self.last_gradient_mask = gradient_mask
 
-        self.updateJob(1, {"stacked": stacked, "path": written_path})
+        self.updateJob(1, {"stacked": stacked, "path": written_path, "gradient_mask": self.last_gradient_mask})
         return stacked, written_path

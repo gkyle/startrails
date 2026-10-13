@@ -92,3 +92,21 @@ class Operation(Enum):
     STACK = 1
     FILL_GAPS = 2
     FILL_GAPS_MASK = 3
+
+
+class DenoiseInputFile(File):
+    """File representation for denoise inputs (star, dark/noise, or flat/vignetting)."""
+
+    def __init__(
+        self,
+        basename: str | None = None,
+        path: str | None = None,
+        timestamp: float | None = None,
+        mtime: float | None = None,
+        file_id: str | None = None,
+    ):
+        super().__init__(basename=basename, path=path, timestamp=timestamp, mtime=mtime)
+        self.file_id = file_id or uuid4().hex
+        self.is_reference = False
+        self.aligned = False
+

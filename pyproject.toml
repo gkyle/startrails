@@ -112,6 +112,7 @@ select = [
 "src/startrails/ui/*" = ["N801", "N802"]
 "src/startrails/app.py" = ["N802"]
 "src/startrails/op/*" = ["N802"]
+"src/startrails/workflow/startrails.py" = ["N802"]
 "src/startrails/lib/gpu.py" = ["N802"]
 "src/startrails/lib/util.py" = ["N802"]
 "src/setup/*" = ["N802"]
