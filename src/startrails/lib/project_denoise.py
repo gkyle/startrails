@@ -8,6 +8,7 @@ import jsonpickle
 
 from startrails.lib.file import DenoiseInputFile, Unpickle
 from startrails.lib.denoise.config import DenoiseConfig
+from startrails.lib.project_type import get_project_output_dir, DENOISE_EXT
 
 
 class DenoiseProject(Unpickle):
@@ -15,7 +16,7 @@ class DenoiseProject(Unpickle):
 
     def __init__(
         self,
-        projectFile: str = "projects/default.proj_denoise",
+        projectFile: str = f"projects/default{DENOISE_EXT}",
         star_files: Optional[List[DenoiseInputFile]] = None,
         noise_files: Optional[List[DenoiseInputFile]] = None,
         vignetting_files: Optional[List[DenoiseInputFile]] = None,
@@ -72,6 +73,10 @@ class DenoiseProject(Unpickle):
 
         # Hardware acceleration
         self.use_gpu: bool = True
+
+    def get_output_dir(self) -> Path:
+        """Resolve the authoritative output directory for this project."""
+        return get_project_output_dir(self.projectFile)
 
     def get_reference_file(self) -> Optional[DenoiseInputFile]:
         """Return the authoritative reference frame, defaulting to the first star frame."""

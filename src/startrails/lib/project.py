@@ -1,9 +1,11 @@
 """Project state model and persistence for StarTrails mode."""
 
 from __future__ import annotations
+from pathlib import Path
 from typing import List, Optional
 
 from startrails.lib.file import InputFile, OutputFile, Unpickle
+from startrails.lib.project_type import get_project_output_dir, STARTRAILS_EXT
 
 
 class Project(Unpickle):
@@ -13,7 +15,7 @@ class Project(Unpickle):
         self,
         rawInputFiles: Optional[List[InputFile]] = None,
         outputFiles: Optional[List[OutputFile]] = None,
-        projectFile: str = "projects/default.project.json",
+        projectFile: str = f"projects/default{STARTRAILS_EXT}",
         sortBy: str = "date",
         sortOrder: str = "asc",
     ):
@@ -25,3 +27,7 @@ class Project(Unpickle):
         self.projectFile = projectFile
         self.sortBy = sortBy
         self.sortOrder = sortOrder
+
+    def get_output_dir(self) -> Path:
+        """Resolve the authoritative output directory for this project."""
+        return get_project_output_dir(self.projectFile)

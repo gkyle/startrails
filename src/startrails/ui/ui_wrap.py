@@ -1,4 +1,8 @@
+from functools import partial
+import logging
+from pathlib import Path
 from typing import Optional
+import numpy as np
 from PySide6.QtGui import (QPixmap, QGuiApplication)
 from PySide6.QtCore import QThreadPool, QTimer, QPoint, Qt, QObject, Slot, QSignalBlocker
 from PySide6.QtWidgets import (
@@ -8,8 +12,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QMessageBox,
 )
-from functools import partial
-import numpy as np
 
 from startrails.app import App
 from startrails.ui.progress import ProgressBarUpdater
@@ -21,6 +23,9 @@ from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.theme import system_theme, theme_palette
 from startrails.lib.file import File, InputFile, OutputFile
 from startrails.lib.source_map import SourceLookup, SourceMapError
+from startrails.lib.project_type import STARTRAILS_EXT, DENOISE_EXT, LEGACY_STARTRAILS_EXT
+
+logger = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
@@ -727,23 +732,53 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
 
     def doNewProject(self):
         QApplication.processEvents()
-        file_path, _ = QFileDialog.getSaveFileName(
+        filter_str = (
+            f"StarTrails Project (*{STARTRAILS_EXT});;"
+            f"Denoise Project (*{DENOISE_EXT});;"
+            f"Legacy Project (*{LEGACY_STARTRAILS_EXT})"
+        )
+        file_path, selected_filter = QFileDialog.getSaveFileName(
             None,
             "Create a New Project",
-            "projects/new_project.project.json",
-            "Project Files (*.project.json)"
+            f"projects/new_project{STARTRAILS_EXT}",
+            filter_str,
         )
 
         if file_path:
+            path = Path(file_path)
+            if not path.suffix:
+                if DENOISE_EXT in selected_filter:
+                    file_path = str(path.with_suffix(DENOISE_EXT))
+                elif LEGACY_STARTRAILS_EXT in selected_filter:
+                    file_path = str(path) + LEGACY_STARTRAILS_EXT
+                else:
+                    file_path = str(path.with_suffix(STARTRAILS_EXT))
+
             self.app.newProject(file_path)
             self.resetProjectView()
 
     def doOpenProject(self):
         QApplication.processEvents()
-        fileName, _ = QFileDialog.getOpenFileName(dir="projects", filter="Project Files (*.project.json)")
+        filter_str = (
+            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{LEGACY_STARTRAILS_EXT});;"
+            f"StarTrails Project (*{STARTRAILS_EXT});;"
+            f"Denoise Project (*{DENOISE_EXT});;"
+            f"Legacy Project (*{LEGACY_STARTRAILS_EXT});;"
+            "All Files (*)"
+        )
+        fileName, _ = QFileDialog.getOpenFileName(
+            None,
+            "Open Project",
+            dir="projects",
+            filter=filter_str,
+        )
         if fileName:
-            self.app.loadProject(fileName)
-            self.resetProjectView()
+            try:
+                self.app.loadProject(fileName)
+                self.resetProjectView()
+            except Exception as e:
+                logger.error(f"Failed to open project {fileName}: {e}")
+                QMessageBox.warning(None, "Open Project", f"Could not open project:\n{e}")
 
     def doExportMasks(self):
         folderName = QFileDialog.getExistingDirectory(caption="Choose folder to save mask files")

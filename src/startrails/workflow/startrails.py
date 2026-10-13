@@ -155,7 +155,7 @@ class StarTrailsWorkflow(Workflow):
         filteredInputFiles = list(filter(lambda file: not file.excludeFromStack, self.project.rawInputFiles))
         if not filteredInputFiles:
             raise ValueError("Include at least one input image in the stack.")
-        outDir = self.project.projectFile.replace(".json", "")
+        outDir = str(self.project.get_output_dir())
         filename = StackImages.suggestOutFileName(filteredInputFiles[0], outDir)
         os.makedirs(outDir, exist_ok=True)
 
@@ -239,7 +239,7 @@ class StarTrailsWorkflow(Workflow):
         fgm_module = getattr(app_module, "fgm", getattr(self.app, "fgm", fgm))
         fillGaps = fgm_module.FillGaps()
         fillGaps.addObserver(progressBar)
-        outDir = self.project.projectFile.replace(".json", "")
+        outDir = str(self.project.get_output_dir())
         filenameFillGaps, fileNameFillGapsMask = fgm_module.FillGaps.suggestOutFileName(file, outDir)
         fileFillGaps = self.appendOutputFile(
             os.path.basename(filenameFillGaps), filenameFillGaps, "FillGaps"

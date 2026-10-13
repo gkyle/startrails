@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 import jsonpickle
 
@@ -14,6 +15,14 @@ from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.util import Observable
 from startrails.lib.project import Project
 from startrails.lib.project_denoise import DenoiseProject
+from startrails.lib.project_type import (
+    STARTRAILS_EXT,
+    DENOISE_EXT,
+    TYPE_DENOISE,
+    detect_project_type_from_path,
+    UnsupportedProjectError,
+    InvalidProjectError,
+)
 from startrails.lib.gpu import GPUInfo
 from startrails.workflow.base import Workflow
 from startrails.workflow.startrails import StarTrailsWorkflow
@@ -37,9 +46,17 @@ class App:
         self.loadAppState()
 
         # Ensure default denoise project exists on disk
-        DenoiseProject.ensure_default_project("projects/default.proj_denoise")
+        DenoiseProject.ensure_default_project(f"projects/default{DENOISE_EXT}")
 
-        self.loadProject(self.state.get("projectFile", "projects/default.project.json"))
+        default_proj = self.state.get("projectFile", f"projects/default{STARTRAILS_EXT}")
+        if not os.path.exists(default_proj) and os.path.exists("projects/default.project.json"):
+            default_proj = "projects/default.project.json"
+
+        try:
+            self.loadProject(default_proj)
+        except Exception as e:
+            logger.warning(f"Could not load project {default_proj}: {e}")
+            self.newProject(f"projects/default{STARTRAILS_EXT}")
         self.loadAppState()
 
     @property
@@ -166,7 +183,7 @@ class App:
         except Exception as e:
             logger.debug(f"Could not load stateFile {self.stateFile}: {e}")
             self.state = {
-                "projectFile": "projects/default.project.json",
+                "projectFile": f"projects/default{STARTRAILS_EXT}",
             }
 
     def saveAppState(self):
@@ -174,17 +191,49 @@ class App:
             f.write(jsonpickle.encode(self.state, indent=4))
 
     def loadProject(self, projectFile: str) -> None:
-        try:
-            with open(projectFile, "r") as f:
-                self.project = jsonpickle.decode(f.read(), on_missing="error")
-        except Exception as e:
-            logger.debug(f"Failed to load project {projectFile}: {e}")
-            if projectFile.endswith(".proj_denoise"):
-                self.project = DenoiseProject(projectFile=projectFile)
-            else:
-                self.project = Project(projectFile=projectFile)
-            self.saveProject()
+        path = Path(projectFile)
+        if not path.exists():
+            if path.name.startswith("default."):
+                proj_type = detect_project_type_from_path(path)
+                if proj_type == TYPE_DENOISE:
+                    self.project = DenoiseProject(projectFile=str(path))
+                else:
+                    self.project = Project(projectFile=str(path))
+                self.workflow = self._create_workflow(self.project)
+                self.saveProject()
+                return
+            raise FileNotFoundError(f"Project file not found: {projectFile}")
 
+        # Validate format/type before replacing the active project
+        try:
+            raw_text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            try:
+                raw_text = path.read_text(encoding="latin-1")
+            except Exception as e:
+                raise InvalidProjectError(f"Could not read project file '{path}': {e}") from e
+
+        stripped = raw_text.strip()
+        if stripped.startswith("<?xml") or stripped.startswith("<project") or path.suffix.lower() == ".xml":
+            raise UnsupportedProjectError(
+                f"Unsupported XML project file: '{path.name}'. StarTrails does not support XML project files."
+            )
+
+        try:
+            loaded_proj = jsonpickle.decode(raw_text, on_missing="error")
+        except Exception as e:
+            raise InvalidProjectError(f"Failed to decode project file '{path}': {e}") from e
+
+        if not isinstance(loaded_proj, (Project, DenoiseProject)):
+            raise InvalidProjectError(
+                f"File '{path}' does not contain a recognized StarTrails or Denoise project (got {type(loaded_proj).__name__})."
+            )
+
+        # Treat the chosen Open filename as the authoritative save path
+        loaded_proj.projectFile = str(path)
+
+        # Validation succeeded: safely replace active project and workflow
+        self.project = loaded_proj
         self.workflow = self._create_workflow(self.project)
 
         if isinstance(self.project, Project):
@@ -214,7 +263,8 @@ class App:
         self.saveProject()
 
     def newProject(self, fileName: str):
-        if fileName.endswith(".proj_denoise"):
+        proj_type = detect_project_type_from_path(fileName)
+        if proj_type == TYPE_DENOISE:
             self.project = DenoiseProject(projectFile=fileName)
         else:
             self.project = Project(projectFile=fileName)
