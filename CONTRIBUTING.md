@@ -29,3 +29,24 @@ When creating or modifying user interface components:
   uv run --no-sync python tools/generate_ui.py
   ```
 - **Never edit generated files directly** (`ui_*.py` and `resources_rc.py`), as they are overwritten by `generate_ui.py`.
+
+## Code Naming Conventions
+
+For consistency across the codebase, all new Python code must adhere to standard PEP 8 naming conventions:
+
+- **Files & Modules**: `snake_case.py` (e.g., `sky_detector.py`, `freeze_ground.py`, `workflow_base.py`).
+- **Classes**: `PascalCase` (e.g., `DarkCalibrator`, `FreezeGroundStacker`, `DenoisePipeline`).
+- **Functions & Methods**: `snake_case` (e.g., `compute_master_dark()`, `get_array_module()`, `free_gpu_memory()`).
+- **Variables & Arguments**: `snake_case` (e.g., `chunk_rows`, `use_gpu`, `input_path`).
+- **Constants**: `UPPER_SNAKE_CASE` (e.g., `DEFAULT_CHUNK_ROWS`, `MAX_RETRIES`).
+
+*(Note: Legacy code and Qt-required method overrides such as `mousePressEvent` or Qt-generated classes `Ui_*` are exempted, but all newly authored components must follow these conventions).*
+
+### Linting Checks
+
+Run the following lightweight checks to verify naming consistency:
+
+```
+# Check function (N802) and class (N801) naming conventions
+uvx ruff check
+```
