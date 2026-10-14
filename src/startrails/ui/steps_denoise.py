@@ -139,8 +139,6 @@ class DenoiseAlignSettings(QWidget):
 
     settingsChanged = Signal()
 
-    DETECTOR_MAP = {0: "auto", 1: "orb", 2: "akaze"}
-    REV_DETECTOR_MAP = {v: k for k, v in DETECTOR_MAP.items()}
 
     def __init__(self, app: Optional[App] = None, parent: Optional[QWidget] = None, ui: Any = None):
         if not isinstance(parent, QWidget) and parent is not None:
@@ -156,14 +154,8 @@ class DenoiseAlignSettings(QWidget):
             self.ui.advancedToggle.setChecked(False)
             self._toggle_advanced(False)
 
-        if hasattr(self.ui, "warpFrames"):
-            self.ui.warpFrames.toggled.connect(self._on_change)
         if hasattr(self.ui, "useGPU"):
             self.ui.useGPU.toggled.connect(self._on_change)
-        if hasattr(self.ui, "detectorType"):
-            self.ui.detectorType.currentIndexChanged.connect(self._on_change)
-        if hasattr(self.ui, "maxStars"):
-            self.ui.maxStars.valueChanged.connect(self._on_change)
 
         self.reset()
 
@@ -175,18 +167,9 @@ class DenoiseAlignSettings(QWidget):
         self.settingsChanged.emit()
 
     def reset(self) -> None:
-        if hasattr(self.ui, "warpFrames"):
-            with QSignalBlocker(self.ui.warpFrames):
-                self.ui.warpFrames.setChecked(True)
         if hasattr(self.ui, "useGPU"):
             with QSignalBlocker(self.ui.useGPU):
                 self.ui.useGPU.setChecked(True)
-        if hasattr(self.ui, "detectorType"):
-            with QSignalBlocker(self.ui.detectorType):
-                self.ui.detectorType.setCurrentIndex(0)
-        if hasattr(self.ui, "maxStars"):
-            with QSignalBlocker(self.ui.maxStars):
-                self.ui.maxStars.setValue(500)
         self.ui.referenceFile.setText("None")
         self.ui.alignStatus.setText("Homographies: 0 computed")
         self.ui.error.clear()
@@ -199,10 +182,7 @@ class DenoiseAlignSettings(QWidget):
 
     def values(self) -> Dict[str, Any]:
         return {
-            "warp_frames": self.ui.warpFrames.isChecked() if hasattr(self.ui, "warpFrames") else True,
             "use_gpu": self.ui.useGPU.isChecked() if hasattr(self.ui, "useGPU") else True,
-            "detector_type": self.DETECTOR_MAP.get(self.ui.detectorType.currentIndex(), "auto") if hasattr(self.ui, "detectorType") else "auto",
-            "max_stars": self.ui.maxStars.value() if hasattr(self.ui, "maxStars") else 500,
         }
 
     def set_from_project(self) -> None:
@@ -245,7 +225,7 @@ class DenoiseStackSettings(QWidget):
 
     settingsChanged = Signal()
 
-    METHOD_MAP = {0: "sigma_clipped", 1: "median", 2: "mean"}
+    METHOD_MAP = {0: "sigma_clipped", 1: "mean"}
     REV_METHOD_MAP = {v: k for k, v in METHOD_MAP.items()}
 
     def __init__(self, app: Optional[App] = None, parent: Optional[QWidget] = None, ui: Any = None):
@@ -264,7 +244,6 @@ class DenoiseStackSettings(QWidget):
 
         self.ui.method.currentIndexChanged.connect(self._on_change)
         self.ui.sigmaThreshold.valueChanged.connect(self._on_change)
-        self.ui.roundStars.toggled.connect(self._on_change)
         self.ui.sigmaIterations.valueChanged.connect(self._on_change)
         self.ui.useGPU.toggled.connect(self._on_change)
 
@@ -282,8 +261,6 @@ class DenoiseStackSettings(QWidget):
             self.ui.method.setCurrentIndex(0)
         with QSignalBlocker(self.ui.sigmaThreshold):
             self.ui.sigmaThreshold.setValue(1.2)
-        with QSignalBlocker(self.ui.roundStars):
-            self.ui.roundStars.setChecked(False)
         with QSignalBlocker(self.ui.sigmaIterations):
             self.ui.sigmaIterations.setValue(3)
         with QSignalBlocker(self.ui.useGPU):
@@ -300,7 +277,6 @@ class DenoiseStackSettings(QWidget):
             "sigma_clip_threshold": self.ui.sigmaThreshold.value(),
             "sigma_clip_iterations": self.ui.sigmaIterations.value(),
             "use_gpu": self.ui.useGPU.isChecked(),
-            "anisotropic_star_rounding": self.ui.roundStars.isChecked(),
         }
 
     def set_from_project(self) -> None:
@@ -310,6 +286,8 @@ class DenoiseStackSettings(QWidget):
         if not hasattr(proj, "stack_method"):
             return
         method_name = getattr(proj, "stack_method", "sigma_clipped")
+        if method_name not in self.REV_METHOD_MAP:
+            method_name = proj.stack_method = "sigma_clipped"
         with QSignalBlocker(self.ui.method):
             self.ui.method.setCurrentIndex(self.REV_METHOD_MAP.get(method_name, 0))
         with QSignalBlocker(self.ui.sigmaThreshold):
@@ -318,8 +296,6 @@ class DenoiseStackSettings(QWidget):
             self.ui.sigmaIterations.setValue(int(getattr(proj, "sigma_clip_iterations", 3)))
         with QSignalBlocker(self.ui.useGPU):
             self.ui.useGPU.setChecked(bool(getattr(proj, "use_gpu", True)))
-        with QSignalBlocker(self.ui.roundStars):
-            self.ui.roundStars.setChecked(bool(getattr(proj, "anisotropic_star_rounding", False)))
         stem = "project"
         if hasattr(proj, "get_project_stem"):
             stem = proj.get_project_stem()
@@ -352,7 +328,6 @@ class DenoiseStackSettings(QWidget):
         proj.sigma_clip_threshold = vals["sigma_clip_threshold"]
         proj.sigma_clip_iterations = vals["sigma_clip_iterations"]
         proj.use_gpu = vals["use_gpu"]
-        setattr(proj, "anisotropic_star_rounding", vals["anisotropic_star_rounding"])
 
     def refresh_inputs(self, ready: bool = False) -> None:
         self.ui.run.setEnabled(ready)

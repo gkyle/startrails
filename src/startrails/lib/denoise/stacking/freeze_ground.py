@@ -339,6 +339,8 @@ class FreezeGroundStacker:
         Returns:
             stacked_image: float32 array of shape (H, W, C) or (H, W) or None if interrupted
         """
+        if method not in ("sigma_clipped", "mean"):
+            raise ValueError(f"Unsupported stacking method: {method}")
         n_frames = len(frames)
         if n_frames == 0:
             raise ValueError("No frames to stack.")

@@ -40,7 +40,6 @@ class Ui_DenoiseStackSettings(object):
         self.method = QComboBox(DenoiseStackSettings)
         self.method.addItem("")
         self.method.addItem("")
-        self.method.addItem("")
         self.method.setObjectName(u"method")
 
         self.methodRow.addWidget(self.method)
@@ -68,30 +67,6 @@ class Ui_DenoiseStackSettings(object):
 
 
         self.layout.addLayout(self.thresholdRow)
-
-        self.roundStarsRow = QHBoxLayout()
-        self.roundStarsRow.setObjectName(u"roundStarsRow")
-        self.roundStarsLabel = QLabel(DenoiseStackSettings)
-        self.roundStarsLabel.setObjectName(u"roundStarsLabel")
-        self.roundStarsLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
-
-        self.roundStarsRow.addWidget(self.roundStarsLabel)
-
-        self.roundStars = QCheckBox(DenoiseStackSettings)
-        self.roundStars.setObjectName(u"roundStars")
-        self.roundStars.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.roundStars.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.roundStars.setStyleSheet(u"QCheckBox#roundStars { spacing: 0px;}\n"
-"QCheckBox#roundStars::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
-"QCheckBox#roundStars::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#roundStars::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
-"")
-        self.roundStars.setChecked(False)
-
-        self.roundStarsRow.addWidget(self.roundStars, 0, Qt.AlignmentFlag.AlignRight)
-
-
-        self.layout.addLayout(self.roundStarsRow)
 
         self.runLayout = QHBoxLayout()
         self.runLayout.setSpacing(0)
@@ -188,7 +163,6 @@ class Ui_DenoiseStackSettings(object):
         self.layout.addWidget(self.error)
 
 #if QT_CONFIG(shortcut)
-        self.roundStarsLabel.setBuddy(self.roundStars)
         self.useGPULabel.setBuddy(self.useGPU)
 #endif // QT_CONFIG(shortcut)
 
@@ -200,22 +174,10 @@ class Ui_DenoiseStackSettings(object):
     def retranslateUi(self, DenoiseStackSettings):
         self.methodLabel.setText(QCoreApplication.translate("DenoiseStackSettings", u"Method", None))
         self.method.setItemText(0, QCoreApplication.translate("DenoiseStackSettings", u"Sigma Clipped Mean", None))
-        self.method.setItemText(1, QCoreApplication.translate("DenoiseStackSettings", u"Median", None))
-        self.method.setItemText(2, QCoreApplication.translate("DenoiseStackSettings", u"Arithmetic Mean", None))
+        self.method.setItemText(1, QCoreApplication.translate("DenoiseStackSettings", u"Arithmetic Mean", None))
 
         self.sigmaThresholdLabel.setText(QCoreApplication.translate("DenoiseStackSettings", u"Threshold", None))
         self.sigmaThreshold.setSuffix(QCoreApplication.translate("DenoiseStackSettings", u" \u03c3", None))
-#if QT_CONFIG(tooltip)
-        self.roundStarsLabel.setToolTip(QCoreApplication.translate("DenoiseStackSettings", u"Circularize elongated or trailed stars along their major axis using directional PSF coordinate reshaping.", None))
-#endif // QT_CONFIG(tooltip)
-        self.roundStarsLabel.setText(QCoreApplication.translate("DenoiseStackSettings", u"Anisotropic star rounding", None))
-#if QT_CONFIG(tooltip)
-        self.roundStars.setToolTip(QCoreApplication.translate("DenoiseStackSettings", u"Circularize elongated or trailed stars along their major axis using directional PSF coordinate reshaping.", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(accessibility)
-        self.roundStars.setAccessibleName(QCoreApplication.translate("DenoiseStackSettings", u"Anisotropic star rounding", None))
-#endif // QT_CONFIG(accessibility)
-        self.roundStars.setText("")
 #if QT_CONFIG(tooltip)
         self.run.setToolTip(QCoreApplication.translate("DenoiseStackSettings", u"Stack sky and ground base frames without blend or denoise", None))
 #endif // QT_CONFIG(tooltip)

@@ -1216,10 +1216,7 @@ class DenoiseView(ModeView):
                 desc="Aligning star frames...",
             )
             cfg = self.app.workflow.get_config()
-            cfg.warp_frames_for_stacking = vals.get("warp_frames", True)
             cfg.use_gpu = vals.get("use_gpu", True)
-            cfg.detector_type = vals.get("detector_type", "auto")
-            cfg.max_stars = vals.get("max_stars", 500)
 
             result = self.app.workflow.do_align_stars(
                 config=cfg,
@@ -1267,9 +1264,6 @@ class DenoiseView(ModeView):
                     desc="Aligning star frames...",
                 )
                 align_vals = self.alignSettings.values() if self.alignSettings else {}
-                cfg.warp_frames_for_stacking = align_vals.get("warp_frames", True)
-                cfg.detector_type = align_vals.get("detector_type", "auto")
-                cfg.max_stars = align_vals.get("max_stars", 500)
 
                 align_result = self.app.workflow.do_align_stars(
                     config=cfg,

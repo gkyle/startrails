@@ -47,11 +47,6 @@
        </item>
        <item>
         <property name="text">
-         <string>Median</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
          <string>Arithmetic Mean</string>
         </property>
        </item>
@@ -98,55 +93,6 @@
      </item>
     </layout>
    </item>
-   <item>
-    <layout class="QHBoxLayout" name="roundStarsRow">
-     <item>
-      <widget class="QLabel" name="roundStarsLabel">
-       <property name="styleSheet">
-        <string notr="true">color: #334155; font-size: 12px;</string>
-       </property>
-       <property name="toolTip">
-        <string>Circularize elongated or trailed stars along their major axis using directional PSF coordinate reshaping.</string>
-       </property>
-       <property name="text">
-        <string>Anisotropic star rounding</string>
-       </property>
-       <property name="buddy">
-        <cstring>roundStars</cstring>
-       </property>
-      </widget>
-     </item>
-     <item alignment="Qt::AlignmentFlag::AlignRight">
-      <widget class="QCheckBox" name="roundStars">
-       <property name="cursor">
-        <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
-       </property>
-       <property name="toolTip">
-        <string>Circularize elongated or trailed stars along their major axis using directional PSF coordinate reshaping.</string>
-       </property>
-       <property name="accessibleName">
-        <string>Anisotropic star rounding</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QCheckBox#roundStars { spacing: 0px;}
-QCheckBox#roundStars::indicator { width: 36px; height: 20px; border-radius: 10px; }
-QCheckBox#roundStars::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#roundStars::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
-</string>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="checked">
-        <bool>false</bool>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
    <item>
     <layout class="QHBoxLayout" name="runLayout">
      <property name="spacing">
