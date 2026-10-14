@@ -104,11 +104,8 @@ class AlignStars(DenoiseOperation):
                 mask_array=config.mask_array,
             )
 
-        eroded_sky_mask = StarDetector.prepare_sky_mask(sky_mask)
-
-        # Detect stars in base frame
-        ref_stars = StarDetector.detect_stars(base_calibrated, eroded_sky_mask)
-        logger.info(f"Detected {len(ref_stars)} stars in reference frame: {base_path.name}")
+        ref_stars = None
+        eroded_sky_mask = None
 
         aligned_sky_frames: List[np.ndarray] = []
         sky_coverages: List[np.ndarray] = []
@@ -130,14 +127,17 @@ class AlignStars(DenoiseOperation):
 
             # Homography estimation
             matrix = config.homographies.get(p_resolved)
-            if matrix is None and p_resolved in config.homographies:
-                matrix = config.homographies[p_resolved]
+            reused_transform = matrix is not None or p_resolved == base_path
 
             if matrix is None:
                 if p_resolved == base_path:
                     matrix = np.eye(2, 3, dtype=np.float32)
                     config.homographies[p_resolved] = matrix
                 else:
+                    if ref_stars is None:
+                        eroded_sky_mask = StarDetector.prepare_sky_mask(sky_mask)
+                        ref_stars = StarDetector.detect_stars(base_calibrated, eroded_sky_mask)
+                        logger.info(f"Detected {len(ref_stars)} stars in reference frame: {base_path.name}")
                     target_stars = StarDetector.detect_stars(frame_cal, eroded_sky_mask)
                     pts_ref, pts_target = StarMatcher.match_stars(ref_stars, target_stars)
                     if len(pts_target) >= 3:
@@ -168,7 +168,10 @@ class AlignStars(DenoiseOperation):
                 sky_coverages.append(coverage)
                 raw_ground_frames.append(frame_cal)
 
-            self.updateJob(1, {"index": i, "total": len(config.star_images), "filename": p_path.name, "frame": p_path, "matrix": matrix})
+            progress_data = {"index": i, "total": len(config.star_images), "filename": p_path.name, "frame": p_path, "matrix": matrix}
+            if reused_transform:
+                progress_data["desc"] = f"Preparing aligned frame {i + 1}/{n_stars}: {p_path.name}"
+            self.updateJob(1, progress_data)
 
         return AlignResult(
             homographies=config.homographies,

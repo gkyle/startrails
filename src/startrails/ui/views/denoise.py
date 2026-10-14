@@ -269,9 +269,12 @@ class DenoiseView(ModeView):
         if not hasattr(self.app.workflow, "get_star_files"):
             return
         self.app.workflow.project.validate_cached_results()
+        alignment_result = self.last_align_result if (
+            self._project is self.app.project and self.app.project.alignment_is_current()
+        ) else None
         self._generation += 1
         self._project = self.app.project
-        self.last_align_result = None
+        self.last_align_result = alignment_result
         self.last_compositor = None
         self._output_saved = False
         self._pending_horizon_params = None
@@ -351,7 +354,8 @@ class DenoiseView(ModeView):
             self._show_task_error(task_id, str(error))
             return None
         if revision != self.app.workflow.project.processing_revision:
-            self.last_align_result = None
+            if not self.app.project.alignment_is_current():
+                self.last_align_result = None
             self.last_compositor = None
             self._output_saved = False
             self._generation += 1
@@ -1040,12 +1044,15 @@ class DenoiseView(ModeView):
             return
 
         vals = self.stack_settings.values() if self.stack_settings else {}
-        needs_align = self.last_align_result is None or not getattr(self.last_align_result, "aligned_sky_frames", None)
+        needs_prepare = self.last_align_result is None or not getattr(self.last_align_result, "aligned_sky_frames", None)
         n_stars = len(stars)
         total_stack_steps = n_stars + n_stars + 1
-        total_steps = (n_stars + total_stack_steps) if needs_align else total_stack_steps
+        total_steps = (n_stars + total_stack_steps) if needs_prepare else total_stack_steps
 
-        align_vals = self.align_settings.values() if self.align_settings else {}
+        prepare_description = (
+            "Preparing aligned frames from saved transforms..."
+            if self.app.workflow.has_cached_alignment(config_snapshot) else "Aligning star frames..."
+        )
         generation = self._generation
 
         def work():
@@ -1055,12 +1062,12 @@ class DenoiseView(ModeView):
             cfg.sigma_clip_iterations = vals.get("sigma_clip_iterations", 3)
             cfg.use_gpu = vals.get("use_gpu", True)
 
-            if needs_align:
+            if needs_prepare:
                 align_updater = ProgressBarUpdater(
                     getattr(self.shell, "progressBar", None),
                     getattr(self.shell, "label_progressBar", None),
                     total=len(stars),
-                    desc="Aligning star frames...",
+                    desc=prepare_description,
                     result_guard=self._result_guard(generation),
                 )
 

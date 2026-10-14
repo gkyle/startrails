@@ -110,10 +110,13 @@ class DenoiseProject(Unpickle):
         self.final_output_path = None
 
     def validate_cached_results(self) -> None:
-        if self.homographies and self.alignment_signature != self.source_signature():
+        if self.homographies and not self.alignment_is_current():
             self.invalidate_results()
         elif self.stack_signature and self.stack_signature != self.source_signature(stacking=True):
             self.invalidate_results(alignment=False)
+
+    def alignment_is_current(self) -> bool:
+        return self.alignment_signature == self.source_signature()
 
     def record_stacks(self) -> None:
         self.stack_signature = self.source_signature(stacking=True)
@@ -194,7 +197,7 @@ class DenoiseProject(Unpickle):
 
         homographies_dict: dict[Path, Any] = {}
         for k, v in self.homographies.items():
-            homographies_dict[Path(k)] = copy.deepcopy(v)
+            homographies_dict[Path(k).resolve()] = copy.deepcopy(v)
 
         out_dir = self.get_output_dir()
         stem = self.get_project_stem()

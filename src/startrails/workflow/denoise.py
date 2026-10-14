@@ -225,6 +225,15 @@ class DenoiseWorkflow(Workflow):
 
     doRefineMask = do_refine_mask
 
+    @staticmethod
+    def has_cached_alignment(config: DenoiseConfig) -> bool:
+        """Whether all non-reference frames have reusable transforms."""
+        if not config.star_images:
+            return False
+        base_path = AlignStars.get_base_image_path(config)
+        return all(Path(path).resolve() == base_path or config.homographies.get(Path(path).resolve()) is not None
+                   for path in config.star_images)
+
     def do_align_stars(
         self,
         config: Optional[DenoiseConfig] = None,
