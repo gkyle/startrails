@@ -80,6 +80,7 @@ class DenoiseView(ModeView):
         self._output_saved: bool = False
 
         self.last_compositor: Any = None
+        self._horizon_preview_id: Optional[int] = None
         self.last_align_result: Any = None
 
         # Live horizon tuning worker & debounce state
@@ -212,6 +213,8 @@ class DenoiseView(ModeView):
         if self.tune_settings is not None:
             self.connect_signal(self.tune_settings.gradient_mask_toggled, self._on_gradient_mask_toggled)
             self.connect_signal(self.tune_settings.settings_changed, self._schedule_horizon_tuning)
+        if self.tune_card is not None:
+            self.connect_signal(self.tune_card.expanded, lambda: self._schedule_horizon_tuning(save=False))
         if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
             self.connect_signal(self.shell.canvas_main.mask_changed, self._on_canvas_mask_changed)
             self.connect_signal(self.shell.canvas_main.brush_radius_changed, self._on_canvas_brush_radius_changed)
@@ -397,6 +400,7 @@ class DenoiseView(ModeView):
         QTimer.singleShot(0, self.shell, deliver)
 
     def show_file(self, file: Optional[File]) -> None:
+        self._horizon_preview_id = None
         if hasattr(self.shell, "currentFile"):
             self.shell.currentFile = file
         if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
@@ -452,6 +456,7 @@ class DenoiseView(ModeView):
         self.update_ready_states()
 
     def _cancel_background_jobs(self) -> None:
+        self._horizon_preview_id = None
         self._horizon_debounce_timer.stop()
         self._horizon_save_debounce_timer.stop()
         self._pending_horizon_params = None
@@ -526,20 +531,35 @@ class DenoiseView(ModeView):
             "value_denoise": vals.get("horizon_value_denoise_strength", 0.2),
         }
 
-    def _schedule_horizon_tuning(self) -> None:
+    def _schedule_horizon_tuning(self, save: bool = True) -> None:
         if self._disposed:
             return
         if self.last_compositor is None:
             self.last_compositor = self._find_existing_compositor()
         if self.last_compositor is None:
             return
+        canvas = getattr(self.shell, "canvas_main", None)
+        if canvas is not None and self._horizon_preview_id != id(self.last_compositor):
+            canvas.clear_horizon_overlay()
+            canvas.set_mask_edit_mode(False)
+            canvas.setFromNumpyArray(self.last_compositor.base_composite, resetZoomAndPosition=False, is_bgr=False)
+            self._horizon_preview_id = id(self.last_compositor)
         # Invalidate immediately, before the debounce interval elapses.
         self._horizon_request_id += 1
-        self._final_save_request_id += 1
+        if save:
+            self._final_save_request_id += 1
         for worker in tuple(self._background_workers):
-            worker.cancel()
-        self._horizon_debounce_timer.start()
-        self._horizon_save_debounce_timer.start()
+            if save or isinstance(worker, HorizonOverlayWorker):
+                worker.cancel()
+        if self._horizon_params()["enable_corrections"]:
+            self._horizon_debounce_timer.start()
+        else:
+            self._horizon_debounce_timer.stop()
+            self._pending_horizon_params = None
+            if canvas is not None:
+                canvas.clear_horizon_overlay()
+        if save:
+            self._horizon_save_debounce_timer.start()
 
     def _dispatch_async_save_final_composite(self) -> None:
         if self._disposed or self._project is not self.app.project or self.last_compositor is None:
@@ -589,6 +609,8 @@ class DenoiseView(ModeView):
 
     def _dispatch_horizon_tuning(self) -> None:
         if self._disposed or self._project is not self.app.project or self.last_compositor is None:
+            return
+        if not self._horizon_params()["enable_corrections"]:
             return
         if self._horizon_worker is not None and self._horizon_worker in self._background_workers:
             self._pending_horizon_params = True
@@ -1110,6 +1132,7 @@ class DenoiseView(ModeView):
                             resetZoomAndPosition=False,
                             is_bgr=False,
                         )
+                        self._horizon_preview_id = id(compositor)
                         if compositor.gradient_mask is not None:
                             self.shell.canvas_main.set_gradient_mask(compositor.gradient_mask)
                 if self.stack_card is not None:
