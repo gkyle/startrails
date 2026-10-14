@@ -45,6 +45,8 @@ class DenoiseView(ModeView):
         super().__init__(app, shell)
         self._project = app.project
         self._generation = 0
+        self._disposed = False
+        self._background_workers = set()
         self._sidebar: Optional[SidebarDenoise] = None
         self._starFiles = None
         self._noiseFiles = None
@@ -521,12 +523,7 @@ class DenoiseView(ModeView):
             canvas.setDenoiseMask(None)
             canvas.setGradientMask(None)
             canvas.clearHorizonOverlay()
-        self._horizon_debounce_timer.stop()
-        self._horizon_save_debounce_timer.stop()
-        if self._horizon_worker is not None and self._horizon_worker.isRunning():
-            self._horizon_worker.cancel()
-        if self._final_save_worker is not None and self._final_save_worker.isRunning():
-            self._final_save_worker.cancel()
+        self._cancel_background_jobs()
 
         stars = self.app.workflow.get_star_files()
         darks = self.app.workflow.get_noise_files()
@@ -586,7 +583,7 @@ class DenoiseView(ModeView):
     def _post_result(self, generation: int, callback) -> None:
         """Deliver only results belonging to this view's current project session."""
         def deliver():
-            if generation == self._generation and self._project is self.app.project:
+            if not self._disposed and generation == self._generation and self._project is self.app.project:
                 callback()
 
         QTimer.singleShot(0, self.shell, deliver)
@@ -649,165 +646,164 @@ class DenoiseView(ModeView):
             self.sidebar.set_output_saved(self._output_saved)
             self.sidebar.update_operations_progress(self.app)
 
-    def teardown(self) -> None:
+    def _cancel_background_jobs(self) -> None:
         self._horizon_debounce_timer.stop()
-        if self._horizon_worker is not None and self._horizon_worker.isRunning():
-            self._horizon_worker.cancel()
-            self._horizon_worker = None
-        if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            self.shell.canvas_main.setMaskEditMode(False)
-            self.shell.canvas_main.clearHorizonOverlay()
-            self.shell.canvas_main.setGradientMaskVisible(False)
+        self._horizon_save_debounce_timer.stop()
+        self._pending_horizon_params = None
+        self._pending_final_save = None
+        self._horizon_request_id += 1
+        self._final_save_request_id += 1
+        for worker in tuple(self._background_workers):
+            worker.cancel()
+
+    def teardown(self) -> None:
+        self._disposed = True
+        self._generation += 1
+        self._cancel_background_jobs()
+        canvas = getattr(self.shell, "canvas_main", None)
+        if canvas is not None:
+            canvas.setMaskEditMode(False)
+            canvas.clearHorizonOverlay()
+            canvas.setGradientMaskVisible(False)
         super().teardown()
         if self._sidebar is not None:
             self._sidebar.setParent(None)
 
-    # -------------------------------------------------------------------------
-    # Denoise Step Operations
-    # -------------------------------------------------------------------------
-    # Denoise Step Operations & Canvas Interactions
-    # -------------------------------------------------------------------------
+    def wait_for_workers(self) -> None:
+        """Keep QThreads alive through shutdown, including retired project jobs."""
+        for worker in tuple(self._background_workers):
+            worker.cancel()
+            worker.wait()
+            staged = getattr(worker, "staged_path", None)
+            if staged is not None:
+                staged.unlink(missing_ok=True)
+
+    def _track_worker(self, worker) -> None:
+        worker.project = self._project
+        worker.generation = self._generation
+        self._background_workers.add(worker)
+        def release():
+            self._background_workers.discard(worker)
+            worker.deleteLater()
+        worker.finished.connect(release)
+
+    def _worker_is_current(self, worker, request_id: int, latest_id: int) -> bool:
+        return (
+            not self._disposed and worker is not None
+            and worker.project is self.app.project
+            and worker.generation == self._generation
+            and request_id == latest_id
+            and not worker.is_cancelled()
+        )
+
+    def _horizon_params(self) -> dict:
+        vals = self.tuneSettings.values() if self.tuneSettings else {}
+        return {
+            "blend": vals.get("horizon_blend_percent", 60.0),
+            "blur_radius": vals.get("horizon_blur_radius", 2.0),
+            "denoise_strength": vals.get("horizon_denoise_strength", 0.2),
+            "denoise_enabled": vals.get("denoise_horizon_band", True),
+            "enable_corrections": vals.get("enable_horizon_corrections", True),
+            "color_denoise": vals.get("horizon_color_denoise_strength", 1.0),
+            "value_denoise": vals.get("horizon_value_denoise_strength", 0.2),
+        }
 
     def _schedule_horizon_tuning(self) -> None:
+        if self._disposed:
+            return
         if self.last_compositor is None:
             self.last_compositor = self._find_existing_compositor()
         if self.last_compositor is None:
             return
-        self._horizon_debounce_timer.start(75)
-        self._horizon_save_debounce_timer.start(1000)
+        # Invalidate immediately, before the debounce interval elapses.
+        self._horizon_request_id += 1
+        self._final_save_request_id += 1
+        for worker in tuple(self._background_workers):
+            worker.cancel()
+        self._horizon_debounce_timer.start()
+        self._horizon_save_debounce_timer.start()
 
     def _dispatch_async_save_final_composite(self) -> None:
-        if self.last_compositor is None:
-            self.last_compositor = self._find_existing_compositor()
-        if self.last_compositor is None:
+        if self._disposed or self._project is not self.app.project or self.last_compositor is None:
             return
-        vals = self.tuneSettings.values() if self.tuneSettings else {}
-        params = {
-            "blend": vals.get("horizon_blend_percent", 60.0),
-            "blur_radius": vals.get("horizon_blur_radius", 2.0),
-            "denoise_strength": vals.get("horizon_denoise_strength", 0.2),
-            "denoise_enabled": vals.get("denoise_horizon_band", True),
-            "enable_corrections": vals.get("enable_horizon_corrections", True),
-            "color_denoise": vals.get("horizon_color_denoise_strength", 1.0),
-            "value_denoise": vals.get("horizon_value_denoise_strength", 0.2),
-        }
-        proj = getattr(self.app.workflow, "project", None)
-        if not proj or not hasattr(proj, "get_output_dir"):
+        if self._final_save_worker is not None and self._final_save_worker in self._background_workers:
+            self._pending_final_save = True
             return
-        out_dir = proj.get_output_dir()
-        stem = self.app.workflow._get_project_stem() if hasattr(self.app.workflow, "_get_project_stem") else "project"
-        final_path = out_dir / f"{stem}_final.tif"
-
-        if self._final_save_worker is not None and self._final_save_worker.isRunning():
-            self._pending_final_save = params
-            self._final_save_worker.cancel()
-            return
-
         self._pending_final_save = None
-        self._final_save_request_id += 1
-        self._final_save_worker = FinalCompositeSaveWorker(
-            self.last_compositor,
-            params,
-            final_path,
-            self._final_save_request_id,
-            parent=self.sidebar,
+        project = self._project
+        worker = FinalCompositeSaveWorker(
+            self.last_compositor, self._horizon_params(),
+            project.get_output_dir() / f"{project.get_project_stem()}_final.tif",
+            self._final_save_request_id, parent=self,
         )
-        self._final_save_worker.finishedSave.connect(self._on_final_save_finished)
-        self._final_save_worker.finished.connect(self._on_final_save_worker_done)
-        self._final_save_worker.start()
+        self._final_save_worker = worker
+        self._track_worker(worker)
+        worker.finishedSave.connect(self._on_final_save_finished)
+        worker.failedError.connect(self._on_background_error)
+        worker.finished.connect(self._on_final_save_worker_done)
+        worker.start()
 
     def _on_final_save_worker_done(self) -> None:
-        if self._pending_final_save is not None and self.last_compositor is not None:
-            params = self._pending_final_save
-            self._pending_final_save = None
-            proj = getattr(self.app.workflow, "project", None)
-            if not proj or not hasattr(proj, "get_output_dir"):
-                return
-            out_dir = proj.get_output_dir()
-            stem = self.app.workflow._get_project_stem() if hasattr(self.app.workflow, "_get_project_stem") else "project"
-            final_path = out_dir / f"{stem}_final.tif"
+        self._final_save_worker = None
+        if self._pending_final_save and not self._disposed:
+            self._dispatch_async_save_final_composite()
 
-            self._final_save_request_id += 1
-            self._final_save_worker = FinalCompositeSaveWorker(
-                self.last_compositor,
-                params,
-                final_path,
-                self._final_save_request_id,
-                parent=self.sidebar,
-            )
-            self._final_save_worker.finishedSave.connect(self._on_final_save_finished)
-            self._final_save_worker.finished.connect(self._on_final_save_worker_done)
-            self._final_save_worker.start()
-
-    def _on_final_save_finished(self, out_path: Any, full_img: np.ndarray, req_id: int) -> None:
-        if req_id != self._final_save_request_id:
+    def _on_final_save_finished(self, staged_path: Any, full_img: np.ndarray, req_id: int) -> None:
+        worker = self.sender() or self._final_save_worker
+        staged_path = Path(staged_path)
+        if not self._worker_is_current(worker, req_id, self._final_save_request_id):
+            staged_path.unlink(missing_ok=True)
             return
-        if self.app and hasattr(self.app, "workflow") and hasattr(self.app.workflow, "project"):
-            self.app.workflow.project.final_output_path = str(out_path)
+        try:
+            # Only the GUI thread can publish; project switches/settings changes
+            # cannot race this final ownership check and atomic replacement.
+            out_path = Path(worker.output_path)
+            os.replace(staged_path, out_path)
+            self._project.final_output_path = str(out_path)
             self.app.workflow.save_project()
-            out_files = (
-                self.app.workflow.get_output_file_list()
-                if hasattr(self.app.workflow, "get_output_file_list")
-                else []
-            )
             if self.outputFiles is not None:
-                self.outputFiles.set_files(out_files)
-        if self.tuneSettings and hasattr(self.tuneSettings.ui, "tuneStatus"):
-            self.tuneSettings.ui.tuneStatus.setText(f"Saved: {Path(out_path).name}")
-        if self.tuneCard is not None:
-            self.tuneCard.setStatus("done")
+                self.outputFiles.set_files(self.app.workflow.get_output_file_list())
+            if self.tuneSettings is not None:
+                self.tuneSettings.ui.tuneStatus.setText(f"Saved: {out_path.name}")
+        except Exception as error:
+            staged_path.unlink(missing_ok=True)
+            self._on_background_error(str(error), req_id)
 
     def _dispatch_horizon_tuning(self) -> None:
-        if self.last_compositor is None:
+        if self._disposed or self._project is not self.app.project or self.last_compositor is None:
             return
-        vals = self.tuneSettings.values() if self.tuneSettings else {}
-        params = {
-            "blend": vals.get("horizon_blend_percent", 60.0),
-            "blur_radius": vals.get("horizon_blur_radius", 2.0),
-            "denoise_strength": vals.get("horizon_denoise_strength", 0.2),
-            "denoise_enabled": vals.get("denoise_horizon_band", True),
-            "enable_corrections": vals.get("enable_horizon_corrections", True),
-            "color_denoise": vals.get("horizon_color_denoise_strength", 1.0),
-            "value_denoise": vals.get("horizon_value_denoise_strength", 0.2),
-        }
-        if self._horizon_worker is not None and self._horizon_worker.isRunning():
-            self._pending_horizon_params = params
-            self._horizon_worker.cancel()
+        if self._horizon_worker is not None and self._horizon_worker in self._background_workers:
+            self._pending_horizon_params = True
             return
-
         self._pending_horizon_params = None
-        self._horizon_request_id += 1
-        self._horizon_worker = HorizonOverlayWorker(
-            self.last_compositor,
-            params,
-            self._horizon_request_id,
-            parent=self.sidebar,
+        worker = HorizonOverlayWorker(
+            self.last_compositor, self._horizon_params(), self._horizon_request_id, parent=self,
         )
-        self._horizon_worker.finishedOverlay.connect(self._on_horizon_overlay_ready)
-        self._horizon_worker.finished.connect(self._on_horizon_worker_finished)
-        self._horizon_worker.start()
+        self._horizon_worker = worker
+        self._track_worker(worker)
+        worker.finishedOverlay.connect(self._on_horizon_overlay_ready)
+        worker.failedError.connect(self._on_background_error)
+        worker.finished.connect(self._on_horizon_worker_finished)
+        worker.start()
 
     def _on_horizon_worker_finished(self) -> None:
-        if self._pending_horizon_params is not None and self.last_compositor is not None:
-            params = self._pending_horizon_params
-            self._pending_horizon_params = None
-            self._horizon_request_id += 1
-            self._horizon_worker = HorizonOverlayWorker(
-                self.last_compositor,
-                params,
-                self._horizon_request_id,
-                parent=self.sidebar,
-            )
-            self._horizon_worker.finishedOverlay.connect(self._on_horizon_overlay_ready)
-            self._horizon_worker.finished.connect(self._on_horizon_worker_finished)
-            self._horizon_worker.start()
+        self._horizon_worker = None
+        if self._pending_horizon_params and not self._disposed:
+            self._dispatch_horizon_tuning()
 
-    def _on_horizon_overlay_ready(
-        self, roi: Optional[np.ndarray], rect: tuple[int, int, int, int], req_id: int
-    ) -> None:
-        if req_id == self._horizon_request_id and roi is not None:
-            if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-                self.shell.canvas_main.setHorizonOverlay(roi, rect)
+    def _on_horizon_overlay_ready(self, roi, rect, req_id: int) -> None:
+        worker = self.sender() or self._horizon_worker
+        if self._worker_is_current(worker, req_id, self._horizon_request_id) and roi is not None:
+            canvas = getattr(self.shell, "canvas_main", None)
+            if canvas is not None:
+                canvas.setHorizonOverlay(roi, rect)
+
+    def _on_background_error(self, message: str, req_id: int) -> None:
+        worker = self.sender()
+        if worker is not None and worker.project is not self.app.project:
+            return
+        if not self._disposed and self.tuneSettings is not None:
+            self.tuneSettings.ui.tuneStatus.setText(f"Failed: {message}")
 
     def _on_gradient_mask_toggled(self, checked: bool) -> None:
         if not hasattr(self.shell, "canvas_main") or self.shell.canvas_main is None:

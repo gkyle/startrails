@@ -168,6 +168,7 @@ class FinalCompositeSaveWorker(QThread):
         self.compositor = compositor
         self.params = params
         self.output_path = output_path
+        self.staged_path = None
         self.request_id = request_id
         self._is_cancelled = False
 
@@ -197,11 +198,17 @@ class FinalCompositeSaveWorker(QThread):
             from startrails.lib.util import imwrite
             out_path = Path(self.output_path).resolve()
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            written = imwrite(out_path, full_img, convertBGR=True)
+            import tempfile
+            with tempfile.NamedTemporaryFile(dir=out_path.parent, suffix=out_path.suffix, delete=False) as staged:
+                self.staged_path = Path(staged.name)
+            written = imwrite(self.staged_path, full_img, convertBGR=True)
             if self._is_cancelled:
+                self.staged_path.unlink(missing_ok=True)
                 return
             self.finishedSave.emit(written, full_img, self.request_id)
         except Exception as e:
+            if self.staged_path is not None:
+                self.staged_path.unlink(missing_ok=True)
             if not self._is_cancelled:
                 logger.exception("FinalCompositeSaveWorker encountered an error")
                 self.failedError.emit(str(e), self.request_id)

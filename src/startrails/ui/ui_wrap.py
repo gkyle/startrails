@@ -73,6 +73,8 @@ class MainWindow(QMainWindow):
         self.ui.doCancelOp()
         if hasattr(self.ui, "active_view") and self.ui.active_view is not None:
             self.ui.active_view.teardown()
+        for view in self.ui.findChildren(DenoiseView):
+            view.wait_for_workers()
         if self.ui.op_queue is not None and hasattr(self.ui.op_queue, "clear"):
             self.ui.op_queue.clear()
             self.ui.op_queue.waitForDone(1000)
