@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 import logging
+from concurrent.futures import CancelledError
 from pathlib import Path
 from typing import Callable, Optional, Tuple, List
 import numpy as np
 
-from startrails.lib.util import Observable, imread
+from startrails.lib.util import imread
+from startrails.op.denoise.base import DenoiseOperation
 from startrails.lib.denoise.config import DenoiseConfig
 from startrails.lib.denoise.profiler import PipelineProfiler
 from startrails.lib.denoise.io.mask import MaskHandler
@@ -22,11 +24,11 @@ logger = logging.getLogger(__name__)
 ProgressCallback = Callable[[float, str], None]
 
 
-class DenoisePipeline(Observable):
+class DenoisePipeline(DenoiseOperation):
     """Orchestrates image calibration, sky detection, alignment, stacking, and composition."""
 
-    def __init__(self, config: Optional[DenoiseConfig] = None):
-        super().__init__()
+    def __init__(self, config: Optional[DenoiseConfig] = None, cancel_event=None, cancel_check=None):
+        super().__init__(cancel_event, cancel_check)
         self.config = config
         self.last_profile: Optional[PipelineProfiler] = None
         self.last_compositor: Optional[HorizonCompositor] = None
@@ -81,19 +83,21 @@ class DenoisePipeline(Observable):
             model_name = self.config.auto_mask_model or "auto"
             report(0.18, f"Running auto sky detection ({model_name})...")
             with profiler.measure("2a. Automatic Sky Detection"):
-                detect_op = DetectSky()
+                detect_op = DetectSky(self.cancel_event, self.cancel_check)
                 coarse_sky = detect_op.detect(
                     base_calibrated,
                     model_type=model_name,
                     model_path=self.config.auto_mask_path,
                     device="auto",
                 )
+            if coarse_sky is None or self.shouldInterrupt():
+                raise CancelledError()
             report(0.19, "Refining detected sky mask to natural horizon...")
             mask_out = self._resolve_refined_mask_export_path()
             if mask_out:
                 report(0.20, f"Exporting refined mask: {mask_out.name}...")
             with profiler.measure("2b. Sky Mask Refinement"):
-                refine_op = RefineMask()
+                refine_op = RefineMask(self.cancel_event, self.cancel_check)
                 sky_mask = refine_op.refine(
                     base_calibrated,
                     coarse_sky,
@@ -111,7 +115,7 @@ class DenoisePipeline(Observable):
             if mask_out:
                 report(0.20, f"Exporting refined mask: {mask_out.name}...")
             with profiler.measure("2b. Sky Mask Refinement"):
-                refine_op = RefineMask()
+                refine_op = RefineMask(self.cancel_event, self.cancel_check)
                 sky_mask = refine_op.refine(
                     base_calibrated,
                     sky_mask,
@@ -124,13 +128,15 @@ class DenoisePipeline(Observable):
                 self.config.refined_mask_path = mask_out
                 logger.info(f"Exported refined mask to {mask_out}")
 
+        if self.shouldInterrupt():
+            raise CancelledError()
         return base_calibrated, None, sky_mask, (h, w)
 
     def compute_homographies(self, progress_callback: Optional[ProgressCallback] = None) -> dict[Path, np.ndarray]:
         """Compute and cache alignment homographies for all star images."""
         if self.config is None:
             raise ValueError("No configuration provided.")
-        align_op = AlignStars()
+        align_op = AlignStars(self.cancel_event, self.cancel_check)
         if progress_callback:
             def _cb(total, inc, count, done, data):
                 progress_callback(count / max(1, total), f"Aligned frame {count}/{total}")
@@ -169,7 +175,7 @@ class DenoisePipeline(Observable):
         n_stars = len(self.config.star_images)
         _report(0.25, f"Aligning and warping {n_stars} frames...")
 
-        align_op = AlignStars()
+        align_op = AlignStars(self.cancel_event, self.cancel_check)
         if progress_callback:
             def _align_cb(total, inc, count, done, data):
                 prog = 0.25 + 0.45 * (count / max(1, total))
@@ -186,10 +192,10 @@ class DenoisePipeline(Observable):
             )
 
         if align_result is None or self.shouldInterrupt():
-            raise RuntimeError("Pipeline cancelled during alignment")
+            raise CancelledError("Pipeline cancelled during alignment")
 
         _report(0.70, "Stacking base sky and ground frames...")
-        stack_op = StackDenoise()
+        stack_op = StackDenoise(self.cancel_event, self.cancel_check)
 
         with profiler.measure("4. Base Stacking"):
             compositor = stack_op.stack(
@@ -202,7 +208,7 @@ class DenoisePipeline(Observable):
             )
 
         if compositor is None or self.shouldInterrupt():
-            raise RuntimeError("Pipeline cancelled during stacking")
+            raise CancelledError("Pipeline cancelled during stacking")
 
         self.last_compositor = compositor
         return compositor, align_result.sky_coverages, None
@@ -244,11 +250,13 @@ class DenoisePipeline(Observable):
             profiler=profiler,
         )
 
+        if self.shouldInterrupt():
+            raise CancelledError()
         _report(0.90, "Evaluating horizon composite...")
-        compose_op = ComposeHorizon()
+        compose_op = ComposeHorizon(self.cancel_event, self.cancel_check)
 
         with profiler.measure("5. Output File Export"):
-            stacked, written_path = compose_op.compose(
+            result = compose_op.compose(
                 compositor,
                 self.config,
                 sky_coverages=sky_coverages,
@@ -256,6 +264,9 @@ class DenoisePipeline(Observable):
                 write_output=True,
             )
 
+        if result is None or self.shouldInterrupt():
+            raise CancelledError()
+        stacked, written_path = result
         self.last_gradient_mask = compose_op.last_gradient_mask
 
         _report(1.0, f"Stacking completed successfully: {written_path}")

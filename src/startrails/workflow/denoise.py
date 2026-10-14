@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 import os
+from contextlib import contextmanager
+from threading import Event
+from startrails.op.denoise.base import DenoiseOperation
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
@@ -28,6 +31,31 @@ class DenoiseWorkflow(Workflow):
     def __init__(self, app):
         super().__init__(app)
         self._project = app.project
+        self._cancel_event = Event()
+        self._session_operation = None
+
+    @contextmanager
+    def operation_session(self):
+        self._cancel_event = Event()
+        revision = self.project.processing_revision
+        session = DenoiseOperation(self._cancel_event, lambda: self.project is not self.app.project or revision != self.project.processing_revision)
+        session.startJob(1)
+        self._session_operation = session
+        self.app.activeOperation = session
+        try:
+            yield
+        finally:
+            self._session_operation = None
+            if self.app.activeOperation is session:
+                self.app.activeOperation = None
+
+    def _new_operation(self, operation_type, *args):
+        revision = self.project.processing_revision
+        check = lambda: self.project is not self.app.project or revision != self.project.processing_revision
+        if self._session_operation is not None:
+            check = self._session_operation.shouldInterrupt
+        token = self._cancel_event if self._session_operation is not None else Event()
+        return operation_type(*args, cancel_event=token, cancel_check=check)
 
     def save_project(self) -> None:
         if self._project is self.app.project:
@@ -138,7 +166,7 @@ class DenoiseWorkflow(Workflow):
         input_size: int = 1024,
     ) -> Optional[np.ndarray]:
         """Run autonomous neural / heuristic sky detection."""
-        detector = DetectSky()
+        detector = self._new_operation(DetectSky)
         if progressBar is not None:
             detector.addObserver(progressBar)
         self.app.activeOperation = detector
@@ -152,7 +180,7 @@ class DenoiseWorkflow(Workflow):
             )
             return mask
         finally:
-            self.app.activeOperation = None
+            self.app.activeOperation = self._session_operation
             if progressBar is not None:
                 detector.removeObserver(progressBar)
             self.save_project()
@@ -169,7 +197,7 @@ class DenoiseWorkflow(Workflow):
         foliage_protection: bool = True,
     ) -> Optional[np.ndarray]:
         """Refine celestial sky mask along high-frequency terrain boundaries."""
-        refiner = RefineMask()
+        refiner = self._new_operation(RefineMask)
         if progressBar is not None:
             refiner.addObserver(progressBar)
         self.app.activeOperation = refiner
@@ -183,7 +211,7 @@ class DenoiseWorkflow(Workflow):
             )
             return refined
         finally:
-            self.app.activeOperation = None
+            self.app.activeOperation = self._session_operation
             if progressBar is not None:
                 refiner.removeObserver(progressBar)
             self.save_project()
@@ -199,7 +227,7 @@ class DenoiseWorkflow(Workflow):
     ) -> Optional[AlignResult]:
         """Detect and align stars via projective homography estimation."""
         cfg = config or self.get_config()
-        aligner = AlignStars()
+        aligner = self._new_operation(AlignStars)
         if progressBar is not None:
             aligner.addObserver(progressBar)
         self.app.activeOperation = aligner
@@ -221,7 +249,7 @@ class DenoiseWorkflow(Workflow):
                             f.aligned = True
             return result
         finally:
-            self.app.activeOperation = None
+            self.app.activeOperation = self._session_operation
             if progressBar is not None:
                 aligner.removeObserver(progressBar)
             self.save_project()
@@ -339,7 +367,7 @@ class DenoiseWorkflow(Workflow):
                 stem = self._get_project_stem()
                 cfg.output_path = out_dir / f"{stem}.tif"
 
-        stacker = StackDenoise()
+        stacker = self._new_operation(StackDenoise)
         if progressBar is not None:
             stacker.addObserver(progressBar)
         self.app.activeOperation = stacker
@@ -366,7 +394,7 @@ class DenoiseWorkflow(Workflow):
                 self.project.record_stacks()
             return compositor
         finally:
-            self.app.activeOperation = None
+            self.app.activeOperation = self._session_operation
             if progressBar is not None:
                 stacker.removeObserver(progressBar)
             self.save_project()
@@ -393,7 +421,7 @@ class DenoiseWorkflow(Workflow):
             if not cfg.gradient_mask_path:
                 cfg.gradient_mask_path = out_dir / "gradient_mask.png"
 
-        composer = ComposeHorizon()
+        composer = self._new_operation(ComposeHorizon)
         if progressBar is not None:
             composer.addObserver(progressBar)
         self.app.activeOperation = composer
@@ -411,7 +439,7 @@ class DenoiseWorkflow(Workflow):
                     self.project.gradient_mask_path = str(cfg.gradient_mask_path)
             return result
         finally:
-            self.app.activeOperation = None
+            self.app.activeOperation = self._session_operation
             if progressBar is not None:
                 composer.removeObserver(progressBar)
             self.save_project()
@@ -430,7 +458,7 @@ class DenoiseWorkflow(Workflow):
             out_dir.mkdir(parents=True, exist_ok=True)
             stem = self._get_project_stem()
             cfg.output_path = out_dir / f"{stem}.tif"
-        pipeline = DenoisePipeline(cfg)
+        pipeline = self._new_operation(DenoisePipeline, cfg)
         if progressBar is not None:
             pipeline.addObserver(progressBar)
         self.app.activeOperation = pipeline
@@ -438,7 +466,7 @@ class DenoiseWorkflow(Workflow):
             out_path = pipeline.run(cfg, progress_callback=progress_callback)
             return out_path
         finally:
-            self.app.activeOperation = None
+            self.app.activeOperation = self._session_operation
             if progressBar is not None:
                 pipeline.removeObserver(progressBar)
             self.save_project()

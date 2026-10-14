@@ -585,6 +585,16 @@ class DenoiseView(ModeView):
                 self.stackCard.setStatus("done")
         self.updateReadyStates()
 
+    def _enqueue_task(self, task_id, title, total, desc, work):
+        workflow = self.app.workflow
+        generation = self._generation
+        def run():
+            if generation != self._generation or workflow.project is not self.app.project:
+                return
+            with workflow.operation_session():
+                work()
+        return self.shell.enqueue_task(task_id, title, total, desc, run)
+
     def _post_result(self, generation: int, callback) -> None:
         """Deliver only results belonging to this view's current project session."""
         def deliver():
@@ -1072,9 +1082,6 @@ class DenoiseView(ModeView):
                 if coarse_mask is None:
                     return
 
-                # Immediately apply coarse mask to canvas and project so user sees progress
-                self._post_result(generation, lambda m=coarse_mask: self._apply_mask_to_canvas_and_project(m))
-
                 # Step 2: Run refine mask pass with current settings (search radius, erosion pixels)
                 if getattr(self.shell, "label_progressBar", None):
                     self._post_result(generation, lambda: self.shell.label_progressBar.setText("Refining detected sky mask..."))
@@ -1091,7 +1098,9 @@ class DenoiseView(ModeView):
                     search_radius=search_radius,
                     erosion_pixels=erosion_pixels,
                 )
-                final_mask = refined_mask if refined_mask is not None else coarse_mask
+                if refined_mask is None:
+                    return
+                final_mask = refined_mask
 
                 # Step 3: Show the final refined mask overlay on top of the reference image on the canvas
                 self._post_result(generation, lambda m=final_mask: self._on_detection_finished(m))
@@ -1100,7 +1109,7 @@ class DenoiseView(ModeView):
                 import traceback
                 traceback.print_exc()
 
-        self.shell.enqueue_task("detectSky", "Detect Sky", 1, "Detecting and refining sky mask...", work)
+        self._enqueue_task("detectSky", "Detect Sky", 1, "Detecting and refining sky mask...", work)
 
     def do_refine_mask_action(self) -> None:
         ref = self.app.workflow.get_reference_file()
@@ -1153,7 +1162,7 @@ class DenoiseView(ModeView):
                 import traceback
                 traceback.print_exc()
 
-        self.shell.enqueue_task("refineMask", "Refine Mask", 1, "Refining sky mask...", work)
+        self._enqueue_task("refineMask", "Refine Mask", 1, "Refining sky mask...", work)
 
     def do_clear_mask_action(self) -> None:
         if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
@@ -1216,6 +1225,8 @@ class DenoiseView(ModeView):
                 config=cfg,
                 progressBar=progressUpdater.tick,
             )
+            if result is None:
+                return
             def on_align_done():
                 self.last_align_result = result
                 if self.alignCard is not None:
@@ -1226,7 +1237,7 @@ class DenoiseView(ModeView):
 
             self._post_result(generation, on_align_done)
 
-        self.shell.enqueue_task("alignStars", "Align Stars", len(stars), "Aligning frames...", work)
+        self._enqueue_task("alignStars", "Align Stars", len(stars), "Aligning frames...", work)
 
     def do_stack_action(self) -> None:
         stars = self.app.workflow.get_star_files() if hasattr(self.app.workflow, "get_star_files") else []
@@ -1291,6 +1302,8 @@ class DenoiseView(ModeView):
                 config=cfg,
                 progressBar=progressUpdater.tick,
             )
+            if compositor is None:
+                return
             def on_stack_done():
                 self.last_compositor = compositor
                 if compositor is not None:
@@ -1335,7 +1348,7 @@ class DenoiseView(ModeView):
 
             self._post_result(generation, on_stack_done)
 
-        self.shell.enqueue_task("stackDenoise", "Stack Denoise", total_steps, "Stacking base frames...", work)
+        self._enqueue_task("stackDenoise", "Stack Denoise", total_steps, "Stacking base frames...", work)
 
     def do_compose_action(self) -> None:
         if self.last_compositor is None:
@@ -1375,6 +1388,8 @@ class DenoiseView(ModeView):
                 progressBar=progressUpdater.tick,
                 sky_coverages=self.last_align_result.sky_coverages if self.last_align_result else None,
             )
+            if res is None:
+                return
             def on_compose_done():
                 if res and res[0] is not None:
                     out_files = (
@@ -1416,7 +1431,7 @@ class DenoiseView(ModeView):
 
             self._post_result(generation, on_compose_done)
 
-        self.shell.enqueue_task("composeHorizon", "Compose Horizon", 2, "Compositing final image...", work)
+        self._enqueue_task("composeHorizon", "Compose Horizon", 2, "Compositing final image...", work)
 
     def do_save_output_action(self) -> None:
         if self.last_compositor is None:
@@ -1497,4 +1512,4 @@ class DenoiseView(ModeView):
 
             self._post_result(generation, on_pipeline_done)
 
-        self.shell.enqueue_task("pipeline", "Full Pipeline", len(stars), "Processing denoise pipeline...", work)
+        self._enqueue_task("pipeline", "Full Pipeline", len(stars), "Processing denoise pipeline...", work)

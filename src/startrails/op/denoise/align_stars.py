@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 import numpy as np
 
-from startrails.lib.util import Observable, imread
+from startrails.lib.util import imread
+from startrails.op.denoise.base import DenoiseOperation
 from startrails.lib.denoise.config import DenoiseConfig
 from startrails.lib.denoise.io.mask import MaskHandler
 from startrails.lib.denoise.calibration.dark import DarkCalibrator
@@ -31,11 +32,11 @@ class AlignResult:
     sky_mask: Optional[np.ndarray] = None
 
 
-class AlignStars(Observable):
+class AlignStars(DenoiseOperation):
     """Detects stars, matches asterisms, and estimates homographies across frames."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, cancel_event=None, cancel_check=None):
+        super().__init__(cancel_event, cancel_check)
 
     @staticmethod
     def prepare_calibrator(config: DenoiseConfig) -> Callable[[np.ndarray], np.ndarray]:

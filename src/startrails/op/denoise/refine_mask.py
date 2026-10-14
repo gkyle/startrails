@@ -5,16 +5,17 @@ from pathlib import Path
 from typing import Optional, Union
 import numpy as np
 
-from startrails.lib.util import Observable, imread
+from startrails.op.denoise.base import DenoiseOperation
+from startrails.lib.util import imread
 from startrails.lib.denoise.io.mask import MaskHandler
 from startrails.lib.denoise.io.mask_refiner import MaskRefiner
 
 
-class RefineMask(Observable):
+class RefineMask(DenoiseOperation):
     """Refines rough sky mask edges to natural physical horizons."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, cancel_event=None, cancel_check=None):
+        super().__init__(cancel_event, cancel_check)
 
     def refine(
         self,

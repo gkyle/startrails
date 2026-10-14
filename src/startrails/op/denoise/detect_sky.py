@@ -5,15 +5,16 @@ from pathlib import Path
 from typing import Optional, Union
 import numpy as np
 
-from startrails.lib.util import Observable, imread
+from startrails.op.denoise.base import DenoiseOperation
+from startrails.lib.util import imread
 from startrails.lib.denoise.io.sky_detector import AutoSkyDetector
 
 
-class DetectSky(Observable):
+class DetectSky(DenoiseOperation):
     """Detects celestial sky region on a base image."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, cancel_event=None, cancel_check=None):
+        super().__init__(cancel_event, cancel_check)
 
     def detect(
         self,
