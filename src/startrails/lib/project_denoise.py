@@ -144,6 +144,29 @@ class DenoiseProject(Unpickle):
         """Resolve the authoritative output directory for this project."""
         return get_project_output_dir(self.projectFile)
 
+    def relocate(self, project_file: str) -> None:
+        """Rebase owned artifacts; imported masks and external exports remain references."""
+        previous_dir = self.get_output_dir()
+        previous_file = Path(self.projectFile).resolve()
+        self.projectFile = project_file
+        if previous_file == Path(project_file).resolve():
+            return
+        output_dir = self.get_output_dir()
+        for name in ("sky_stack_path", "ground_stack_path", "gradient_mask_path",
+                     "refined_mask_path", "output_path", "final_output_path", "mask_path"):
+            value = getattr(self, name)
+            if not value:
+                continue
+            try:
+                relative = Path(value).resolve().relative_to(previous_dir)
+            except ValueError:
+                continue  # Imported mask or explicitly exported image.
+            rebased = output_dir / relative
+            if name == "mask_path" and not rebased.exists() and Path(value).is_file():
+                continue  # Safe read-only source; edited masks always go to output_dir.
+            setattr(self, name, str(rebased))
+        self.invalidate_results()
+
     def get_reference_file(self) -> Optional[DenoiseInputFile]:
         """Return the authoritative reference frame, defaulting to the first star frame."""
         if self.reference_file is not None:
@@ -184,11 +207,12 @@ class DenoiseProject(Unpickle):
         if mask_p is None and not self.mask_invalidated and (out_dir / "mask.png").exists():
             mask_p = out_dir / "mask.png"
 
-        sky_stack_p = Path(self.sky_stack_path) if self.sky_stack_path else (out_dir / "sky_stack.tif")
-        ground_stack_p = Path(self.ground_stack_path) if self.ground_stack_path else (out_dir / "ground_stack.tif")
-        refined_mask_p = Path(self.refined_mask_path) if self.refined_mask_path else (out_dir / "refined_mask.png")
-        gradient_mask_p = Path(self.gradient_mask_path) if self.gradient_mask_path else (out_dir / "gradient_mask.png")
-        output_p = Path(self.output_path) if self.output_path else (out_dir / f"{stem}.tif")
+        # Writable engine destinations never come from serialized artifact refs.
+        sky_stack_p = out_dir / "sky_stack.tif"
+        ground_stack_p = out_dir / "ground_stack.tif"
+        refined_mask_p = out_dir / "refined_mask.png"
+        gradient_mask_p = out_dir / "gradient_mask.png"
+        output_p = out_dir / f"{stem}.tif"
 
         return DenoiseConfig(
             star_images=[Path(f.path) for f in self.star_files if f.path],

@@ -230,7 +230,10 @@ class App:
             )
 
         # Treat the chosen Open filename as the authoritative save path
-        loaded_proj.projectFile = str(path)
+        if isinstance(loaded_proj, DenoiseProject):
+            loaded_proj.relocate(str(path))
+        else:
+            loaded_proj.projectFile = str(path)
 
         # Validation succeeded: safely replace active project and workflow
         self.project = loaded_proj
