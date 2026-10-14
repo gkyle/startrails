@@ -67,6 +67,9 @@ class DenoiseProject(Unpickle):
         state = dict(state)
         if "projectFile" in state:
             state["project_file"] = state.pop("projectFile")
+        if state.get("stack_method") == "median":
+            # The old port's Median choice actually executed a mean stack.
+            state["stack_method"] = "mean"
         super().__setstate__(state)
         self.bind_files()
 

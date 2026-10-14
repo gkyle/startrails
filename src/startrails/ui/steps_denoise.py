@@ -296,6 +296,8 @@ class DenoiseStackSettings(QWidget):
         if not hasattr(proj, "stack_method"):
             return
         method_name = getattr(proj, "stack_method", "sigma_clipped")
+        if method_name == "median":
+            method_name = proj.stack_method = "mean"
         if method_name not in self.REV_METHOD_MAP:
             method_name = proj.stack_method = "sigma_clipped"
         with QSignalBlocker(self.ui.method):
