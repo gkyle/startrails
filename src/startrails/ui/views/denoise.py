@@ -449,6 +449,10 @@ class DenoiseView(ModeView):
             self.connect_signal(self.skySettings.brushRadiusChanged, self._on_brush_radius_changed)
         if self.btn_align_stars is not None:
             self.connect_signal(self.btn_align_stars.clicked, self.do_align_stars_action)
+        if self.alignSettings is not None:
+            self.connect_signal(self.alignSettings.settingsChanged, self._on_alignment_settings_changed)
+        if self.stackSettings is not None:
+            self.connect_signal(self.stackSettings.settingsChanged, self._on_stack_settings_changed)
         if self.btn_stack is not None:
             self.connect_signal(self.btn_stack.clicked, self.do_stack_action)
         if self.btn_compose is not None:
@@ -509,6 +513,7 @@ class DenoiseView(ModeView):
     def resetProjectView(self) -> None:
         if not hasattr(self.app.workflow, "get_star_files"):
             return
+        self.app.workflow.project.validate_cached_results()
         self._generation += 1
         self._project = self.app.project
         self.last_align_result = None
@@ -645,6 +650,17 @@ class DenoiseView(ModeView):
             self.sidebar.set_has_compositor(has_compositor)
             self.sidebar.set_output_saved(self._output_saved)
             self.sidebar.update_operations_progress(self.app)
+
+    def _on_alignment_settings_changed(self) -> None:
+        self.app.workflow.invalidate_results()
+        self.resetProjectView()
+
+    def _on_stack_settings_changed(self) -> None:
+        self.app.workflow.invalidate_results(alignment=False)
+        self.last_compositor = None
+        self._output_saved = False
+        self._cancel_background_jobs()
+        self.updateReadyStates()
 
     def _cancel_background_jobs(self) -> None:
         self._horizon_debounce_timer.stop()
@@ -826,6 +842,8 @@ class DenoiseView(ModeView):
     def _find_existing_mask(self) -> Optional[np.ndarray]:
         proj = getattr(self.app.workflow, "project", None)
         candidates = []
+        if proj and proj.mask_invalidated:
+            return None
         if proj:
             if getattr(proj, "mask_path", None):
                 candidates.append(Path(proj.mask_path))
@@ -861,13 +879,8 @@ class DenoiseView(ModeView):
         return None
 
     def _has_existing_stacks(self) -> bool:
-        proj = getattr(self.app.workflow, "project", None)
-        if not proj or not hasattr(proj, "get_output_dir"):
-            return False
-        out_dir = proj.get_output_dir()
-        sky_p = Path(proj.sky_stack_path) if getattr(proj, "sky_stack_path", None) else (out_dir / "sky_stack.tif")
-        ground_p = Path(proj.ground_stack_path) if getattr(proj, "ground_stack_path", None) else (out_dir / "ground_stack.tif")
-        return sky_p.is_file() and ground_p.is_file()
+        project = getattr(self.app.workflow, "project", None)
+        return bool(project and project.stacks_are_current())
 
     def _find_existing_compositor(self) -> Optional[Any]:
         if not self._has_existing_stacks():
@@ -1010,6 +1023,13 @@ class DenoiseView(ModeView):
         MaskHandler.save_brush_mask(mask, out_mask)
         if hasattr(self.app.workflow, "project") and self.app.workflow.project is not None:
             self.app.workflow.project.mask_path = str(out_mask)
+            self.app.workflow.project.mask_invalidated = False
+            self.app.workflow.invalidate_results()
+            self.last_align_result = None
+            self.last_compositor = None
+            self._output_saved = False
+            self._generation += 1
+            self._cancel_background_jobs()
             if hasattr(self.app.workflow, "save_project"):
                 self.app.workflow.save_project()
             elif hasattr(self.app, "saveProject"):

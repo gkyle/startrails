@@ -25,13 +25,27 @@ if TYPE_CHECKING:
 class DenoiseWorkflow(Workflow):
     """Workflow controller orchestrating the Denoise mode pipeline and data."""
 
+    def __init__(self, app):
+        super().__init__(app)
+        self._project = app.project
+
+    def save_project(self) -> None:
+        if self._project is self.app.project:
+            super().save_project()
+
+    def invalidate_results(self, alignment: bool = True, reference_changed: bool = False) -> None:
+        self.project.invalidate_results(alignment=alignment)
+        if reference_changed:
+            self.project.mask_invalidated = True
+        self.save_project()
+
     @property
     def mode_name(self) -> str:
         return "denoise"
 
     @property
     def project(self) -> DenoiseProject:
-        return self.app.project
+        return self._project
 
     # -------------------------------------------------------------------------
     # Input files management (Star, Noise/Dark, Vignetting/Flat)
@@ -51,7 +65,7 @@ class DenoiseWorkflow(Workflow):
             self.project.star_files.append(file_obj)
         if self.project.star_files and self.project.reference_file is None:
             self.project.set_reference_file(self.project.star_files[0])
-        self.save_project()
+        self.invalidate_results(reference_changed=clear)
 
     addStarFiles = add_star_files
 
@@ -63,7 +77,7 @@ class DenoiseWorkflow(Workflow):
                     self.project.set_reference_file(self.project.star_files[0])
                 else:
                     self.project.reference_file = None
-            self.save_project()
+            self.invalidate_results(reference_changed=file.is_reference)
 
     removeStarFile = remove_star_file
 
@@ -79,14 +93,14 @@ class DenoiseWorkflow(Workflow):
             self.project.noise_files.append(
                 DenoiseInputFile(basename=os.path.basename(p), path=p)
             )
-        self.save_project()
+        self.invalidate_results()
 
     addNoiseFiles = add_noise_files
 
     def remove_noise_file(self, file: DenoiseInputFile) -> None:
         if file in self.project.noise_files:
             self.project.noise_files.remove(file)
-            self.save_project()
+            self.invalidate_results()
 
     removeNoiseFile = remove_noise_file
 
@@ -97,13 +111,15 @@ class DenoiseWorkflow(Workflow):
     getReferenceFile = get_reference_file
 
     def set_reference_file(self, file: DenoiseInputFile) -> None:
-        self.project.set_reference_file(file)
-        self.save_project()
+        if file is not self.project.get_reference_file():
+            self.project.set_reference_file(file)
+            self.invalidate_results(reference_changed=True)
 
     setReferenceFile = set_reference_file
 
     def get_config(self) -> DenoiseConfig:
         """Return a DenoiseConfig representation of current project state."""
+        self.project.validate_cached_results()
         return self.project.to_denoise_config()
 
     getConfig = get_config
@@ -194,6 +210,7 @@ class DenoiseWorkflow(Workflow):
                 sky_mask=sky_mask,
             )
             if result is not None:
+                self.project.alignment_signature = self.project.source_signature()
                 for p, mat in result.homographies.items():
                     self.project.homographies[str(p)] = mat
                 for f in getattr(self.project, "star_files", []):
@@ -346,6 +363,7 @@ class DenoiseWorkflow(Workflow):
                     self.project.gradient_mask_path = str(cfg.gradient_mask_path)
                 if cfg.output_path:
                     self.project.output_path = str(cfg.output_path)
+                self.project.record_stacks()
             return compositor
         finally:
             self.app.activeOperation = None

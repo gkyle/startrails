@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 import os
+import hashlib
+import json
+import copy
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import jsonpickle
@@ -74,6 +77,68 @@ class DenoiseProject(Unpickle):
 
         # Hardware acceleration
         self.use_gpu: bool = True
+        self.processing_revision = 0
+        self.alignment_signature = None
+        self.stack_signature = None
+        self.stack_artifacts = {}
+        self.mask_invalidated = False
+
+    @staticmethod
+    def file_signature(path) -> tuple:
+        resolved = Path(path).resolve()
+        try:
+            stat = resolved.stat()
+            return str(resolved), stat.st_size, stat.st_mtime_ns
+        except OSError:
+            return str(resolved), None, None
+
+    def source_signature(self, stacking: bool = False) -> str:
+        reference = self.get_reference_file()
+        data = {
+            "stars": [self.file_signature(f.path) for f in self.star_files],
+            "darks": [self.file_signature(f.path) for f in self.noise_files],
+            "reference": reference.path if reference else None,
+            "mask": self.file_signature(self.mask_path) if self.mask_path and not self.mask_invalidated else None,
+            "taper": (self.taper_mask_edges, self.mask_taper_pixels),
+        }
+        if stacking:
+            data["stack"] = (self.stack_method, self.sigma_clip_threshold, self.sigma_clip_iterations,
+                             self.horizon_denoise_radius, self.horizon_denoise_eps)
+        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+
+    def invalidate_results(self, alignment: bool = True) -> None:
+        self.processing_revision += 1
+        if alignment:
+            self.homographies = {}
+            self.alignment_signature = None
+            for file in self.star_files:
+                file.aligned = False
+        self.stack_signature = None
+        self.stack_artifacts = {}
+        self.final_output_path = None
+
+    def validate_cached_results(self) -> None:
+        if self.homographies and self.alignment_signature != self.source_signature():
+            self.invalidate_results()
+        elif self.stack_signature and self.stack_signature != self.source_signature(stacking=True):
+            self.invalidate_results(alignment=False)
+
+    def record_stacks(self) -> None:
+        self.stack_signature = self.source_signature(stacking=True)
+        self.stack_artifacts = {
+            str(path): self.file_signature(path)
+            for path in (self.sky_stack_path, self.ground_stack_path, self.gradient_mask_path)
+            if path and Path(path).is_file()
+        }
+
+    def stacks_are_current(self) -> bool:
+        return bool(
+            self.stack_signature == self.source_signature(stacking=True)
+            and self.sky_stack_path and self.ground_stack_path
+            and len(self.stack_artifacts) >= 2
+            and all(Path(path).is_file() and tuple(signature) == self.file_signature(path)
+                    for path, signature in self.stack_artifacts.items())
+        )
 
     def get_output_dir(self) -> Path:
         """Resolve the authoritative output directory for this project."""
@@ -111,12 +176,12 @@ class DenoiseProject(Unpickle):
 
         homographies_dict: dict[Path, Any] = {}
         for k, v in self.homographies.items():
-            homographies_dict[Path(k)] = v
+            homographies_dict[Path(k)] = copy.deepcopy(v)
 
         out_dir = self.get_output_dir()
         stem = self.get_project_stem()
-        mask_p = Path(self.mask_path) if self.mask_path else None
-        if mask_p is None and (out_dir / "mask.png").exists():
+        mask_p = Path(self.mask_path) if self.mask_path and not self.mask_invalidated else None
+        if mask_p is None and not self.mask_invalidated and (out_dir / "mask.png").exists():
             mask_p = out_dir / "mask.png"
 
         sky_stack_p = Path(self.sky_stack_path) if self.sky_stack_path else (out_dir / "sky_stack.tif")
