@@ -340,35 +340,6 @@ class Ui_SidebarDenoise(object):
 
         self.contentLayout.addWidget(self.runPipeline)
 
-        self.pipelineProgressBar = QProgressBar(self.content)
-        self.pipelineProgressBar.setObjectName(u"pipelineProgressBar")
-        self.pipelineProgressBar.setStyleSheet(u"QProgressBar#pipelineProgressBar {\n"
-"    background-color: #e2e8f0;\n"
-"    border-radius: 2px;\n"
-"    max-height: 4px;\n"
-"    min-height: 4px;\n"
-"    border: none;\n"
-"}\n"
-"QProgressBar#pipelineProgressBar::chunk {\n"
-"    background-color: #0284c7;\n"
-"    border-radius: 2px;\n"
-"}")
-        self.pipelineProgressBar.setMaximum(100)
-        self.pipelineProgressBar.setValue(0)
-        self.pipelineProgressBar.setTextVisible(False)
-
-        self.contentLayout.addWidget(self.pipelineProgressBar)
-
-        self.pipelineStatusLabel = QLabel(self.content)
-        self.pipelineStatusLabel.setObjectName(u"pipelineStatusLabel")
-        self.pipelineStatusLabel.setStyleSheet(u"QLabel#pipelineStatusLabel {\n"
-"    color: #64748b;\n"
-"    font-size: 11px;\n"
-"}")
-        self.pipelineStatusLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self.contentLayout.addWidget(self.pipelineStatusLabel)
-
         self.bottomSpace = QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.contentLayout.addItem(self.bottomSpace)
@@ -408,7 +379,6 @@ class Ui_SidebarDenoise(object):
         self.tuneCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Requires base stacks", None))
         self.saveOutput.setText(QCoreApplication.translate("SidebarDenoise", u"Save Image", None))
         self.runPipeline.setText(QCoreApplication.translate("SidebarDenoise", u"\u25b6 Run Full Denoise Pipeline", None))
-        self.pipelineStatusLabel.setText(QCoreApplication.translate("SidebarDenoise", u"Ready", None))
         pass
     # retranslateUi
 

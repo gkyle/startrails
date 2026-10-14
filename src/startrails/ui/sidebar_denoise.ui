@@ -465,48 +465,6 @@ QPushButton#runPipeline:disabled {
         </widget>
        </item>
        <item>
-        <widget class="QProgressBar" name="pipelineProgressBar">
-         <property name="styleSheet">
-          <string notr="true">QProgressBar#pipelineProgressBar {
-    background-color: #e2e8f0;
-    border-radius: 2px;
-    max-height: 4px;
-    min-height: 4px;
-    border: none;
-}
-QProgressBar#pipelineProgressBar::chunk {
-    background-color: #0284c7;
-    border-radius: 2px;
-}</string>
-         </property>
-         <property name="maximum">
-          <number>100</number>
-         </property>
-         <property name="value">
-          <number>0</number>
-         </property>
-         <property name="textVisible">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="pipelineStatusLabel">
-         <property name="styleSheet">
-          <string notr="true">QLabel#pipelineStatusLabel {
-    color: #64748b;
-    font-size: 11px;
-}</string>
-         </property>
-         <property name="text">
-          <string>Ready</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignmentFlag::AlignCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item>
         <spacer name="bottomSpace">
          <property name="orientation">
           <enum>Qt::Orientation::Vertical</enum>

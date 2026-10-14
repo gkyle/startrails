@@ -50,8 +50,6 @@ class SidebarDenoise(QWidget):
         self.pushButton_openProject = self.ui.openProject
         self.btn_save_output = self.ui.saveOutput
         self.btn_pipeline = self.ui.runPipeline
-        self.progress_bar = self.ui.pipelineProgressBar
-        self.lbl_status = self.ui.pipelineStatusLabel
         self.lbl_ops_progress = self.ui.operationsProgressLabel
         self.ops_progress_bar = self.ui.operationsProgress
 

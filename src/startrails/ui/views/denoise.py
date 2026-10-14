@@ -75,8 +75,6 @@ class DenoiseView(ModeView):
 
         self.lbl_ops_progress = None
         self.ops_progress_bar = None
-        self.progress_bar = None
-        self.lbl_status = None
 
         self._step_cards: tuple[StepCard, ...] = ()
         self._output_saved: bool = False
@@ -154,8 +152,6 @@ class DenoiseView(ModeView):
         self.btn_compose = sb.btn_compose
         self.btn_save_output = sb.btn_save_output
         self.btn_pipeline = sb.btn_pipeline
-        self.progress_bar = sb.progress_bar
-        self.lbl_status = sb.lbl_status
         self.lbl_ops_progress = sb.lbl_ops_progress
         self.ops_progress_bar = sb.ops_progress_bar
         self._step_cards = sb._step_cards
@@ -387,8 +383,6 @@ class DenoiseView(ModeView):
         if settings is not None:
             settings.ui.error.setText(message)
             settings.ui.error.show()
-        if self.lbl_status is not None:
-            self.lbl_status.setText(message)
 
     def _result_guard(self, generation):
         project = self._project
@@ -860,9 +854,7 @@ class DenoiseView(ModeView):
             )
             try:
                 def on_detect_tick(total, inc, count, done, data=None):
-                    progress_updater.signals.incrementProgress.emit(
-                        progress_updater, 2, inc, 1 if done else 0, False, data
-                    )
+                    progress_updater.tick(2, inc, 1 if done else 0, False, data)
 
                 # Step 1: Run model detection to generate coarse sky mask
                 coarse_mask = self.app.workflow.do_detect_sky(
@@ -876,13 +868,10 @@ class DenoiseView(ModeView):
                     return
 
                 # Step 2: Run refine mask pass with current settings (search radius, erosion pixels)
-                if getattr(self.shell, "label_progressBar", None):
-                    self._post_result(generation, lambda: self.shell.label_progressBar.setText("Refining detected sky mask..."))
+                progress_updater.tick(2, 0, 1, False, {"desc": "Refining detected sky mask..."})
 
                 def on_refine_tick(total, inc, count, done, data=None):
-                    progress_updater.signals.incrementProgress.emit(
-                        progress_updater, 2, inc, 2 if done else 1, done, data
-                    )
+                    progress_updater.tick(2, inc, 2 if done else 1, done, data)
 
                 refined_mask = self.app.workflow.do_refine_mask(
                     ref.path,
