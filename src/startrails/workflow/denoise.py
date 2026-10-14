@@ -62,6 +62,7 @@ class DenoiseWorkflow(Workflow):
             super().save_project()
 
     def invalidate_results(self, alignment: bool = True, reference_changed: bool = False) -> None:
+        self.project.bind_files()
         self.project.invalidate_results(alignment=alignment)
         if reference_changed:
             self.project.mask_invalidated = True
@@ -99,13 +100,14 @@ class DenoiseWorkflow(Workflow):
 
     def remove_star_file(self, file: DenoiseInputFile) -> None:
         if file in self.project.star_files:
+            reference_changed = self.project.get_reference_file() is file
             self.project.star_files.remove(file)
             if self.project.reference_file is file:
                 if self.project.star_files:
                     self.project.set_reference_file(self.project.star_files[0])
                 else:
                     self.project.reference_file = None
-            self.invalidate_results(reference_changed=file.is_reference)
+            self.invalidate_results(reference_changed=reference_changed)
 
     removeStarFile = remove_star_file
 

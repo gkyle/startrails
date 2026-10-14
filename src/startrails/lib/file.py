@@ -2,6 +2,7 @@ import os
 import time
 from enum import Enum
 from uuid import uuid4
+import weakref
 
 
 def extract_file_datetime(path: str) -> float:
@@ -107,6 +108,18 @@ class DenoiseInputFile(File):
     ):
         super().__init__(basename=basename, path=path, timestamp=timestamp, mtime=mtime)
         self.file_id = file_id or uuid4().hex
-        self.is_reference = False
+        self._project_ref = None
         self.aligned = False
+
+    def bind_project(self, project):
+        self._project_ref = weakref.ref(project)
+
+    @property
+    def is_reference(self):
+        project = self._project_ref() if self._project_ref is not None else None
+        return project is not None and project.get_reference_file() is self
+
+    def __getstate__(self):
+        return {name: value for name, value in self.__dict__.items()
+                if name not in ("_project_ref", "is_reference")}
 

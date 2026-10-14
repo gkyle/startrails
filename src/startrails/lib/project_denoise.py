@@ -54,6 +54,15 @@ class DenoiseProject(Unpickle):
         self.stack_signature = None
         self.stack_artifacts = {}
         self.mask_invalidated = False
+        self.bind_files()
+
+    def bind_files(self):
+        for file in self.star_files + self.noise_files + self.vignetting_files:
+            file.bind_project(self)
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.bind_files()
 
     @staticmethod
     def file_signature(path) -> tuple:
@@ -142,16 +151,19 @@ class DenoiseProject(Unpickle):
     def get_reference_file(self) -> Optional[DenoiseInputFile]:
         """Return the authoritative reference frame, defaulting to the first star frame."""
         if self.reference_file is not None:
-            return self.reference_file
+            for file in self.star_files:
+                if file is self.reference_file or file.file_id == self.reference_file.file_id:
+                    return file
         if self.star_files:
             return self.star_files[0]
         return None
 
     def set_reference_file(self, file: DenoiseInputFile) -> None:
         """Mark a single input frame as the active reference frame."""
-        for f in self.star_files:
-            f.is_reference = f is file or f.path == file.path
+        if file not in self.star_files:
+            raise ValueError("Reference frame must be a star input in this project")
         self.reference_file = file
+        self.bind_files()
 
     def get_project_stem(self) -> str:
         """Return the base stem of the project file without extension."""
