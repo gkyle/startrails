@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QLabel, QWidget
 
 from startrails.lib.file import File, InputFile, OutputFile
 from startrails.ui.signals import Signals, getSignals
+from startrails.ui.theme import themed_color
 
 # Disable Qt's default 256MB QImageIOHandler allocation limit so large camera/denoise TIFFs load properly
 QImageReader.setAllocationLimit(0)
@@ -307,9 +308,13 @@ class CanvasLabel(QLabel):
         pixmap.fill(Qt.transparent)
         p = QPainter(pixmap)
         p.setRenderHint(QPainter.Antialiasing)
-        p.setPen(QPen(QColor(0, 0, 0, 180), 2))
+        outline = themed_color("#0f172a", self.palette())
+        outline.setAlpha(180)
+        p.setPen(QPen(outline, 2))
         p.drawEllipse(2, 2, size, size)
-        p.setPen(QPen(QColor(255, 255, 255, 240), 1))
+        highlight = themed_color("#ffffff", self.palette(), "background")
+        highlight.setAlpha(240)
+        p.setPen(QPen(highlight, 1))
         p.drawEllipse(2, 2, size, size)
         center = size // 2 + 2
         p.drawPoint(center, center)
