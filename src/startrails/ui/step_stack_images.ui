@@ -422,7 +422,10 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
          <number>8</number>
         </property>
         <item row="0" column="0">
-         <widget class="QLabel" name="useGPULabel">
+         <widget class="CheckboxLabel" name="useGPULabel">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
           <property name="styleSheet">
            <string notr="true">QLabel#useGPULabel {
     color: #334155;
@@ -532,6 +535,13 @@ QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg);
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CheckboxLabel</class>
+   <extends>QLabel</extends>
+   <header>startrails.ui.checkbox_label</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="resources.qrc"/>
  </resources>

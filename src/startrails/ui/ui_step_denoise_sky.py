@@ -18,6 +18,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QHBoxLayout,
     QLabel, QPushButton, QSizePolicy, QSlider,
     QSpinBox, QVBoxLayout, QWidget)
+
+from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
 
 class Ui_DenoiseSkySettings(object):
@@ -139,8 +141,9 @@ class Ui_DenoiseSkySettings(object):
 
         self.showMaskOverlayRow = QHBoxLayout()
         self.showMaskOverlayRow.setObjectName(u"showMaskOverlayRow")
-        self.showMaskOverlayLabel = QLabel(DenoiseSkySettings)
+        self.showMaskOverlayLabel = CheckboxLabel(DenoiseSkySettings)
         self.showMaskOverlayLabel.setObjectName(u"showMaskOverlayLabel")
+        self.showMaskOverlayLabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.showMaskOverlayLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.showMaskOverlayRow.addWidget(self.showMaskOverlayLabel)

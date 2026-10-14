@@ -226,7 +226,10 @@ QPushButton#refineMask:disabled {
    <item>
     <layout class="QHBoxLayout" name="showMaskOverlayRow">
      <item>
-      <widget class="QLabel" name="showMaskOverlayLabel">
+      <widget class="CheckboxLabel" name="showMaskOverlayLabel">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
        <property name="styleSheet">
         <string notr="true">color: #334155; font-size: 12px;</string>
        </property>
@@ -407,6 +410,13 @@ Hotkeys: [ / ] or Ctrl+Wheel to resize.</string>
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CheckboxLabel</class>
+   <extends>QLabel</extends>
+   <header>startrails.ui.checkbox_label</header>
+  </customwidget>
+ </customwidgets>
  <resources>
    <include location="resources.qrc"/>
   </resources>

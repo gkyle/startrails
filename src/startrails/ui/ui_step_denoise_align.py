@@ -18,6 +18,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QHBoxLayout, QLabel,
     QPushButton, QSizePolicy, QToolButton, QVBoxLayout,
     QWidget)
+
+from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
 
 class Ui_DenoiseAlignSettings(object):
@@ -94,8 +96,9 @@ class Ui_DenoiseAlignSettings(object):
         self.advancedLayout.setContentsMargins(4, 2, 4, 2)
         self.useGPURow = QHBoxLayout()
         self.useGPURow.setObjectName(u"useGPURow")
-        self.useGPULabel = QLabel(self.advancedBody)
+        self.useGPULabel = CheckboxLabel(self.advancedBody)
         self.useGPULabel.setObjectName(u"useGPULabel")
+        self.useGPULabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.useGPULabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.useGPURow.addWidget(self.useGPULabel)

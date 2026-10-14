@@ -194,7 +194,10 @@ color: #92400e;</string>
    <item>
     <layout class="QHBoxLayout" name="showDeletedMasksLayout">
      <item>
-      <widget class="QLabel" name="showDeletedMasksLabel">
+      <widget class="CheckboxLabel" name="showDeletedMasksLabel">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
        <property name="styleSheet">
         <string notr="true">color: #334155; font-size: 12px;</string>
        </property>
@@ -479,6 +482,13 @@ QPushButton#training:focus:enabled { border-color: #0f172a; }</string>
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CheckboxLabel</class>
+   <extends>QLabel</extends>
+   <header>startrails.ui.checkbox_label</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="resources.qrc"/>
  </resources>

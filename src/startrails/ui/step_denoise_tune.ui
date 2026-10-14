@@ -29,7 +29,10 @@
    <item>
     <layout class="QHBoxLayout" name="enableCorrectionsRow">
      <item>
-      <widget class="QLabel" name="enableCorrectionsLabel">
+      <widget class="CheckboxLabel" name="enableCorrectionsLabel">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
        <property name="styleSheet">
         <string notr="true">color: #334155; font-size: 12px;</string>
        </property>
@@ -78,7 +81,10 @@ QCheckBox#enableCorrections::indicator:checked { image: url(:/startrails/ui/swit
    <item>
     <layout class="QHBoxLayout" name="showGradientMaskRow">
      <item>
-      <widget class="QLabel" name="showGradientMaskLabel">
+      <widget class="CheckboxLabel" name="showGradientMaskLabel">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
        <property name="styleSheet">
         <string notr="true">color: #334155; font-size: 12px;</string>
        </property>
@@ -495,6 +501,13 @@ QCheckBox#showGradientMask::indicator:checked { image: url(:/startrails/ui/switc
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CheckboxLabel</class>
+   <extends>QLabel</extends>
+   <header>startrails.ui.checkbox_label</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="resources.qrc"/>
  </resources>

@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QFrame,
     QGridLayout, QHBoxLayout, QLabel, QPushButton,
     QSizePolicy, QSpinBox, QToolButton, QVBoxLayout,
     QWidget)
+
+from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
 
 class Ui_StackSettings(object):
@@ -264,8 +266,9 @@ class Ui_StackSettings(object):
         self.gpuBatchGrid = QGridLayout()
         self.gpuBatchGrid.setSpacing(8)
         self.gpuBatchGrid.setObjectName(u"gpuBatchGrid")
-        self.useGPULabel = QLabel(self.advancedBody)
+        self.useGPULabel = CheckboxLabel(self.advancedBody)
         self.useGPULabel.setObjectName(u"useGPULabel")
+        self.useGPULabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.useGPULabel.setStyleSheet(u"QLabel#useGPULabel {\n"
 "    color: #334155;\n"
 "    font-size: 12px;\n"

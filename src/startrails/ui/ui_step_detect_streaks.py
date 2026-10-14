@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QDoubleSpi
     QFrame, QGridLayout, QHBoxLayout, QLabel,
     QPushButton, QSizePolicy, QToolButton, QVBoxLayout,
     QWidget)
+
+from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
 
 class Ui_DetectSettings(object):
@@ -174,8 +176,9 @@ class Ui_DetectSettings(object):
 
         self.fields.addWidget(self.mergeThreshold, 2, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
 
-        self.useGPULabel = QLabel(self.advancedBody)
+        self.useGPULabel = CheckboxLabel(self.advancedBody)
         self.useGPULabel.setObjectName(u"useGPULabel")
+        self.useGPULabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         self.fields.addWidget(self.useGPULabel, 3, 0, 1, 1)
 

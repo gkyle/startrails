@@ -18,6 +18,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QDoubleSpinBox, QHBoxLayout,
     QLabel, QPushButton, QSizePolicy, QSlider,
     QVBoxLayout, QWidget)
+
+from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
 
 class Ui_DenoiseTuneSettings(object):
@@ -31,8 +33,9 @@ class Ui_DenoiseTuneSettings(object):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.enableCorrectionsRow = QHBoxLayout()
         self.enableCorrectionsRow.setObjectName(u"enableCorrectionsRow")
-        self.enableCorrectionsLabel = QLabel(DenoiseTuneSettings)
+        self.enableCorrectionsLabel = CheckboxLabel(DenoiseTuneSettings)
         self.enableCorrectionsLabel.setObjectName(u"enableCorrectionsLabel")
+        self.enableCorrectionsLabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.enableCorrectionsLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.enableCorrectionsRow.addWidget(self.enableCorrectionsLabel)
@@ -55,8 +58,9 @@ class Ui_DenoiseTuneSettings(object):
 
         self.showGradientMaskRow = QHBoxLayout()
         self.showGradientMaskRow.setObjectName(u"showGradientMaskRow")
-        self.showGradientMaskLabel = QLabel(DenoiseTuneSettings)
+        self.showGradientMaskLabel = CheckboxLabel(DenoiseTuneSettings)
         self.showGradientMaskLabel.setObjectName(u"showGradientMaskLabel")
+        self.showGradientMaskLabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.showGradientMaskLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.showGradientMaskRow.addWidget(self.showGradientMaskLabel)

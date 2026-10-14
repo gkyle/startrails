@@ -191,7 +191,10 @@
       <item>
        <layout class="QHBoxLayout" name="useGPURow">
         <item>
-         <widget class="QLabel" name="useGPULabel">
+         <widget class="CheckboxLabel" name="useGPULabel">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
           <property name="styleSheet">
            <string notr="true">color: #334155; font-size: 12px;</string>
           </property>
@@ -267,6 +270,13 @@ QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg);
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CheckboxLabel</class>
+   <extends>QLabel</extends>
+   <header>startrails.ui.checkbox_label</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="resources.qrc"/>
  </resources>
