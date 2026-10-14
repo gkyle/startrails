@@ -7,8 +7,8 @@ import numpy as np
 
 from PySide6.QtCore import QThread, Signal
 
-from startrails.lib.denoise.io.sky_detector import AutoSkyDetector
-from startrails.lib.denoise.io.mask_refiner import MaskRefiner
+from startrails.op.denoise.detect_sky import DetectSky
+from startrails.op.denoise.refine_mask import RefineMask
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 
 logger = logging.getLogger(__name__)
@@ -42,23 +42,26 @@ class AutoMaskWorker(QThread):
     def run(self):
         try:
             self.progressStatus.emit(f"Detecting celestial sky ({self.model_type})...")
-            coarse_mask = AutoSkyDetector.detect(
+            coarse_mask = DetectSky().detect(
                 self.image,
                 model_type=self.model_type,
                 model_path=self.model_path,
                 device=self.device,
             )
 
+            if coarse_mask is None or self.isInterruptionRequested():
+                return
             self.progressStatus.emit(
                 f"Refining detected sky mask (erosion: {self.erosion_pixels}px)..."
             )
-            refined_mask = MaskRefiner.refine(
+            refined_mask = RefineMask().refine(
                 self.image,
                 coarse_mask,
                 search_radius=self.search_radius,
                 erosion_pixels=self.erosion_pixels,
             )
-            self.finishedSuccess.emit(refined_mask)
+            if refined_mask is not None and not self.isInterruptionRequested():
+                self.finishedSuccess.emit(refined_mask)
         except Exception as e:
             logger.exception("AutoMaskWorker encountered an error")
             self.failedError.emit(str(e))
@@ -90,13 +93,14 @@ class RefineMaskWorker(QThread):
             self.progressStatus.emit(
                 f"Refining mask boundary (erosion: {self.erosion_pixels}px)..."
             )
-            refined = MaskRefiner.refine(
+            refined = RefineMask().refine(
                 self.image,
                 self.rough_mask,
                 search_radius=self.search_radius,
                 erosion_pixels=self.erosion_pixels,
             )
-            self.finishedSuccess.emit(refined)
+            if refined is not None and not self.isInterruptionRequested():
+                self.finishedSuccess.emit(refined)
         except Exception as e:
             logger.exception("RefineMaskWorker encountered an error")
             self.failedError.emit(str(e))
