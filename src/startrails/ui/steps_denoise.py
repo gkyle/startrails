@@ -468,7 +468,7 @@ class DenoiseTuneSettings(QWidget):
     def values(self) -> Dict[str, Any]:
         return {
             "enable_horizon_corrections": self.ui.enableCorrections.isChecked(),
-            "denoise_horizon_band": True,
+            "denoise_horizon_band": getattr(self.app.project, "denoise_horizon_band", self.defaults.denoise_horizon_band) if self.app else self.defaults.denoise_horizon_band,
             "horizon_blend_percent": self.ui.blendPercent.value(),
             "horizon_blur_radius": self.ui.blurRadius.value(),
             "horizon_denoise_radius": getattr(self.app.project, "horizon_denoise_radius", self.defaults.horizon_denoise_radius) if self.app else self.defaults.horizon_denoise_radius,

@@ -90,7 +90,7 @@ class DenoisePipeline(DenoiseOperation):
                     base_calibrated,
                     model_type=model_name,
                     model_path=self.config.auto_mask_path,
-                    device="auto",
+                    device="auto" if self.config.use_gpu else "cpu",
                 )
             if coarse_sky is None or self.shouldInterrupt():
                 raise CancelledError()

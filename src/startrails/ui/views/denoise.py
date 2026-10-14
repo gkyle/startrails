@@ -340,6 +340,22 @@ class DenoiseView(ModeView):
                 self.stack_card.setStatus("done")
         self.update_ready_states()
 
+    def _snapshot_config(self, task_id):
+        revision = self.app.workflow.project.processing_revision
+        try:
+            config = self.app.workflow.get_config()
+        except Exception as error:
+            self._show_task_error(task_id, str(error))
+            return None
+        if revision != self.app.workflow.project.processing_revision:
+            self.last_align_result = None
+            self.last_compositor = None
+            self._output_saved = False
+            self._generation += 1
+            self._cancel_background_jobs()
+            self.update_ready_states()
+        return config
+
     def _enqueue_task(self, task_id, title, total, desc, work):
         workflow = self.app.workflow
         generation = self._generation
@@ -807,6 +823,9 @@ class DenoiseView(ModeView):
         vals = self.sky_settings.values() if self.sky_settings else {}
         search_radius = vals.get("mask_search_radius")
         erosion_pixels = vals.get("mask_erosion_pixels", 5)
+        foliage_protection = self._project.mask_foliage_protection
+        model_path = self._project.auto_mask_path
+        device = "auto" if self._project.use_gpu else "cpu"
 
         generation = self._generation
 
@@ -828,6 +847,8 @@ class DenoiseView(ModeView):
                     ref.path,
                     progress_bar=on_detect_tick,
                     model_type=vals.get("auto_mask_model", "nightstack"),
+                    model_path=model_path,
+                    device=device,
                 )
                 if coarse_mask is None:
                     return
@@ -847,6 +868,7 @@ class DenoiseView(ModeView):
                     progress_bar=on_refine_tick,
                     search_radius=search_radius,
                     erosion_pixels=erosion_pixels,
+                    foliage_protection=foliage_protection,
                 )
                 if refined_mask is None:
                     return
@@ -866,6 +888,9 @@ class DenoiseView(ModeView):
         vals = self.sky_settings.values() if self.sky_settings else {}
         search_radius = vals.get("mask_search_radius")
         erosion_pixels = vals.get("mask_erosion_pixels", 5)
+        foliage_protection = self._project.mask_foliage_protection
+        model_path = self._project.auto_mask_path
+        device = "auto" if self._project.use_gpu else "cpu"
 
         self.show_file(ref)
 
@@ -902,6 +927,7 @@ class DenoiseView(ModeView):
                     progress_bar=progress_updater.tick,
                     search_radius=search_radius,
                     erosion_pixels=erosion_pixels,
+                    foliage_protection=foliage_protection,
                 )
                 if refined is not None:
                     self._post_result(generation, lambda r=refined: self._on_detection_finished(r))
@@ -948,10 +974,12 @@ class DenoiseView(ModeView):
         stars = self.app.workflow.get_star_files()
         if not stars:
             return
+        config_snapshot = self._snapshot_config("alignStars")
+        if config_snapshot is None:
+            return
 
         vals = self.align_settings.values() if self.align_settings else {}
 
-        config_snapshot = self.app.workflow.get_config()
         generation = self._generation
 
         def work():
@@ -987,6 +1015,9 @@ class DenoiseView(ModeView):
         stars = self.app.workflow.get_star_files() if hasattr(self.app.workflow, "get_star_files") else []
         if not stars:
             return
+        config_snapshot = self._snapshot_config("stackDenoise")
+        if config_snapshot is None:
+            return
 
         vals = self.stack_settings.values() if self.stack_settings else {}
         needs_align = self.last_align_result is None or not getattr(self.last_align_result, "aligned_sky_frames", None)
@@ -995,7 +1026,6 @@ class DenoiseView(ModeView):
         total_steps = (n_stars + total_stack_steps) if needs_align else total_stack_steps
 
         align_vals = self.align_settings.values() if self.align_settings else {}
-        config_snapshot = self.app.workflow.get_config()
         generation = self._generation
 
         def work():
@@ -1093,7 +1123,9 @@ class DenoiseView(ModeView):
         self._enqueue_task("stackDenoise", "Stack Denoise", total_steps, "Stacking base frames...", work)
 
     def _composition_config(self, output_path):
-        config = self.app.workflow.get_config()
+        config = self._snapshot_config("composeHorizon")
+        if config is None:
+            return None
         config.output_path = Path(output_path)
         if self.tune_settings is not None:
             for name, value in self.tune_settings.values().items():
@@ -1102,6 +1134,11 @@ class DenoiseView(ModeView):
         return config
 
     def _enqueue_composition(self, config, task_id: str, title: str) -> None:
+        if config is None:
+            return
+        if self.last_compositor is None:
+            self._show_task_error(task_id, "Inputs changed. Regenerate the base stacks before exporting.")
+            return
         workflow = self.app.workflow
         compositor = self.last_compositor
         coverages = self.last_align_result.sky_coverages if self.last_align_result else None
@@ -1165,8 +1202,10 @@ class DenoiseView(ModeView):
         stars = self.app.workflow.get_star_files()
         if not stars:
             return
+        config_snapshot = self._snapshot_config("pipeline")
+        if config_snapshot is None:
+            return
 
-        config_snapshot = self.app.workflow.get_config()
         generation = self._generation
 
         def work():
