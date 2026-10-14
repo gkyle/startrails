@@ -198,6 +198,7 @@ class DenoisePipeline(DenoiseOperation):
 
         _report(0.70, "Stacking base sky and ground frames...")
         stack_op = StackDenoise(self.cancel_event, self.cancel_check)
+        stack_op.addObserver(lambda total, inc, count, done, data: _report(0.70 + 0.19 * count / max(1, total), (data or {}).get("desc", "Stacking sky and ground...")))
 
         with profiler.measure("4. Base Stacking"):
             compositor = stack_op.stack(
@@ -232,6 +233,9 @@ class DenoisePipeline(DenoiseOperation):
             raise ValueError("No configuration provided.")
 
         def _report(progress: float, message: str):
+            if self.job is not None:
+                count = min(99, max(self.job.count, int(progress * 100)))
+                self.updateJob(count - self.job.count, {"desc": message})
             if progress_callback:
                 progress_callback(progress, message)
 
@@ -252,7 +256,7 @@ class DenoisePipeline(DenoiseOperation):
             self._artifacts = transaction
             try:
                 compositor, sky_coverages, base_icc = self.stack_base_frames(
-                    progress_callback=progress_callback,
+                    progress_callback=_report,
                     profiler=profiler,
                 )
 
@@ -260,6 +264,7 @@ class DenoisePipeline(DenoiseOperation):
                     raise CancelledError()
                 _report(0.90, "Evaluating horizon composite...")
                 compose_op = ComposeHorizon(self.cancel_event, self.cancel_check)
+                compose_op.addObserver(lambda total, inc, count, done, data: _report(0.90 + 0.09 * count / max(1, total), "Compositing final image..."))
 
                 with profiler.measure("5. Output File Export"):
                     result = compose_op.compose(
@@ -280,7 +285,7 @@ class DenoisePipeline(DenoiseOperation):
         self.last_gradient_mask = compose_op.last_gradient_mask
 
         _report(1.0, f"Stacking completed successfully: {written_path}")
-        self.updateJob(100, written_path)
+        self.updateJob(100 - self.job.count, written_path)
 
         if self.config.verbose:
             summary = profiler.format_summary()

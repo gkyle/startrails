@@ -53,7 +53,7 @@ class ComposeHorizon(DenoiseOperation):
             horizon_value_denoise_strength=config.horizon_value_denoise_strength,
         )
 
-        self.updateJob(1, {"desc": "Horizon blended. Saving composite..." if write_output and config.output_path else "Horizon blended.", "stacked": stacked})
+        self.updateJob(1, {"desc": "Horizon blended. Saving composite..." if write_output and config.output_path else "Horizon blended.", "stacked": stacked, "color_space": "rgb"})
 
         if self.shouldInterrupt():
             return None
@@ -81,5 +81,5 @@ class ComposeHorizon(DenoiseOperation):
                     transaction.commit()
             written_path = output_path
 
-        self.updateJob(1, {"desc": "Composite complete", "stacked": stacked, "path": written_path, "gradient_mask": self.last_gradient_mask})
+        self.updateJob(1, {"desc": "Composite complete", "stacked": stacked, "color_space": "rgb", "path": written_path, "gradient_mask": self.last_gradient_mask})
         return stacked, written_path

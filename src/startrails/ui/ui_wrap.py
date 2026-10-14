@@ -428,7 +428,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         progressUpdater.total = total
         progressUpdater.update(increment)
         if self.progressOverlay is not None:
-            if done or (total > 0 and count >= total):
+            if (done or (total > 0 and count >= total)) and self.current_running_task is None:
                 self.progressOverlay.finish()
             else:
                 elapsed = None
@@ -483,7 +483,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
                         preview = data[key]
                         break
                 if preview is not None and hasattr(self, "canvas_main") and self.canvas_main is not None:
-                    self.canvas_main.setFromNumpyArray(preview, resetZoomAndPosition=False)
+                    self.canvas_main.setFromNumpyArray(preview, resetZoomAndPosition=False, is_bgr=data.get("color_space") != "rgb")
 
     def doCancelOp(self):
         if hasattr(self.app, "doInterruptOperation"):
