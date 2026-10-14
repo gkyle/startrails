@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 import logging
+from contextlib import nullcontext
+from startrails.lib.artifacts import ArtifactTransaction
 from pathlib import Path
 from typing import List, Optional
 import numpy as np
@@ -30,6 +32,7 @@ class StackDenoise(DenoiseOperation):
         raw_ground_frames: List[np.ndarray],
         sky_mask: np.ndarray,
         base_icc: Optional[bytes] = None,
+        artifacts: Optional[ArtifactTransaction] = None,
     ) -> Optional[HorizonCompositor]:
         """Stack frames and prepare HorizonCompositor.
 
@@ -81,19 +84,20 @@ class StackDenoise(DenoiseOperation):
             base_comp_path = folder / "base_composite.tif"
             output_path = Path(config.output_path).resolve() if config.output_path else (folder / "composite.tif")
             grad_mask_path = Path(config.gradient_mask_path).resolve() if config.gradient_mask_path else (folder / "gradient_mask.png")
-            try:
-                imwrite(sky_path, compositor.sky_stack, convertBGR=True)
-                imwrite(ground_path, compositor.ground_stack, convertBGR=True)
-                imwrite(base_comp_path, compositor.base_composite, convertBGR=True)
-                imwrite(output_path, compositor.base_composite, convertBGR=True)
+            transaction = artifacts or ArtifactTransaction(self.shouldInterrupt)
+            with nullcontext(transaction) if artifacts is not None else transaction:
+                imwrite(transaction.stage(sky_path), compositor.sky_stack, convertBGR=True)
+                imwrite(transaction.stage(ground_path), compositor.ground_stack, convertBGR=True)
+                imwrite(transaction.stage(base_comp_path), compositor.base_composite, convertBGR=True)
+                imwrite(transaction.stage(output_path), compositor.base_composite, convertBGR=True)
                 if compositor.gradient_mask is not None:
-                    MaskHandler.save_mask(compositor.gradient_mask, grad_mask_path)
-                config.sky_stack_path = sky_path
-                config.ground_stack_path = ground_path
-                config.output_path = output_path
-                config.gradient_mask_path = grad_mask_path
-            except Exception as e:
-                logger.warning(f"Could not save intermediate base stacks: {e}")
+                    MaskHandler.save_mask(compositor.gradient_mask, transaction.stage(grad_mask_path))
+                if artifacts is None:
+                    transaction.commit()
+            config.sky_stack_path = sky_path
+            config.ground_stack_path = ground_path
+            config.output_path = output_path
+            config.gradient_mask_path = grad_mask_path
 
         self.updateJob(1, {"desc": "Stacking complete", "stage": "done", "compositor": compositor})
         return compositor

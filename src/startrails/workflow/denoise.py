@@ -464,6 +464,14 @@ class DenoiseWorkflow(Workflow):
         self.app.activeOperation = pipeline
         try:
             out_path = pipeline.run(cfg, progress_callback=progress_callback)
+            if out_path:
+                self.project.homographies = {str(path): value for path, value in cfg.homographies.items()}
+                self.project.alignment_signature = self.project.source_signature()
+                self.project.sky_stack_path = str(cfg.sky_stack_path) if cfg.sky_stack_path else None
+                self.project.ground_stack_path = str(cfg.ground_stack_path) if cfg.ground_stack_path else None
+                self.project.gradient_mask_path = str(cfg.gradient_mask_path) if cfg.gradient_mask_path else None
+                self.project.output_path = str(out_path)
+                self.project.record_stacks()
             return out_path
         finally:
             self.app.activeOperation = self._session_operation

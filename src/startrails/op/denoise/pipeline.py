@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable, Optional, Tuple, List
 import numpy as np
 
+from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.util import imread
 from startrails.op.denoise.base import DenoiseOperation
 from startrails.lib.denoise.config import DenoiseConfig
@@ -30,6 +31,7 @@ class DenoisePipeline(DenoiseOperation):
     def __init__(self, config: Optional[DenoiseConfig] = None, cancel_event=None, cancel_check=None):
         super().__init__(cancel_event, cancel_check)
         self.config = config
+        self._artifacts = None
         self.last_profile: Optional[PipelineProfiler] = None
         self.last_compositor: Optional[HorizonCompositor] = None
         self.last_gradient_mask: Optional[np.ndarray] = None
@@ -104,7 +106,7 @@ class DenoisePipeline(DenoiseOperation):
                     search_radius=self.config.mask_search_radius,
                     erosion_pixels=self.config.mask_erosion_pixels,
                     foliage_protection=self.config.mask_foliage_protection,
-                    export_path=mask_out,
+                    export_path=self._artifacts.stage(mask_out) if mask_out and self._artifacts else mask_out,
                 )
             if mask_out:
                 self.config.refined_mask_path = mask_out
@@ -122,7 +124,7 @@ class DenoisePipeline(DenoiseOperation):
                     search_radius=self.config.mask_search_radius,
                     erosion_pixels=self.config.mask_erosion_pixels,
                     foliage_protection=self.config.mask_foliage_protection,
-                    export_path=mask_out,
+                    export_path=self._artifacts.stage(mask_out) if mask_out and self._artifacts else mask_out,
                 )
             if mask_out:
                 self.config.refined_mask_path = mask_out
@@ -205,6 +207,7 @@ class DenoisePipeline(DenoiseOperation):
                 align_result.raw_ground_frames,
                 align_result.sky_mask,
                 base_icc=base_icc,
+                artifacts=self._artifacts,
             )
 
         if compositor is None or self.shouldInterrupt():
@@ -245,28 +248,35 @@ class DenoisePipeline(DenoiseOperation):
 
         self.startJob(100)
 
-        compositor, sky_coverages, base_icc = self.stack_base_frames(
-            progress_callback=progress_callback,
-            profiler=profiler,
-        )
+        with ArtifactTransaction(self.shouldInterrupt) as transaction:
+            self._artifacts = transaction
+            try:
+                compositor, sky_coverages, base_icc = self.stack_base_frames(
+                    progress_callback=progress_callback,
+                    profiler=profiler,
+                )
 
-        if self.shouldInterrupt():
-            raise CancelledError()
-        _report(0.90, "Evaluating horizon composite...")
-        compose_op = ComposeHorizon(self.cancel_event, self.cancel_check)
+                if self.shouldInterrupt():
+                    raise CancelledError()
+                _report(0.90, "Evaluating horizon composite...")
+                compose_op = ComposeHorizon(self.cancel_event, self.cancel_check)
 
-        with profiler.measure("5. Output File Export"):
-            result = compose_op.compose(
-                compositor,
-                self.config,
-                sky_coverages=sky_coverages,
-                base_icc=base_icc,
-                write_output=True,
-            )
+                with profiler.measure("5. Output File Export"):
+                    result = compose_op.compose(
+                        compositor,
+                        self.config,
+                        sky_coverages=sky_coverages,
+                        base_icc=base_icc,
+                        write_output=True,
+                        artifacts=self._artifacts,
+                    )
 
-        if result is None or self.shouldInterrupt():
-            raise CancelledError()
-        stacked, written_path = result
+                if result is None or self.shouldInterrupt():
+                    raise CancelledError()
+                stacked, written_path = result
+                transaction.commit()
+            finally:
+                self._artifacts = None
         self.last_gradient_mask = compose_op.last_gradient_mask
 
         _report(1.0, f"Stacking completed successfully: {written_path}")

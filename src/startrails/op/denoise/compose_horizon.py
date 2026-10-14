@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 import logging
+from contextlib import nullcontext
+from startrails.lib.artifacts import ArtifactTransaction
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 import numpy as np
@@ -29,6 +31,7 @@ class ComposeHorizon(DenoiseOperation):
         sky_coverages: Optional[List[np.ndarray]] = None,
         base_icc: Optional[bytes] = None,
         write_output: bool = True,
+        artifacts: Optional[ArtifactTransaction] = None,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
         """Evaluate horizon composite and optionally write final output to disk.
 
@@ -58,20 +61,25 @@ class ComposeHorizon(DenoiseOperation):
         written_path: Optional[Path] = None
         if write_output and config.output_path:
             output_path = Path(config.output_path).resolve()
-            written_path = imwrite(output_path, stacked, convertBGR=True)
+            transaction = artifacts or ArtifactTransaction(self.shouldInterrupt)
+            with nullcontext(transaction) if artifacts is not None else transaction:
+                imwrite(transaction.stage(output_path), stacked, convertBGR=True)
 
-            if config.export_gradient_mask and sky_coverages:
-                grad_mask_out = (
-                    Path(config.gradient_mask_path).resolve()
-                    if config.gradient_mask_path
-                    else output_path.parent / f"{output_path.stem}.gradient_mask.png"
-                )
-                h, w = stacked.shape[:2]
-                sky_mask = MaskHandler.create_mask(shape=(h, w), mask_path=config.mask_path, mask_array=config.mask_array)
-                gradient_mask = MaskHandler.compute_gradient_mask(sky_coverages, sky_mask=sky_mask)
-                MaskHandler.save_mask(gradient_mask, grad_mask_out)
-                config.gradient_mask_path = grad_mask_out
-                self.last_gradient_mask = gradient_mask
+                if config.export_gradient_mask and sky_coverages:
+                    grad_mask_out = (
+                        Path(config.gradient_mask_path).resolve()
+                        if config.gradient_mask_path
+                        else output_path.parent / f"{output_path.stem}.gradient_mask.png"
+                    )
+                    h, w = stacked.shape[:2]
+                    sky_mask = MaskHandler.create_mask(shape=(h, w), mask_path=config.mask_path, mask_array=config.mask_array)
+                    gradient_mask = MaskHandler.compute_gradient_mask(sky_coverages, sky_mask=sky_mask)
+                    MaskHandler.save_mask(gradient_mask, transaction.stage(grad_mask_out))
+                    config.gradient_mask_path = grad_mask_out
+                    self.last_gradient_mask = gradient_mask
+                if artifacts is None:
+                    transaction.commit()
+            written_path = output_path
 
         self.updateJob(1, {"desc": "Composite complete", "stacked": stacked, "path": written_path, "gradient_mask": self.last_gradient_mask})
         return stacked, written_path
