@@ -63,7 +63,8 @@ class ComposeHorizon(DenoiseOperation):
             output_path = Path(config.output_path).resolve()
             transaction = artifacts or ArtifactTransaction(self.shouldInterrupt)
             with nullcontext(transaction) if artifacts is not None else transaction:
-                imwrite(transaction.stage(output_path), stacked, convertBGR=True)
+                imwrite(transaction.stage(output_path), stacked, convertBGR=True,
+                        quality=config.jpeg_quality, optimize=config.jpeg_optimize)
 
                 if config.export_gradient_mask and sky_coverages:
                     grad_mask_out = (

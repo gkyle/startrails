@@ -10,6 +10,8 @@ import numpy as np
 @dataclass
 class DenoiseSettings:
     """Authoritative defaults for persisted and runtime denoise settings."""
+    jpeg_quality: int = 95
+    jpeg_optimize: bool = True
     mask_search_radius: Optional[int] = None
     mask_erosion_pixels: int = 5
     mask_foliage_protection: bool = True
