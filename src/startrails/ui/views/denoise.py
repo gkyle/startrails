@@ -428,22 +428,7 @@ class DenoiseView(ModeView):
 
     def update_ready_states(self, _=None) -> None:
         has_stars = bool(hasattr(self.app.workflow, "get_star_files") and self.app.workflow.get_star_files())
-        if self.sky_settings is not None:
-            self.sky_settings.refresh_inputs()
-        if self.align_settings is not None:
-            self.align_settings.refresh_inputs()
-
-        has_homographies = bool(
-            self.last_align_result is not None
-            or (hasattr(self.app.workflow, "project") and getattr(self.app.workflow.project, "homographies", {}))
-        )
-        if self.stack_settings is not None:
-            self.stack_settings.refresh_inputs(ready=has_homographies or has_stars)
-
         has_compositor = bool(self.last_compositor is not None or self._has_existing_stacks())
-        if self.tune_settings is not None:
-            self.tune_settings.refresh_inputs(ready=has_compositor)
-
         if self.btn_pipeline is not None:
             self.btn_pipeline.setEnabled(has_stars)
         if self.btn_save_output is not None:
@@ -1129,9 +1114,9 @@ class DenoiseView(ModeView):
                             self.shell.canvas_main.set_gradient_mask(compositor.gradient_mask)
                 if self.stack_card is not None:
                     self.stack_card.setStatus("done")
+                self.update_ready_states()
                 if self.tune_card is not None:
                     self.tune_card.setExpanded(True)
-                self.update_ready_states()
 
             self._post_result(generation, on_stack_done)
 

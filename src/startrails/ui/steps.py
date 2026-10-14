@@ -140,6 +140,7 @@ class StepCard(QFrame):
         super(QWidget, self.ui.headerWidget).mousePressEvent(event)
 
     def setExpanded(self, expanded):
+        expanded = bool(expanded and self._status != "locked")
         with QSignalBlocker(self.ui.toggle):
             self.ui.toggle.setChecked(expanded)
         self.ui.chevron.setProperty("expanded", expanded)
@@ -170,6 +171,9 @@ class StepCard(QFrame):
         if subtitle is not None:
             self.ui.subtitle.setText(subtitle)
         self._update_status_appearance()
+        self.ui.toggle.setEnabled(status != "locked")
+        if status == "locked":
+            self.setExpanded(False)
         if not self.ui.toggle.isChecked():
             target = self.frame if getattr(self, "frame", None) is not None else self
             target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)

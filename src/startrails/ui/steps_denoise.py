@@ -222,7 +222,7 @@ class DenoiseAlignSettings(QWidget):
         has_stars = False
         if self.app and hasattr(self.app, "workflow") and hasattr(self.app.workflow, "get_star_files"):
             has_stars = bool(self.app.workflow.get_star_files())
-        self.ui.run.setEnabled(has_stars)
+        self.ui.run.setEnabled(has_stars and ready)
         if self.app and hasattr(self.app, "workflow") and hasattr(self.app.workflow, "get_reference_file"):
             self.set_reference_file(self.app.workflow.get_reference_file())
 
@@ -344,9 +344,9 @@ class DenoiseStackSettings(QWidget):
     def refresh_inputs(self, ready: bool = False) -> None:
         self.ui.run.setEnabled(ready)
         if ready:
-            self.ui.stackStatus.setText("Aligned frames ready to stack")
+            self.ui.stackStatus.setText("Ready to stack (alignment runs automatically if needed)")
         else:
-            self.ui.stackStatus.setText("Requires aligned star frames")
+            self.ui.stackStatus.setText("Requires star images and a sky mask")
 
 
 class DenoiseTuneSettings(QWidget):

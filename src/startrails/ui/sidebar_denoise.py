@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 from typing import Optional
+from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 
@@ -101,10 +102,7 @@ class SidebarDenoise(QWidget):
         self.skySettings.ui.showMaskOverlay.setChecked(self.skyCard.is_expanded)
 
     def refresh_inputs(self) -> None:
-        self.skySettings.refresh_inputs()
-        self.alignSettings.refresh_inputs()
-        self.stackSettings.refresh_inputs()
-        self.tuneSettings.refresh_inputs()
+        self.update_operations_progress()
 
     def set_has_compositor(self, has_comp: bool) -> None:
         self._has_compositor = has_comp
@@ -119,30 +117,41 @@ class SidebarDenoise(QWidget):
         wf = getattr(app, "workflow", None) if app else None
         proj = getattr(wf, "project", None) if wf else None
 
-        has_mask = bool(proj and getattr(proj, "mask_path", None))
+        has_stars = bool(proj and proj.star_files)
+        mask_path = getattr(proj, "mask_path", None)
+        has_mask = bool(mask_path and not proj.mask_invalidated and Path(mask_path).is_file())
         homographies = getattr(proj, "homographies", None) if proj else None
         has_homo = bool(homographies)
         has_compositor = self._has_compositor
         output_saved = self._output_saved
+        can_process = has_stars and has_mask
 
-        if self.skyCard is not None:
-            self.skyCard.setStatus("done" if has_mask else "ready")
-            self.skyCard.setSubtitle("Sky mask defined" if has_mask else "Ready to detect or paint mask")
+        self.skySettings.refresh_inputs()
+        self.alignSettings.refresh_inputs(ready=can_process)
+        self.stackSettings.refresh_inputs(ready=can_process)
+        self.tuneSettings.refresh_inputs(ready=has_compositor)
 
-        if self.alignCard is not None:
-            self.alignCard.setStatus("done" if has_homo else "ready")
-            if has_homo:
-                self.alignCard.setSubtitle(f"{len(homographies)} frames aligned")
-            else:
-                self.alignCard.setSubtitle("Requires sky mask" if not has_mask else "Ready to align")
+        if not has_stars:
+            self.skyCard.setStatus("locked", "Add star images to begin")
+        else:
+            self.skyCard.setStatus("done" if has_mask else "ready",
+                                   "Sky mask defined" if has_mask else "Ready to detect or paint mask")
 
-        if self.stackCard is not None:
-            self.stackCard.setStatus("done" if has_compositor else "ready")
-            self.stackCard.setSubtitle("Base stacks ready" if has_compositor else "Requires aligned stars")
+        if not can_process:
+            prerequisite = "Add star images to begin" if not has_stars else "Requires sky mask"
+            self.alignCard.setStatus("locked", prerequisite)
+            self.stackCard.setStatus("locked", prerequisite)
+        else:
+            self.alignCard.setStatus("done" if has_homo else "ready",
+                                     f"{len(homographies)} frames aligned" if has_homo else "Ready to align")
+            self.stackCard.setStatus("done" if has_compositor else "ready",
+                                     "Base stacks ready" if has_compositor else
+                                     ("Ready to stack" if has_homo else "Ready to align and stack"))
 
-        if self.tuneCard is not None:
-            self.tuneCard.setStatus("done" if output_saved else "ready")
-            self.tuneCard.setSubtitle("Live canvas tuning active" if has_compositor else "Requires base stacks")
+        if not has_compositor:
+            self.tuneCard.setStatus("locked", "Requires base stacks")
+        else:
+            self.tuneCard.setStatus("done" if output_saved else "ready", "Live canvas tuning active")
 
         completed = sum([
             1 if has_mask else 0,
