@@ -7,6 +7,7 @@ from typing import Optional, Union
 import cv2
 import numpy as np
 from PIL import Image
+from startrails.lib.image_io import imread, normalize_image
 
 try:
     import rawpy
@@ -89,70 +90,23 @@ class ImageReader:
 
     @classmethod
     def _read_tiff(cls, path: Path) -> ImageData:
-        icc_profile = None
-        try:
-            with Image.open(path) as img:
-                icc_profile = img.info.get("icc_profile")
-        except Exception:
-            pass
-
-        arr = None
-        # Tier 1: Pillow
-        try:
-            with Image.open(path) as img:
-                arr = np.array(img)
-        except Exception:
-            pass
-
-        # Tier 2: OpenCV
-        if arr is None:
-            try:
-                bgr = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
-                if bgr is not None:
-                    if bgr.ndim == 3 and bgr.shape[2] >= 3:
-                        arr = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-                    else:
-                        arr = bgr
-            except Exception:
-                pass
-
-        if arr is None:
-            raise ValueError(f"Could not decode TIFF image '{path.name}'.")
-
-        arr = cls._normalize_array(arr)
-        h, w = arr.shape[:2]
-        channels = arr.shape[2] if arr.ndim == 3 else 1
-        return ImageData(data=arr, path=path, width=w, height=h, channels=channels, bit_depth=16, icc_profile=icc_profile)
+        return cls._read_standard(path)
 
     @classmethod
     def _read_standard(cls, path: Path) -> ImageData:
-        with Image.open(path) as img:
-            icc_profile = img.info.get("icc_profile")
-            arr = np.array(img)
-            arr = cls._normalize_array(arr)
-            h, w = arr.shape[:2]
-            channels = arr.shape[2] if arr.ndim == 3 else 1
-            return ImageData(data=arr, path=path, width=w, height=h, channels=channels, bit_depth=8, icc_profile=icc_profile)
-
-    @staticmethod
-    def _normalize_array(arr: np.ndarray) -> np.ndarray:
-        """Normalize integer arrays (uint8, uint16) to float32 [0.0, 1.0]."""
-        if arr.ndim == 2:
-            pass  # keep 2D array 2D
-        elif arr.ndim == 3 and arr.shape[2] == 4:
+        # Pixel decoding uses the same precision/channel contract as operations.
+        pixels = imread(path, to_rgb=True)
+        bit_depth = pixels.dtype.itemsize * 8
+        arr = normalize_image(pixels)
+        if arr.ndim == 3 and arr.shape[2] == 4:
             arr = arr[..., :3]
+        icc_profile = None
+        try:
+            with Image.open(path) as image:
+                icc_profile = image.info.get("icc_profile")
+        except OSError:
+            pass
+        height, width = arr.shape[:2]
+        channels = arr.shape[2] if arr.ndim == 3 else 1
+        return ImageData(arr, path, width, height, channels, bit_depth, icc_profile)
 
-        if arr.dtype == np.uint8:
-            return (arr.astype(np.float32) / 255.0).clip(0.0, 1.0)
-        elif arr.dtype == np.uint16:
-            return (arr.astype(np.float32) / 65535.0).clip(0.0, 1.0)
-        elif arr.dtype in (np.float32, np.float64):
-            arr32 = arr.astype(np.float32)
-            max_v = float(np.max(arr32)) if arr32.size > 0 else 1.0
-            if max_v > 256.0:
-                arr32 /= 65535.0
-            elif max_v > 1.0:
-                arr32 /= 255.0
-            return arr32.clip(0.0, 1.0)
-        else:
-            return (arr.astype(np.float32) / float(np.iinfo(arr.dtype).max)).clip(0.0, 1.0)
