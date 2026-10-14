@@ -478,6 +478,8 @@ class DenoiseView(ModeView):
         self._disposed = True
         self._generation += 1
         self._cancel_background_jobs()
+        self.last_align_result = None
+        self.last_compositor = None
         canvas = getattr(self.shell, "canvas_main", None)
         if canvas is not None:
             canvas.set_mask_edit_mode(False)
@@ -486,6 +488,14 @@ class DenoiseView(ModeView):
         super().teardown()
         if self._sidebar is not None:
             self._sidebar.setParent(None)
+        if not self._background_workers:
+            self._dispose_retired_view()
+
+    def _dispose_retired_view(self) -> None:
+        if self._sidebar is not None:
+            self._sidebar.deleteLater()
+            self._sidebar = None
+        self.deleteLater()
 
     def wait_for_workers(self) -> None:
         """Keep QThreads alive through shutdown, including retired project jobs."""
@@ -503,6 +513,8 @@ class DenoiseView(ModeView):
         def release():
             self._background_workers.discard(worker)
             worker.deleteLater()
+            if self._disposed and not self._background_workers:
+                self._dispose_retired_view()
         worker.finished.connect(release)
 
     def _worker_is_current(self, worker, request_id: int, latest_id: int) -> bool:
