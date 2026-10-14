@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 import numpy as np
 from PySide6.QtCore import Slot, Qt, QTimer, QSignalBlocker
+from shiboken6 import isValid
 from PySide6.QtWidgets import (
     QFileDialog,
     QLabel,
@@ -87,7 +88,7 @@ class DenoiseView(ModeView):
         self._horizon_worker: Optional[HorizonOverlayWorker] = None
         self._horizon_request_id: int = 0
         self._pending_horizon_params: Optional[dict] = None
-        self._horizon_debounce_timer = QTimer()
+        self._horizon_debounce_timer = QTimer(self)
         self._horizon_debounce_timer.setSingleShot(True)
         self._horizon_debounce_timer.setInterval(75)
         self._horizon_debounce_timer.timeout.connect(self._dispatch_horizon_tuning)
@@ -96,7 +97,7 @@ class DenoiseView(ModeView):
         self._final_save_worker: Optional[FinalCompositeSaveWorker] = None
         self._final_save_request_id: int = 0
         self._pending_final_save: Optional[dict] = None
-        self._horizon_save_debounce_timer = QTimer()
+        self._horizon_save_debounce_timer = QTimer(self)
         self._horizon_save_debounce_timer.setSingleShot(True)
         self._horizon_save_debounce_timer.setInterval(1000)
         self._horizon_save_debounce_timer.timeout.connect(self._dispatch_async_save_final_composite)
@@ -516,8 +517,9 @@ class DenoiseView(ModeView):
         self._background_workers.add(worker)
         def release():
             self._background_workers.discard(worker)
-            worker.deleteLater()
-            if self._disposed and not self._background_workers:
+            if isValid(worker):
+                worker.deleteLater()
+            if self._disposed and not self._background_workers and isValid(self):
                 self._dispose_retired_view()
         worker.finished.connect(release)
 
