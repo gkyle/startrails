@@ -65,6 +65,7 @@ class SidebarDenoise(QWidget):
         self._step_cards = (self.skyCard, self.alignCard, self.stackCard, self.tuneCard)
         for card in self._step_cards:
             card.expanded.connect(lambda c=card: self._collapse_other_steps(c))
+        self.skyCard.expansion_changed.connect(self.skySettings.ui.showMaskOverlay.setChecked)
 
         self.update_operations_progress(app)
 

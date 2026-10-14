@@ -75,6 +75,7 @@ from .ui_step_additional_tools import Ui_ToolsSettings
 
 class StepCard(QFrame):
     expanded = Signal()
+    expansion_changed = Signal(bool)
 
     def add_body(self, body):
         """Qt Designer custom-container page insertion API."""
@@ -157,6 +158,7 @@ class StepCard(QFrame):
         target.updateGeometry()
         if expanded:
             self.expanded.emit()
+        self.expansion_changed.emit(expanded)
 
     def setSubtitle(self, text):
         self.ui.subtitle.setText(text)
