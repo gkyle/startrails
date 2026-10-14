@@ -386,6 +386,10 @@ class DenoiseView(ModeView):
         if self.lbl_status is not None:
             self.lbl_status.setText(message)
 
+    def _result_guard(self, generation):
+        project = self._project
+        return lambda: not self._disposed and generation == self._generation and project is self.app.project
+
     def _post_result(self, generation: int, callback) -> None:
         """Deliver only results belonging to this view's current project session."""
         def deliver():
@@ -847,6 +851,7 @@ class DenoiseView(ModeView):
                 getattr(self.shell, "label_progressBar", None),
                 total=2,
                 desc="Detecting sky mask...",
+                result_guard=self._result_guard(generation),
             )
             try:
                 def on_detect_tick(total, inc, count, done, data=None):
@@ -931,6 +936,7 @@ class DenoiseView(ModeView):
                 getattr(self.shell, "label_progressBar", None),
                 total=1,
                 desc="Refining sky mask...",
+                result_guard=self._result_guard(generation),
             )
             try:
                 refined = self.app.workflow.do_refine_mask(
@@ -1001,6 +1007,7 @@ class DenoiseView(ModeView):
                 getattr(self.shell, "label_progressBar", None),
                 total=n,
                 desc="Aligning star frames...",
+                result_guard=self._result_guard(generation),
             )
             cfg = config_snapshot
             cfg.use_gpu = vals.get("use_gpu", True)
@@ -1053,6 +1060,7 @@ class DenoiseView(ModeView):
                     getattr(self.shell, "label_progressBar", None),
                     total=len(stars),
                     desc="Aligning star frames...",
+                    result_guard=self._result_guard(generation),
                 )
 
                 align_result = self.app.workflow.do_align_stars(
@@ -1076,6 +1084,7 @@ class DenoiseView(ModeView):
                 getattr(self.shell, "label_progressBar", None),
                 total=actual_stack_steps,
                 desc="Stacking sky and ground frames...",
+                result_guard=self._result_guard(generation),
             )
 
             compositor = self.app.workflow.do_stack_denoise(
@@ -1162,6 +1171,7 @@ class DenoiseView(ModeView):
                 getattr(self.shell, "progressBar", None),
                 getattr(self.shell, "label_progressBar", None),
                 total=2, desc="Compositing and saving final image...",
+                result_guard=self._result_guard(generation),
             )
             result = workflow.do_compose_horizon(
                 compositor, config=config, progress_bar=updater.tick, sky_coverages=coverages,
@@ -1226,6 +1236,7 @@ class DenoiseView(ModeView):
                 getattr(self.shell, "label_progressBar", None),
                 total=100,
                 desc="Running denoise pipeline...",
+                result_guard=self._result_guard(generation),
             )
             out_path = self.app.workflow.do_pipeline(config=config_snapshot, progress_bar=progress_updater.tick)
             def on_pipeline_done():

@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from startrails.ui.progress import ProgressBarUpdater
+from startrails.ui.progress import ProgressBarUpdater, progress_scope
 from startrails.ui.progress_overlay import ProgressOverlay
 from startrails.ui.signals import AsyncWorker, getSignals
 from startrails.ui.sidebar import Sidebar
@@ -96,6 +96,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.mainWindow: Optional[MainWindow] = None
         self.active_view: Optional[ModeView] = None
         self.current_project_token = object()
+        self._visible_task_token = None
         self.op_queue = QThreadPool()
         self.op_queue.setMaxThreadCount(1)
         self.enqueued_tasks = set()
@@ -232,6 +233,8 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.signals.startProgress.connect(self.slotStartProgress)
         self.signals.incrementProgress.connect(self.slotIncrementProgressBar)
         self.signals.finishProgress.connect(self.slotFinishProgress)
+        self.signals.start_task_progress.connect(self._start_task_progress)
+        self.signals.finish_task_progress.connect(self._finish_task_progress)
         self.signals.updateFile.connect(self.slotUpdateFile)
         self.signals.showFile.connect(self.showFile)
         self.signals.updateGPUStats.connect(self.slotUpdateGPUStats)
@@ -329,6 +332,8 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     def switch_to_project_mode(self) -> None:
         """Inspect app.workflow or app.project and configure the appropriate mode view."""
         self.current_project_token = object()
+        self._visible_task_token = None
+        self.slotFinishProgress()
         mode_name = "startrails"
         if hasattr(self.app, "workflow") and getattr(self.app.workflow, "mode_name", None):
             mode_name = self.app.workflow.mode_name
@@ -348,34 +353,46 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             return False
 
         self.enqueued_tasks.add(task_id)
-        task_token = self.current_project_token
+        task_token = (self.current_project_token, object())
 
         # Show the overlay immediately on the GUI thread if no other task is already running
         if len(self.enqueued_tasks) == 1:
-            self.slotStartProgress(title, total, desc)
+            self._start_task_progress(task_token, title, total, desc)
 
         def run_task():
             # Discard stale result if project changed prior to worker starting
-            if task_token != self.current_project_token:
+            if task_token[0] is not self.current_project_token:
                 self.enqueued_tasks.discard(task_id)
                 return
 
-            if hasattr(self.signals, "startProgress"):
+            if hasattr(self.signals, "start_task_progress"):
                 try:
-                    self.signals.startProgress.emit(title, total, desc)
+                    self.signals.start_task_progress.emit(task_token, title, total, desc)
                 except RuntimeError:
                     pass
             self.current_running_task = task_id
             try:
-                work_func()
+                with progress_scope(task_token):
+                    work_func()
             finally:
                 if self.current_running_task == task_id:
                     self.current_running_task = None
                 self.enqueued_tasks.discard(task_id)
+                self.signals.finish_task_progress.emit(task_token)
 
-        worker = AsyncWorker(run_task)
+        worker = AsyncWorker(run_task, finish_progress=False)
         self.op_queue.start(worker)
         return True
+
+    def _start_task_progress(self, task_token, title, total, desc):
+        if task_token[0] is self.current_project_token:
+            self._visible_task_token = task_token
+            self.slotStartProgress(title, total, desc)
+
+    def _finish_task_progress(self, task_token):
+        if task_token is self._visible_task_token and task_token[0] is self.current_project_token:
+            self._visible_task_token = None
+            self.slotFinishProgress()
 
     @Slot(object, object, object)
     def slotStartProgress(self, *args, **kwargs):
@@ -425,6 +442,14 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         done: bool,
         data: Any = None,
     ):
+        task_token = getattr(progressUpdater, "task_token", None)
+        if task_token is not None and (
+            task_token[0] is not self.current_project_token or task_token is not self._visible_task_token
+        ):
+            return
+        result_guard = getattr(progressUpdater, "result_guard", None)
+        if result_guard is not None and not result_guard():
+            return
         progressUpdater.total = total
         progressUpdater.update(increment)
         if self.progressOverlay is not None:
