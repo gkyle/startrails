@@ -66,6 +66,7 @@ class SidebarDenoise(QWidget):
         for card in self._step_cards:
             card.expanded.connect(lambda c=card: self._collapse_other_steps(c))
         self.skyCard.expansion_changed.connect(self.skySettings.ui.showMaskOverlay.setChecked)
+        self.skySettings.ui.showMaskOverlay.setChecked(self.skyCard.is_expanded)
 
         self.update_operations_progress(app)
 
@@ -91,6 +92,7 @@ class SidebarDenoise(QWidget):
         self.alignSettings.reset()
         self.stackSettings.reset()
         self.tuneSettings.reset()
+        self.skySettings.ui.showMaskOverlay.setChecked(self.skyCard.is_expanded)
 
     def refresh_inputs(self) -> None:
         self.skySettings.refresh_inputs()
