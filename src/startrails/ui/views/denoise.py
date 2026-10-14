@@ -43,6 +43,8 @@ class DenoiseView(ModeView):
 
     def __init__(self, app: App, shell: Any):
         super().__init__(app, shell)
+        self._project = app.project
+        self._generation = 0
         self._sidebar: Optional[SidebarDenoise] = None
         self._starFiles = None
         self._noiseFiles = None
@@ -505,6 +507,20 @@ class DenoiseView(ModeView):
     def resetProjectView(self) -> None:
         if not hasattr(self.app.workflow, "get_star_files"):
             return
+        self._generation += 1
+        self._project = self.app.project
+        self.last_align_result = None
+        self.last_compositor = None
+        self._output_saved = False
+        self._pending_horizon_params = None
+        self._pending_final_save = None
+        self._horizon_request_id += 1
+        self._final_save_request_id += 1
+        canvas = getattr(self.shell, "canvas_main", None)
+        if canvas is not None:
+            canvas.setDenoiseMask(None)
+            canvas.setGradientMask(None)
+            canvas.clearHorizonOverlay()
         self._horizon_debounce_timer.stop()
         self._horizon_save_debounce_timer.stop()
         if self._horizon_worker is not None and self._horizon_worker.isRunning():
@@ -565,6 +581,15 @@ class DenoiseView(ModeView):
             self.last_compositor = existing_comp
             if self.stackCard is not None:
                 self.stackCard.setStatus("done")
+        self.updateReadyStates()
+
+    def _post_result(self, generation: int, callback) -> None:
+        """Deliver only results belonging to this view's current project session."""
+        def deliver():
+            if generation == self._generation and self._project is self.app.project:
+                callback()
+
+        QTimer.singleShot(0, self.shell, deliver)
 
     def showFile(self, file: Optional[File]) -> None:
         if hasattr(self.shell, "currentFile"):
@@ -1007,6 +1032,8 @@ class DenoiseView(ModeView):
         search_radius = vals.get("mask_search_radius")
         erosion_pixels = vals.get("mask_erosion_pixels", 5)
 
+        generation = self._generation
+
         def work():
             progressUpdater = ProgressBarUpdater(
                 getattr(self.shell, "progressBar", None),
@@ -1030,19 +1057,11 @@ class DenoiseView(ModeView):
                     return
 
                 # Immediately apply coarse mask to canvas and project so user sees progress
-                QTimer.singleShot(
-                    0,
-                    self.shell,
-                    lambda m=coarse_mask: self._apply_mask_to_canvas_and_project(m),
-                )
+                self._post_result(generation, lambda m=coarse_mask: self._apply_mask_to_canvas_and_project(m))
 
                 # Step 2: Run refine mask pass with current settings (search radius, erosion pixels)
                 if getattr(self.shell, "label_progressBar", None):
-                    QTimer.singleShot(
-                        0,
-                        self.shell,
-                        lambda: self.shell.label_progressBar.setText("Refining detected sky mask..."),
-                    )
+                    self._post_result(generation, lambda: self.shell.label_progressBar.setText("Refining detected sky mask..."))
 
                 def on_refine_tick(total, inc, count, done, data=None):
                     progressUpdater.signals.incrementProgress.emit(
@@ -1059,11 +1078,7 @@ class DenoiseView(ModeView):
                 final_mask = refined_mask if refined_mask is not None else coarse_mask
 
                 # Step 3: Show the final refined mask overlay on top of the reference image on the canvas
-                QTimer.singleShot(
-                    0,
-                    self.shell,
-                    lambda m=final_mask: self._on_detection_finished(m),
-                )
+                self._post_result(generation, lambda m=final_mask: self._on_detection_finished(m))
             except Exception as err:
                 print(f"Error detecting/refining sky mask: {err}")
                 import traceback
@@ -1098,6 +1113,8 @@ class DenoiseView(ModeView):
         ):
             self.shell.canvas_main.setMaskEditMode(True)
 
+        generation = self._generation
+
         def work():
             progressUpdater = ProgressBarUpdater(
                 getattr(self.shell, "progressBar", None),
@@ -1114,11 +1131,7 @@ class DenoiseView(ModeView):
                     erosion_pixels=erosion_pixels,
                 )
                 if refined is not None:
-                    QTimer.singleShot(
-                        0,
-                        self.shell,
-                        lambda r=refined: self._on_detection_finished(r),
-                    )
+                    self._post_result(generation, lambda r=refined: self._on_detection_finished(r))
             except Exception as err:
                 print(f"Error refining sky mask: {err}")
                 import traceback
@@ -1167,6 +1180,8 @@ class DenoiseView(ModeView):
 
         vals = self.alignSettings.values() if self.alignSettings else {}
 
+        generation = self._generation
+
         def work():
             n = len(stars)
             progressUpdater = ProgressBarUpdater(
@@ -1193,7 +1208,7 @@ class DenoiseView(ModeView):
                     self.starFiles.set_files(self.app.workflow.get_star_files())
                 self.updateReadyStates()
 
-            QTimer.singleShot(0, self.shell, on_align_done)
+            self._post_result(generation, on_align_done)
 
         self.shell.enqueue_task("alignStars", "Align Stars", len(stars), "Aligning frames...", work)
 
@@ -1207,6 +1222,8 @@ class DenoiseView(ModeView):
         n_stars = len(stars)
         total_stack_steps = n_stars + n_stars + 1
         total_steps = (n_stars + total_stack_steps) if needs_align else total_stack_steps
+
+        generation = self._generation
 
         def work():
             cfg = self.app.workflow.get_config()
@@ -1235,9 +1252,9 @@ class DenoiseView(ModeView):
                     return
                 self.last_align_result = align_result
                 if self.alignCard is not None:
-                    QTimer.singleShot(0, self.shell, lambda: self.alignCard.setStatus("done"))
+                    self._post_result(generation, lambda: self.alignCard.setStatus("done"))
                 if self.starFiles is not None:
-                    QTimer.singleShot(0, self.shell, lambda: self.starFiles.set_files(self.app.workflow.get_star_files()))
+                    self._post_result(generation, lambda: self.starFiles.set_files(self.app.workflow.get_star_files()))
 
             n_sky = len(self.last_align_result.aligned_sky_frames) if self.last_align_result else n_stars
             n_ground = len(self.last_align_result.raw_ground_frames) if self.last_align_result else n_stars
@@ -1300,7 +1317,7 @@ class DenoiseView(ModeView):
                     self.tuneCard.setExpanded(True)
                 self.updateReadyStates()
 
-            QTimer.singleShot(0, self.shell, on_stack_done)
+            self._post_result(generation, on_stack_done)
 
         self.shell.enqueue_task("stackDenoise", "Stack Denoise", total_steps, "Stacking base frames...", work)
 
@@ -1311,6 +1328,8 @@ class DenoiseView(ModeView):
             return
 
         vals = self.tuneSettings.values() if self.tuneSettings else {}
+
+        generation = self._generation
 
         def work():
             progressUpdater = ProgressBarUpdater(
@@ -1379,7 +1398,7 @@ class DenoiseView(ModeView):
                     self.tuneCard.setStatus("done")
                 self.updateReadyStates()
 
-            QTimer.singleShot(0, self.shell, on_compose_done)
+            self._post_result(generation, on_compose_done)
 
         self.shell.enqueue_task("composeHorizon", "Compose Horizon", 2, "Compositing final image...", work)
 
@@ -1423,6 +1442,8 @@ class DenoiseView(ModeView):
         if not stars:
             return
 
+        generation = self._generation
+
         def work():
             progressUpdater = ProgressBarUpdater(
                 getattr(self.shell, "progressBar", None),
@@ -1458,6 +1479,6 @@ class DenoiseView(ModeView):
                 self._output_saved = True
                 self.updateReadyStates()
 
-            QTimer.singleShot(0, self.shell, on_pipeline_done)
+            self._post_result(generation, on_pipeline_done)
 
         self.shell.enqueue_task("pipeline", "Full Pipeline", len(stars), "Processing denoise pipeline...", work)
