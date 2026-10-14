@@ -10,7 +10,8 @@ from typing import Any, Dict, List, Optional
 import jsonpickle
 
 from startrails.lib.file import DenoiseInputFile, Unpickle
-from startrails.lib.denoise.config import DenoiseConfig
+from dataclasses import asdict
+from startrails.lib.denoise.config import DenoiseConfig, DenoiseSettings
 from startrails.lib.project_type import get_project_output_dir, DENOISE_EXT
 
 
@@ -46,37 +47,8 @@ class DenoiseProject(Unpickle):
         # Alignment homographies: mapped by path string or identifier
         self.homographies: Dict[str, Any] = {}
 
-        # Masking parameters
-        self.mask_search_radius: Optional[int] = None
-        self.mask_erosion_pixels: int = 5
-        self.mask_foliage_protection: bool = True
-        self.refine_sky_mask: bool = False
-        self.auto_mask: bool = False
-        self.auto_mask_model: Optional[str] = None
-        self.auto_mask_path: Optional[str] = None
-        self.export_refined_mask: bool = True
-        self.export_gradient_mask: bool = True
-        self.taper_mask_edges: bool = True
-        self.mask_taper_pixels: int = 5
-
-        # Stacking parameters
-        self.stack_method: str = "sigma_clipped"
-        self.sigma_clip_threshold: float = 1.2
-        self.sigma_clip_iterations: int = 3
-
-        # Horizon transition parameters
-        self.enable_horizon_corrections: bool = True
-        self.denoise_horizon_band: bool = True
-        self.horizon_denoise_radius: int = 5
-        self.horizon_denoise_eps: float = 1e-3
-        self.horizon_denoise_strength: float = 0.2
-        self.horizon_color_denoise_strength: float = 1.0
-        self.horizon_value_denoise_strength: float = 0.2
-        self.horizon_blend_percent: float = 60.0
-        self.horizon_blur_radius: float = 2.0
-
-        # Hardware acceleration
-        self.use_gpu: bool = True
+        for name, value in asdict(DenoiseSettings()).items():
+            setattr(self, name, value)
         self.processing_revision = 0
         self.alignment_signature = None
         self.stack_signature = None
@@ -222,33 +194,8 @@ class DenoiseProject(Unpickle):
             sky_stack_path=sky_stack_p,
             ground_stack_path=ground_stack_p,
             mask_path=mask_p,
-            mask_search_radius=self.mask_search_radius,
-            mask_erosion_pixels=self.mask_erosion_pixels,
-            mask_foliage_protection=self.mask_foliage_protection,
-            refine_sky_mask=self.refine_sky_mask,
-            auto_mask=self.auto_mask,
-            auto_mask_model=self.auto_mask_model,
-            auto_mask_path=self.auto_mask_path,
-            export_refined_mask=self.export_refined_mask,
-            refined_mask_path=refined_mask_p,
-            export_gradient_mask=self.export_gradient_mask,
-            gradient_mask_path=gradient_mask_p,
-            taper_mask_edges=self.taper_mask_edges,
-            mask_taper_pixels=self.mask_taper_pixels,
-            enable_horizon_corrections=self.enable_horizon_corrections,
-            denoise_horizon_band=self.denoise_horizon_band,
-            horizon_denoise_radius=self.horizon_denoise_radius,
-            horizon_denoise_eps=self.horizon_denoise_eps,
-            horizon_denoise_strength=self.horizon_denoise_strength,
-            horizon_color_denoise_strength=self.horizon_color_denoise_strength,
-            horizon_value_denoise_strength=self.horizon_value_denoise_strength,
-            horizon_blend_percent=self.horizon_blend_percent,
-            horizon_blur_radius=self.horizon_blur_radius,
-            stack_method=self.stack_method,
-            sigma_clip_threshold=self.sigma_clip_threshold,
-            sigma_clip_iterations=self.sigma_clip_iterations,
             homographies=homographies_dict,
-            use_gpu=self.use_gpu,
+            **{name: getattr(self, name) for name in asdict(DenoiseSettings())},
         )
 
     @classmethod

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from PySide6.QtCore import Qt, QSignalBlocker, Signal
 from PySide6.QtWidgets import QWidget
 
+from startrails.lib.denoise.config import DenoiseSettings
 from .steps import toggle_advanced_settings
 from .ui_step_denoise_sky import Ui_DenoiseSkySettings
 from .ui_step_denoise_align import Ui_DenoiseAlignSettings
@@ -41,6 +42,7 @@ class DenoiseSkySettings(QWidget):
             app, parent = parent, app
         super().__init__(parent if isinstance(parent, QWidget) else None)
         self.app = app
+        self.defaults = DenoiseSettings()
 
         self.ui = Ui_DenoiseSkySettings()
         self.ui.setupUi(self)
@@ -82,7 +84,7 @@ class DenoiseSkySettings(QWidget):
         with QSignalBlocker(self.ui.searchRadius):
             self.ui.searchRadius.setValue(0)
         with QSignalBlocker(self.ui.erosionPixels):
-            self.ui.erosionPixels.setValue(5)
+            self.ui.erosionPixels.setValue(self.defaults.mask_erosion_pixels)
         with QSignalBlocker(self.ui.showMaskOverlay):
             self.ui.showMaskOverlay.setChecked(False)
         with QSignalBlocker(self.ui.brushSlider):
@@ -107,7 +109,7 @@ class DenoiseSkySettings(QWidget):
         if not hasattr(proj, "auto_mask_model"):
             return
         with QSignalBlocker(self.ui.erosionPixels):
-            self.ui.erosionPixels.setValue(int(getattr(proj, "mask_erosion_pixels", 5)))
+            self.ui.erosionPixels.setValue(int(getattr(proj, "mask_erosion_pixels", self.defaults.mask_erosion_pixels)))
         radius = getattr(proj, "mask_search_radius", None)
         with QSignalBlocker(self.ui.searchRadius):
             self.ui.searchRadius.setValue(int(radius) if radius else 0)
@@ -145,6 +147,7 @@ class DenoiseAlignSettings(QWidget):
             app, parent = parent, app
         super().__init__(parent if isinstance(parent, QWidget) else None)
         self.app = app
+        self.defaults = DenoiseSettings()
 
         self.ui = Ui_DenoiseAlignSettings()
         self.ui.setupUi(self)
@@ -233,6 +236,7 @@ class DenoiseStackSettings(QWidget):
             app, parent = parent, app
         super().__init__(parent if isinstance(parent, QWidget) else None)
         self.app = app
+        self.defaults = DenoiseSettings()
 
         self.ui = Ui_DenoiseStackSettings()
         self.ui.setupUi(self)
@@ -260,9 +264,9 @@ class DenoiseStackSettings(QWidget):
         with QSignalBlocker(self.ui.method):
             self.ui.method.setCurrentIndex(0)
         with QSignalBlocker(self.ui.sigmaThreshold):
-            self.ui.sigmaThreshold.setValue(1.2)
+            self.ui.sigmaThreshold.setValue(self.defaults.sigma_clip_threshold)
         with QSignalBlocker(self.ui.sigmaIterations):
-            self.ui.sigmaIterations.setValue(3)
+            self.ui.sigmaIterations.setValue(self.defaults.sigma_clip_iterations)
         with QSignalBlocker(self.ui.useGPU):
             self.ui.useGPU.setChecked(True)
         self.ui.outputFileName.setText("Output: project.tif")
@@ -291,9 +295,9 @@ class DenoiseStackSettings(QWidget):
         with QSignalBlocker(self.ui.method):
             self.ui.method.setCurrentIndex(self.REV_METHOD_MAP.get(method_name, 0))
         with QSignalBlocker(self.ui.sigmaThreshold):
-            self.ui.sigmaThreshold.setValue(float(getattr(proj, "sigma_clip_threshold", 1.2)))
+            self.ui.sigmaThreshold.setValue(float(getattr(proj, "sigma_clip_threshold", self.defaults.sigma_clip_threshold)))
         with QSignalBlocker(self.ui.sigmaIterations):
-            self.ui.sigmaIterations.setValue(int(getattr(proj, "sigma_clip_iterations", 3)))
+            self.ui.sigmaIterations.setValue(int(getattr(proj, "sigma_clip_iterations", self.defaults.sigma_clip_iterations)))
         with QSignalBlocker(self.ui.useGPU):
             self.ui.useGPU.setChecked(bool(getattr(proj, "use_gpu", True)))
         stem = "project"
@@ -348,6 +352,7 @@ class DenoiseTuneSettings(QWidget):
             app, parent = parent, app
         super().__init__(parent if isinstance(parent, QWidget) else None)
         self.app = app
+        self.defaults = DenoiseSettings()
 
         self.ui = Ui_DenoiseTuneSettings()
         self.ui.setupUi(self)
@@ -458,8 +463,8 @@ class DenoiseTuneSettings(QWidget):
             "denoise_horizon_band": True,
             "horizon_blend_percent": self.ui.blendPercent.value(),
             "horizon_blur_radius": self.ui.blurRadius.value(),
-            "horizon_denoise_radius": 5,
-            "horizon_denoise_strength": 0.2,
+            "horizon_denoise_radius": getattr(self.app.project, "horizon_denoise_radius", self.defaults.horizon_denoise_radius) if self.app else self.defaults.horizon_denoise_radius,
+            "horizon_denoise_strength": getattr(self.app.project, "horizon_denoise_strength", self.defaults.horizon_denoise_strength) if self.app else self.defaults.horizon_denoise_strength,
             "horizon_color_denoise_strength": self.ui.colorStrength.value(),
             "horizon_value_denoise_strength": self.ui.valueStrength.value(),
         }
