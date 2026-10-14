@@ -51,9 +51,12 @@ class DenoiseWorkflow(Workflow):
 
     def _new_operation(self, operation_type, *args):
         revision = self.project.processing_revision
-        check = lambda: self.project is not self.app.project or revision != self.project.processing_revision
+        signature = self.project.source_signature(stacking=True)
+        check = lambda: self.project is not self.app.project or revision != self.project.processing_revision or signature != self.project.source_signature(stacking=True)
         if self._session_operation is not None:
-            check = self._session_operation.shouldInterrupt
+            input_check = check
+            session_check = self._session_operation.shouldInterrupt
+            check = lambda: input_check() or session_check()
         token = self._cancel_event if self._session_operation is not None else Event()
         return operation_type(*args, cancel_event=token, cancel_check=check)
 
@@ -150,6 +153,8 @@ class DenoiseWorkflow(Workflow):
     def get_config(self) -> DenoiseConfig:
         """Return a DenoiseConfig representation of current project state."""
         self.project.validate_cached_results()
+        if self.project.mask_path and not self.project.mask_invalidated and not Path(self.project.mask_path).is_file():
+            raise FileNotFoundError(f"Sky mask is missing: {self.project.mask_path}. Detect or paint a replacement mask.")
         return self.project.to_denoise_config()
 
     getConfig = get_config
@@ -239,7 +244,7 @@ class DenoiseWorkflow(Workflow):
                 warp_frames=warp_frames,
                 sky_mask=sky_mask,
             )
-            if result is not None:
+            if result is not None and not aligner.shouldInterrupt():
                 self.project.alignment_signature = self.project.source_signature()
                 for p, mat in result.homographies.items():
                     self.project.homographies[str(p)] = mat
@@ -382,7 +387,7 @@ class DenoiseWorkflow(Workflow):
                 sky_mask=sky_mask,
                 base_icc=base_icc,
             )
-            if compositor is not None and hasattr(self.project, "get_output_dir"):
+            if compositor is not None and not stacker.shouldInterrupt() and hasattr(self.project, "get_output_dir"):
                 out_dir = self.project.get_output_dir()
                 out_dir.mkdir(parents=True, exist_ok=True)
                 if cfg.sky_stack_path:
@@ -467,6 +472,7 @@ class DenoiseWorkflow(Workflow):
         try:
             out_path = pipeline.run(cfg, progress_callback=progress_callback)
             if out_path:
+                self.last_compositor = pipeline.last_compositor
                 self.project.homographies = {str(path): value for path, value in cfg.homographies.items()}
                 self.project.alignment_signature = self.project.source_signature()
                 self.project.sky_stack_path = str(cfg.sky_stack_path) if cfg.sky_stack_path else None

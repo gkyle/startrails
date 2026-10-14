@@ -87,6 +87,8 @@ class DenoiseProject(Unpickle):
             "reference": reference.path if reference else None,
             "mask": self.file_signature(self.mask_path) if self.mask_path and not self.mask_invalidated else None,
             "taper": (self.taper_mask_edges, self.mask_taper_pixels),
+            "mask_settings": (self.auto_mask, self.auto_mask_model, self.auto_mask_path, self.refine_sky_mask,
+                              self.mask_search_radius, self.mask_erosion_pixels, self.mask_foliage_protection),
         }
         if stacking:
             data["stack"] = (self.stack_method, self.sigma_clip_threshold, self.sigma_clip_iterations,

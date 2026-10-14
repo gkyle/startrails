@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import os
+from concurrent.futures import CancelledError
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 import numpy as np
@@ -342,12 +343,32 @@ class DenoiseView(ModeView):
     def _enqueue_task(self, task_id, title, total, desc, work):
         workflow = self.app.workflow
         generation = self._generation
+        revision = workflow.project.processing_revision
         def run():
-            if generation != self._generation or workflow.project is not self.app.project:
+            if generation != self._generation or workflow.project is not self.app.project or revision != workflow.project.processing_revision:
                 return
-            with workflow.operation_session():
-                work()
+            try:
+                with workflow.operation_session():
+                    work()
+            except CancelledError:
+                self._post_result(generation, lambda: self._show_task_error(task_id, "Cancelled"))
+            except Exception as error:
+                message = str(error)
+                self._post_result(generation, lambda: self._show_task_error(task_id, f"Failed: {message}"))
         return self.shell.enqueue_task(task_id, title, total, desc, run)
+
+    def _show_task_error(self, task_id: str, message: str) -> None:
+        settings = {
+            "detectSky": self.sky_settings, "refineMask": self.sky_settings,
+            "alignStars": self.align_settings, "stackDenoise": self.stack_settings,
+            "composeHorizon": self.tune_settings, "exportDenoise": self.tune_settings,
+            "pipeline": self.tune_settings,
+        }.get(task_id)
+        if settings is not None:
+            settings.ui.error.setText(message)
+            settings.ui.error.show()
+        if self.lbl_status is not None:
+            self.lbl_status.setText(message)
 
     def _post_result(self, generation: int, callback) -> None:
         """Deliver only results belonging to this view's current project session."""
@@ -421,6 +442,7 @@ class DenoiseView(ModeView):
 
     def _on_stack_settings_changed(self) -> None:
         self.app.workflow.invalidate_results(alignment=False)
+        self._generation += 1
         self.last_compositor = None
         self._output_saved = False
         self._cancel_background_jobs()
@@ -580,7 +602,7 @@ class DenoiseView(ModeView):
 
     def _on_background_error(self, message: str, req_id: int) -> None:
         worker = self.sender()
-        if worker is not None and worker.project is not self.app.project:
+        if worker is not None and (worker.project is not self.app.project or worker.is_cancelled() or worker.generation != self._generation):
             return
         if not self._disposed and self.tune_settings is not None:
             self.tune_settings.ui.tuneStatus.setText(f"Failed: {message}")
@@ -604,43 +626,17 @@ class DenoiseView(ModeView):
             self.shell.canvas_main.set_gradient_mask_visible(False)
 
     def _find_existing_mask(self) -> Optional[np.ndarray]:
-        proj = getattr(self.app.workflow, "project", None)
-        candidates = []
-        if proj and proj.mask_invalidated:
+        project = self.app.workflow.project
+        if project.mask_invalidated:
             return None
-        if proj:
-            if getattr(proj, "mask_path", None):
-                candidates.append(Path(proj.mask_path))
-            if getattr(proj, "refined_mask_path", None):
-                candidates.append(Path(proj.refined_mask_path))
-            if hasattr(proj, "get_output_dir"):
-                out_dir = proj.get_output_dir()
-                candidates.append(out_dir / "mask.png")
-                candidates.append(out_dir / "mask_sky.png")
-                if getattr(proj, "projectFile", None):
-                    p = Path(proj.projectFile)
-                    candidates.append(out_dir / f"{p.stem}.mask.png")
-            if getattr(proj, "projectFile", None):
-                p = Path(proj.projectFile)
-                candidates.append(p.parent / f"{p.stem}.mask.png")
-                candidates.append(p.parent / "mask_sky.png")
-                candidates.append(p.parent / "mask.png")
-        ref = self.app.workflow.get_reference_file()
-        if ref and getattr(ref, "path", None):
-            rp = Path(ref.path)
-            candidates.append(rp.parent / f"{rp.stem}.mask.png")
-            candidates.append(rp.parent / "mask_sky.png")
-            candidates.append(rp.parent / "mask.png")
+        path = project.mask_path
+        if path is None:
+            candidate = project.get_output_dir() / "mask.png"
+            path = str(candidate) if candidate.is_file() else None
+        if path is None or not Path(path).is_file():
+            return None
         from startrails.lib.denoise.io.mask import MaskHandler
-        for cand in candidates:
-            if cand and cand.is_file():
-                try:
-                    m = MaskHandler.load_mask(cand)
-                    if m is not None:
-                        return m
-                except Exception:
-                    continue
-        return None
+        return MaskHandler.load_mask(path)
 
     def _has_existing_stacks(self) -> bool:
         project = getattr(self.app.workflow, "project", None)
@@ -858,10 +854,8 @@ class DenoiseView(ModeView):
 
                 # Step 3: Show the final refined mask overlay on top of the reference image on the canvas
                 self._post_result(generation, lambda m=final_mask: self._on_detection_finished(m))
-            except Exception as err:
-                print(f"Error detecting/refining sky mask: {err}")
-                import traceback
-                traceback.print_exc()
+            except Exception:
+                raise
 
         self._enqueue_task("detectSky", "Detect Sky", 1, "Detecting and refining sky mask...", work)
 
@@ -911,10 +905,8 @@ class DenoiseView(ModeView):
                 )
                 if refined is not None:
                     self._post_result(generation, lambda r=refined: self._on_detection_finished(r))
-            except Exception as err:
-                print(f"Error refining sky mask: {err}")
-                import traceback
-                traceback.print_exc()
+            except Exception:
+                raise
 
         self._enqueue_task("refineMask", "Refine Mask", 1, "Refining sky mask...", work)
 
@@ -1187,6 +1179,8 @@ class DenoiseView(ModeView):
             out_path = self.app.workflow.do_pipeline(config=config_snapshot, progress_bar=progress_updater.tick)
             def on_pipeline_done():
                 if out_path and Path(out_path).exists():
+                    self.last_compositor = self.app.workflow.last_compositor
+                    self.last_align_result = None
                     out_files = (
                         self.app.workflow.get_output_file_list()
                         if hasattr(self.app.workflow, "get_output_file_list")
