@@ -19,6 +19,11 @@ from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
     QProgressBar, QPushButton, QScrollArea, QSizePolicy,
     QSpacerItem, QVBoxLayout, QWidget)
 
+from startrails.ui.file_manager import FileSection
+from startrails.ui.steps import StepCard
+from startrails.ui.steps_denoise import (DenoiseAlignSettings, DenoiseSkySettings, DenoiseStackSettings, DenoiseTuneSettings)
+from . import resources_rc
+
 class Ui_SidebarDenoise(object):
     def setupUi(self, sidebar):
         if not sidebar.objectName():
@@ -142,16 +147,40 @@ class Ui_SidebarDenoise(object):
 
         self.starFilesLayout = QVBoxLayout()
         self.starFilesLayout.setObjectName(u"starFilesLayout")
+        self.starFiles = FileSection(self.content)
+        self.starFiles.setObjectName(u"starFiles")
+        self.starFiles.setProperty(u"inputs", True)
+        self.starFiles.setProperty(u"show_legend", False)
+        self.starFiles.setProperty(u"is_expanded", True)
+
+        self.starFilesLayout.addWidget(self.starFiles)
+
 
         self.contentLayout.addLayout(self.starFilesLayout)
 
         self.noiseFilesLayout = QVBoxLayout()
         self.noiseFilesLayout.setObjectName(u"noiseFilesLayout")
+        self.noiseFiles = FileSection(self.content)
+        self.noiseFiles.setObjectName(u"noiseFiles")
+        self.noiseFiles.setProperty(u"inputs", True)
+        self.noiseFiles.setProperty(u"show_legend", False)
+        self.noiseFiles.setProperty(u"is_expanded", False)
+
+        self.noiseFilesLayout.addWidget(self.noiseFiles)
+
 
         self.contentLayout.addLayout(self.noiseFilesLayout)
 
         self.outputFilesLayout = QVBoxLayout()
         self.outputFilesLayout.setObjectName(u"outputFilesLayout")
+        self.outputFiles = FileSection(self.content)
+        self.outputFiles.setObjectName(u"outputFiles")
+        self.outputFiles.setProperty(u"inputs", False)
+        self.outputFiles.setProperty(u"show_legend", False)
+        self.outputFiles.setProperty(u"is_expanded", True)
+
+        self.outputFilesLayout.addWidget(self.outputFiles)
+
 
         self.contentLayout.addLayout(self.outputFilesLayout)
 
@@ -205,21 +234,61 @@ class Ui_SidebarDenoise(object):
 
         self.skyLayout = QVBoxLayout()
         self.skyLayout.setObjectName(u"skyLayout")
+        self.skyCard = StepCard(self.content)
+        self.skyCard.setObjectName(u"skyCard")
+        self.skyCard.setProperty(u"step_number", 1)
+        self.skyCard.setProperty(u"is_expanded", True)
+        self.skySettings = DenoiseSkySettings(self.skyCard)
+        self.skySettings.setObjectName(u"skySettings")
+        self.skyCard.add_body(self.skySettings)
+
+        self.skyLayout.addWidget(self.skyCard)
+
 
         self.contentLayout.addLayout(self.skyLayout)
 
         self.alignLayout = QVBoxLayout()
         self.alignLayout.setObjectName(u"alignLayout")
+        self.alignCard = StepCard(self.content)
+        self.alignCard.setObjectName(u"alignCard")
+        self.alignCard.setProperty(u"step_number", 2)
+        self.alignCard.setProperty(u"is_expanded", False)
+        self.alignSettings = DenoiseAlignSettings(self.alignCard)
+        self.alignSettings.setObjectName(u"alignSettings")
+        self.alignCard.add_body(self.alignSettings)
+
+        self.alignLayout.addWidget(self.alignCard)
+
 
         self.contentLayout.addLayout(self.alignLayout)
 
         self.stackLayout = QVBoxLayout()
         self.stackLayout.setObjectName(u"stackLayout")
+        self.stackCard = StepCard(self.content)
+        self.stackCard.setObjectName(u"stackCard")
+        self.stackCard.setProperty(u"step_number", 3)
+        self.stackCard.setProperty(u"is_expanded", False)
+        self.stackSettings = DenoiseStackSettings(self.stackCard)
+        self.stackSettings.setObjectName(u"stackSettings")
+        self.stackCard.add_body(self.stackSettings)
+
+        self.stackLayout.addWidget(self.stackCard)
+
 
         self.contentLayout.addLayout(self.stackLayout)
 
         self.tuneLayout = QVBoxLayout()
         self.tuneLayout.setObjectName(u"tuneLayout")
+        self.tuneCard = StepCard(self.content)
+        self.tuneCard.setObjectName(u"tuneCard")
+        self.tuneCard.setProperty(u"step_number", 4)
+        self.tuneCard.setProperty(u"is_expanded", False)
+        self.tuneSettings = DenoiseTuneSettings(self.tuneCard)
+        self.tuneSettings.setObjectName(u"tuneSettings")
+        self.tuneCard.add_body(self.tuneSettings)
+
+        self.tuneLayout.addWidget(self.tuneCard)
+
 
         self.contentLayout.addLayout(self.tuneLayout)
 
@@ -324,8 +393,19 @@ class Ui_SidebarDenoise(object):
         self.openProject.setToolTip(QCoreApplication.translate("SidebarDenoise", u"Open an existing project", None))
 #endif // QT_CONFIG(tooltip)
         self.openProject.setText(QCoreApplication.translate("SidebarDenoise", u"Open Project", None))
+        self.starFiles.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Star Images", None))
+        self.noiseFiles.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Dark Frames", None))
+        self.outputFiles.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Output Files", None))
         self.operationsTitle.setText(QCoreApplication.translate("SidebarDenoise", u"Operations", None))
         self.operationsProgressLabel.setText(QCoreApplication.translate("SidebarDenoise", u"0 of 4 steps complete", None))
+        self.skyCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Define Sky Region", None))
+        self.skyCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Ready to detect or paint mask", None))
+        self.alignCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Align Stars", None))
+        self.alignCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Requires sky mask", None))
+        self.stackCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Stack Sky & Ground", None))
+        self.stackCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Requires aligned stars", None))
+        self.tuneCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Tune Horizon", None))
+        self.tuneCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Requires base stacks", None))
         self.saveOutput.setText(QCoreApplication.translate("SidebarDenoise", u"Save Image", None))
         self.runPipeline.setText(QCoreApplication.translate("SidebarDenoise", u"\u25b6 Run Full Denoise Pipeline", None))
         self.pipelineStatusLabel.setText(QCoreApplication.translate("SidebarDenoise", u"Ready", None))

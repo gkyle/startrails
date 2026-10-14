@@ -10,6 +10,7 @@ from PySide6.QtCore import (
     Qt,
     Signal,
     QSignalBlocker,
+    Property,
 )
 from PySide6.QtGui import QAction, QActionGroup, QBrush, QFont, QIcon, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QHeaderView, QMenu, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QToolButton, QWidget
@@ -328,6 +329,32 @@ class FileSection(QFrame):
     addRequested = Signal()
     sortRequested = Signal(str, str)
     setReferenceRequested = Signal(File)
+
+    def _set_title(self, value):
+        self.ui.toggle.setText(value)
+        self.ui.files.setAccessibleName(value)
+
+    def _set_inputs(self, value):
+        self._inputs = value
+        self.model._inputs = value
+        self.ui.add.setVisible(value)
+        if getattr(self.ui, "sort", None) is not None:
+            self.ui.sort.setVisible(value)
+        if value:
+            self.ui.icon.setPixmap(QIcon(":/startrails/ui/star.svg").pixmap(16, 16))
+            if not hasattr(self, "sort_menu"):
+                self._setup_sort_control()
+        self._refresh()
+
+    def _set_show_legend(self, value):
+        self._show_legend = value
+        if self.ui.legend is not None:
+            self.ui.legend.setVisible(value)
+
+    title = Property(str, lambda self: self.ui.toggle.text(), _set_title)
+    inputs = Property(bool, lambda self: self._inputs, _set_inputs)
+    show_legend = Property(bool, lambda self: self._show_legend, _set_show_legend)
+    is_expanded = Property(bool, lambda self: self.ui.toggle.isChecked(), lambda self, value: self.setExpanded(value))
 
     def __init__(self, title="Files", inputs=False, parent=None, ui=None, prefix=None, show_legend=None, expanded=None):
         if isinstance(title, QWidget) and parent is None:

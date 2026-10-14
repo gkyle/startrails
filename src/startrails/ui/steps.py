@@ -1,6 +1,6 @@
 """Behavior for Designer-authored operation cards and settings."""
 from types import SimpleNamespace
-from PySide6.QtCore import Qt, QSignalBlocker, QObject, Signal
+from PySide6.QtCore import Qt, QSignalBlocker, QObject, Signal, Property
 from PySide6.QtWidgets import QFrame, QWidget, QButtonGroup
 
 
@@ -75,6 +75,25 @@ from .ui_step_additional_tools import Ui_ToolsSettings
 
 class StepCard(QFrame):
     expanded = Signal()
+
+    def add_body(self, body):
+        """Qt Designer custom-container page insertion API."""
+        self.ui.contentLayout.addWidget(body)
+
+    def _set_title(self, value):
+        self.ui.toggle.setText(value)
+        self.ui.toggle.setAccessibleName(value)
+
+    def _set_step_number(self, value):
+        self.has_number = value > 0
+        self.ui.number.setText(str(value) if value else "")
+        self.ui.statusBadge.setVisible(self.has_number)
+        self._update_status_appearance()
+
+    title = Property(str, lambda self: self.ui.toggle.text(), _set_title)
+    step_number = Property(int, lambda self: int(self.ui.number.text() or 0), _set_step_number)
+    is_expanded = Property(bool, lambda self: self.ui.toggle.isChecked(), lambda self, value: self.setExpanded(value))
+    subtitle = Property(str, lambda self: self.ui.subtitle.text(), lambda self, value: self.setSubtitle(value))
 
     def __init__(self, title="Step", body=None, number=None, expanded=False, parent=None, ui=None, prefix=None):
         if isinstance(title, QWidget) and parent is None:

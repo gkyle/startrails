@@ -38,6 +38,8 @@ class DenoiseSkySettings(QWidget):
     REV_MODEL_MAP = {v: k for k, v in MODEL_MAP.items()}
 
     def __init__(self, app: Optional[App] = None, parent: Optional[QWidget] = None, ui: Any = None):
+        if isinstance(app, QWidget) and parent is None:
+            app, parent = None, app
         if not isinstance(parent, QWidget) and parent is not None:
             app, parent = parent, app
         super().__init__(parent if isinstance(parent, QWidget) else None)
@@ -143,6 +145,8 @@ class DenoiseAlignSettings(QWidget):
 
 
     def __init__(self, app: Optional[App] = None, parent: Optional[QWidget] = None, ui: Any = None):
+        if isinstance(app, QWidget) and parent is None:
+            app, parent = None, app
         if not isinstance(parent, QWidget) and parent is not None:
             app, parent = parent, app
         super().__init__(parent if isinstance(parent, QWidget) else None)
@@ -232,6 +236,8 @@ class DenoiseStackSettings(QWidget):
     REV_METHOD_MAP = {v: k for k, v in METHOD_MAP.items()}
 
     def __init__(self, app: Optional[App] = None, parent: Optional[QWidget] = None, ui: Any = None):
+        if isinstance(app, QWidget) and parent is None:
+            app, parent = None, app
         if not isinstance(parent, QWidget) and parent is not None:
             app, parent = parent, app
         super().__init__(parent if isinstance(parent, QWidget) else None)
@@ -348,6 +354,8 @@ class DenoiseTuneSettings(QWidget):
     gradientMaskToggled = Signal(bool)
 
     def __init__(self, app: Optional[App] = None, parent: Optional[QWidget] = None, ui: Any = None):
+        if isinstance(app, QWidget) and parent is None:
+            app, parent = None, app
         if not isinstance(parent, QWidget) and parent is not None:
             app, parent = parent, app
         super().__init__(parent if isinstance(parent, QWidget) else None)

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <ui version="4.0">
  <class>SidebarDenoise</class>
  <widget class="QWidget" name="sidebar">
@@ -184,13 +184,64 @@ QPushButton#openProject:focus:enabled {
         </layout>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="starFilesLayout"/>
+        <layout class="QVBoxLayout" name="starFilesLayout">
+         <item>
+          <widget class="FileSection" name="starFiles">
+           <property name="title" stdset="0">
+            <string>Star Images</string>
+           </property>
+           <property name="inputs" stdset="0">
+            <bool>true</bool>
+           </property>
+           <property name="show_legend" stdset="0">
+            <bool>false</bool>
+           </property>
+           <property name="is_expanded" stdset="0">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="noiseFilesLayout"/>
+        <layout class="QVBoxLayout" name="noiseFilesLayout">
+         <item>
+          <widget class="FileSection" name="noiseFiles">
+           <property name="title" stdset="0">
+            <string>Dark Frames</string>
+           </property>
+           <property name="inputs" stdset="0">
+            <bool>true</bool>
+           </property>
+           <property name="show_legend" stdset="0">
+            <bool>false</bool>
+           </property>
+           <property name="is_expanded" stdset="0">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="outputFilesLayout"/>
+        <layout class="QVBoxLayout" name="outputFilesLayout">
+         <item>
+          <widget class="FileSection" name="outputFiles">
+           <property name="title" stdset="0">
+            <string>Output Files</string>
+           </property>
+           <property name="inputs" stdset="0">
+            <bool>false</bool>
+           </property>
+           <property name="show_legend" stdset="0">
+            <bool>false</bool>
+           </property>
+           <property name="is_expanded" stdset="0">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <widget class="QWidget" name="operationsHeaderWidget" native="true">
@@ -268,16 +319,88 @@ QProgressBar#operationsProgress::chunk {
         </widget>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="skyLayout"/>
+        <layout class="QVBoxLayout" name="skyLayout">
+         <item>
+          <widget class="StepCard" name="skyCard">
+           <property name="title" stdset="0">
+            <string>Define Sky Region</string>
+           </property>
+           <property name="step_number" stdset="0">
+            <number>1</number>
+           </property>
+           <property name="subtitle" stdset="0">
+            <string>Ready to detect or paint mask</string>
+           </property>
+           <property name="is_expanded" stdset="0">
+            <bool>true</bool>
+           </property>
+           <widget class="DenoiseSkySettings" name="skySettings" />
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="alignLayout"/>
+        <layout class="QVBoxLayout" name="alignLayout">
+         <item>
+          <widget class="StepCard" name="alignCard">
+           <property name="title" stdset="0">
+            <string>Align Stars</string>
+           </property>
+           <property name="step_number" stdset="0">
+            <number>2</number>
+           </property>
+           <property name="subtitle" stdset="0">
+            <string>Requires sky mask</string>
+           </property>
+           <property name="is_expanded" stdset="0">
+            <bool>false</bool>
+           </property>
+           <widget class="DenoiseAlignSettings" name="alignSettings" />
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="stackLayout"/>
+        <layout class="QVBoxLayout" name="stackLayout">
+         <item>
+          <widget class="StepCard" name="stackCard">
+           <property name="title" stdset="0">
+            <string>Stack Sky &amp; Ground</string>
+           </property>
+           <property name="step_number" stdset="0">
+            <number>3</number>
+           </property>
+           <property name="subtitle" stdset="0">
+            <string>Requires aligned stars</string>
+           </property>
+           <property name="is_expanded" stdset="0">
+            <bool>false</bool>
+           </property>
+           <widget class="DenoiseStackSettings" name="stackSettings" />
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
-        <layout class="QVBoxLayout" name="tuneLayout"/>
+        <layout class="QVBoxLayout" name="tuneLayout">
+         <item>
+          <widget class="StepCard" name="tuneCard">
+           <property name="title" stdset="0">
+            <string>Tune Horizon</string>
+           </property>
+           <property name="step_number" stdset="0">
+            <number>4</number>
+           </property>
+           <property name="subtitle" stdset="0">
+            <string>Requires base stacks</string>
+           </property>
+           <property name="is_expanded" stdset="0">
+            <bool>false</bool>
+           </property>
+           <widget class="DenoiseTuneSettings" name="tuneSettings" />
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <widget class="QPushButton" name="saveOutput">
@@ -402,6 +525,42 @@ QProgressBar#pipelineProgressBar::chunk {
    </item>
   </layout>
  </widget>
- <resources/>
- <connections/>
+ <resources>
+  <include location="resources.qrc" />
+ </resources>
+ <connections />
+ <customwidgets>
+  <customwidget>
+   <class>FileSection</class>
+   <extends>QFrame</extends>
+   <header>startrails.ui.file_manager</header>
+  </customwidget>
+  <customwidget>
+   <class>StepCard</class>
+   <extends>QFrame</extends>
+   <header>startrails.ui.steps</header>
+   <container>1</container>
+   <addpagemethod>add_body</addpagemethod>
+  </customwidget>
+  <customwidget>
+   <class>DenoiseSkySettings</class>
+   <extends>QWidget</extends>
+   <header>startrails.ui.steps_denoise</header>
+  </customwidget>
+  <customwidget>
+   <class>DenoiseAlignSettings</class>
+   <extends>QWidget</extends>
+   <header>startrails.ui.steps_denoise</header>
+  </customwidget>
+  <customwidget>
+   <class>DenoiseStackSettings</class>
+   <extends>QWidget</extends>
+   <header>startrails.ui.steps_denoise</header>
+  </customwidget>
+  <customwidget>
+   <class>DenoiseTuneSettings</class>
+   <extends>QWidget</extends>
+   <header>startrails.ui.steps_denoise</header>
+  </customwidget>
+ </customwidgets>
 </ui>

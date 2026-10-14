@@ -32,46 +32,18 @@ class SidebarDenoise(QWidget):
         else:
             self.ui = Ui_SidebarDenoise()
             self.ui.setupUi(self)
-            self.ui.contentLayout.setAlignment(Qt.AlignTop)
 
-        # File Sections
-        self.starFiles = FileSection("Star Images", inputs=True, show_legend=False, expanded=True)
-        self.noiseFiles = FileSection("Dark Frames", inputs=True, show_legend=False, expanded=False)
-        self.outputFiles = FileSection("Output Files", inputs=False, show_legend=False, expanded=True)
+        # Bind Designer-created components; static composition lives in the form.
+        self.starFiles = self.ui.starFiles
+        self.noiseFiles = self.ui.noiseFiles
+        self.outputFiles = self.ui.outputFiles
         self.outputs = self.outputFiles
-
-        if hasattr(self.ui, "starFilesLayout"):
-            self.ui.starFilesLayout.addWidget(self.starFiles)
-        if hasattr(self.ui, "noiseFilesLayout"):
-            self.ui.noiseFilesLayout.addWidget(self.noiseFiles)
-        if hasattr(self.ui, "outputFilesLayout"):
-            self.ui.outputFilesLayout.addWidget(self.outputFiles)
-
-        # Step Settings Widgets
-        self.skySettings = DenoiseSkySettings(app)
-        self.skyCard = StepCard("Define Sky Region", self.skySettings, 1, expanded=True)
-        self.skyCard.setSubtitle("Ready to detect or paint mask")
-
-        self.alignSettings = DenoiseAlignSettings(app)
-        self.alignCard = StepCard("Align Stars", self.alignSettings, 2, expanded=False)
-        self.alignCard.setSubtitle("Requires sky mask")
-
-        self.stackSettings = DenoiseStackSettings(app)
-        self.stackCard = StepCard("Stack Sky & Ground", self.stackSettings, 3, expanded=False)
-        self.stackCard.setSubtitle("Requires aligned stars")
-
-        self.tuneSettings = DenoiseTuneSettings(app)
-        self.tuneCard = StepCard("Tune Horizon", self.tuneSettings, 4, expanded=False)
-        self.tuneCard.setSubtitle("Requires base stacks")
-
-        if hasattr(self.ui, "skyLayout"):
-            self.ui.skyLayout.addWidget(self.skyCard)
-        if hasattr(self.ui, "alignLayout"):
-            self.ui.alignLayout.addWidget(self.alignCard)
-        if hasattr(self.ui, "stackLayout"):
-            self.ui.stackLayout.addWidget(self.stackCard)
-        if hasattr(self.ui, "tuneLayout"):
-            self.ui.tuneLayout.addWidget(self.tuneCard)
+        for name in ("sky", "align", "stack", "tune"):
+            settings = getattr(self.ui, name + "Settings")
+            settings.app = app
+            settings.set_from_project()
+            setattr(self, name + "Settings", settings)
+            setattr(self, name + "Card", getattr(self.ui, name + "Card"))
 
         # Convenient direct references
         self.pushButton_newProject = self.ui.newProject
