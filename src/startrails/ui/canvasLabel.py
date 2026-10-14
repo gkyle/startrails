@@ -66,6 +66,7 @@ class CanvasLabel(QLabel):
         self._horizon_overlay_pixmap: Optional[QPixmap] = None
         self._horizon_overlay_rect: Optional[Tuple[int, int, int, int]] = None
         self._horizon_overlay_arr: Optional[np.ndarray] = None
+        self._horizon_overlay_patches = []
 
         # Debounce timers for high-frequency events
         self.wheelDebounceTimer = QTimer()
@@ -408,24 +409,28 @@ class CanvasLabel(QLabel):
     # -------------------------------------------------------------------------
 
     def set_horizon_overlay(self, arr: np.ndarray, rect: Tuple[int, int, int, int]) -> None:
-        self._horizon_overlay_arr = arr
-        self._horizon_overlay_rect = rect
-        h, w = arr.shape[:2]
-        u8 = (np.clip(arr, 0.0, 1.0) * 255.0).astype(np.uint8)
-        if not u8.flags["C_CONTIGUOUS"]:
-            u8 = np.ascontiguousarray(u8)
-        if u8.ndim == 3:
-            qimg = QImage(u8.data, w, h, w * 3, QImage.Format_RGB888)
-        else:
-            qimg = QImage(u8.data, w, h, w, QImage.Format_Grayscale8)
-        self._horizon_overlay_pixmap = QPixmap.fromImage(qimg.copy())
+        self.set_horizon_patches([(arr, rect)])
+
+    def set_horizon_patches(self, patches) -> None:
+        """Replace a preview atomically without creating a full-image overlay."""
+        prepared = []
+        for arr, rect in patches:
+            h, w = arr.shape[:2]
+            u8 = np.ascontiguousarray((np.clip(arr, 0.0, 1.0) * 255.0).astype(np.uint8))
+            if u8.ndim == 3:
+                qimg = QImage(u8.data, w, h, u8.strides[0], QImage.Format_RGB888)
+            else:
+                qimg = QImage(u8.data, w, h, u8.strides[0], QImage.Format_Grayscale8)
+            prepared.append((QPixmap.fromImage(qimg.copy()), rect))
+        self._horizon_overlay_patches = prepared
+        # Retain the single-patch inspection API without assembling the tiles.
+        self._horizon_overlay_arr = patches[0][0] if patches else None
+        self._horizon_overlay_rect = patches[0][1] if patches else None
+        self._horizon_overlay_pixmap = prepared[0][0] if prepared else None
         self.update()
 
     def clear_horizon_overlay(self) -> None:
-        self._horizon_overlay_pixmap = None
-        self._horizon_overlay_rect = None
-        self._horizon_overlay_arr = None
-        self.update()
+        self.set_horizon_patches([])
 
     # Compatibility aliases for earlier canvas consumers.
     set_mask_array = set_denoise_mask
@@ -742,20 +747,14 @@ class CanvasLabel(QLabel):
             painter.setRenderHint(QPainter.SmoothPixmapTransform, True) # Note: Needed for antialising on Windows
             painter.drawPixmap(x, y, newPixmap)
 
-            # Draw live horizon tuning overlay patch if active
-            if (
-                self._horizon_overlay_pixmap is not None
-                and self._horizon_overlay_rect is not None
-                and self.scale is not None
-            ):
-                ox, oy, ow, oh = self._horizon_overlay_rect
-                overlay_rect = QRect(
-                    int(self.posX + ox * self.scale),
-                    int(self.posY + oy * self.scale),
-                    int(ow * self.scale),
-                    int(oh * self.scale),
-                )
-                painter.drawPixmap(overlay_rect, self._horizon_overlay_pixmap)
+            # Use one image-coordinate transform for all patches to avoid rounded tile gaps.
+            if self._horizon_overlay_patches and self.scale is not None:
+                painter.save()
+                painter.translate(self.posX, self.posY)
+                painter.scale(self.scale, self.scale)
+                for patch, (ox, oy, ow, oh) in self._horizon_overlay_patches:
+                    painter.drawPixmap(QPointF(ox, oy), patch)
+                painter.restore()
 
             # Draw gradient mask overlay (translucent red) if active
             if self.gradientMaskVisible and self._gradient_mask_qimage is not None:

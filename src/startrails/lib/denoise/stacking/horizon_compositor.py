@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Callable, Optional
 from threading import RLock
 from functools import wraps
+from inspect import signature
 import cv2
 import numpy as np
 
@@ -26,8 +27,8 @@ class HorizonCompositor:
       2. Sky gradient part (sky stack intersected with gradient mask)
       3. Denoised sky part (edge-preserving guided filtered sky stack)
 
-    Enables real-time (<15ms) parameter tuning of horizon unwarped blending and
-    adaptive transition band denoising without re-stacking or re-filtering.
+    Evaluates sparse patches for live tuning and reuses them for full-frame
+    exports without re-stacking or repeating the guided filter.
     """
 
     def __init__(
@@ -149,11 +150,81 @@ class HorizonCompositor:
 
         # Cache for Gaussian blurred foreground sky input
         self._cached_blur_radius: float | None = None
-        self._cached_blurred_fg: np.ndarray | None = None
+        self._blurred_regions: dict[tuple[int, int, int, int], np.ndarray] = {}
+        self._cached_patch_key = None
+        self._cached_patches = None
+        self.preview_rects = self.preview_regions(self.smoothstep_mask, self.roi_rect)
+        self._composition_signature = signature(self._composite_region)
+
+    @staticmethod
+    def preview_regions(smoothstep_mask, roi_rect, tile_size=128):
+        """Tight rectangles around nonzero weights, with a pixel of display-filter context."""
+        rx, ry, rw, rh = roi_rect
+        rectangles = []
+        for y in range(ry, ry + rh, tile_size):
+            for x in range(rx, rx + rw, tile_size):
+                active = smoothstep_mask[y:min(y + tile_size, ry + rh), x:min(x + tile_size, rx + rw)] > 0
+                rows, columns = np.nonzero(active)
+                if rows.size:
+                    x0, y0 = max(rx, x + int(columns.min()) - 1), max(ry, y + int(rows.min()) - 1)
+                    x1 = min(rx + rw, x + int(columns.max()) + 2)
+                    y1 = min(ry + rh, y + int(rows.max()) + 2)
+                    rectangles.append((x0, y0, x1 - x0, y1 - y0))
+        if sum(w * h for _, _, w, h in rectangles) > rw * rh * 0.6:
+            # Dense masks gain little from hundreds of separately displayed patches.
+            return [roi_rect]
+        return rectangles
 
     @synchronized_composition
-    def composite_overlay(
+    def composite_overlay(self, *args, **kwargs):
+        """Evaluate the original full-width ROI, using the shared region evaluator."""
+        return self._composite_region(self.roi_rect, *args, **kwargs)
+
+    @synchronized_composition
+    def composite_patches(self, **kwargs):
+        """Evaluate/cache only active tiles; return None on cancellation, including cache hits."""
+        cancel_check = kwargs.get("cancel_check")
+        if cancel_check and cancel_check():
+            return None
+        parameters = self._composition_signature.bind(self.roi_rect, **kwargs)
+        parameters.apply_defaults()
+        key = tuple((name, value) for name, value in parameters.arguments.items() if name not in ("rect", "cancel_check"))
+        if key == self._cached_patch_key:
+            return self._cached_patches
+        patches = []
+        if kwargs.get("enable_corrections", True):
+            for rect in self.preview_rects:
+                if cancel_check and cancel_check():
+                    return None
+                pixels, _ = self._composite_region(rect, **kwargs)
+                if pixels is None:
+                    return None
+                patches.append((pixels, rect))
+        if cancel_check and cancel_check():
+            return None
+        self._cached_patch_key, self._cached_patches = key, patches
+        return patches
+
+    def _foreground_region(self, rect, radius):
+        """Blur with the full kernel halo and the same borders as the original ROI."""
+        x, y, w, h = rect
+        if self._cached_blur_radius != radius:
+            self._blurred_regions.clear()
+            self._cached_blur_radius = radius
+        if rect not in self._blurred_regions:
+            ksize = int(round(radius * 4 + 1)) | 1
+            halo = ksize // 2
+            rx, ry, rw, rh = self.roi_rect
+            x0, y0 = max(rx, x - halo), max(ry, y - halo)
+            x1, y1 = min(rx + rw, x + w + halo), min(ry + rh, y + h + halo)
+            source = np.ascontiguousarray(self.ground_stack[y0:y1, x0:x1])
+            blurred = cv2.GaussianBlur(source, (ksize, ksize), float(radius))
+            self._blurred_regions[rect] = np.ascontiguousarray(blurred[y-y0:y-y0+h, x-x0:x-x0+w])
+        return self._blurred_regions[rect]
+
+    def _composite_region(
         self,
+        rect,
         horizon_blend_percent: float = 60.0,
         horizon_denoise_strength: float = 0.2,
         denoise_enabled: bool = True,
@@ -179,12 +250,23 @@ class HorizonCompositor:
             (roi_clipped, (x0, y0, width, height)): (H_roi, W, 3) float32 array in [0.0, 1.0] (or None if cancelled)
             and bounding rect in image coordinates.
         """
+        x, y, w, h = rect
+        region = (slice(y - self.roi_y0, y - self.roi_y0 + h), slice(x, x + w))
+        roi_sky_stack = self.roi_sky_stack[region]
+        roi_ground_stack = self.roi_ground_stack[region]
+        roi_smoothstep_3d = self.roi_smoothstep_3d[region]
+        roi_feathered_mask = self.roi_feathered_mask[region]
+        roi_denoised_sky = self.roi_denoised_sky[region]
+        roi_Y_sky = self.roi_Y_sky[region]
+        roi_Y_den = self.roi_Y_den[region]
+        roi_C_sky = self.roi_C_sky[region] if self.roi_C_sky is not None else None
+        roi_C_den = self.roi_C_den[region] if self.roi_C_den is not None else None
         if cancel_check and cancel_check():
-            return None, self.roi_rect
+            return None, rect
 
         if not enable_corrections:
-            roi_result = self.roi_feathered_mask * self.roi_sky_stack + (1.0 - self.roi_feathered_mask) * self.roi_ground_stack
-            return np.clip(roi_result, 0.0, 1.0).astype(np.float32), self.roi_rect
+            roi_result = roi_feathered_mask * roi_sky_stack + (1.0 - roi_feathered_mask) * roi_ground_stack
+            return np.clip(roi_result, 0.0, 1.0).astype(np.float32), rect
 
         blend_ratio = np.clip(float(horizon_blend_percent) / 100.0, 0.0, 1.0)
         color_str = float(
@@ -199,52 +281,44 @@ class HorizonCompositor:
         )
 
         # 1. Foreground sky input (Gaussian blur applied strictly to foreground input, not stacked sky)
-        if horizon_blur_radius > 0.0:
-            if self._cached_blur_radius == horizon_blur_radius and self._cached_blurred_fg is not None:
-                fg_sky = self._cached_blurred_fg
-            else:
-                if cancel_check and cancel_check():
-                    return None, self.roi_rect
-                ksize = int(round(horizon_blur_radius * 4 + 1)) | 1
-                fg_sky = cv2.GaussianBlur(self.roi_ground_stack, (ksize, ksize), float(horizon_blur_radius))
-                self._cached_blur_radius = horizon_blur_radius
-                self._cached_blurred_fg = fg_sky
+        if horizon_blur_radius > 0.0 and blend_ratio > 0.0:
+            fg_sky = self._foreground_region(rect, horizon_blur_radius)
         else:
-            fg_sky = self.roi_ground_stack
+            fg_sky = roi_ground_stack
 
         if cancel_check and cancel_check():
-            return None, self.roi_rect
+            return None, rect
 
         # 2. Adaptive transition band denoising on tracked sky (independent Color & Value control)
-        if denoise_enabled and self.roi_denoised_sky is not None and max(color_str, value_str) > 0.0:
-            if self.roi_C_sky is not None and self.roi_C_den is not None:
-                wv = np.clip(self.roi_smoothstep_3d * value_str, 0.0, 1.0)
-                wc = np.clip(self.roi_smoothstep_3d * color_str, 0.0, 1.0)
-                y_out = (1.0 - wv) * self.roi_Y_sky + wv * self.roi_Y_den
-                c_out = (1.0 - wc) * self.roi_C_sky + wc * self.roi_C_den
+        if denoise_enabled and roi_denoised_sky is not None and max(color_str, value_str) > 0.0:
+            if roi_C_sky is not None and roi_C_den is not None:
+                wv = np.clip(roi_smoothstep_3d * value_str, 0.0, 1.0)
+                wc = np.clip(roi_smoothstep_3d * color_str, 0.0, 1.0)
+                y_out = (1.0 - wv) * roi_Y_sky + wv * roi_Y_den
+                c_out = (1.0 - wc) * roi_C_sky + wc * roi_C_den
                 sky_denoised = y_out + c_out
             else:
-                wv = np.clip(self.roi_smoothstep_3d * value_str, 0.0, 1.0)
-                sky_denoised = (1.0 - wv) * self.roi_sky_stack + wv * self.roi_denoised_sky
+                wv = np.clip(roi_smoothstep_3d * value_str, 0.0, 1.0)
+                sky_denoised = (1.0 - wv) * roi_sky_stack + wv * roi_denoised_sky
         else:
-            sky_denoised = self.roi_sky_stack
+            sky_denoised = roi_sky_stack
 
         if cancel_check and cancel_check():
-            return None, self.roi_rect
+            return None, rect
 
         # 3. Unwarped horizon sky blend (blends clean foreground into denoised stacked sky)
         if blend_ratio > 0.0:
-            w_blend = self.roi_smoothstep_3d * blend_ratio
+            w_blend = roi_smoothstep_3d * blend_ratio
             sky_final = (1.0 - w_blend) * sky_denoised + w_blend * fg_sky
         else:
             sky_final = sky_denoised
 
         if cancel_check and cancel_check():
-            return None, self.roi_rect
+            return None, rect
 
         # 4. Final seamless boundary alpha blend with ground stack
-        roi_result = self.roi_feathered_mask * sky_final + (1.0 - self.roi_feathered_mask) * self.roi_ground_stack
-        return np.clip(roi_result, 0.0, 1.0).astype(np.float32), self.roi_rect
+        roi_result = roi_feathered_mask * sky_final + (1.0 - roi_feathered_mask) * roi_ground_stack
+        return np.clip(roi_result, 0.0, 1.0).astype(np.float32), rect
 
     @synchronized_composition
     def composite(
@@ -272,7 +346,7 @@ class HorizonCompositor:
         Returns:
             Fully assembled (H, W, 3) float32 composite image in [0.0, 1.0].
         """
-        roi_result, (rx, ry, rw, rh) = self.composite_overlay(
+        patches = self.composite_patches(
             horizon_blend_percent=horizon_blend_percent,
             horizon_denoise_strength=horizon_denoise_strength,
             denoise_enabled=denoise_enabled,
@@ -282,8 +356,29 @@ class HorizonCompositor:
             horizon_value_denoise_strength=horizon_value_denoise_strength,
             cancel_check=cancel_check,
         )
-        if roi_result is None or (cancel_check and cancel_check()):
+        if patches is None or (cancel_check and cancel_check()):
             return None
         result = self.base_composite.copy()
-        result[ry : ry + rh, rx : rx + rw] = roi_result
-        return np.clip(result, 0.0, 1.0).astype(np.float32)
+        if enable_corrections:
+            color_str = horizon_denoise_strength if horizon_color_denoise_strength is None else horizon_color_denoise_strength
+            value_str = horizon_denoise_strength if horizon_value_denoise_strength is None else horizon_value_denoise_strength
+            reconstruct_color = denoise_enabled and self.roi_C_sky is not None and max(color_str, value_str) > 0
+            blend_ratio = np.clip(float(horizon_blend_percent) / 100.0, 0.0, 1.0)
+            # Even at zero weight, the original color reconstruction and blend dtype
+            # can change the last float32 bit. Preserve that arithmetic in bounded chunks.
+            for offset in range(0, self.roi_y1 - self.roi_y0, 128):
+                if cancel_check and cancel_check():
+                    return None
+                region = slice(offset, min(offset + 128, self.roi_y1 - self.roi_y0))
+                sky = self.roi_Y_sky[region] + self.roi_C_sky[region] if reconstruct_color else self.roi_sky_stack[region]
+                if blend_ratio > 0:
+                    sky = sky.astype(np.result_type(sky.dtype, blend_ratio))
+                mask = self.roi_feathered_mask[region]
+                background = mask * sky + (1.0 - mask) * self.roi_ground_stack[region]
+                y0 = self.roi_y0 + offset
+                result[y0:y0 + background.shape[0]] = np.clip(background, 0.0, 1.0).astype(np.float32)
+        for pixels, (x, y, w, h) in patches:
+            if cancel_check and cancel_check():
+                return None
+            result[y:y+h, x:x+w] = pixels
+        return result

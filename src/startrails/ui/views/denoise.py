@@ -625,7 +625,7 @@ class DenoiseView(ModeView):
         )
         self._horizon_worker = worker
         self._track_worker(worker)
-        worker.finished_overlay.connect(self._on_horizon_overlay_ready)
+        worker.finished_patches.connect(self._on_horizon_patches_ready)
         worker.failed_error.connect(self._on_background_error)
         worker.finished.connect(self._on_horizon_worker_finished)
         worker.start()
@@ -635,12 +635,12 @@ class DenoiseView(ModeView):
         if self._pending_horizon_params and not self._disposed:
             self._dispatch_horizon_tuning()
 
-    def _on_horizon_overlay_ready(self, roi, rect, req_id: int) -> None:
+    def _on_horizon_patches_ready(self, patches, req_id: int) -> None:
         worker = self.sender() or self._horizon_worker
-        if self._worker_is_current(worker, req_id, self._horizon_request_id) and roi is not None:
+        if self._worker_is_current(worker, req_id, self._horizon_request_id) and patches is not None:
             canvas = getattr(self.shell, "canvas_main", None)
             if canvas is not None:
-                canvas.set_horizon_overlay(roi, rect)
+                canvas.set_horizon_patches(patches)
 
     def _on_background_error(self, message: str, req_id: int) -> None:
         worker = self.sender()

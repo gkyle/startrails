@@ -109,7 +109,7 @@ class RefineMaskWorker(QThread):
 class HorizonOverlayWorker(QThread):
     """Background worker executing interactive horizon composite overlay computation."""
 
-    finished_overlay = Signal(object, object, int)  # roi, rect, request_id
+    finished_patches = Signal(object, int)  # [(pixels, rect), ...], request_id
     failed_error = Signal(str, int)
 
     def __init__(
@@ -135,7 +135,7 @@ class HorizonOverlayWorker(QThread):
         if self._is_cancelled:
             return
         try:
-            roi, rect = self.compositor.composite_overlay(
+            patches = self.compositor.composite_patches(
                 horizon_blend_percent=self.params.get("blend", 60.0),
                 horizon_denoise_strength=self.params.get("denoise_strength", 0.2),
                 denoise_enabled=self.params.get("denoise_enabled", True),
@@ -145,9 +145,9 @@ class HorizonOverlayWorker(QThread):
                 horizon_value_denoise_strength=self.params.get("value_denoise"),
                 cancel_check=self.is_cancelled,
             )
-            if self._is_cancelled or roi is None:
+            if self._is_cancelled or patches is None:
                 return
-            self.finished_overlay.emit(roi, rect, self.request_id)
+            self.finished_patches.emit(patches, self.request_id)
         except Exception as e:
             if not self._is_cancelled:
                 logger.exception("HorizonOverlayWorker encountered an error")
@@ -234,7 +234,5 @@ RefineMaskWorker.failedError = property(lambda self: self.failed_error)
 HorizonOverlayWorker.failedError = property(lambda self: self.failed_error)
 
 FinalCompositeSaveWorker.failedError = property(lambda self: self.failed_error)
-
-HorizonOverlayWorker.finishedOverlay = property(lambda self: self.finished_overlay)
 
 FinalCompositeSaveWorker.finishedSave = property(lambda self: self.finished_save)
