@@ -20,14 +20,17 @@ class DenoiseProject(Unpickle):
 
     def __init__(
         self,
-        projectFile: str = f"projects/default{DENOISE_EXT}",
+        project_file: str = f"projects/default{DENOISE_EXT}",
         star_files: Optional[List[DenoiseInputFile]] = None,
         noise_files: Optional[List[DenoiseInputFile]] = None,
         vignetting_files: Optional[List[DenoiseInputFile]] = None,
         reference_file: Optional[DenoiseInputFile] = None,
+        **legacy_kwargs,
     ):
         super().__init__()
-        self.projectFile = projectFile
+        self.project_file = legacy_kwargs.pop("projectFile", project_file)
+        if legacy_kwargs:
+            raise TypeError(f"Unexpected project arguments: {tuple(legacy_kwargs)}")
         self.star_files: List[DenoiseInputFile] = list(star_files) if star_files is not None else []
         self.noise_files: List[DenoiseInputFile] = list(noise_files) if noise_files is not None else []
         self.vignetting_files: List[DenoiseInputFile] = (
@@ -61,6 +64,9 @@ class DenoiseProject(Unpickle):
             file.bind_project(self)
 
     def __setstate__(self, state):
+        state = dict(state)
+        if "projectFile" in state:
+            state["project_file"] = state.pop("projectFile")
         super().__setstate__(state)
         self.bind_files()
 
@@ -123,13 +129,13 @@ class DenoiseProject(Unpickle):
 
     def get_output_dir(self) -> Path:
         """Resolve the authoritative output directory for this project."""
-        return get_project_output_dir(self.projectFile)
+        return get_project_output_dir(self.project_file)
 
     def relocate(self, project_file: str) -> None:
         """Rebase owned artifacts; imported masks and external exports remain references."""
         previous_dir = self.get_output_dir()
-        previous_file = Path(self.projectFile).resolve()
-        self.projectFile = project_file
+        previous_file = Path(self.project_file).resolve()
+        self.project_file = project_file
         if previous_file == Path(project_file).resolve():
             return
         output_dir = self.get_output_dir()
@@ -167,14 +173,14 @@ class DenoiseProject(Unpickle):
 
     def get_project_stem(self) -> str:
         """Return the base stem of the project file without extension."""
-        if not self.projectFile:
+        if not self.project_file:
             return "project"
-        name = Path(self.projectFile).name
+        name = Path(self.project_file).name
         if name.endswith(DENOISE_EXT):
             return name[:-len(DENOISE_EXT)]
         if name.endswith(".json"):
             return name[:-5]
-        return Path(self.projectFile).stem
+        return Path(self.project_file).stem
 
     def to_denoise_config(self) -> DenoiseConfig:
         """Construct a DenoiseConfig instance matching this project's current state."""
@@ -222,7 +228,10 @@ class DenoiseProject(Unpickle):
             except Exception:
                 pass
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-        default_proj = cls(projectFile=path)
+        default_proj = cls(project_file=path)
         with open(path, "w+") as f:
             f.write(jsonpickle.encode(default_proj, indent=4))
         return default_proj
+
+# Serialized legacy projects and the generic host still use this spelling.
+DenoiseProject.projectFile = property(lambda self: self.project_file, lambda self, value: setattr(self, "project_file", value))

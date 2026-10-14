@@ -46,14 +46,14 @@ class ModeView(QObject):
         signal.connect(slot)
         self._signal_connections.append((signal, slot))
 
-    def resetProjectView(self) -> None:
+    def resetProjectView(self) -> None:  # noqa: N802 - shared legacy view interface
         """Reset the sidebar view state when a new or opened project is active."""
         raise NotImplementedError
 
-    def showFile(self, file: Optional[File]) -> None:
+    def showFile(self, file: Optional[File]) -> None:  # noqa: N802 - shared legacy view interface
         """Handle preview/file display for this mode."""
         pass
 
-    def updateReadyStates(self, _=None) -> None:
+    def updateReadyStates(self, _=None) -> None:  # noqa: N802 - shared legacy view interface
         """Update button enabled states based on project readiness."""
         pass

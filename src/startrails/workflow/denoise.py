@@ -161,7 +161,7 @@ class DenoiseWorkflow(Workflow):
     def do_detect_sky(
         self,
         image: np.ndarray,
-        progressBar: Optional[Any] = None,
+        progress_bar: Optional[Any] = None,
         model_type: str = "auto",
         model_path: Optional[str] = None,
         device: str = "auto",
@@ -169,8 +169,8 @@ class DenoiseWorkflow(Workflow):
     ) -> Optional[np.ndarray]:
         """Run autonomous neural / heuristic sky detection."""
         detector = self._new_operation(DetectSky)
-        if progressBar is not None:
-            detector.addObserver(progressBar)
+        if progress_bar is not None:
+            detector.addObserver(progress_bar)
         self.app.activeOperation = detector
         try:
             mask = detector.detect(
@@ -183,8 +183,8 @@ class DenoiseWorkflow(Workflow):
             return mask
         finally:
             self.app.activeOperation = self._session_operation
-            if progressBar is not None:
-                detector.removeObserver(progressBar)
+            if progress_bar is not None:
+                detector.removeObserver(progress_bar)
             self.save_project()
 
     doDetectSky = do_detect_sky
@@ -193,15 +193,15 @@ class DenoiseWorkflow(Workflow):
         self,
         image: np.ndarray,
         coarse_mask: np.ndarray,
-        progressBar: Optional[Any] = None,
+        progress_bar: Optional[Any] = None,
         search_radius: Optional[int] = None,
         erosion_pixels: int = 5,
         foliage_protection: bool = True,
     ) -> Optional[np.ndarray]:
         """Refine celestial sky mask along high-frequency terrain boundaries."""
         refiner = self._new_operation(RefineMask)
-        if progressBar is not None:
-            refiner.addObserver(progressBar)
+        if progress_bar is not None:
+            refiner.addObserver(progress_bar)
         self.app.activeOperation = refiner
         try:
             refined = refiner.refine(
@@ -214,8 +214,8 @@ class DenoiseWorkflow(Workflow):
             return refined
         finally:
             self.app.activeOperation = self._session_operation
-            if progressBar is not None:
-                refiner.removeObserver(progressBar)
+            if progress_bar is not None:
+                refiner.removeObserver(progress_bar)
             self.save_project()
 
     doRefineMask = do_refine_mask
@@ -225,13 +225,13 @@ class DenoiseWorkflow(Workflow):
         config: Optional[DenoiseConfig] = None,
         warp_frames: bool = True,
         sky_mask: Optional[np.ndarray] = None,
-        progressBar: Optional[Any] = None,
+        progress_bar: Optional[Any] = None,
     ) -> Optional[AlignResult]:
         """Detect and align stars via projective homography estimation."""
         cfg = config or self.get_config()
         aligner = self._new_operation(AlignStars)
-        if progressBar is not None:
-            aligner.addObserver(progressBar)
+        if progress_bar is not None:
+            aligner.addObserver(progress_bar)
         self.app.activeOperation = aligner
         try:
             result = aligner.align(
@@ -252,8 +252,8 @@ class DenoiseWorkflow(Workflow):
             return result
         finally:
             self.app.activeOperation = self._session_operation
-            if progressBar is not None:
-                aligner.removeObserver(progressBar)
+            if progress_bar is not None:
+                aligner.removeObserver(progress_bar)
             self.save_project()
 
     doAlignStars = do_align_stars
@@ -353,7 +353,7 @@ class DenoiseWorkflow(Workflow):
         sky_mask: np.ndarray,
         config: Optional[DenoiseConfig] = None,
         base_icc: Optional[bytes] = None,
-        progressBar: Optional[Any] = None,
+        progress_bar: Optional[Any] = None,
     ) -> Optional[HorizonCompositor]:
         cfg = config or self.get_config()
         if hasattr(self.project, "get_output_dir"):
@@ -370,8 +370,8 @@ class DenoiseWorkflow(Workflow):
                 cfg.output_path = out_dir / f"{stem}.tif"
 
         stacker = self._new_operation(StackDenoise)
-        if progressBar is not None:
-            stacker.addObserver(progressBar)
+        if progress_bar is not None:
+            stacker.addObserver(progress_bar)
         self.app.activeOperation = stacker
         try:
             compositor = stacker.stack(
@@ -397,8 +397,8 @@ class DenoiseWorkflow(Workflow):
             return compositor
         finally:
             self.app.activeOperation = self._session_operation
-            if progressBar is not None:
-                stacker.removeObserver(progressBar)
+            if progress_bar is not None:
+                stacker.removeObserver(progress_bar)
             self.save_project()
 
     doStackDenoise = do_stack_denoise
@@ -407,7 +407,7 @@ class DenoiseWorkflow(Workflow):
         self,
         compositor: HorizonCompositor,
         config: Optional[DenoiseConfig] = None,
-        progressBar: Optional[Any] = None,
+        progress_bar: Optional[Any] = None,
         sky_coverages: Optional[List[np.ndarray]] = None,
         base_icc: Optional[bytes] = None,
         write_output: bool = True,
@@ -424,8 +424,8 @@ class DenoiseWorkflow(Workflow):
                 cfg.gradient_mask_path = out_dir / "gradient_mask.png"
 
         composer = self._new_operation(ComposeHorizon)
-        if progressBar is not None:
-            composer.addObserver(progressBar)
+        if progress_bar is not None:
+            composer.addObserver(progress_bar)
         self.app.activeOperation = composer
         try:
             result = composer.compose(
@@ -442,8 +442,8 @@ class DenoiseWorkflow(Workflow):
             return result
         finally:
             self.app.activeOperation = self._session_operation
-            if progressBar is not None:
-                composer.removeObserver(progressBar)
+            if progress_bar is not None:
+                composer.removeObserver(progress_bar)
             self.save_project()
 
     doComposeHorizon = do_compose_horizon
@@ -451,7 +451,7 @@ class DenoiseWorkflow(Workflow):
     def do_pipeline(
         self,
         config: Optional[DenoiseConfig] = None,
-        progressBar: Optional[Any] = None,
+        progress_bar: Optional[Any] = None,
         progress_callback: Optional[Callable[[float, str], None]] = None,
     ) -> Path:
         cfg = config or self.get_config()
@@ -461,8 +461,8 @@ class DenoiseWorkflow(Workflow):
             stem = self._get_project_stem()
             cfg.output_path = out_dir / f"{stem}.tif"
         pipeline = self._new_operation(DenoisePipeline, cfg)
-        if progressBar is not None:
-            pipeline.addObserver(progressBar)
+        if progress_bar is not None:
+            pipeline.addObserver(progress_bar)
         self.app.activeOperation = pipeline
         try:
             out_path = pipeline.run(cfg, progress_callback=progress_callback)
@@ -477,8 +477,8 @@ class DenoiseWorkflow(Workflow):
             return out_path
         finally:
             self.app.activeOperation = self._session_operation
-            if progressBar is not None:
-                pipeline.removeObserver(progressBar)
+            if progress_bar is not None:
+                pipeline.removeObserver(progress_bar)
             self.save_project()
 
     doPipeline = do_pipeline

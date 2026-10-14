@@ -116,7 +116,7 @@ class GPUInfo:
     def getGpuPresent(self) -> bool:
         return self.cudaAvailable or self.mpsAvailable or is_cupy_available()
 
-    def getGpuMemoryBytes(self) -> Optional[Tuple[int, int]]:
+    def get_gpu_memory_bytes(self) -> Optional[Tuple[int, int]]:
         """Return (total_bytes, free_bytes) from PyTorch, MPS, or CuPy."""
         try:
             if self.cudaAvailable:
@@ -140,14 +140,14 @@ class GPUInfo:
         return None
 
     def getGpuMemory(self) -> Optional[Tuple[float, float]]:  # Return (total GB, available GB)
-        mem = self.getGpuMemoryBytes()
+        mem = self.get_gpu_memory_bytes()
         if mem:
             total_bytes, free_bytes = mem
             return float(toGB(total_bytes)), float(toGB(free_bytes))
         return None
 
     def getGpuMemeoryTotal(self) -> Optional[float]:
-        mem = self.getGpuMemoryBytes()
+        mem = self.get_gpu_memory_bytes()
         if mem:
             return float(toGB(mem[0]))
         return None
@@ -156,7 +156,7 @@ class GPUInfo:
     getGpuMemoryTotal = getGpuMemeoryTotal
 
     def getGpuMemoryAvailable(self) -> Optional[float]:
-        mem = self.getGpuMemoryBytes()
+        mem = self.get_gpu_memory_bytes()
         if mem:
             return float(toGB(mem[1]))
         return None
@@ -172,9 +172,9 @@ class GPUInfo:
             pass
         return None
 
-    def getInfo(self) -> Optional[Dict[str, Any]]:
+    def get_info(self) -> Optional[Dict[str, Any]]:
         """Return standardized device metadata and memory statistics dict."""
-        mem = self.getGpuMemoryBytes()
+        mem = self.get_gpu_memory_bytes()
         if not mem:
             return None
         total_bytes, free_bytes = mem
@@ -203,7 +203,7 @@ class GPUInfo:
         }
 
     @staticmethod
-    def freeMemory() -> None:
+    def free_memory() -> None:
         """Release unused memory blocks back to the GPU allocator."""
         free_gpu_memory()
 
@@ -221,7 +221,7 @@ def get_gpu_info() -> Optional[Dict[str, Any]]:
     global _DEFAULT_GPU_INFO
     if _DEFAULT_GPU_INFO is None:
         _DEFAULT_GPU_INFO = GPUInfo()
-    return _DEFAULT_GPU_INFO.getInfo()
+    return _DEFAULT_GPU_INFO.get_info()
 
 
 def get_optimal_chunk_rows(
@@ -248,3 +248,9 @@ def get_optimal_chunk_rows(
     chunk_rows = int(target_vram // bytes_per_row)
     chunk_rows = max(128, min(height, 512, chunk_rows))
     return chunk_rows
+
+GPUInfo.getInfo = GPUInfo.get_info
+
+GPUInfo.freeMemory = staticmethod(GPUInfo.free_memory)
+
+GPUInfo.getGpuMemoryBytes = GPUInfo.get_gpu_memory_bytes

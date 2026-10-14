@@ -22,12 +22,12 @@ if TYPE_CHECKING:
 class DenoiseSkySettings(QWidget):
     """Step 1: Define Sky Region settings widget."""
 
-    settingsChanged = Signal()
-    brushRadiusChanged = Signal(int)
-    clearMaskRequested = Signal()
-    fullFrameRequested = Signal()
-    refineMaskRequested = Signal()
-    maskEditToggled = Signal(bool)
+    settings_changed = Signal()
+    brush_radius_changed = Signal(int)
+    clear_mask_requested = Signal()
+    full_frame_requested = Signal()
+    refine_mask_requested = Signal()
+    mask_edit_toggled = Signal(bool)
 
     MODEL_MAP = {
         0: "nightstack",
@@ -54,10 +54,10 @@ class DenoiseSkySettings(QWidget):
         self.ui.brushRadius.valueChanged.connect(self._on_brush_spin_changed)
 
         # Action and utility buttons
-        self.ui.clearMask.clicked.connect(self.clearMaskRequested.emit)
-        self.ui.fullFrameMask.clicked.connect(self.fullFrameRequested.emit)
-        self.ui.refineMask.clicked.connect(self.refineMaskRequested.emit)
-        self.ui.showMaskOverlay.toggled.connect(self.maskEditToggled.emit)
+        self.ui.clearMask.clicked.connect(self.clear_mask_requested.emit)
+        self.ui.fullFrameMask.clicked.connect(self.full_frame_requested.emit)
+        self.ui.refineMask.clicked.connect(self.refine_mask_requested.emit)
+        self.ui.showMaskOverlay.toggled.connect(self.mask_edit_toggled.emit)
 
         # Connect change signals
         self.ui.modelType.currentIndexChanged.connect(self._on_change)
@@ -69,16 +69,16 @@ class DenoiseSkySettings(QWidget):
     def _on_brush_slider_changed(self, val: int) -> None:
         with QSignalBlocker(self.ui.brushRadius):
             self.ui.brushRadius.setValue(val)
-        self.brushRadiusChanged.emit(val)
+        self.brush_radius_changed.emit(val)
 
     def _on_brush_spin_changed(self, val: int) -> None:
         with QSignalBlocker(self.ui.brushSlider):
             self.ui.brushSlider.setValue(val)
-        self.brushRadiusChanged.emit(val)
+        self.brush_radius_changed.emit(val)
 
     def _on_change(self, *_) -> None:
         self.sync_to_project()
-        self.settingsChanged.emit()
+        self.settings_changed.emit()
 
     def reset(self) -> None:
         with QSignalBlocker(self.ui.modelType):
@@ -141,7 +141,7 @@ class DenoiseSkySettings(QWidget):
 class DenoiseAlignSettings(QWidget):
     """Step 2: Align Stars settings widget."""
 
-    settingsChanged = Signal()
+    settings_changed = Signal()
 
 
     def __init__(self, app: Optional[App] = None, parent: Optional[QWidget] = None, ui: Any = None):
@@ -171,7 +171,7 @@ class DenoiseAlignSettings(QWidget):
 
     def _on_change(self, *_) -> None:
         self.sync_to_project()
-        self.settingsChanged.emit()
+        self.settings_changed.emit()
 
     def reset(self) -> None:
         if hasattr(self.ui, "useGPU"):
@@ -230,7 +230,7 @@ class DenoiseAlignSettings(QWidget):
 class DenoiseStackSettings(QWidget):
     """Step 3: Stack Foreground and Background settings widget."""
 
-    settingsChanged = Signal()
+    settings_changed = Signal()
 
     METHOD_MAP = {0: "sigma_clipped", 1: "mean"}
     REV_METHOD_MAP = {v: k for k, v in METHOD_MAP.items()}
@@ -264,7 +264,7 @@ class DenoiseStackSettings(QWidget):
 
     def _on_change(self, *_) -> None:
         self.sync_to_project()
-        self.settingsChanged.emit()
+        self.settings_changed.emit()
 
     def reset(self) -> None:
         with QSignalBlocker(self.ui.method):
@@ -350,8 +350,8 @@ class DenoiseStackSettings(QWidget):
 class DenoiseTuneSettings(QWidget):
     """Step 4: Interactive Horizon Tuning settings widget."""
 
-    settingsChanged = Signal()
-    gradientMaskToggled = Signal(bool)
+    settings_changed = Signal()
+    gradient_mask_toggled = Signal(bool)
 
     def __init__(self, app: Optional[App] = None, parent: Optional[QWidget] = None, ui: Any = None):
         if isinstance(app, QWidget) and parent is None:
@@ -380,7 +380,7 @@ class DenoiseTuneSettings(QWidget):
 
         # Horizon corrections toggle updates sub-controls
         self.ui.enableCorrections.toggled.connect(self._on_enable_corrections_toggled)
-        self.ui.showGradientMask.toggled.connect(self.gradientMaskToggled.emit)
+        self.ui.showGradientMask.toggled.connect(self.gradient_mask_toggled.emit)
 
         self.reset()
 
@@ -437,7 +437,7 @@ class DenoiseTuneSettings(QWidget):
 
     def _on_change(self, *_) -> None:
         self.sync_to_project()
-        self.settingsChanged.emit()
+        self.settings_changed.emit()
 
     def reset(self) -> None:
         with QSignalBlocker(self.ui.enableCorrections):
@@ -526,3 +526,23 @@ class DenoiseTuneSettings(QWidget):
             self.ui.tuneStatus.setText("Stacks ready for composite tuning")
         else:
             self.ui.tuneStatus.setText("Requires stacked sky and ground frames")
+
+DenoiseSkySettings.settingsChanged = property(lambda self: self.settings_changed)
+
+DenoiseAlignSettings.settingsChanged = property(lambda self: self.settings_changed)
+
+DenoiseStackSettings.settingsChanged = property(lambda self: self.settings_changed)
+
+DenoiseTuneSettings.settingsChanged = property(lambda self: self.settings_changed)
+
+DenoiseSkySettings.brushRadiusChanged = property(lambda self: self.brush_radius_changed)
+
+DenoiseSkySettings.clearMaskRequested = property(lambda self: self.clear_mask_requested)
+
+DenoiseSkySettings.fullFrameRequested = property(lambda self: self.full_frame_requested)
+
+DenoiseSkySettings.refineMaskRequested = property(lambda self: self.refine_mask_requested)
+
+DenoiseSkySettings.maskEditToggled = property(lambda self: self.mask_edit_toggled)
+
+DenoiseTuneSettings.gradientMaskToggled = property(lambda self: self.gradient_mask_toggled)

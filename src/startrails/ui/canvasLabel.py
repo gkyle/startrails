@@ -19,8 +19,8 @@ class CanvasLabel(QLabel):
     NUB_SIZE = 10
     NUB_SIZE_TOLERANT = 15
     findBrightestModeChanged = Signal(bool)
-    maskChanged = Signal()
-    brushRadiusChanged = Signal(int)
+    mask_changed = Signal()
+    brush_radius_changed = Signal(int)
 
     def __init__(self, text: Optional[str] = None, pixmap: Optional[QPixmap] = None, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -100,11 +100,11 @@ class CanvasLabel(QLabel):
             return
         if self.maskEditMode:
             if ev.key() == Qt.Key_BracketLeft:
-                self.setBrushRadius(self.brushRadius - 5)
+                self.set_brush_radius(self.brushRadius - 5)
                 ev.accept()
                 return
             elif ev.key() == Qt.Key_BracketRight:
-                self.setBrushRadius(self.brushRadius + 5)
+                self.set_brush_radius(self.brushRadius + 5)
                 ev.accept()
                 return
         super().keyPressEvent(ev)
@@ -123,9 +123,9 @@ class CanvasLabel(QLabel):
         if self.findBrightestMode:
             self.setFindBrightestMode(False)
         if self.maskEditMode:
-            self.setMaskEditMode(False)
-        self.clearHorizonOverlay()
-        self.setGradientMaskVisible(False)
+            self.set_mask_edit_mode(False)
+        self.clear_horizon_overlay()
+        self.set_gradient_mask_visible(False)
         # clear previous active mask points
         if isinstance(self.file, InputFile):
             self.file.activeMaskPoints = []
@@ -222,7 +222,7 @@ class CanvasLabel(QLabel):
         ]
         self._mask_qimage.setColorTable(color_table)
 
-    def setDenoiseMask(self, mask: Optional[np.ndarray]) -> None:
+    def set_denoise_mask(self, mask: Optional[np.ndarray]) -> None:
         if mask is None:
             self._mask_array = None
             self._mask_qimage = None
@@ -247,27 +247,27 @@ class CanvasLabel(QLabel):
         self._init_mask_qimage()
         self.update()
 
-    def getDenoiseMask(self) -> Optional[np.ndarray]:
+    def get_denoise_mask(self) -> Optional[np.ndarray]:
         if self._mask_array is None:
             return None
         return (self._mask_array.astype(np.float32) / 255.0).clip(0.0, 1.0)
 
-    def clearDenoiseMask(self) -> None:
+    def clear_denoise_mask(self) -> None:
         if self._mask_array is not None:
             self._mask_array.fill(0)
             self.update()
-            self.maskChanged.emit()
+            self.mask_changed.emit()
 
-    def fillDenoiseMask(self) -> None:
+    def fill_denoise_mask(self) -> None:
         if self._mask_array is None and self.pixmap is not None and self.pixmap.width() > 0:
             self._mask_array = np.full((self.pixmap.height(), self.pixmap.width()), 255, dtype=np.uint8)
             self._init_mask_qimage()
         if self._mask_array is not None:
             self._mask_array.fill(255)
             self.update()
-            self.maskChanged.emit()
+            self.mask_changed.emit()
 
-    def setMaskEditMode(self, enabled: bool) -> None:
+    def set_mask_edit_mode(self, enabled: bool) -> None:
         enabled = bool(enabled)
         if self.maskEditMode != enabled:
             self.maskEditMode = enabled
@@ -280,16 +280,16 @@ class CanvasLabel(QLabel):
                 self.unsetCursor()
             self.update()
 
-    def isMaskEditMode(self) -> bool:
+    def is_mask_edit_mode(self) -> bool:
         return self.maskEditMode
 
-    def setBrushRadius(self, r: int) -> None:
+    def set_brush_radius(self, r: int) -> None:
         new_r = max(2, min(500, int(r)))
         if self.brushRadius != new_r:
             self.brushRadius = new_r
             if self.maskEditMode:
                 self._update_brush_cursor()
-            self.brushRadiusChanged.emit(self.brushRadius)
+            self.brush_radius_changed.emit(self.brushRadius)
 
     def _update_brush_cursor(self) -> None:
         if not self.maskEditMode:
@@ -364,7 +364,7 @@ class CanvasLabel(QLabel):
         ]
         self._gradient_mask_qimage.setColorTable(color_table)
 
-    def setGradientMask(self, mask: Optional[np.ndarray]) -> None:
+    def set_gradient_mask(self, mask: Optional[np.ndarray]) -> None:
         if mask is None:
             self._gradient_mask_array = None
             self._gradient_mask_qimage = None
@@ -386,23 +386,23 @@ class CanvasLabel(QLabel):
         self._init_gradient_mask_qimage()
         self.update()
 
-    def getGradientMask(self) -> Optional[np.ndarray]:
+    def get_gradient_mask(self) -> Optional[np.ndarray]:
         if self._gradient_mask_array is None:
             return None
         return (self._gradient_mask_array.astype(np.float32) / 255.0).clip(0.0, 1.0)
 
-    def setGradientMaskVisible(self, visible: bool) -> None:
+    def set_gradient_mask_visible(self, visible: bool) -> None:
         self.gradientMaskVisible = bool(visible)
         self.update()
 
-    def isGradientMaskVisible(self) -> bool:
+    def is_gradient_mask_visible(self) -> bool:
         return self.gradientMaskVisible
 
     # -------------------------------------------------------------------------
     # Live Horizon Tuning Overlay Methods
     # -------------------------------------------------------------------------
 
-    def setHorizonOverlay(self, arr: np.ndarray, rect: Tuple[int, int, int, int]) -> None:
+    def set_horizon_overlay(self, arr: np.ndarray, rect: Tuple[int, int, int, int]) -> None:
         self._horizon_overlay_arr = arr
         self._horizon_overlay_rect = rect
         h, w = arr.shape[:2]
@@ -416,26 +416,26 @@ class CanvasLabel(QLabel):
         self._horizon_overlay_pixmap = QPixmap.fromImage(qimg.copy())
         self.update()
 
-    def clearHorizonOverlay(self) -> None:
+    def clear_horizon_overlay(self) -> None:
         self._horizon_overlay_pixmap = None
         self._horizon_overlay_rect = None
         self._horizon_overlay_arr = None
         self.update()
 
-    # Compatibility Aliases for Pyquator Parity
-    set_mask_array = setDenoiseMask
-    get_mask = getDenoiseMask
-    clear_mask = clearDenoiseMask
-    fill_mask = fillDenoiseMask
-    set_brush_radius = setBrushRadius
-    set_mask_visible = setMaskEditMode
-    is_mask_visible = isMaskEditMode
-    set_gradient_mask = setGradientMask
-    get_gradient_mask = getGradientMask
-    set_gradient_mask_visible = setGradientMaskVisible
-    is_gradient_mask_visible = isGradientMaskVisible
-    set_horizon_overlay = setHorizonOverlay
-    clear_horizon_overlay = clearHorizonOverlay
+    # Compatibility aliases for earlier canvas consumers.
+    set_mask_array = set_denoise_mask
+    get_mask = get_denoise_mask
+    clear_mask = clear_denoise_mask
+    fill_mask = fill_denoise_mask
+    set_brush_radius = set_brush_radius
+    set_mask_visible = set_mask_edit_mode
+    is_mask_visible = is_mask_edit_mode
+    set_gradient_mask = set_gradient_mask
+    get_gradient_mask = get_gradient_mask
+    set_gradient_mask_visible = set_gradient_mask_visible
+    is_gradient_mask_visible = is_gradient_mask_visible
+    set_horizon_overlay = set_horizon_overlay
+    clear_horizon_overlay = clear_horizon_overlay
 
     def setPixmap(self, pixmap: QPixmap, doResetZoomAndPosition: bool = True) -> None:
         self.pixmap = pixmap
@@ -482,7 +482,7 @@ class CanvasLabel(QLabel):
         if self.maskEditMode and (event.modifiers() & Qt.ControlModifier):
             delta = event.angleDelta().y()
             step = 5 if delta > 0 else -5
-            self.setBrushRadius(self.brushRadius + step)
+            self.set_brush_radius(self.brushRadius + step)
             event.accept()
             return
 
@@ -673,7 +673,7 @@ class CanvasLabel(QLabel):
         if self._is_brush_painting:
             self._is_brush_painting = False
             self._last_brush_pos = None
-            self.maskChanged.emit()
+            self.mask_changed.emit()
             return
 
         if ev.button() == Qt.LeftButton:
@@ -817,3 +817,33 @@ class CanvasLabel(QLabel):
 
     def translateAndScaleMousePoint(self, x: int, y: int, scale: float) -> List[float]:
         return [(x - self.posX) / self.zoom_factor / scale, (y - self.posY) / self.zoom_factor / scale]
+
+CanvasLabel.setDenoiseMask = CanvasLabel.set_denoise_mask
+
+CanvasLabel.getDenoiseMask = CanvasLabel.get_denoise_mask
+
+CanvasLabel.clearDenoiseMask = CanvasLabel.clear_denoise_mask
+
+CanvasLabel.fillDenoiseMask = CanvasLabel.fill_denoise_mask
+
+CanvasLabel.setMaskEditMode = CanvasLabel.set_mask_edit_mode
+
+CanvasLabel.isMaskEditMode = CanvasLabel.is_mask_edit_mode
+
+CanvasLabel.setBrushRadius = CanvasLabel.set_brush_radius
+
+CanvasLabel.setGradientMask = CanvasLabel.set_gradient_mask
+
+CanvasLabel.getGradientMask = CanvasLabel.get_gradient_mask
+
+CanvasLabel.setGradientMaskVisible = CanvasLabel.set_gradient_mask_visible
+
+CanvasLabel.isGradientMaskVisible = CanvasLabel.is_gradient_mask_visible
+
+CanvasLabel.setHorizonOverlay = CanvasLabel.set_horizon_overlay
+
+CanvasLabel.clearHorizonOverlay = CanvasLabel.clear_horizon_overlay
+
+CanvasLabel.maskChanged = property(lambda self: self.mask_changed)
+
+CanvasLabel.brushRadiusChanged = property(lambda self: self.brush_radius_changed)

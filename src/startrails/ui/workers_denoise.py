@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 class AutoMaskWorker(QThread):
     """Background worker executing automatic sky detection followed by mask refinement."""
 
-    progressStatus = Signal(str)
-    finishedSuccess = Signal(object)
-    failedError = Signal(str)
+    progress_status = Signal(str)
+    finished_success = Signal(object)
+    failed_error = Signal(str)
 
     def __init__(
         self,
@@ -41,7 +41,7 @@ class AutoMaskWorker(QThread):
 
     def run(self):
         try:
-            self.progressStatus.emit(f"Detecting celestial sky ({self.model_type})...")
+            self.progress_status.emit(f"Detecting celestial sky ({self.model_type})...")
             coarse_mask = DetectSky().detect(
                 self.image,
                 model_type=self.model_type,
@@ -51,7 +51,7 @@ class AutoMaskWorker(QThread):
 
             if coarse_mask is None or self.isInterruptionRequested():
                 return
-            self.progressStatus.emit(
+            self.progress_status.emit(
                 f"Refining detected sky mask (erosion: {self.erosion_pixels}px)..."
             )
             refined_mask = RefineMask().refine(
@@ -61,18 +61,18 @@ class AutoMaskWorker(QThread):
                 erosion_pixels=self.erosion_pixels,
             )
             if refined_mask is not None and not self.isInterruptionRequested():
-                self.finishedSuccess.emit(refined_mask)
+                self.finished_success.emit(refined_mask)
         except Exception as e:
             logger.exception("AutoMaskWorker encountered an error")
-            self.failedError.emit(str(e))
+            self.failed_error.emit(str(e))
 
 
 class RefineMaskWorker(QThread):
     """Background worker executing boundary mask refinement."""
 
-    progressStatus = Signal(str)
-    finishedSuccess = Signal(object)
-    failedError = Signal(str)
+    progress_status = Signal(str)
+    finished_success = Signal(object)
+    failed_error = Signal(str)
 
     def __init__(
         self,
@@ -90,7 +90,7 @@ class RefineMaskWorker(QThread):
 
     def run(self):
         try:
-            self.progressStatus.emit(
+            self.progress_status.emit(
                 f"Refining mask boundary (erosion: {self.erosion_pixels}px)..."
             )
             refined = RefineMask().refine(
@@ -100,17 +100,17 @@ class RefineMaskWorker(QThread):
                 erosion_pixels=self.erosion_pixels,
             )
             if refined is not None and not self.isInterruptionRequested():
-                self.finishedSuccess.emit(refined)
+                self.finished_success.emit(refined)
         except Exception as e:
             logger.exception("RefineMaskWorker encountered an error")
-            self.failedError.emit(str(e))
+            self.failed_error.emit(str(e))
 
 
 class HorizonOverlayWorker(QThread):
     """Background worker executing interactive horizon composite overlay computation."""
 
-    finishedOverlay = Signal(object, object, int)  # roi, rect, request_id
-    failedError = Signal(str, int)
+    finished_overlay = Signal(object, object, int)  # roi, rect, request_id
+    failed_error = Signal(str, int)
 
     def __init__(
         self,
@@ -147,18 +147,18 @@ class HorizonOverlayWorker(QThread):
             )
             if self._is_cancelled or roi is None:
                 return
-            self.finishedOverlay.emit(roi, rect, self.request_id)
+            self.finished_overlay.emit(roi, rect, self.request_id)
         except Exception as e:
             if not self._is_cancelled:
                 logger.exception("HorizonOverlayWorker encountered an error")
-                self.failedError.emit(str(e), self.request_id)
+                self.failed_error.emit(str(e), self.request_id)
 
 
 class FinalCompositeSaveWorker(QThread):
     """Background worker executing full composite generation and asynchronously writing _final.tif."""
 
-    finishedSave = Signal(object, object, int)  # out_path (Path), full_image (np.ndarray), request_id
-    failedError = Signal(str, int)
+    finished_save = Signal(object, object, int)  # out_path (Path), full_image (np.ndarray), request_id
+    failed_error = Signal(str, int)
 
     def __init__(
         self,
@@ -209,11 +209,31 @@ class FinalCompositeSaveWorker(QThread):
             if self._is_cancelled:
                 self.staged_path.unlink(missing_ok=True)
                 return
-            self.finishedSave.emit(written, full_img, self.request_id)
+            self.finished_save.emit(written, full_img, self.request_id)
         except Exception as e:
             if self.staged_path is not None:
                 self.staged_path.unlink(missing_ok=True)
             if not self._is_cancelled:
                 logger.exception("FinalCompositeSaveWorker encountered an error")
-                self.failedError.emit(str(e), self.request_id)
+                self.failed_error.emit(str(e), self.request_id)
 
+
+AutoMaskWorker.progressStatus = property(lambda self: self.progress_status)
+
+RefineMaskWorker.progressStatus = property(lambda self: self.progress_status)
+
+AutoMaskWorker.finishedSuccess = property(lambda self: self.finished_success)
+
+RefineMaskWorker.finishedSuccess = property(lambda self: self.finished_success)
+
+AutoMaskWorker.failedError = property(lambda self: self.failed_error)
+
+RefineMaskWorker.failedError = property(lambda self: self.failed_error)
+
+HorizonOverlayWorker.failedError = property(lambda self: self.failed_error)
+
+FinalCompositeSaveWorker.failedError = property(lambda self: self.failed_error)
+
+HorizonOverlayWorker.finishedOverlay = property(lambda self: self.finished_overlay)
+
+FinalCompositeSaveWorker.finishedSave = property(lambda self: self.finished_save)
