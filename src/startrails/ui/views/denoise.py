@@ -1205,6 +1205,7 @@ class DenoiseView(ModeView):
 
         vals = self.alignSettings.values() if self.alignSettings else {}
 
+        config_snapshot = self.app.workflow.get_config()
         generation = self._generation
 
         def work():
@@ -1215,7 +1216,7 @@ class DenoiseView(ModeView):
                 total=n,
                 desc="Aligning star frames...",
             )
-            cfg = self.app.workflow.get_config()
+            cfg = config_snapshot
             cfg.use_gpu = vals.get("use_gpu", True)
 
             result = self.app.workflow.do_align_stars(
@@ -1247,10 +1248,12 @@ class DenoiseView(ModeView):
         total_stack_steps = n_stars + n_stars + 1
         total_steps = (n_stars + total_stack_steps) if needs_align else total_stack_steps
 
+        align_vals = self.alignSettings.values() if self.alignSettings else {}
+        config_snapshot = self.app.workflow.get_config()
         generation = self._generation
 
         def work():
-            cfg = self.app.workflow.get_config()
+            cfg = config_snapshot
             cfg.stack_method = vals.get("stack_method", "sigma_clipped")
             cfg.sigma_clip_threshold = vals.get("sigma_clip_threshold", 1.2)
             cfg.sigma_clip_iterations = vals.get("sigma_clip_iterations", 3)
@@ -1263,7 +1266,6 @@ class DenoiseView(ModeView):
                     total=len(stars),
                     desc="Aligning star frames...",
                 )
-                align_vals = self.alignSettings.values() if self.alignSettings else {}
 
                 align_result = self.app.workflow.do_align_stars(
                     config=cfg,
@@ -1344,129 +1346,81 @@ class DenoiseView(ModeView):
 
         self._enqueue_task("stackDenoise", "Stack Denoise", total_steps, "Stacking base frames...", work)
 
+    def _composition_config(self, output_path):
+        config = self.app.workflow.get_config()
+        config.output_path = Path(output_path)
+        if self.tuneSettings is not None:
+            for name, value in self.tuneSettings.values().items():
+                if hasattr(config, name):
+                    setattr(config, name, value)
+        return config
+
+    def _enqueue_composition(self, config, task_id: str, title: str) -> None:
+        workflow = self.app.workflow
+        compositor = self.last_compositor
+        coverages = self.last_align_result.sky_coverages if self.last_align_result else None
+        generation = self._generation
+        self._cancel_background_jobs()
+
+        def work():
+            updater = ProgressBarUpdater(
+                getattr(self.shell, "progressBar", None),
+                getattr(self.shell, "label_progressBar", None),
+                total=2, desc="Compositing and saving final image...",
+            )
+            result = workflow.do_compose_horizon(
+                compositor, config=config, progressBar=updater.tick, sky_coverages=coverages,
+            )
+            if result is None:
+                return
+
+            def publish():
+                image, output_path = result
+                self._output_saved = True
+                if self.outputFiles is not None:
+                    self.outputFiles.set_files(workflow.get_output_file_list())
+                output = OutputFile(basename=output_path.name, path=str(output_path), operation="Final Composite")
+                self.showFile(output)
+                canvas = getattr(self.shell, "canvas_main", None)
+                if canvas is not None:
+                    canvas.clearHorizonOverlay()
+                    canvas.setMaskEditMode(False)
+                    canvas.setFromNumpyArray(image, resetZoomAndPosition=False, is_bgr=False)
+                if self.tuneSettings is not None:
+                    self.tuneSettings.ui.tuneStatus.setText(f"Saved: {output_path.name}")
+                self.updateReadyStates()
+
+            self._post_result(generation, publish)
+
+        self._enqueue_task(task_id, title, 2, "Compositing final image...", work)
+
     def do_compose_action(self) -> None:
         if self.last_compositor is None:
             self.last_compositor = self._find_existing_compositor()
         if self.last_compositor is None:
             return
-
-        vals = self.tuneSettings.values() if self.tuneSettings else {}
-
-        generation = self._generation
-
-        def work():
-            progressUpdater = ProgressBarUpdater(
-                getattr(self.shell, "progressBar", None),
-                getattr(self.shell, "label_progressBar", None),
-                total=2,
-                desc="Compositing final image...",
-            )
-            cfg = self.app.workflow.get_config()
-            cfg.enable_horizon_corrections = vals.get("enable_horizon_corrections", True)
-            cfg.denoise_horizon_band = vals.get("denoise_horizon_band", True)
-            cfg.horizon_blend_percent = vals.get("horizon_blend_percent", 60.0)
-            cfg.horizon_blur_radius = vals.get("horizon_blur_radius", 2.0)
-            cfg.horizon_denoise_radius = vals.get("horizon_denoise_radius", 5)
-            cfg.horizon_denoise_strength = vals.get("horizon_denoise_strength", 0.2)
-            cfg.horizon_color_denoise_strength = vals.get("horizon_color_denoise_strength", 1.0)
-            cfg.horizon_value_denoise_strength = vals.get("horizon_value_denoise_strength", 0.2)
-
-            if hasattr(self.app.workflow.project, "get_output_dir"):
-                out_dir = self.app.workflow.project.get_output_dir()
-                stem = self.app.workflow._get_project_stem() if hasattr(self.app.workflow, "_get_project_stem") else "project"
-                cfg.output_path = out_dir / f"{stem}_final.tif"
-
-            res = self.app.workflow.do_compose_horizon(
-                self.last_compositor,
-                config=cfg,
-                progressBar=progressUpdater.tick,
-                sky_coverages=self.last_align_result.sky_coverages if self.last_align_result else None,
-            )
-            if res is None:
-                return
-            def on_compose_done():
-                if res and res[0] is not None:
-                    out_files = (
-                        self.app.workflow.get_output_file_list()
-                        if hasattr(self.app.workflow, "get_output_file_list")
-                        else []
-                    )
-                    if self.outputFiles is not None:
-                        self.outputFiles.set_files(out_files)
-
-                    comp_path = str(res[1]) if (len(res) > 1 and res[1]) else (str(cfg.output_path) if cfg.output_path else None)
-                    comp_file = None
-                    if comp_path:
-                        for f in out_files:
-                            if getattr(f, "path", None) == comp_path:
-                                comp_file = f
-                                break
-                        if comp_file is None:
-                            comp_file = OutputFile(basename=Path(comp_path).name, path=comp_path, operation="Final Composite")
-                    if comp_file is not None:
-                        self.showFile(comp_file)
-                        if self.outputFiles is not None:
-                            self.outputFiles.setCurrentFile(comp_file)
-
-                    if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-                        self.shell.canvas_main.clearHorizonOverlay()
-                        self.shell.canvas_main.setMaskEditMode(False)
-                        self.shell.canvas_main.setFromNumpyArray(
-                            res[0],
-                            resetZoomAndPosition=False,
-                            is_bgr=False,
-                        )
-                if self.tuneSettings and hasattr(self.tuneSettings.ui, "tuneStatus"):
-                    out_name = Path(res[1]).name if (len(res) > 1 and res[1]) else "final composite"
-                    self.tuneSettings.ui.tuneStatus.setText(f"Saved: {out_name}")
-                if self.tuneCard is not None:
-                    self.tuneCard.setStatus("done")
-                self.updateReadyStates()
-
-            self._post_result(generation, on_compose_done)
-
-        self._enqueue_task("composeHorizon", "Compose Horizon", 2, "Compositing final image...", work)
+        project = self.app.workflow.project
+        output = project.get_output_dir() / f"{project.get_project_stem()}_final.tif"
+        self._enqueue_composition(self._composition_config(output), "composeHorizon", "Compose Horizon")
 
     def do_save_output_action(self) -> None:
         if self.last_compositor is None:
             self.last_compositor = self._find_existing_compositor()
         if self.last_compositor is None:
             return
-        out_path, _ = QFileDialog.getSaveFileName(
-            None,
-            "Save Final Image",
-            "final_denoise.tif",
+        output, _ = QFileDialog.getSaveFileName(
+            None, "Save Final Image", "final_denoise.tif",
             filter="TIFF Image (*.tif *.tiff);;JPEG Image (*.jpg *.jpeg)",
         )
-        if not out_path:
-            return
-
-        vals = self.tuneSettings.values() if self.tuneSettings else {}
-        cfg = self.app.workflow.get_config()
-        cfg.output_path = Path(out_path)
-        cfg.enable_horizon_corrections = vals.get("enable_horizon_corrections", True)
-        cfg.denoise_horizon_band = vals.get("denoise_horizon_band", True)
-        cfg.horizon_blend_percent = vals.get("horizon_blend_percent", 60.0)
-        cfg.horizon_blur_radius = vals.get("horizon_blur_radius", 2.0)
-        cfg.horizon_denoise_radius = vals.get("horizon_denoise_radius", 5)
-        cfg.horizon_denoise_strength = vals.get("horizon_denoise_strength", 0.2)
-        cfg.horizon_color_denoise_strength = vals.get("horizon_color_denoise_strength", 1.0)
-        cfg.horizon_value_denoise_strength = vals.get("horizon_value_denoise_strength", 0.2)
-
-        res = self.app.workflow.do_compose_horizon(
-            self.last_compositor,
-            config=cfg,
-            sky_coverages=self.last_align_result.sky_coverages if self.last_align_result else None,
-        )
-        if res and res[0] is not None:
-            self._output_saved = True
-            self.updateReadyStates()
+        if output:
+            self._enqueue_composition(self._composition_config(output), "exportDenoise", "Export Denoise")
 
     def do_pipeline_action(self) -> None:
         stars = self.app.workflow.get_star_files()
         if not stars:
             return
 
+        config_snapshot = self.app.workflow.get_config()
         generation = self._generation
 
         def work():
@@ -1476,7 +1430,7 @@ class DenoiseView(ModeView):
                 total=100,
                 desc="Running denoise pipeline...",
             )
-            out_path = self.app.workflow.do_pipeline(progressBar=progressUpdater.tick)
+            out_path = self.app.workflow.do_pipeline(config=config_snapshot, progressBar=progressUpdater.tick)
             def on_pipeline_done():
                 if out_path and Path(out_path).exists():
                     out_files = (
