@@ -48,33 +48,33 @@ class DenoiseView(ModeView):
         self._disposed = False
         self._background_workers = set()
         self._sidebar: Optional[SidebarDenoise] = None
-        self._starFiles = None
-        self._noiseFiles = None
-        self._outputFiles = None
+        self.starFiles = None
+        self.noiseFiles = None
+        self.outputFiles = None
 
-        self._skySettings = None
-        self._alignSettings = None
-        self._stackSettings = None
-        self._tuneSettings = None
+        self.skySettings = None
+        self.alignSettings = None
+        self.stackSettings = None
+        self.tuneSettings = None
 
-        self._skyCard = None
-        self._alignCard = None
-        self._stackCard = None
-        self._tuneCard = None
+        self.skyCard = None
+        self.alignCard = None
+        self.stackCard = None
+        self.tuneCard = None
 
-        self._pushButton_newProject = None
-        self._pushButton_openProject = None
-        self._btn_detect_sky = None
-        self._btn_align_stars = None
-        self._btn_stack = None
-        self._btn_compose = None
-        self._btn_save_output = None
-        self._btn_pipeline = None
+        self.pushButton_newProject = None
+        self.pushButton_openProject = None
+        self.btn_detect_sky = None
+        self.btn_align_stars = None
+        self.btn_stack = None
+        self.btn_compose = None
+        self.btn_save_output = None
+        self.btn_pipeline = None
 
-        self._lbl_ops_progress = None
-        self._ops_progress_bar = None
-        self._progress_bar = None
-        self._lbl_status = None
+        self.lbl_ops_progress = None
+        self.ops_progress_bar = None
+        self.progress_bar = None
+        self.lbl_status = None
 
         self._step_cards: tuple[StepCard, ...] = ()
         self._output_saved: bool = False
@@ -100,261 +100,15 @@ class DenoiseView(ModeView):
         self._horizon_save_debounce_timer.setInterval(1000)
         self._horizon_save_debounce_timer.timeout.connect(self._dispatch_async_save_final_composite)
 
-    def _from_shell(self, name: str) -> Any:
-        shell = getattr(self, "shell", None)
-        if shell is not None and hasattr(shell, "__dict__"):
-            return shell.__dict__.get(name)
-        return None
-
     @property
-    def sidebar(self) -> Optional[SidebarDenoise]:
-        if self._sidebar is not None:
-            return self._sidebar
-        shell_sidebar = self._from_shell("sidebar")
-        if isinstance(shell_sidebar, SidebarDenoise):
-            return shell_sidebar
-        return None
+    def sidebar(self):
+        return self._sidebar
 
     @sidebar.setter
-    def sidebar(self, value: Optional[SidebarDenoise]) -> None:
-        if value is not None and not isinstance(value, SidebarDenoise):
-            return
-        self._sidebar = value
-        self._init_sidebar_refs()
-
-    @property
-    def starFiles(self):
-        if self._starFiles is not None:
-            return self._starFiles
-        return self._from_shell("starFiles")
-
-    @starFiles.setter
-    def starFiles(self, value):
-        self._starFiles = value
-
-    @property
-    def noiseFiles(self):
-        if self._noiseFiles is not None:
-            return self._noiseFiles
-        return self._from_shell("noiseFiles")
-
-    @noiseFiles.setter
-    def noiseFiles(self, value):
-        self._noiseFiles = value
-
-    @property
-    def vignettingFiles(self):
-        return None
-
-    @property
-    def outputFiles(self):
-        if self._outputFiles is not None:
-            return self._outputFiles
-        return self._from_shell("outputFiles")
-
-    @outputFiles.setter
-    def outputFiles(self, value):
-        self._outputFiles = value
-
-    @property
-    def skySettings(self):
-        if self._skySettings is not None:
-            return self._skySettings
-        return self._from_shell("skySettings")
-
-    @skySettings.setter
-    def skySettings(self, value):
-        self._skySettings = value
-
-    @property
-    def alignSettings(self):
-        if self._alignSettings is not None:
-            return self._alignSettings
-        return self._from_shell("alignSettings")
-
-    @alignSettings.setter
-    def alignSettings(self, value):
-        self._alignSettings = value
-
-    @property
-    def stackSettings(self):
-        if self._stackSettings is not None:
-            return self._stackSettings
-        return self._from_shell("stackSettings")
-
-    @stackSettings.setter
-    def stackSettings(self, value):
-        self._stackSettings = value
-
-    @property
-    def tuneSettings(self):
-        if self._tuneSettings is not None:
-            return self._tuneSettings
-        return self._from_shell("tuneSettings")
-
-    @tuneSettings.setter
-    def tuneSettings(self, value):
-        self._tuneSettings = value
-
-    @property
-    def skyCard(self):
-        if self._skyCard is not None:
-            return self._skyCard
-        return self._from_shell("skyCard")
-
-    @skyCard.setter
-    def skyCard(self, value):
-        self._skyCard = value
-
-    @property
-    def alignCard(self):
-        if self._alignCard is not None:
-            return self._alignCard
-        return self._from_shell("alignCard")
-
-    @alignCard.setter
-    def alignCard(self, value):
-        self._alignCard = value
-
-    @property
-    def stackCard(self):
-        if self._stackCard is not None:
-            return self._stackCard
-        return self._from_shell("stackCard")
-
-    @stackCard.setter
-    def stackCard(self, value):
-        self._stackCard = value
-
-    @property
-    def tuneCard(self):
-        if self._tuneCard is not None:
-            return self._tuneCard
-        return self._from_shell("tuneCard")
-
-    @tuneCard.setter
-    def tuneCard(self, value):
-        self._tuneCard = value
-
-    @property
-    def pushButton_newProject(self):
-        if self._pushButton_newProject is not None:
-            return self._pushButton_newProject
-        return self._from_shell("pushButton_newProject")
-
-    @pushButton_newProject.setter
-    def pushButton_newProject(self, value):
-        self._pushButton_newProject = value
-
-    @property
-    def pushButton_openProject(self):
-        if self._pushButton_openProject is not None:
-            return self._pushButton_openProject
-        return self._from_shell("pushButton_openProject")
-
-    @pushButton_openProject.setter
-    def pushButton_openProject(self, value):
-        self._pushButton_openProject = value
-
-    @property
-    def btn_detect_sky(self):
-        if self._btn_detect_sky is not None:
-            return self._btn_detect_sky
-        return self._from_shell("btn_detect_sky")
-
-    @btn_detect_sky.setter
-    def btn_detect_sky(self, value):
-        self._btn_detect_sky = value
-
-    @property
-    def btn_align_stars(self):
-        if self._btn_align_stars is not None:
-            return self._btn_align_stars
-        return self._from_shell("btn_align_stars")
-
-    @btn_align_stars.setter
-    def btn_align_stars(self, value):
-        self._btn_align_stars = value
-
-    @property
-    def btn_stack(self):
-        if self._btn_stack is not None:
-            return self._btn_stack
-        return self._from_shell("btn_stack")
-
-    @btn_stack.setter
-    def btn_stack(self, value):
-        self._btn_stack = value
-
-    @property
-    def btn_compose(self):
-        if self._btn_compose is not None:
-            return self._btn_compose
-        return self._from_shell("btn_compose")
-
-    @btn_compose.setter
-    def btn_compose(self, value):
-        self._btn_compose = value
-
-    @property
-    def btn_save_output(self):
-        if self._btn_save_output is not None:
-            return self._btn_save_output
-        return self._from_shell("btn_save_output")
-
-    @btn_save_output.setter
-    def btn_save_output(self, value):
-        self._btn_save_output = value
-
-    @property
-    def btn_pipeline(self):
-        if self._btn_pipeline is not None:
-            return self._btn_pipeline
-        return self._from_shell("btn_pipeline")
-
-    @btn_pipeline.setter
-    def btn_pipeline(self, value):
-        self._btn_pipeline = value
-
-    @property
-    def lbl_ops_progress(self):
-        if self._lbl_ops_progress is not None:
-            return self._lbl_ops_progress
-        return self._from_shell("lbl_ops_progress")
-
-    @lbl_ops_progress.setter
-    def lbl_ops_progress(self, value):
-        self._lbl_ops_progress = value
-
-    @property
-    def ops_progress_bar(self):
-        if self._ops_progress_bar is not None:
-            return self._ops_progress_bar
-        return self._from_shell("ops_progress_bar")
-
-    @ops_progress_bar.setter
-    def ops_progress_bar(self, value):
-        self._ops_progress_bar = value
-
-    @property
-    def progress_bar(self):
-        if self._progress_bar is not None:
-            return self._progress_bar
-        return self._from_shell("progress_bar")
-
-    @progress_bar.setter
-    def progress_bar(self, value):
-        self._progress_bar = value
-
-    @property
-    def lbl_status(self):
-        if self._lbl_status is not None:
-            return self._lbl_status
-        return self._from_shell("lbl_status")
-
-    @lbl_status.setter
-    def lbl_status(self, value):
-        self._lbl_status = value
+    def sidebar(self, sidebar):
+        if isinstance(sidebar, SidebarDenoise):
+            self._sidebar = sidebar
+            self._init_sidebar_refs()
 
     def build_sidebar(self, parent: QWidget) -> QWidget:
         if self._sidebar is not None and self._sidebar.parent() is parent:
