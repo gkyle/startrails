@@ -365,7 +365,7 @@ QProgressBar#operationsProgress::chunk {
          <item>
           <widget class="StepCard" name="stackCard">
            <property name="title" stdset="0">
-            <string>Stack Sky &amp; Ground</string>
+            <string>Stack Sky and Ground</string>
            </property>
            <property name="step_number" stdset="0">
             <number>3</number>

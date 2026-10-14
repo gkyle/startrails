@@ -117,7 +117,7 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
             elif isinstance(file, DenoiseInputFile):
                 badges = []
                 if getattr(file, "is_reference", False):
-                    badges.append(("Ref", color("#eff6ff", "background"), color("#1d4ed8"), color("#bfdbfe", "border")))
+                    badges.append(("Reference", color("#eff6ff", "background"), color("#1d4ed8"), color("#bfdbfe", "border")))
                 if getattr(file, "aligned", False):
                     badges.append(("Aligned", color("#dcfce7", "background"), color("#15803d"), color("#bbf7d0", "border")))
 
@@ -237,7 +237,7 @@ class FileModel(QAbstractTableModel):
             if isinstance(file, DenoiseInputFile):
                 parts = []
                 if getattr(file, "is_reference", False):
-                    parts.append("Ref")
+                    parts.append("Reference")
                 if getattr(file, "aligned", False):
                     parts.append("Aligned")
                 return " · ".join(parts) or "—"

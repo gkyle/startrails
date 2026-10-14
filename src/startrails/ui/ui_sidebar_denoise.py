@@ -373,7 +373,7 @@ class Ui_SidebarDenoise(object):
         self.skyCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Ready to detect or paint mask", None))
         self.alignCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Align Stars", None))
         self.alignCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Requires sky mask", None))
-        self.stackCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Stack Sky & Ground", None))
+        self.stackCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Stack Sky and Ground", None))
         self.stackCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Requires aligned stars", None))
         self.tuneCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Tune Horizon", None))
         self.tuneCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Requires base stacks", None))
