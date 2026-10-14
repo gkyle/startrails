@@ -4,6 +4,24 @@ from PySide6.QtCore import Qt, QSignalBlocker, QObject, Signal
 from PySide6.QtWidgets import QFrame, QWidget, QButtonGroup
 
 
+def toggle_advanced_settings(widget: QWidget, checked: bool) -> None:
+    body = getattr(widget.ui, "advancedBody", None)
+    if body is not None:
+        body.setVisible(checked)
+    toggle = getattr(widget.ui, "advancedToggle", None)
+    if toggle is not None:
+        toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
+        toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
+    p = widget
+    while p is not None:
+        p.updateGeometry()
+        if hasattr(p, "adjustSize"):
+            p.adjustSize()
+        if p.objectName() in ("stepCard", "StepCard") or hasattr(p, "cardLayout"):
+            break
+        p = p.parentWidget()
+
+
 class SegmentedButtonGroup(QObject):
     currentIndexChanged = Signal(int)
 
@@ -203,21 +221,7 @@ class DetectSettings(QWidget):
         self.reset()
 
     def _toggle_advanced(self, checked):
-        body = getattr(self.ui, "advancedBody", None)
-        if body is not None:
-            body.setVisible(checked)
-        toggle = getattr(self.ui, "advancedToggle", None)
-        if toggle is not None:
-            toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
-            toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
-        p = self
-        while p is not None:
-            p.updateGeometry()
-            if hasattr(p, "adjustSize"):
-                p.adjustSize()
-            if p.objectName() in ("stepCard", "StepCard") or hasattr(p, "cardLayout"):
-                break
-            p = p.parentWidget()
+        toggle_advanced_settings(self, checked)
 
     def reset(self):
         self.ui.confidence.setValue(0.3)
@@ -333,21 +337,7 @@ class StackSettings(QWidget):
         self.reset()
 
     def _toggle_advanced(self, checked):
-        body = getattr(self.ui, "advancedBody", None)
-        if body is not None:
-            body.setVisible(checked)
-        toggle = getattr(self.ui, "advancedToggle", None)
-        if toggle is not None:
-            toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
-            toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
-        p = self
-        while p is not None:
-            p.updateGeometry()
-            if hasattr(p, "adjustSize"):
-                p.adjustSize()
-            if p.objectName() in ("stepCard", "StepCard") or hasattr(p, "cardLayout"):
-                break
-            p = p.parentWidget()
+        toggle_advanced_settings(self, checked)
 
     def reset(self):
         self.ui.fade.setCurrentIndex(3)

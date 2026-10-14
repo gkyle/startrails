@@ -45,6 +45,7 @@ class DenoiseWorkflow(Workflow):
     def add_star_files(self, paths: List[str], clear: bool = False) -> None:
         if clear:
             self.project.star_files = []
+            self.project.reference_file = None
         for p in paths:
             file_obj = DenoiseInputFile(basename=os.path.basename(p), path=p)
             self.project.star_files.append(file_obj)
@@ -58,9 +59,10 @@ class DenoiseWorkflow(Workflow):
         if file in self.project.star_files:
             self.project.star_files.remove(file)
             if self.project.reference_file is file:
-                self.project.reference_file = (
-                    self.project.star_files[0] if self.project.star_files else None
-                )
+                if self.project.star_files:
+                    self.project.set_reference_file(self.project.star_files[0])
+                else:
+                    self.project.reference_file = None
             self.save_project()
 
     removeStarFile = remove_star_file

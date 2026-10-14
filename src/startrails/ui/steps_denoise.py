@@ -1,10 +1,12 @@
 """Behavior and controls for Denoise mode Designer-authored step settings."""
 
 from __future__ import annotations
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Optional
 from PySide6.QtCore import Qt, QSignalBlocker, Signal
 from PySide6.QtWidgets import QWidget
 
+from .steps import toggle_advanced_settings
 from .ui_step_denoise_sky import Ui_DenoiseSkySettings
 from .ui_step_denoise_align import Ui_DenoiseAlignSettings
 from .ui_step_denoise_stack import Ui_DenoiseStackSettings
@@ -16,26 +18,8 @@ if TYPE_CHECKING:
     from startrails.lib.project_denoise import DenoiseProject
 
 
-def _toggle_advanced_helper(widget: QWidget, checked: bool) -> None:
-    body = getattr(widget.ui, "advancedBody", None)
-    if body is not None:
-        body.setVisible(checked)
-    toggle = getattr(widget.ui, "advancedToggle", None)
-    if toggle is not None:
-        toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
-        toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
-    p: Optional[QWidget] = widget
-    while p is not None:
-        p.updateGeometry()
-        if hasattr(p, "adjustSize"):
-            p.adjustSize()
-        if p.objectName() in ("stepCard", "StepCard") or hasattr(p, "cardLayout"):
-            break
-        p = p.parentWidget()
-
-
 class DenoiseSkySettings(QWidget):
-    """Step 1: Define Sky Region settings widget matching pyquator controls."""
+    """Step 1: Define Sky Region settings widget."""
 
     settingsChanged = Signal()
     brushRadiusChanged = Signal(int)
@@ -151,7 +135,7 @@ class DenoiseSkySettings(QWidget):
 
 
 class DenoiseAlignSettings(QWidget):
-    """Step 2: Align Stars settings widget matching pyquator controls."""
+    """Step 2: Align Stars settings widget."""
 
     settingsChanged = Signal()
 
@@ -184,7 +168,7 @@ class DenoiseAlignSettings(QWidget):
         self.reset()
 
     def _toggle_advanced(self, checked: bool) -> None:
-        _toggle_advanced_helper(self, checked)
+        toggle_advanced_settings(self, checked)
 
     def _on_change(self, *_) -> None:
         self.sync_to_project()
@@ -257,7 +241,7 @@ class DenoiseAlignSettings(QWidget):
 
 
 class DenoiseStackSettings(QWidget):
-    """Step 3: Stack Foreground and Background settings widget matching pyquator controls."""
+    """Step 3: Stack Foreground and Background settings widget."""
 
     settingsChanged = Signal()
 
@@ -287,7 +271,7 @@ class DenoiseStackSettings(QWidget):
         self.reset()
 
     def _toggle_advanced(self, checked: bool) -> None:
-        _toggle_advanced_helper(self, checked)
+        toggle_advanced_settings(self, checked)
 
     def _on_change(self, *_) -> None:
         self.sync_to_project()
@@ -379,7 +363,7 @@ class DenoiseStackSettings(QWidget):
 
 
 class DenoiseTuneSettings(QWidget):
-    """Step 4: Interactive Horizon Tuning settings widget matching pyquator controls."""
+    """Step 4: Interactive Horizon Tuning settings widget."""
 
     settingsChanged = Signal()
     gradientMaskToggled = Signal(bool)

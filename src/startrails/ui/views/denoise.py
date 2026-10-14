@@ -28,8 +28,6 @@ from startrails.ui.steps_denoise import (
 )
 from startrails.ui.views.base import ModeView
 from startrails.ui.workers_denoise import (
-    AutoMaskWorker,
-    RefineMaskWorker,
     HorizonOverlayWorker,
     FinalCompositeSaveWorker,
 )
@@ -462,20 +460,6 @@ class DenoiseView(ModeView):
         if self.btn_pipeline is not None:
             self.connect_signal(self.btn_pipeline.clicked, self.do_pipeline_action)
 
-    def teardown(self) -> None:
-        super().teardown()
-        if hasattr(self, "_horizon_debounce_timer") and self._horizon_debounce_timer.isActive():
-            self._horizon_debounce_timer.stop()
-        if self._horizon_worker is not None:
-            self._horizon_worker.cancel()
-            self._horizon_worker = None
-        if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            self.shell.canvas_main.setMaskEditMode(False)
-            self.shell.canvas_main.clearHorizonOverlay()
-            self.shell.canvas_main.setGradientMaskVisible(False)
-        if self.sidebar is not None:
-            self.sidebar.setParent(None)
-
     # -------------------------------------------------------------------------
     # File Management
     # -------------------------------------------------------------------------
@@ -849,7 +833,7 @@ class DenoiseView(ModeView):
             if cand and cand.is_file():
                 try:
                     m = MaskHandler.load_mask(cand)
-                    if m is not None and np.any(m > 0):
+                    if m is not None:
                         return m
                 except Exception:
                     continue
@@ -952,7 +936,7 @@ class DenoiseView(ModeView):
                     self.showFile(ref)
 
             current_m = self.shell.canvas_main.getDenoiseMask()
-            if current_m is None or not np.any(current_m > 0):
+            if current_m is None:
                 existing_mask = self._find_existing_mask()
                 if existing_mask is not None:
                     self.shell.canvas_main.setDenoiseMask(existing_mask)
@@ -1431,8 +1415,6 @@ class DenoiseView(ModeView):
             sky_coverages=self.last_align_result.sky_coverages if self.last_align_result else None,
         )
         if res and res[0] is not None:
-            from startrails.lib.denoise.writer import ImageWriter
-            ImageWriter.write(res[0], Path(out_path))
             self._output_saved = True
             self.updateReadyStates()
 

@@ -19,10 +19,8 @@ _MODEL_CACHE: dict[str, Tuple[Any, Any, str, int]] = {}
 def _get_local_nightstack_dir() -> Optional[Path]:
     """Find local nightstack weights directory in repository or current working directory."""
     candidates = [
-        Path(r"C:\Users\kyles\Documents\GitHub\nightstack\artifacts\models\segformer-sky-v6"),
-        Path(r"T:\projects\nightstack\artifacts\models\segformer-sky-v6-tree-preserved"),
         Path("models/detectSky/nightstack"),
-        Path(__file__).resolve().parents[4] / "models" / "detectSky" / "nightstack",
+        Path(__file__).resolve().parents[5] / "models" / "detectSky" / "nightstack",
     ]
     for candidate in candidates:
         if candidate.is_dir() and ((candidate / "model.safetensors").exists() or (candidate / "config.json").exists()):
