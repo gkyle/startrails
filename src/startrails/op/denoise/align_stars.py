@@ -86,6 +86,8 @@ class AlignStars(DenoiseOperation):
 
         n_stars = len(config.star_images)
         self.startJob(n_stars)
+        if self.shouldInterrupt():
+            return None
 
         calibrate_fn = self.prepare_calibrator(config)
         base_path = self.get_base_image_path(config)
