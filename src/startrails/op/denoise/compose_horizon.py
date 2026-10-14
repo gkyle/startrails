@@ -51,7 +51,11 @@ class ComposeHorizon(DenoiseOperation):
             enable_corrections=config.enable_horizon_corrections,
             horizon_color_denoise_strength=config.horizon_color_denoise_strength,
             horizon_value_denoise_strength=config.horizon_value_denoise_strength,
+            cancel_check=self.shouldInterrupt,
         )
+
+        if stacked is None or self.shouldInterrupt():
+            return None
 
         self.updateJob(1, {"desc": "Horizon blended. Saving composite..." if write_output and config.output_path else "Horizon blended.", "stacked": stacked, "color_space": "rgb"})
 

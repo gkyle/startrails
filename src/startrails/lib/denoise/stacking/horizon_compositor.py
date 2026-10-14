@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 from typing import Callable, Optional
+from threading import RLock
+from functools import wraps
 import cv2
 import numpy as np
 
 from startrails.lib.denoise.enhancement.horizon_denoiser import HorizonDenoiser
+
+
+def synchronized_composition(method):
+    @wraps(method)
+    def evaluate(self, *args, **kwargs):
+        with self._composition_lock:
+            return method(self, *args, **kwargs)
+    return evaluate
 
 
 class HorizonCompositor:
@@ -30,6 +40,7 @@ class HorizonCompositor:
         denoise_radius: int = 5,
         denoise_eps: float = 1e-3,
     ):
+        self._composition_lock = RLock()
         self.sky_stack = sky_stack.astype(np.float32)
         self.ground_stack = ground_stack.astype(np.float32)
         self.gradient_mask = np.clip(gradient_mask.astype(np.float32), 0.0, 1.0)
@@ -140,6 +151,7 @@ class HorizonCompositor:
         self._cached_blur_radius: float | None = None
         self._cached_blurred_fg: np.ndarray | None = None
 
+    @synchronized_composition
     def composite_overlay(
         self,
         horizon_blend_percent: float = 60.0,
@@ -234,6 +246,7 @@ class HorizonCompositor:
         roi_result = self.roi_feathered_mask * sky_final + (1.0 - self.roi_feathered_mask) * self.roi_ground_stack
         return np.clip(roi_result, 0.0, 1.0).astype(np.float32), self.roi_rect
 
+    @synchronized_composition
     def composite(
         self,
         horizon_blend_percent: float = 60.0,
@@ -243,6 +256,7 @@ class HorizonCompositor:
         enable_corrections: bool = True,
         horizon_color_denoise_strength: Optional[float] = None,
         horizon_value_denoise_strength: Optional[float] = None,
+        cancel_check: Optional[Callable[[], bool]] = None,
     ) -> np.ndarray:
         """Evaluate full composite image given blend, denoise, and blur parameters.
 
@@ -266,7 +280,10 @@ class HorizonCompositor:
             enable_corrections=enable_corrections,
             horizon_color_denoise_strength=horizon_color_denoise_strength,
             horizon_value_denoise_strength=horizon_value_denoise_strength,
+            cancel_check=cancel_check,
         )
+        if roi_result is None or (cancel_check and cancel_check()):
+            return None
         result = self.base_composite.copy()
         result[ry : ry + rh, rx : rx + rw] = roi_result
         return np.clip(result, 0.0, 1.0).astype(np.float32)

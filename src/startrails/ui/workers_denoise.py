@@ -194,6 +194,7 @@ class FinalCompositeSaveWorker(QThread):
                 enable_corrections=self.params.get("enable_corrections", True),
                 horizon_color_denoise_strength=self.params.get("color_denoise"),
                 horizon_value_denoise_strength=self.params.get("value_denoise"),
+                cancel_check=self.is_cancelled,
             )
             if self._is_cancelled or full_img is None:
                 return
