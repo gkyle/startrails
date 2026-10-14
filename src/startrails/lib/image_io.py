@@ -1,42 +1,10 @@
 """Shared image decoding, normalization, codec options, and file-lock fallback."""
 import sys
-import struct
 from pathlib import Path
 from typing import Union
 import cv2
 import numpy
 
-
-def embed_tiff_profile(path, profile):
-    """Append an ICC directory entry without re-encoding 16-bit TIFF pixels.
-
-    OpenCV writes classic TIFF but does not support its ICC metadata tag.
-    Keep its compressed strips and tag offsets intact by appending a new IFD.
-    """
-    with open(path, "r+b") as stream:
-        header = stream.read(8)
-        endian = "<" if header[:2] == b"II" else ">"
-        if header[:2] not in (b"II", b"MM") or struct.unpack(endian + "H", header[2:4])[0] != 42:
-            raise ValueError("ICC embedding requires a classic TIFF image")
-        stream.seek(struct.unpack(endian + "I", header[4:8])[0])
-        count = struct.unpack(endian + "H", stream.read(2))[0]
-        entries = [stream.read(12) for _ in range(count)]
-        next_directory = stream.read(4)
-        entries = [entry for entry in entries if struct.unpack(endian + "H", entry[:2])[0] != 34675]
-        stream.seek(0, 2)
-        if stream.tell() % 2:
-            stream.write(b"\0")
-        profile_offset = stream.tell()
-        stream.write(profile)
-        if stream.tell() % 2:
-            stream.write(b"\0")
-        directory_offset = stream.tell()
-        value = profile.ljust(4, b"\0") if len(profile) <= 4 else struct.pack(endian + "I", profile_offset)
-        entries.append(struct.pack(endian + "HHI", 34675, 7, len(profile)) + value)
-        entries.sort(key=lambda entry: struct.unpack(endian + "H", entry[:2])[0])
-        stream.write(struct.pack(endian + "H", len(entries)) + b"".join(entries) + next_directory)
-        stream.seek(4)
-        stream.write(struct.pack(endian + "I", directory_offset))
 
 IMWRITE_OPTIONS = [cv2.IMWRITE_JPEG_QUALITY, 100]
 
@@ -96,7 +64,6 @@ def imwrite(
     convertBGR: bool = False,
     quality: int = 100,
     compression: bool = True,
-    icc_profile: bytes | None = None,
     optimize: bool = False,
     tiff_uint8_as_uint16: bool = False,
     eight_bit: bool = False,
@@ -153,7 +120,7 @@ def imwrite(
         options = [cv2.IMWRITE_TIFF_COMPRESSION, comp_val]
 
     def _do_write(target_path: Path):
-        if (optimize or icc_profile) and suffix not in (".tif", ".tiff"):
+        if optimize and suffix not in (".tif", ".tiff"):
             from PIL import Image
             rgb = img
             if img.ndim == 3 and img.shape[2] == 3:
@@ -161,8 +128,6 @@ def imwrite(
             elif img.ndim == 3 and img.shape[2] == 4:
                 rgb = cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)
             settings = {}
-            if icc_profile:
-                settings["icc_profile"] = icc_profile
             if suffix in (".jpg", ".jpeg"):
                 settings.update(quality=quality, optimize=optimize)
             Image.fromarray(rgb).save(target_path, **settings)
@@ -170,8 +135,6 @@ def imwrite(
         success = cv2.imwrite(str(target_path), img, options if options else IMWRITE_OPTIONS)
         if not success:
             raise OSError(f"Could not write image to '{target_path}'")
-        if icc_profile:
-            embed_tiff_profile(target_path, icc_profile)
 
     try:
         _do_write(path)
