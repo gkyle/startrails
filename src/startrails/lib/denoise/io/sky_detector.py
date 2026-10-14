@@ -19,11 +19,13 @@ _MODEL_CACHE: dict[str, Tuple[Any, Any, str, int]] = {}
 def _get_local_nightstack_dir() -> Optional[Path]:
     """Find local nightstack weights directory in repository or current working directory."""
     candidates = [
+        Path(r"C:\Users\kyles\Documents\GitHub\nightstack\artifacts\models\segformer-sky-v6"),
+        Path(r"T:\projects\nightstack\artifacts\models\segformer-sky-v6-tree-preserved"),
         Path("models/detectSky/nightstack"),
         Path(__file__).resolve().parents[4] / "models" / "detectSky" / "nightstack",
     ]
     for candidate in candidates:
-        if candidate.is_dir() and (candidate / "model.safetensors").exists():
+        if candidate.is_dir() and ((candidate / "model.safetensors").exists() or (candidate / "config.json").exists()):
             return candidate.resolve()
     return None
 
@@ -94,6 +96,8 @@ class AutoSkyDetector:
         elif selected_model == "segformer" and model_path is None:
             model_path = cls.DEFAULT_SEGFORMER_MODEL
 
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+
         # 3. Dispatch to engine
         if selected_model in ("segformer", "nightstack"):
             try:
@@ -104,8 +108,20 @@ class AutoSkyDetector:
                     input_size=input_size,
                 )
             except Exception as e:
-                logger.warning(f"Neural inference failed ({e}). Falling back to heuristic detector.")
-                return cls._detect_heuristic(rgb)
+                logger.warning(f"Neural inference on {device} failed ({e}). Retrying neural inference on CPU...")
+                try:
+                    import torch
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    return cls._detect_segformer(
+                        rgb,
+                        model_path=model_path,
+                        device="cpu",
+                        input_size=input_size,
+                    )
+                except Exception as e_cpu:
+                    logger.warning(f"CPU neural inference failed ({e_cpu}). Falling back to heuristic detector.")
+                    return cls._detect_heuristic(rgb)
         elif selected_model == "heuristic":
             return cls._detect_heuristic(rgb)
         else:
@@ -200,15 +216,29 @@ class AutoSkyDetector:
             sw, sh = w, h
 
         inputs = processor(images=small_rgb, return_tensors="pt")
-        pixel_values = inputs["pixel_values"].to(dev)
-
-        with torch.no_grad():
-            outputs = model(pixel_values=pixel_values)
-            logits = outputs.logits
-            upsampled = torch.nn.functional.interpolate(
-                logits, size=(h, w), mode="bilinear", align_corners=False
-            )
-            probs = torch.softmax(upsampled, dim=1)[0, sky_idx].float().cpu().numpy()
+        try:
+            pixel_values = inputs["pixel_values"].to(dev)
+            with torch.no_grad():
+                outputs = model(pixel_values=pixel_values)
+                logits = outputs.logits
+                upsampled = torch.nn.functional.interpolate(
+                    logits, size=(h, w), mode="bilinear", align_corners=False
+                )
+                probs = torch.softmax(upsampled, dim=1)[0, sky_idx].float().cpu().numpy()
+        except Exception as err:
+            if dev == "cuda":
+                logger.warning(
+                    f"CUDA neural inference failed ({err}). Clearing CUDA cache and retrying on CPU to guarantee neural mask precision..."
+                )
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                return cls._detect_segformer(
+                    rgb,
+                    model_path=model_path,
+                    device="cpu",
+                    input_size=input_size,
+                )
+            raise
 
         actual_path = str(model_path or getattr(model.config, "_name_or_path", "")).lower()
         if "ade" in actual_path and np.mean(probs > 0.5) < 0.05:

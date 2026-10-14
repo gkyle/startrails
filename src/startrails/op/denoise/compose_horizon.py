@@ -34,7 +34,7 @@ class ComposeHorizon(Observable):
         Returns:
             (stacked_array, written_path) or None if interrupted.
         """
-        self.startJob(1)
+        self.startJob(2)
 
         if self.shouldInterrupt():
             return None
@@ -48,6 +48,8 @@ class ComposeHorizon(Observable):
             horizon_color_denoise_strength=config.horizon_color_denoise_strength,
             horizon_value_denoise_strength=config.horizon_value_denoise_strength,
         )
+
+        self.updateJob(1, {"desc": "Horizon blended. Saving composite..." if write_output and config.output_path else "Horizon blended.", "stacked": stacked})
 
         if self.shouldInterrupt():
             return None
@@ -70,5 +72,5 @@ class ComposeHorizon(Observable):
                 config.gradient_mask_path = grad_mask_out
                 self.last_gradient_mask = gradient_mask
 
-        self.updateJob(1, {"stacked": stacked, "path": written_path, "gradient_mask": self.last_gradient_mask})
+        self.updateJob(1, {"desc": "Composite complete", "stacked": stacked, "path": written_path, "gradient_mask": self.last_gradient_mask})
         return stacked, written_path

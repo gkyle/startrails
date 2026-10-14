@@ -18,8 +18,6 @@ class ProgressBarUpdater(tqdm):
         self.desc = None
         if 'desc' in kwargs:
             self.desc = kwargs['desc']
-            if self.qlabel is not None:
-                self.qlabel.setText(self.desc)
 
     def update(self, n=1):
         super().update(n)

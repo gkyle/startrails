@@ -172,10 +172,14 @@ class DenoiseAlignSettings(QWidget):
             self.ui.advancedToggle.setChecked(False)
             self._toggle_advanced(False)
 
-        self.ui.warpFrames.toggled.connect(self._on_change)
-        self.ui.useGPU.toggled.connect(self._on_change)
-        self.ui.detectorType.currentIndexChanged.connect(self._on_change)
-        self.ui.maxStars.valueChanged.connect(self._on_change)
+        if hasattr(self.ui, "warpFrames"):
+            self.ui.warpFrames.toggled.connect(self._on_change)
+        if hasattr(self.ui, "useGPU"):
+            self.ui.useGPU.toggled.connect(self._on_change)
+        if hasattr(self.ui, "detectorType"):
+            self.ui.detectorType.currentIndexChanged.connect(self._on_change)
+        if hasattr(self.ui, "maxStars"):
+            self.ui.maxStars.valueChanged.connect(self._on_change)
 
         self.reset()
 
@@ -187,14 +191,18 @@ class DenoiseAlignSettings(QWidget):
         self.settingsChanged.emit()
 
     def reset(self) -> None:
-        with QSignalBlocker(self.ui.warpFrames):
-            self.ui.warpFrames.setChecked(True)
-        with QSignalBlocker(self.ui.useGPU):
-            self.ui.useGPU.setChecked(True)
-        with QSignalBlocker(self.ui.detectorType):
-            self.ui.detectorType.setCurrentIndex(0)
-        with QSignalBlocker(self.ui.maxStars):
-            self.ui.maxStars.setValue(500)
+        if hasattr(self.ui, "warpFrames"):
+            with QSignalBlocker(self.ui.warpFrames):
+                self.ui.warpFrames.setChecked(True)
+        if hasattr(self.ui, "useGPU"):
+            with QSignalBlocker(self.ui.useGPU):
+                self.ui.useGPU.setChecked(True)
+        if hasattr(self.ui, "detectorType"):
+            with QSignalBlocker(self.ui.detectorType):
+                self.ui.detectorType.setCurrentIndex(0)
+        if hasattr(self.ui, "maxStars"):
+            with QSignalBlocker(self.ui.maxStars):
+                self.ui.maxStars.setValue(500)
         self.ui.referenceFile.setText("None")
         self.ui.alignStatus.setText("Homographies: 0 computed")
         self.ui.error.clear()
@@ -207,10 +215,10 @@ class DenoiseAlignSettings(QWidget):
 
     def values(self) -> Dict[str, Any]:
         return {
-            "warp_frames": self.ui.warpFrames.isChecked(),
-            "use_gpu": self.ui.useGPU.isChecked(),
-            "detector_type": self.DETECTOR_MAP.get(self.ui.detectorType.currentIndex(), "auto"),
-            "max_stars": self.ui.maxStars.value(),
+            "warp_frames": self.ui.warpFrames.isChecked() if hasattr(self.ui, "warpFrames") else True,
+            "use_gpu": self.ui.useGPU.isChecked() if hasattr(self.ui, "useGPU") else True,
+            "detector_type": self.DETECTOR_MAP.get(self.ui.detectorType.currentIndex(), "auto") if hasattr(self.ui, "detectorType") else "auto",
+            "max_stars": self.ui.maxStars.value() if hasattr(self.ui, "maxStars") else 500,
         }
 
     def set_from_project(self) -> None:
@@ -328,8 +336,22 @@ class DenoiseStackSettings(QWidget):
             self.ui.useGPU.setChecked(bool(getattr(proj, "use_gpu", True)))
         with QSignalBlocker(self.ui.roundStars):
             self.ui.roundStars.setChecked(bool(getattr(proj, "anisotropic_star_rounding", False)))
-        out_name = getattr(proj, "output_path", "project.tif") or "project.tif"
-        if hasattr(out_name, "name"):
+        stem = "project"
+        if hasattr(proj, "get_project_stem"):
+            stem = proj.get_project_stem()
+        elif hasattr(proj, "projectFile") and proj.projectFile:
+            pf = Path(proj.projectFile)
+            name = pf.name
+            if name.endswith(".proj_denoise"):
+                stem = name[:-len(".proj_denoise")]
+            elif name.endswith(".json"):
+                stem = name[:-5]
+            else:
+                stem = pf.stem
+        out_name = getattr(proj, "output_path", None)
+        if not out_name:
+            out_name = f"{stem}.tif"
+        elif hasattr(out_name, "name"):
             out_name = out_name.name
         elif isinstance(out_name, str):
             out_name = out_name.split("/")[-1].split("\\")[-1]
@@ -371,11 +393,6 @@ class DenoiseTuneSettings(QWidget):
         self.ui = Ui_DenoiseTuneSettings()
         self.ui.setupUi(self)
 
-        if getattr(self.ui, "advancedToggle", None) is not None:
-            self.ui.advancedToggle.toggled.connect(self._toggle_advanced)
-            self.ui.advancedToggle.setChecked(False)
-            self._toggle_advanced(False)
-
         # Synchronize Sliders and DoubleSpinBoxes
         self.ui.colorDenoiseSlider.valueChanged.connect(self._on_color_slider_changed)
         self.ui.colorStrength.valueChanged.connect(self._on_color_spin_changed)
@@ -393,15 +410,7 @@ class DenoiseTuneSettings(QWidget):
         self.ui.enableCorrections.toggled.connect(self._on_enable_corrections_toggled)
         self.ui.showGradientMask.toggled.connect(self.gradientMaskToggled.emit)
 
-        # Advanced controls
-        self.ui.denoiseBand.toggled.connect(self._on_change)
-        self.ui.horizonDenoiseRadius.valueChanged.connect(self._on_change)
-        self.ui.horizonDenoiseStrength.valueChanged.connect(self._on_change)
-
         self.reset()
-
-    def _toggle_advanced(self, checked: bool) -> None:
-        _toggle_advanced_helper(self, checked)
 
     def _on_color_slider_changed(self, val: int) -> None:
         with QSignalBlocker(self.ui.colorStrength):
@@ -479,12 +488,6 @@ class DenoiseTuneSettings(QWidget):
             self.ui.blurSlider.setValue(2)
         with QSignalBlocker(self.ui.blurRadius):
             self.ui.blurRadius.setValue(2.0)
-        with QSignalBlocker(self.ui.denoiseBand):
-            self.ui.denoiseBand.setChecked(True)
-        with QSignalBlocker(self.ui.horizonDenoiseRadius):
-            self.ui.horizonDenoiseRadius.setValue(5)
-        with QSignalBlocker(self.ui.horizonDenoiseStrength):
-            self.ui.horizonDenoiseStrength.setValue(0.2)
         self.ui.tuneStatus.setText("Requires base stacks")
         self.ui.error.clear()
         self.ui.error.hide()
@@ -493,11 +496,11 @@ class DenoiseTuneSettings(QWidget):
     def values(self) -> Dict[str, Any]:
         return {
             "enable_horizon_corrections": self.ui.enableCorrections.isChecked(),
-            "denoise_horizon_band": self.ui.denoiseBand.isChecked(),
+            "denoise_horizon_band": True,
             "horizon_blend_percent": self.ui.blendPercent.value(),
             "horizon_blur_radius": self.ui.blurRadius.value(),
-            "horizon_denoise_radius": self.ui.horizonDenoiseRadius.value(),
-            "horizon_denoise_strength": self.ui.horizonDenoiseStrength.value(),
+            "horizon_denoise_radius": 5,
+            "horizon_denoise_strength": 0.2,
             "horizon_color_denoise_strength": self.ui.colorStrength.value(),
             "horizon_value_denoise_strength": self.ui.valueStrength.value(),
         }
@@ -510,8 +513,6 @@ class DenoiseTuneSettings(QWidget):
             return
         with QSignalBlocker(self.ui.enableCorrections):
             self.ui.enableCorrections.setChecked(bool(getattr(proj, "enable_horizon_corrections", True)))
-        with QSignalBlocker(self.ui.denoiseBand):
-            self.ui.denoiseBand.setChecked(bool(getattr(proj, "denoise_horizon_band", True)))
 
         blend = float(getattr(proj, "horizon_blend_percent", 60.0))
         with QSignalBlocker(self.ui.blendPercent):
@@ -536,11 +537,6 @@ class DenoiseTuneSettings(QWidget):
             self.ui.valueStrength.setValue(val_str)
         with QSignalBlocker(self.ui.valueDenoiseSlider):
             self.ui.valueDenoiseSlider.setValue(int(round(val_str * 100)))
-
-        with QSignalBlocker(self.ui.horizonDenoiseRadius):
-            self.ui.horizonDenoiseRadius.setValue(int(getattr(proj, "horizon_denoise_radius", 5)))
-        with QSignalBlocker(self.ui.horizonDenoiseStrength):
-            self.ui.horizonDenoiseStrength.setValue(float(getattr(proj, "horizon_denoise_strength", 0.2)))
 
     def sync_to_project(self) -> None:
         if not self.app or not hasattr(self.app, "project"):

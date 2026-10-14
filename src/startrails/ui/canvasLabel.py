@@ -1,18 +1,26 @@
+import os
 from typing import List, Optional, Tuple
+import cv2
 import numpy as np
-from PySide6.QtCore import (Qt, QPointF, QTimer, Signal)
+from PySide6.QtCore import (Qt, QPointF, QTimer, Signal, QRect)
 from PySide6.QtGui import (QPainter, QPaintEvent, QWheelEvent, QMouseEvent,
-                           QPixmap, QColor, QPen, QPainterPath, QFont, QImage)
+                           QPixmap, QColor, QPen, QPainterPath, QFont, QImage,
+                           QImageReader, QCursor, qRgba)
 from PySide6.QtWidgets import QLabel, QWidget
 
 from startrails.lib.file import File, InputFile, OutputFile
 from startrails.ui.signals import Signals, getSignals
+
+# Disable Qt's default 256MB QImageIOHandler allocation limit so large camera/denoise TIFFs load properly
+QImageReader.setAllocationLimit(0)
 
 
 class CanvasLabel(QLabel):
     NUB_SIZE = 10
     NUB_SIZE_TOLERANT = 15
     findBrightestModeChanged = Signal(bool)
+    maskChanged = Signal()
+    brushRadiusChanged = Signal(int)
 
     def __init__(self, text: Optional[str] = None, pixmap: Optional[QPixmap] = None, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -38,6 +46,25 @@ class CanvasLabel(QLabel):
         self.ratio: Optional[float] = None
         self.showDeletedMasks: bool = False
         self.findBrightestMode: bool = False
+
+        # Denoise mask brush editing state
+        self.maskEditMode: bool = False
+        self.brushRadius: int = 25
+        self.brushMode: str = "paint"
+        self._mask_array: Optional[np.ndarray] = None  # uint8 (H, W) in [0, 255]
+        self._mask_qimage: Optional[QImage] = None
+        self._is_brush_painting: bool = False
+        self._last_brush_pos: Optional[QPointF] = None
+
+        # Gradient mask overlay state
+        self._gradient_mask_array: Optional[np.ndarray] = None
+        self._gradient_mask_qimage: Optional[QImage] = None
+        self.gradientMaskVisible: bool = False
+
+        # Live horizon preview overlay state
+        self._horizon_overlay_pixmap: Optional[QPixmap] = None
+        self._horizon_overlay_rect: Optional[Tuple[int, int, int, int]] = None
+        self._horizon_overlay_arr: Optional[np.ndarray] = None
 
         # Debounce timers for high-frequency events
         self.wheelDebounceTimer = QTimer()
@@ -71,21 +98,55 @@ class CanvasLabel(QLabel):
             self.setFindBrightestMode(False)
             ev.accept()
             return
+        if self.maskEditMode:
+            if ev.key() == Qt.Key_BracketLeft:
+                self.setBrushRadius(self.brushRadius - 5)
+                ev.accept()
+                return
+            elif ev.key() == Qt.Key_BracketRight:
+                self.setBrushRadius(self.brushRadius + 5)
+                ev.accept()
+                return
         super().keyPressEvent(ev)
 
-    def setFile(self, file: File) -> None:
+    def setFile(self, file: File, reload: bool = False) -> None:
+        if (
+            not reload
+            and file is not None
+            and self.file is not None
+            and getattr(file, "path", None) == getattr(self.file, "path", None)
+            and self.pixmap is not None
+            and not self.pixmap.isNull()
+        ):
+            return
+
         if self.findBrightestMode:
             self.setFindBrightestMode(False)
+        if self.maskEditMode:
+            self.setMaskEditMode(False)
+        self.clearHorizonOverlay()
+        self.setGradientMaskVisible(False)
         # clear previous active mask points
         if isinstance(self.file, InputFile):
             self.file.activeMaskPoints = []
 
-        if file is not None:
+        if file is not None and getattr(file, "path", None):
             self.file = file
+            QImageReader.setAllocationLimit(0)
             newPixmap = QPixmap(file.path)
             # Sometimes we're writing over a file at the same moment we try to replace the pixmap. Try to not replace useful pixels with nil.
             if newPixmap.width() > 0 and newPixmap.height() > 0:
                 self.setPixmap(newPixmap, True)
+            elif os.path.exists(file.path):
+                # Robust fallback for large, 16-bit, float, or formats that Qt QPixmap couldn't load directly
+                try:
+                    with open(file.path, "rb") as f:
+                        buf = np.frombuffer(f.read(), dtype=np.uint8)
+                    arr = cv2.imdecode(buf, cv2.IMREAD_UNCHANGED)
+                    if arr is not None and arr.size > 0:
+                        self.setFromNumpyArray(arr, resetZoomAndPosition=True)
+                except Exception as err:
+                    print(f"Error loading image fallback for {file.path}: {err}")
         else:
             self.file = None
             self.selectedMask = None
@@ -94,25 +155,287 @@ class CanvasLabel(QLabel):
             self.draggingNub = False
             self.setPixmap(QPixmap(), True)
 
-    def setFromNumpyArray(self, inputImage: np.ndarray, resetZoomAndPosition: bool = False) -> None:
+    def setFromNumpyArray(
+        self,
+        inputImage: np.ndarray,
+        resetZoomAndPosition: bool = False,
+        is_bgr: Optional[bool] = None,
+    ) -> None:
         if inputImage is None:
             self.setPixmap(QPixmap(), True)
             return
 
-        img = inputImage.copy()
-        if img.dtype == np.uint16:
-            img = (img / 256).astype(np.uint8)
-        if img.shape[2] == 3:
-            img = img[:, :, ::-1]
-        if len(img.shape) == 2:
-            img = np.stack([img] * 3, axis=-1)
+        img = inputImage
+        if is_bgr is None:
+            # Floating-point data from denoise operations is RGB in [0.0, 1.0]
+            # Integer data from OpenCV / StarTrails operations is BGR
+            is_bgr = (img.dtype not in (np.float32, np.float64))
 
-        height, width, channels = img.shape
-        img = np.ascontiguousarray(img)
+        # Convert to 8-bit for QPixmap display without quantizing input image in memory
+        if img.dtype in (np.float32, np.float64):
+            img_disp = (np.clip(img, 0.0, 1.0) * 255.0).astype(np.uint8)
+        elif img.dtype == np.uint16:
+            img_disp = (img / 256).astype(np.uint8)
+        elif img.dtype == np.bool_:
+            img_disp = (img.astype(np.uint8) * 255)
+        else:
+            img_disp = img.astype(np.uint8, copy=False)
+
+        if img_disp.ndim == 2:
+            img_disp = np.stack([img_disp] * 3, axis=-1)
+        elif img_disp.ndim == 3 and img_disp.shape[2] == 1:
+            img_disp = np.repeat(img_disp, 3, axis=2)
+        elif img_disp.ndim == 3 and img_disp.shape[2] == 3 and is_bgr:
+            img_disp = img_disp[:, :, ::-1]
+        elif img_disp.ndim == 3 and img_disp.shape[2] == 4 and is_bgr:
+            img_disp = img_disp[:, :, [2, 1, 0, 3]]
+
+        height, width, channels = img_disp.shape
+        img_disp = np.ascontiguousarray(img_disp)
         bytesPerLine = channels * width
-        qimage = QImage(img.data, width, height, bytesPerLine, QImage.Format_RGB888)
-        pixmap = QPixmap.fromImage(qimage)
+        fmt = QImage.Format_RGBA8888 if channels == 4 else QImage.Format_RGB888
+        qimage = QImage(img_disp.data, width, height, bytesPerLine, fmt)
+        pixmap = QPixmap.fromImage(qimage.copy())
         self.setPixmap(pixmap, doResetZoomAndPosition=resetZoomAndPosition)
+
+    # -------------------------------------------------------------------------
+    # Denoise Mask Brush & Overlay Methods
+    # -------------------------------------------------------------------------
+
+    def _init_mask_qimage(self) -> None:
+        if self._mask_array is None:
+            self._mask_qimage = None
+            return
+        h, w = self._mask_array.shape[:2]
+        if not self._mask_array.flags["C_CONTIGUOUS"]:
+            self._mask_array = np.ascontiguousarray(self._mask_array)
+        self._mask_qimage = QImage(
+            self._mask_array.data,
+            w,
+            h,
+            self._mask_array.strides[0],
+            QImage.Format_Indexed8,
+        )
+        color_table = [
+            qRgba(0, 255, 0, int(i * 0.45)) if i > 5 else qRgba(0, 0, 0, 0)
+            for i in range(256)
+        ]
+        self._mask_qimage.setColorTable(color_table)
+
+    def setDenoiseMask(self, mask: Optional[np.ndarray]) -> None:
+        if mask is None:
+            self._mask_array = None
+            self._mask_qimage = None
+            self.update()
+            return
+
+        if mask.ndim == 3:
+            mask = mask[..., 0]
+
+        if self.pixmap is not None and self.pixmap.width() > 0 and self.pixmap.height() > 0:
+            pw, ph = self.pixmap.width(), self.pixmap.height()
+            if mask.shape[:2] != (ph, pw):
+                mask = cv2.resize(mask.astype(np.float32), (pw, ph), interpolation=cv2.INTER_NEAREST)
+
+        if mask.dtype != np.uint8:
+            self._mask_array = (np.clip(mask, 0.0, 1.0) * 255.0).astype(np.uint8)
+        else:
+            self._mask_array = mask.copy()
+
+        if not self._mask_array.flags["C_CONTIGUOUS"]:
+            self._mask_array = np.ascontiguousarray(self._mask_array)
+        self._init_mask_qimage()
+        self.update()
+
+    def getDenoiseMask(self) -> Optional[np.ndarray]:
+        if self._mask_array is None:
+            return None
+        return (self._mask_array.astype(np.float32) / 255.0).clip(0.0, 1.0)
+
+    def clearDenoiseMask(self) -> None:
+        if self._mask_array is not None:
+            self._mask_array.fill(0)
+            self.update()
+            self.maskChanged.emit()
+
+    def fillDenoiseMask(self) -> None:
+        if self._mask_array is None and self.pixmap is not None and self.pixmap.width() > 0:
+            self._mask_array = np.full((self.pixmap.height(), self.pixmap.width()), 255, dtype=np.uint8)
+            self._init_mask_qimage()
+        if self._mask_array is not None:
+            self._mask_array.fill(255)
+            self.update()
+            self.maskChanged.emit()
+
+    def setMaskEditMode(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        if self.maskEditMode != enabled:
+            self.maskEditMode = enabled
+            if enabled:
+                if self._mask_array is None and self.pixmap is not None and self.pixmap.width() > 0:
+                    self._mask_array = np.zeros((self.pixmap.height(), self.pixmap.width()), dtype=np.uint8)
+                    self._init_mask_qimage()
+                self._update_brush_cursor()
+            else:
+                self.unsetCursor()
+            self.update()
+
+    def isMaskEditMode(self) -> bool:
+        return self.maskEditMode
+
+    def setBrushRadius(self, r: int) -> None:
+        new_r = max(2, min(500, int(r)))
+        if self.brushRadius != new_r:
+            self.brushRadius = new_r
+            if self.maskEditMode:
+                self._update_brush_cursor()
+            self.brushRadiusChanged.emit(self.brushRadius)
+
+    def _update_brush_cursor(self) -> None:
+        if not self.maskEditMode:
+            self.unsetCursor()
+            return
+
+        size = int(self.brushRadius * 2)
+        if size < 6:
+            size = 6
+        if size > 128:
+            self.setCursor(Qt.CrossCursor)
+            return
+
+        pixmap = QPixmap(size + 4, size + 4)
+        pixmap.fill(Qt.transparent)
+        p = QPainter(pixmap)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(QPen(QColor(0, 0, 0, 180), 2))
+        p.drawEllipse(2, 2, size, size)
+        p.setPen(QPen(QColor(255, 255, 255, 240), 1))
+        p.drawEllipse(2, 2, size, size)
+        center = size // 2 + 2
+        p.drawPoint(center, center)
+        p.end()
+
+        cursor = QCursor(pixmap, center, center)
+        self.setCursor(cursor)
+
+    def _paint_mask_stroke(self, p1: QPointF, p2: QPointF) -> None:
+        if self._mask_array is None or self.scale is None or self.scale <= 0:
+            return
+
+        x1 = int(round((p1.x() - self.posX) / self.scale))
+        y1 = int(round((p1.y() - self.posY) / self.scale))
+        x2 = int(round((p2.x() - self.posX) / self.scale))
+        y2 = int(round((p2.y() - self.posY) / self.scale))
+
+        r = max(1, int(round(self.brushRadius / self.scale)))
+        val = 255 if self.brushMode == "paint" else 0
+        thickness = max(1, 2 * r)
+
+        if x1 == x2 and y1 == y2:
+            cv2.circle(self._mask_array, (x2, y2), r, int(val), -1)
+        else:
+            cv2.circle(self._mask_array, (x1, y1), r, int(val), -1)
+            cv2.line(self._mask_array, (x1, y1), (x2, y2), int(val), thickness)
+            cv2.circle(self._mask_array, (x2, y2), r, int(val), -1)
+
+        self.update()
+
+    # -------------------------------------------------------------------------
+    # Gradient Mask Overlay Methods
+    # -------------------------------------------------------------------------
+
+    def _init_gradient_mask_qimage(self) -> None:
+        if self._gradient_mask_array is None:
+            self._gradient_mask_qimage = None
+            return
+        h, w = self._gradient_mask_array.shape[:2]
+        if not self._gradient_mask_array.flags["C_CONTIGUOUS"]:
+            self._gradient_mask_array = np.ascontiguousarray(self._gradient_mask_array)
+        self._gradient_mask_qimage = QImage(
+            self._gradient_mask_array.data,
+            w,
+            h,
+            self._gradient_mask_array.strides[0],
+            QImage.Format_Indexed8,
+        )
+        color_table = [
+            qRgba(255, 30, 30, int(i * 0.65)) if i > 2 else qRgba(0, 0, 0, 0)
+            for i in range(256)
+        ]
+        self._gradient_mask_qimage.setColorTable(color_table)
+
+    def setGradientMask(self, mask: Optional[np.ndarray]) -> None:
+        if mask is None:
+            self._gradient_mask_array = None
+            self._gradient_mask_qimage = None
+            self.update()
+            return
+
+        if self.pixmap is not None and self.pixmap.width() > 0 and self.pixmap.height() > 0:
+            pw, ph = self.pixmap.width(), self.pixmap.height()
+            if mask.shape[:2] != (ph, pw):
+                mask = cv2.resize(mask.astype(np.float32), (pw, ph), interpolation=cv2.INTER_LINEAR)
+
+        if mask.dtype != np.uint8:
+            self._gradient_mask_array = (np.clip(mask, 0.0, 1.0) * 255.0).astype(np.uint8)
+        else:
+            self._gradient_mask_array = mask.copy()
+
+        if not self._gradient_mask_array.flags["C_CONTIGUOUS"]:
+            self._gradient_mask_array = np.ascontiguousarray(self._gradient_mask_array)
+        self._init_gradient_mask_qimage()
+        self.update()
+
+    def getGradientMask(self) -> Optional[np.ndarray]:
+        if self._gradient_mask_array is None:
+            return None
+        return (self._gradient_mask_array.astype(np.float32) / 255.0).clip(0.0, 1.0)
+
+    def setGradientMaskVisible(self, visible: bool) -> None:
+        self.gradientMaskVisible = bool(visible)
+        self.update()
+
+    def isGradientMaskVisible(self) -> bool:
+        return self.gradientMaskVisible
+
+    # -------------------------------------------------------------------------
+    # Live Horizon Tuning Overlay Methods
+    # -------------------------------------------------------------------------
+
+    def setHorizonOverlay(self, arr: np.ndarray, rect: Tuple[int, int, int, int]) -> None:
+        self._horizon_overlay_arr = arr
+        self._horizon_overlay_rect = rect
+        h, w = arr.shape[:2]
+        u8 = (np.clip(arr, 0.0, 1.0) * 255.0).astype(np.uint8)
+        if not u8.flags["C_CONTIGUOUS"]:
+            u8 = np.ascontiguousarray(u8)
+        if u8.ndim == 3:
+            qimg = QImage(u8.data, w, h, w * 3, QImage.Format_RGB888)
+        else:
+            qimg = QImage(u8.data, w, h, w, QImage.Format_Grayscale8)
+        self._horizon_overlay_pixmap = QPixmap.fromImage(qimg.copy())
+        self.update()
+
+    def clearHorizonOverlay(self) -> None:
+        self._horizon_overlay_pixmap = None
+        self._horizon_overlay_rect = None
+        self._horizon_overlay_arr = None
+        self.update()
+
+    # Compatibility Aliases for Pyquator Parity
+    set_mask_array = setDenoiseMask
+    get_mask = getDenoiseMask
+    clear_mask = clearDenoiseMask
+    fill_mask = fillDenoiseMask
+    set_brush_radius = setBrushRadius
+    set_mask_visible = setMaskEditMode
+    is_mask_visible = isMaskEditMode
+    set_gradient_mask = setGradientMask
+    get_gradient_mask = getGradientMask
+    set_gradient_mask_visible = setGradientMaskVisible
+    is_gradient_mask_visible = isGradientMaskVisible
+    set_horizon_overlay = setHorizonOverlay
+    clear_horizon_overlay = clearHorizonOverlay
 
     def setPixmap(self, pixmap: QPixmap, doResetZoomAndPosition: bool = True) -> None:
         self.pixmap = pixmap
@@ -132,7 +455,7 @@ class CanvasLabel(QLabel):
             if self.zoom_factor == 1:
                 self.resetZoomAndPosition()
 
-        self.repaint()
+        self.update()
 
     def resetZoomAndPosition(self) -> None:
         self.zoom_factor = 1
@@ -156,6 +479,13 @@ class CanvasLabel(QLabel):
             self.posY = (labelHeight - self.renderHeight) // 2
 
     def wheelEvent(self, event: QWheelEvent) -> None:
+        if self.maskEditMode and (event.modifiers() & Qt.ControlModifier):
+            delta = event.angleDelta().y()
+            step = 5 if delta > 0 else -5
+            self.setBrushRadius(self.brushRadius + step)
+            event.accept()
+            return
+
         # Note: This is an unusual kind of event that contains a relative delta. We're storing the value for the most recent event, but might need to aggregate.
         self.pendingWheelDelta = event.angleDelta().y()
         # Only trigger zoom/repaint after wheel events have settled for 5ms
@@ -198,9 +528,32 @@ class CanvasLabel(QLabel):
 
     def mousePressEvent(self, ev: QMouseEvent) -> None:
         super().mousePressEvent(ev)
+        pos = ev.position()
+        self.mouseX = pos.x()
+        self.mouseY = pos.y()
+
+        # Denoise mask brush painting
+        if self.maskEditMode and self._mask_array is not None:
+            if ev.button() == Qt.LeftButton:
+                self._is_brush_painting = True
+                self.brushMode = "paint"
+                self._last_brush_pos = pos
+                self._paint_mask_stroke(pos, pos)
+                return
+            elif ev.button() == Qt.RightButton:
+                self._is_brush_painting = True
+                self.brushMode = "erase"
+                self._last_brush_pos = pos
+                self._paint_mask_stroke(pos, pos)
+                return
+            elif ev.button() == Qt.MiddleButton:
+                self.dragX = pos.x() - self.posX
+                self.dragY = pos.y() - self.posY
+                return
+
         if ev.button() == Qt.LeftButton:
-            self.dragX = ev.position().x() - self.posX
-            self.dragY = ev.position().y() - self.posY
+            self.dragX = pos.x() - self.posX
+            self.dragY = pos.y() - self.posY
 
             if isinstance(self.file, InputFile):
                 if len(self.file.activeMaskPoints) > 0:
@@ -214,16 +567,16 @@ class CanvasLabel(QLabel):
                 ratio = self.ratio if self.ratio else 1.0
                 zoom = self.zoom_factor if self.zoom_factor else 1.0
                 self.signals.findBrightestFrame.emit(self.file,
-                                                     int((ev.position().x() - self.posX) / zoom / ratio),
-                                                     int((ev.position().y() - self.posY) / zoom / ratio))
+                                                     int((pos.x() - self.posX) / zoom / ratio),
+                                                     int((pos.y() - self.posY) / zoom / ratio))
                 self.setFindBrightestMode(False)
                 return
 
         if isinstance(self.file, OutputFile):
             if ev.modifiers() == Qt.ShiftModifier:
                 self.signals.findBrightestFrame.emit(self.file,
-                                                     int((ev.position().x() - self.posX) / self.zoom_factor / self.ratio),
-                                                     int((ev.position().y() - self.posY) / self.zoom_factor / self.ratio))
+                                                     int((pos.x() - self.posX) / self.zoom_factor / self.ratio),
+                                                     int((pos.y() - self.posY) / self.zoom_factor / self.ratio))
 
         # Check if the mouse is over any mask
         if isinstance(self.file, InputFile):
@@ -232,14 +585,14 @@ class CanvasLabel(QLabel):
 
             # Delete mask
             if ev.modifiers() == Qt.ShiftModifier:
-                idx = self.checkMaskContains(self.file.streaksMasks, ev.position().x(), ev.position().y())
+                idx = self.checkMaskContains(self.file.streaksMasks, pos.x(), pos.y())
                 if idx is not None:
                     deletedMask = self.file.streaksMasks.pop(idx)
                     self.file.streaksManualDeletedMasks.append(deletedMask)
                     self.repaint()
                     self.signals.updateFile.emit(self.file)
                 else:
-                    idx = self.checkMaskContains(self.file.streaksManualMasks, ev.position().x(), ev.position().y())
+                    idx = self.checkMaskContains(self.file.streaksManualMasks, pos.x(), pos.y())
                     if idx is not None:
                         self.file.streaksManualMasks.pop(idx)
                         self.repaint()
@@ -253,7 +606,7 @@ class CanvasLabel(QLabel):
                     for idx, point in enumerate(mask):
                         path = QPainterPath()
                         path.addEllipse(polygon[idx], self.NUB_SIZE_TOLERANT, self.NUB_SIZE_TOLERANT)
-                        if path.contains(QPointF(ev.x(), ev.y())):
+                        if path.contains(QPointF(pos.x(), pos.y())):
                             self.selectedNub = (mask, idx, (point[0], point[1]))
                             self.draggingNub = True
                             # If this was an auto-generated mask, switch it to manual
@@ -267,7 +620,7 @@ class CanvasLabel(QLabel):
                     # mask
                     path = QPainterPath()
                     path.addPolygon(polygon)
-                    if not self.draggingNub and path.contains(QPointF(ev.position().x(), ev.position().y())):
+                    if not self.draggingNub and path.contains(QPointF(pos.x(), pos.y())):
                         self.selectedMask = (mask, [point.copy() for point in mask])
                         self.draggingMask = True
                         # If this was an auto-generated mask, switch it to manual
@@ -278,8 +631,17 @@ class CanvasLabel(QLabel):
 
     def mouseMoveEvent(self, ev: QMouseEvent) -> None:
         super().mouseMoveEvent(ev)
-        self.mouseX = ev.position().x()
-        self.mouseY = ev.position().y()
+        pos = ev.position()
+        self.mouseX = pos.x()
+        self.mouseY = pos.y()
+
+        if self._is_brush_painting and self._mask_array is not None:
+            curr_pos = pos
+            prev_pos = self._last_brush_pos if self._last_brush_pos is not None else curr_pos
+            self._paint_mask_stroke(prev_pos, curr_pos)
+            self._last_brush_pos = curr_pos
+            return
+
         if ev.buttons() == Qt.LeftButton:
             if self.draggingNub and self.selectedNub:
                 if self.renderWidth is None:
@@ -298,8 +660,8 @@ class CanvasLabel(QLabel):
                     self.selectedMask[0][i][0] = point[0] + dx
                     self.selectedMask[0][i][1] = point[1] + dy
             else:
-                self.posX = ev.position().x() - self.dragX
-                self.posY = ev.position().y() - self.dragY
+                self.posX = pos.x() - self.dragX
+                self.posY = pos.y() - self.dragY
 
         self.mouseMoveDebounceTimer.start(5)
 
@@ -308,6 +670,12 @@ class CanvasLabel(QLabel):
 
     def mouseReleaseEvent(self, ev: QMouseEvent) -> None:
         super().mouseReleaseEvent(ev)
+        if self._is_brush_painting:
+            self._is_brush_painting = False
+            self._last_brush_pos = None
+            self.maskChanged.emit()
+            return
+
         if ev.button() == Qt.LeftButton:
             if self.draggingMask or self.draggingNub:
                 self.signals.updateFile.emit(self.file)
@@ -368,6 +736,31 @@ class CanvasLabel(QLabel):
             painter = QPainter(self)
             painter.setRenderHint(QPainter.SmoothPixmapTransform, True) # Note: Needed for antialising on Windows
             painter.drawPixmap(x, y, newPixmap)
+
+            # Draw live horizon tuning overlay patch if active
+            if (
+                self._horizon_overlay_pixmap is not None
+                and self._horizon_overlay_rect is not None
+                and self.scale is not None
+            ):
+                ox, oy, ow, oh = self._horizon_overlay_rect
+                overlay_rect = QRect(
+                    int(self.posX + ox * self.scale),
+                    int(self.posY + oy * self.scale),
+                    int(ow * self.scale),
+                    int(oh * self.scale),
+                )
+                painter.drawPixmap(overlay_rect, self._horizon_overlay_pixmap)
+
+            # Draw gradient mask overlay (translucent red) if active
+            if self.gradientMaskVisible and self._gradient_mask_qimage is not None:
+                img_rect = QRect(self.posX, self.posY, self.renderWidth, self.renderHeight)
+                painter.drawImage(img_rect, self._gradient_mask_qimage)
+
+            # Draw denoise sky mask overlay (translucent green) if active
+            if self.maskEditMode and self._mask_qimage is not None:
+                img_rect = QRect(self.posX, self.posY, self.renderWidth, self.renderHeight)
+                painter.drawImage(img_rect, self._mask_qimage)
 
             imgMousePos = self.translateAndScaleMousePoint(self.mouseX, self.mouseY, self.ratio)
 

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>340</width>
+    <width>300</width>
     <height>436</height>
    </rect>
   </property>
@@ -222,21 +222,55 @@ QPushButton#refineMask:disabled {
      </item>
     </layout>
    </item>
+
    <item>
-    <widget class="QCheckBox" name="showMaskOverlay">
-     <property name="toolTip">
-      <string>Show sky mask on canvas and enable interactive brush editing tools</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QCheckBox { font-weight: bold; color: #0284c7; margin-top: 2px; }</string>
-     </property>
-     <property name="text">
-      <string>Show &amp; Edit Mask Overlay</string>
-     </property>
-     <property name="checked">
-      <bool>false</bool>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="showMaskOverlayRow">
+     <item>
+      <widget class="QLabel" name="showMaskOverlayLabel">
+       <property name="styleSheet">
+        <string notr="true">color: #334155; font-size: 12px;</string>
+       </property>
+       <property name="toolTip">
+        <string>Show sky mask on canvas and enable interactive brush editing tools</string>
+       </property>
+       <property name="text">
+        <string>Show Mask Overlay</string>
+       </property>
+       <property name="buddy">
+        <cstring>showMaskOverlay</cstring>
+       </property>
+      </widget>
+     </item>
+     <item alignment="Qt::AlignmentFlag::AlignRight">
+      <widget class="QCheckBox" name="showMaskOverlay">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::NoFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string>Show sky mask on canvas and enable interactive brush editing tools</string>
+       </property>
+       <property name="accessibleName">
+        <string>Show and edit mask overlay</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QCheckBox#showMaskOverlay { spacing: 0px;}
+QCheckBox#showMaskOverlay::indicator { width: 36px; height: 20px; border-radius: 10px; }
+QCheckBox#showMaskOverlay::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
+QCheckBox#showMaskOverlay::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
+</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="brushLayout">
@@ -373,6 +407,8 @@ Hotkeys: [ / ] or Ctrl+Wheel to resize.</string>
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+   <include location="resources.qrc"/>
+  </resources>
  <connections/>
 </ui>

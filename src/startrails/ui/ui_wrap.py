@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
 import numpy as np
-from PySide6.QtGui import (QPixmap, QGuiApplication)
+from PySide6.QtGui import (QPixmap, QGuiApplication, QImageReader)
 from PySide6.QtCore import QThreadPool, QTimer, QPoint, Qt, QObject, Slot
 from PySide6.QtWidgets import (
     QWidget,
@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 class MainWindow(QMainWindow):
     def __init__(self, app: "App"):
         QMainWindow.__init__(self)
+        QImageReader.setAllocationLimit(0)
         theme = system_theme()
         self.ui = Ui_AppWindow(app)
         self.ui.setupUi(self)
@@ -290,9 +291,9 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             self.pushButton_findBrightest = getattr(self.active_view, "pushButton_findBrightest", None)
             self.pushButton_fillGaps = getattr(self.active_view, "pushButton_fillGaps", None)
             if mode_name == "denoise":
-                sidebar_width = 370
-                sidebar_widget.setMinimumSize(350, 0)
-                sidebar_widget.setMaximumSize(450, 16777215)
+                sidebar_width = 300
+                sidebar_widget.setMinimumSize(sidebar_width, 0)
+                sidebar_widget.setMaximumSize(sidebar_width, 16777215)
                 self.bodySplitter.setHandleWidth(4)
                 self.bodySplitter.setSizes([sidebar_width, 1000])
                 self.bodySplitter.setStretchFactor(0, 0)
@@ -301,10 +302,11 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
                 if handle is not None:
                     handle.setEnabled(True)
             else:
-                sidebar_widget.setMinimumSize(320, 0)
-                sidebar_widget.setMaximumSize(320, 16777215)
+                sidebar_width = 300
+                sidebar_widget.setMinimumSize(sidebar_width, 0)
+                sidebar_widget.setMaximumSize(sidebar_width, 16777215)
                 self.bodySplitter.setHandleWidth(0)
-                self.bodySplitter.setSizes([320, 1000])
+                self.bodySplitter.setSizes([sidebar_width, 1000])
                 self.bodySplitter.setStretchFactor(0, 0)
                 self.bodySplitter.setStretchFactor(1, 1)
                 handle = self.bodySplitter.handle(1)
@@ -419,7 +421,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         increment: int,
         count: int,
         done: bool,
-        data: Optional[File],
+        data: Any = None,
     ):
         progressUpdater.total = total
         progressUpdater.update(increment)
@@ -439,6 +441,23 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
                         remaining = (total - progressUpdater.n) / rate if rate > 0 else 0
                     except Exception:
                         pass
+                if data is not None and isinstance(data, dict):
+                    if "desc" in data and data["desc"]:
+                        progressUpdater.desc = str(data["desc"])
+                        if progressUpdater.qlabel is not None:
+                            progressUpdater.qlabel.setText(str(data["desc"]))
+                    elif "stage" in data and "frame_idx" in data and "total" in data:
+                        stage_name = "sky" if data["stage"] == "sky" else ("ground" if data["stage"] == "ground" else data["stage"])
+                        new_desc = f"Stacking {stage_name} frame {data['frame_idx']}/{data['total']}..."
+                        progressUpdater.desc = new_desc
+                        if progressUpdater.qlabel is not None:
+                            progressUpdater.qlabel.setText(new_desc)
+                    elif "filename" in data and "index" in data and "total" in data:
+                        new_desc = f"Aligning frame {data['index']+1}/{data['total']}: {data['filename']}"
+                        progressUpdater.desc = new_desc
+                        if progressUpdater.qlabel is not None:
+                            progressUpdater.qlabel.setText(new_desc)
+
                 desc = getattr(progressUpdater, "desc", "")
                 n = getattr(progressUpdater, "n", count)
                 self.progressOverlay.update_progress(
@@ -455,8 +474,14 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
                     output_files.model.sync_files(self.app.getOutputFileList())
                 self.slotFileIndicators(data)
                 self.showFile(data)
-            else:
-                raise ValueError(f"Unknown data type: {type(data)}")
+            elif isinstance(data, dict):
+                preview = None
+                for key in ("stacked", "image", "preview"):
+                    if key in data and isinstance(data[key], np.ndarray):
+                        preview = data[key]
+                        break
+                if preview is not None and hasattr(self, "canvas_main") and self.canvas_main is not None:
+                    self.canvas_main.setFromNumpyArray(preview, resetZoomAndPosition=False)
 
     def doCancelOp(self):
         if hasattr(self.app, "doInterruptOperation"):

@@ -24,7 +24,7 @@ class Ui_DenoiseStackSettings(object):
     def setupUi(self, DenoiseStackSettings):
         if not DenoiseStackSettings.objectName():
             DenoiseStackSettings.setObjectName(u"DenoiseStackSettings")
-        DenoiseStackSettings.resize(340, 270)
+        DenoiseStackSettings.resize(300, 270)
         self.layout = QVBoxLayout(DenoiseStackSettings)
         self.layout.setSpacing(6)
         self.layout.setObjectName(u"layout")
@@ -69,11 +69,29 @@ class Ui_DenoiseStackSettings(object):
 
         self.layout.addLayout(self.thresholdRow)
 
+        self.roundStarsRow = QHBoxLayout()
+        self.roundStarsRow.setObjectName(u"roundStarsRow")
+        self.roundStarsLabel = QLabel(DenoiseStackSettings)
+        self.roundStarsLabel.setObjectName(u"roundStarsLabel")
+        self.roundStarsLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
+
+        self.roundStarsRow.addWidget(self.roundStarsLabel)
+
         self.roundStars = QCheckBox(DenoiseStackSettings)
         self.roundStars.setObjectName(u"roundStars")
+        self.roundStars.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.roundStars.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.roundStars.setStyleSheet(u"QCheckBox#roundStars { spacing: 0px;}\n"
+"QCheckBox#roundStars::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
+"QCheckBox#roundStars::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
+"QCheckBox#roundStars::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
+"")
         self.roundStars.setChecked(False)
 
-        self.layout.addWidget(self.roundStars)
+        self.roundStarsRow.addWidget(self.roundStars, 0, Qt.AlignmentFlag.AlignRight)
+
+
+        self.layout.addLayout(self.roundStarsRow)
 
         self.runLayout = QHBoxLayout()
         self.runLayout.setSpacing(0)
@@ -118,11 +136,29 @@ class Ui_DenoiseStackSettings(object):
         self.advancedLayout.setSpacing(4)
         self.advancedLayout.setObjectName(u"advancedLayout")
         self.advancedLayout.setContentsMargins(4, 2, 4, 2)
+        self.useGPURow = QHBoxLayout()
+        self.useGPURow.setObjectName(u"useGPURow")
+        self.useGPULabel = QLabel(self.advancedBody)
+        self.useGPULabel.setObjectName(u"useGPULabel")
+        self.useGPULabel.setStyleSheet(u"color: #334155; font-size: 12px;")
+
+        self.useGPURow.addWidget(self.useGPULabel)
+
         self.useGPU = QCheckBox(self.advancedBody)
         self.useGPU.setObjectName(u"useGPU")
+        self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.useGPU.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
+"QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
+"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
+"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
+"")
         self.useGPU.setChecked(True)
 
-        self.advancedLayout.addWidget(self.useGPU)
+        self.useGPURow.addWidget(self.useGPU, 0, Qt.AlignmentFlag.AlignRight)
+
+
+        self.advancedLayout.addLayout(self.useGPURow)
 
         self.iterationsRow = QHBoxLayout()
         self.iterationsRow.setObjectName(u"iterationsRow")
@@ -151,6 +187,10 @@ class Ui_DenoiseStackSettings(object):
 
         self.layout.addWidget(self.error)
 
+#if QT_CONFIG(shortcut)
+        self.roundStarsLabel.setBuddy(self.roundStars)
+        self.useGPULabel.setBuddy(self.useGPU)
+#endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(DenoiseStackSettings)
 
@@ -166,9 +206,16 @@ class Ui_DenoiseStackSettings(object):
         self.sigmaThresholdLabel.setText(QCoreApplication.translate("DenoiseStackSettings", u"Threshold", None))
         self.sigmaThreshold.setSuffix(QCoreApplication.translate("DenoiseStackSettings", u" \u03c3", None))
 #if QT_CONFIG(tooltip)
+        self.roundStarsLabel.setToolTip(QCoreApplication.translate("DenoiseStackSettings", u"Circularize elongated or trailed stars along their major axis using directional PSF coordinate reshaping.", None))
+#endif // QT_CONFIG(tooltip)
+        self.roundStarsLabel.setText(QCoreApplication.translate("DenoiseStackSettings", u"Anisotropic star rounding", None))
+#if QT_CONFIG(tooltip)
         self.roundStars.setToolTip(QCoreApplication.translate("DenoiseStackSettings", u"Circularize elongated or trailed stars along their major axis using directional PSF coordinate reshaping.", None))
 #endif // QT_CONFIG(tooltip)
-        self.roundStars.setText(QCoreApplication.translate("DenoiseStackSettings", u"Anisotropic star rounding", None))
+#if QT_CONFIG(accessibility)
+        self.roundStars.setAccessibleName(QCoreApplication.translate("DenoiseStackSettings", u"Anisotropic star rounding", None))
+#endif // QT_CONFIG(accessibility)
+        self.roundStars.setText("")
 #if QT_CONFIG(tooltip)
         self.run.setToolTip(QCoreApplication.translate("DenoiseStackSettings", u"Stack sky and ground base frames without blend or denoise", None))
 #endif // QT_CONFIG(tooltip)
@@ -182,7 +229,11 @@ class Ui_DenoiseStackSettings(object):
         self.advancedToggle.setText("")
         self.outputFileName.setText(QCoreApplication.translate("DenoiseStackSettings", u"Output: project.tif", None))
         self.stackStatus.setText(QCoreApplication.translate("DenoiseStackSettings", u"Base stacks: Not generated", None))
-        self.useGPU.setText(QCoreApplication.translate("DenoiseStackSettings", u"Use GPU Acceleration", None))
+        self.useGPULabel.setText(QCoreApplication.translate("DenoiseStackSettings", u"Use GPU Acceleration", None))
+#if QT_CONFIG(accessibility)
+        self.useGPU.setAccessibleName(QCoreApplication.translate("DenoiseStackSettings", u"Use GPU Acceleration", None))
+#endif // QT_CONFIG(accessibility)
+        self.useGPU.setText("")
         self.sigmaIterationsLabel.setText(QCoreApplication.translate("DenoiseStackSettings", u"Iterations:", None))
         pass
     # retranslateUi

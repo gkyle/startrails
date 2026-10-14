@@ -35,7 +35,7 @@ class DetectSky(Observable):
         Returns:
             2D float32 sky confidence mask (H, W) in [0.0, 1.0], or None if cancelled.
         """
-        self.startJob(1)
+        self.startJob(2)
 
         if self.shouldInterrupt():
             return None
@@ -44,6 +44,8 @@ class DetectSky(Observable):
             img = imread(image_or_path, to_rgb=True, as_float=True)
         else:
             img = image_or_path
+
+        self.updateJob(1)
 
         if self.shouldInterrupt():
             return None
@@ -59,5 +61,5 @@ class DetectSky(Observable):
         if self.shouldInterrupt():
             return None
 
-        self.updateJob(1, mask)
+        self.updateJob(1)
         return mask

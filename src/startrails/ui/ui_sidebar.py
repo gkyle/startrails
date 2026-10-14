@@ -23,8 +23,8 @@ class Ui_Sidebar(object):
     def setupUi(self, sidebar):
         if not sidebar.objectName():
             sidebar.setObjectName(u"sidebar")
-        sidebar.setMinimumSize(QSize(320, 0))
-        sidebar.setMaximumSize(QSize(320, 16777215))
+        sidebar.setMinimumSize(QSize(200, 0))
+        sidebar.setMaximumSize(QSize(200, 16777215))
         sidebar.setStyleSheet(u"QWidget#sidebar {\n"
 "    background-color: #f8fafc;\n"
 "}\n"

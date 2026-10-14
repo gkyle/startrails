@@ -89,6 +89,7 @@ class StartrailsStylePlugin(QDesignerCustomWidgetInterface):
 QPyDesignerCustomWidgetCollection.instance().addCustomWidget(StartrailsStylePlugin())
 
 from startrails.ui.sidebar import Sidebar
+from startrails.ui.sidebar_denoise import SidebarDenoise
 from startrails.ui.steps import (
     DetectSettings,
     StackSettings,
@@ -123,6 +124,31 @@ QPyDesignerCustomWidgetCollection.registerCustomWidget(
         <property name='maximumSize'>
             <size>
                 <width>320</width>
+                <height>16777215</height>
+            </size>
+        </property>
+    </widget>
+</ui>""",
+)
+
+# 1b. SidebarDenoise (composite container)
+QPyDesignerCustomWidgetCollection.registerCustomWidget(
+    SidebarDenoise,
+    module="startrails.ui.sidebar_denoise",
+    group="Startrails",
+    tool_tip="Denoise AI Sidebar",
+    container=True,
+    xml="""<ui language='c++'>
+    <widget class='SidebarDenoise' name='sidebar'>
+        <property name='minimumSize'>
+            <size>
+                <width>320</width>
+                <height>0</height>
+            </size>
+        </property>
+        <property name='maximumSize'>
+            <size>
+                <width>350</width>
                 <height>16777215</height>
             </size>
         </property>

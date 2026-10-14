@@ -15,32 +15,67 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QDoubleSpinBox, QGridLayout,
-    QHBoxLayout, QLabel, QPushButton, QSizePolicy,
-    QSlider, QSpinBox, QToolButton, QVBoxLayout,
-    QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QDoubleSpinBox, QHBoxLayout,
+    QLabel, QPushButton, QSizePolicy, QSlider,
+    QVBoxLayout, QWidget)
 from . import resources_rc
 
 class Ui_DenoiseTuneSettings(object):
     def setupUi(self, DenoiseTuneSettings):
         if not DenoiseTuneSettings.objectName():
             DenoiseTuneSettings.setObjectName(u"DenoiseTuneSettings")
-        DenoiseTuneSettings.resize(340, 442)
+        DenoiseTuneSettings.resize(300, 442)
         self.layout = QVBoxLayout(DenoiseTuneSettings)
         self.layout.setSpacing(6)
         self.layout.setObjectName(u"layout")
         self.layout.setContentsMargins(0, 0, 0, 0)
+        self.enableCorrectionsRow = QHBoxLayout()
+        self.enableCorrectionsRow.setObjectName(u"enableCorrectionsRow")
+        self.enableCorrectionsLabel = QLabel(DenoiseTuneSettings)
+        self.enableCorrectionsLabel.setObjectName(u"enableCorrectionsLabel")
+        self.enableCorrectionsLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
+
+        self.enableCorrectionsRow.addWidget(self.enableCorrectionsLabel)
+
         self.enableCorrections = QCheckBox(DenoiseTuneSettings)
         self.enableCorrections.setObjectName(u"enableCorrections")
+        self.enableCorrections.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.enableCorrections.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.enableCorrections.setStyleSheet(u"QCheckBox#enableCorrections { spacing: 0px;}\n"
+"QCheckBox#enableCorrections::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
+"QCheckBox#enableCorrections::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
+"QCheckBox#enableCorrections::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
+"")
         self.enableCorrections.setChecked(True)
 
-        self.layout.addWidget(self.enableCorrections)
+        self.enableCorrectionsRow.addWidget(self.enableCorrections, 0, Qt.AlignmentFlag.AlignRight)
+
+
+        self.layout.addLayout(self.enableCorrectionsRow)
+
+        self.showGradientMaskRow = QHBoxLayout()
+        self.showGradientMaskRow.setObjectName(u"showGradientMaskRow")
+        self.showGradientMaskLabel = QLabel(DenoiseTuneSettings)
+        self.showGradientMaskLabel.setObjectName(u"showGradientMaskLabel")
+        self.showGradientMaskLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
+
+        self.showGradientMaskRow.addWidget(self.showGradientMaskLabel)
 
         self.showGradientMask = QCheckBox(DenoiseTuneSettings)
         self.showGradientMask.setObjectName(u"showGradientMask")
+        self.showGradientMask.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.showGradientMask.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.showGradientMask.setStyleSheet(u"QCheckBox#showGradientMask { spacing: 0px;}\n"
+"QCheckBox#showGradientMask::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
+"QCheckBox#showGradientMask::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
+"QCheckBox#showGradientMask::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
+"")
         self.showGradientMask.setChecked(False)
 
-        self.layout.addWidget(self.showGradientMask)
+        self.showGradientMaskRow.addWidget(self.showGradientMask, 0, Qt.AlignmentFlag.AlignRight)
+
+
+        self.layout.addLayout(self.showGradientMaskRow)
 
         self.colorDenoiseRow = QHBoxLayout()
         self.colorDenoiseRow.setSpacing(6)
@@ -198,16 +233,6 @@ class Ui_DenoiseTuneSettings(object):
 
         self.runLayout.addWidget(self.run)
 
-        self.advancedToggle = QToolButton(DenoiseTuneSettings)
-        self.advancedToggle.setObjectName(u"advancedToggle")
-        self.advancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.advancedToggle.setCheckable(True)
-        self.advancedToggle.setChecked(False)
-        self.advancedToggle.setArrowType(Qt.ArrowType.RightArrow)
-
-        self.runLayout.addWidget(self.advancedToggle)
-
 
         self.layout.addLayout(self.runLayout)
 
@@ -218,56 +243,16 @@ class Ui_DenoiseTuneSettings(object):
 
         self.layout.addWidget(self.tuneStatus)
 
-        self.advancedBody = QWidget(DenoiseTuneSettings)
-        self.advancedBody.setObjectName(u"advancedBody")
-        self.advancedGrid = QGridLayout(self.advancedBody)
-        self.advancedGrid.setSpacing(6)
-        self.advancedGrid.setObjectName(u"advancedGrid")
-        self.advancedGrid.setContentsMargins(4, 2, 4, 2)
-        self.denoiseBand = QCheckBox(self.advancedBody)
-        self.denoiseBand.setObjectName(u"denoiseBand")
-        self.denoiseBand.setChecked(True)
-
-        self.advancedGrid.addWidget(self.denoiseBand, 0, 0, 1, 1)
-
-        self.denoiseRadiusLabel = QLabel(self.advancedBody)
-        self.denoiseRadiusLabel.setObjectName(u"denoiseRadiusLabel")
-
-        self.advancedGrid.addWidget(self.denoiseRadiusLabel, 1, 0, 1, 1)
-
-        self.horizonDenoiseRadius = QSpinBox(self.advancedBody)
-        self.horizonDenoiseRadius.setObjectName(u"horizonDenoiseRadius")
-        self.horizonDenoiseRadius.setStyleSheet(u"")
-        self.horizonDenoiseRadius.setMinimum(1)
-        self.horizonDenoiseRadius.setMaximum(30)
-        self.horizonDenoiseRadius.setValue(5)
-
-        self.advancedGrid.addWidget(self.horizonDenoiseRadius, 1, 1, 1, 1)
-
-        self.denoiseStrengthLabel = QLabel(self.advancedBody)
-        self.denoiseStrengthLabel.setObjectName(u"denoiseStrengthLabel")
-
-        self.advancedGrid.addWidget(self.denoiseStrengthLabel, 2, 0, 1, 1)
-
-        self.horizonDenoiseStrength = QDoubleSpinBox(self.advancedBody)
-        self.horizonDenoiseStrength.setObjectName(u"horizonDenoiseStrength")
-        self.horizonDenoiseStrength.setStyleSheet(u"")
-        self.horizonDenoiseStrength.setMinimum(0.000000000000000)
-        self.horizonDenoiseStrength.setMaximum(1.000000000000000)
-        self.horizonDenoiseStrength.setSingleStep(0.050000000000000)
-        self.horizonDenoiseStrength.setValue(0.200000000000000)
-
-        self.advancedGrid.addWidget(self.horizonDenoiseStrength, 2, 1, 1, 1)
-
-
-        self.layout.addWidget(self.advancedBody)
-
         self.error = QLabel(DenoiseTuneSettings)
         self.error.setObjectName(u"error")
         self.error.setWordWrap(True)
 
         self.layout.addWidget(self.error)
 
+#if QT_CONFIG(shortcut)
+        self.enableCorrectionsLabel.setBuddy(self.enableCorrections)
+        self.showGradientMaskLabel.setBuddy(self.showGradientMask)
+#endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(DenoiseTuneSettings)
 
@@ -276,13 +261,27 @@ class Ui_DenoiseTuneSettings(object):
 
     def retranslateUi(self, DenoiseTuneSettings):
 #if QT_CONFIG(tooltip)
+        self.enableCorrectionsLabel.setToolTip(QCoreApplication.translate("DenoiseTuneSettings", u"Toggle all horizon gradient corrections (blend, denoise, blur) on or off", None))
+#endif // QT_CONFIG(tooltip)
+        self.enableCorrectionsLabel.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Enable horizon corrections", None))
+#if QT_CONFIG(tooltip)
         self.enableCorrections.setToolTip(QCoreApplication.translate("DenoiseTuneSettings", u"Toggle all horizon gradient corrections (blend, denoise, blur) on or off", None))
 #endif // QT_CONFIG(tooltip)
-        self.enableCorrections.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Enable horizon corrections", None))
+#if QT_CONFIG(accessibility)
+        self.enableCorrections.setAccessibleName(QCoreApplication.translate("DenoiseTuneSettings", u"Enable horizon corrections", None))
+#endif // QT_CONFIG(accessibility)
+        self.enableCorrections.setText("")
+#if QT_CONFIG(tooltip)
+        self.showGradientMaskLabel.setToolTip(QCoreApplication.translate("DenoiseTuneSettings", u"Render the sky coverage gradient mask as a translucent red overlay on the canvas", None))
+#endif // QT_CONFIG(tooltip)
+        self.showGradientMaskLabel.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Show gradient mask (red overlay)", None))
 #if QT_CONFIG(tooltip)
         self.showGradientMask.setToolTip(QCoreApplication.translate("DenoiseTuneSettings", u"Render the sky coverage gradient mask as a translucent red overlay on the canvas", None))
 #endif // QT_CONFIG(tooltip)
-        self.showGradientMask.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Show gradient mask (red overlay)", None))
+#if QT_CONFIG(accessibility)
+        self.showGradientMask.setAccessibleName(QCoreApplication.translate("DenoiseTuneSettings", u"Show gradient mask (red overlay)", None))
+#endif // QT_CONFIG(accessibility)
+        self.showGradientMask.setText("")
         self.colorDenoiseLabel.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Color Denoise:", None))
         self.colorStrength.setSuffix(QCoreApplication.translate("DenoiseTuneSettings", u"x", None))
         self.valueDenoiseLabel.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Value Denoise:", None))
@@ -296,18 +295,7 @@ class Ui_DenoiseTuneSettings(object):
         self.run.setToolTip(QCoreApplication.translate("DenoiseTuneSettings", u"Apply horizon gradient corrections and generate final image", None))
 #endif // QT_CONFIG(tooltip)
         self.run.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Composite Final Image", None))
-#if QT_CONFIG(tooltip)
-        self.advancedToggle.setToolTip(QCoreApplication.translate("DenoiseTuneSettings", u"Show advanced settings", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(accessibility)
-        self.advancedToggle.setAccessibleName(QCoreApplication.translate("DenoiseTuneSettings", u"Show advanced settings", None))
-#endif // QT_CONFIG(accessibility)
-        self.advancedToggle.setText("")
         self.tuneStatus.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Requires base stacks", None))
-        self.denoiseBand.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Denoise Horizon Band", None))
-        self.denoiseRadiusLabel.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Denoise Radius:", None))
-        self.horizonDenoiseRadius.setSuffix(QCoreApplication.translate("DenoiseTuneSettings", u" px", None))
-        self.denoiseStrengthLabel.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Denoise Strength:", None))
         pass
     # retranslateUi
 

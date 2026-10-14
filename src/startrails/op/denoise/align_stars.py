@@ -11,7 +11,6 @@ from startrails.lib.util import Observable, imread
 from startrails.lib.denoise.config import DenoiseConfig
 from startrails.lib.denoise.io.mask import MaskHandler
 from startrails.lib.denoise.calibration.dark import DarkCalibrator
-from startrails.lib.denoise.calibration.flat import FlatCalibrator
 from startrails.lib.denoise.alignment.detector import StarDetector, Star
 from startrails.lib.denoise.alignment.matcher import StarMatcher
 from startrails.lib.denoise.alignment.transform import TransformModel
@@ -40,22 +39,15 @@ class AlignStars(Observable):
 
     @staticmethod
     def prepare_calibrator(config: DenoiseConfig) -> Callable[[np.ndarray], np.ndarray]:
-        """Prepare dark and flat master calibration frames if configured."""
+        """Prepare dark master calibration frame if configured."""
         master_dark: Optional[np.ndarray] = None
         if config.noise_images:
             darks = [imread(p, to_rgb=True, as_float=True) for p in config.noise_images]
             master_dark = DarkCalibrator.compute_master_dark(darks, use_gpu=config.use_gpu)
 
-        master_flat: Optional[np.ndarray] = None
-        if config.vignetting_images:
-            flats = [imread(p, to_rgb=True, as_float=True) for p in config.vignetting_images]
-            master_flat = FlatCalibrator.compute_master_flat(flats, master_dark=master_dark, use_gpu=config.use_gpu)
-
         def calibrate(img: np.ndarray) -> np.ndarray:
             if master_dark is not None:
                 img = DarkCalibrator.apply_dark(img, master_dark)
-            if master_flat is not None:
-                img = FlatCalibrator.apply_flat(img, master_flat)
             return img
 
         return calibrate
@@ -173,7 +165,7 @@ class AlignStars(Observable):
                 sky_coverages.append(coverage)
                 raw_ground_frames.append(frame_cal)
 
-            self.updateJob(1, {"index": i, "frame": p_path, "matrix": matrix})
+            self.updateJob(1, {"index": i, "total": len(config.star_images), "filename": p_path.name, "frame": p_path, "matrix": matrix})
 
         return AlignResult(
             homographies=config.homographies,

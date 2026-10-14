@@ -155,6 +155,6 @@ QWidget#advancedBody {
 
 /* Error Labels */
 QLabel#error {
-    color: #dc2626;
+    color: #b91c1c;
     font-size: 11px;
 }

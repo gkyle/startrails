@@ -38,6 +38,7 @@ class DenoiseProject(Unpickle):
         self.sky_stack_path: Optional[str] = None
         self.ground_stack_path: Optional[str] = None
         self.output_path: Optional[str] = None
+        self.final_output_path: Optional[str] = None
 
         # Alignment homographies: mapped by path string or identifier
         self.homographies: Dict[str, Any] = {}
@@ -92,6 +93,17 @@ class DenoiseProject(Unpickle):
             f.is_reference = f is file or f.path == file.path
         self.reference_file = file
 
+    def get_project_stem(self) -> str:
+        """Return the base stem of the project file without extension."""
+        if not self.projectFile:
+            return "project"
+        name = Path(self.projectFile).name
+        if name.endswith(DENOISE_EXT):
+            return name[:-len(DENOISE_EXT)]
+        if name.endswith(".json"):
+            return name[:-5]
+        return Path(self.projectFile).stem
+
     def to_denoise_config(self) -> DenoiseConfig:
         """Construct a DenoiseConfig instance matching this project's current state."""
         ref = self.get_reference_file()
@@ -101,15 +113,26 @@ class DenoiseProject(Unpickle):
         for k, v in self.homographies.items():
             homographies_dict[Path(k)] = v
 
+        out_dir = self.get_output_dir()
+        stem = self.get_project_stem()
+        mask_p = Path(self.mask_path) if self.mask_path else None
+        if mask_p is None and (out_dir / "mask.png").exists():
+            mask_p = out_dir / "mask.png"
+
+        sky_stack_p = Path(self.sky_stack_path) if self.sky_stack_path else (out_dir / "sky_stack.tif")
+        ground_stack_p = Path(self.ground_stack_path) if self.ground_stack_path else (out_dir / "ground_stack.tif")
+        refined_mask_p = Path(self.refined_mask_path) if self.refined_mask_path else (out_dir / "refined_mask.png")
+        gradient_mask_p = Path(self.gradient_mask_path) if self.gradient_mask_path else (out_dir / "gradient_mask.png")
+        output_p = Path(self.output_path) if self.output_path else (out_dir / f"{stem}.tif")
+
         return DenoiseConfig(
             star_images=[Path(f.path) for f in self.star_files if f.path],
             base_image=base_path,
             noise_images=[Path(f.path) for f in self.noise_files if f.path],
-            vignetting_images=[Path(f.path) for f in self.vignetting_files if f.path],
-            output_path=Path(self.output_path) if self.output_path else None,
-            sky_stack_path=Path(self.sky_stack_path) if self.sky_stack_path else None,
-            ground_stack_path=Path(self.ground_stack_path) if self.ground_stack_path else None,
-            mask_path=Path(self.mask_path) if self.mask_path else None,
+            output_path=output_p,
+            sky_stack_path=sky_stack_p,
+            ground_stack_path=ground_stack_p,
+            mask_path=mask_p,
             mask_search_radius=self.mask_search_radius,
             mask_erosion_pixels=self.mask_erosion_pixels,
             mask_foliage_protection=self.mask_foliage_protection,
@@ -118,9 +141,9 @@ class DenoiseProject(Unpickle):
             auto_mask_model=self.auto_mask_model,
             auto_mask_path=self.auto_mask_path,
             export_refined_mask=self.export_refined_mask,
-            refined_mask_path=Path(self.refined_mask_path) if self.refined_mask_path else None,
+            refined_mask_path=refined_mask_p,
             export_gradient_mask=self.export_gradient_mask,
-            gradient_mask_path=Path(self.gradient_mask_path) if self.gradient_mask_path else None,
+            gradient_mask_path=gradient_mask_p,
             taper_mask_edges=self.taper_mask_edges,
             mask_taper_pixels=self.mask_taper_pixels,
             enable_horizon_corrections=self.enable_horizon_corrections,

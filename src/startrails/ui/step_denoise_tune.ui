@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>340</width>
+    <width>300</width>
     <height>442</height>
    </rect>
   </property>
@@ -25,32 +25,104 @@
    </property>
    <property name="bottomMargin">
     <number>0</number>
-   </property>
+   </property>
    <item>
-    <widget class="QCheckBox" name="enableCorrections">
-     <property name="toolTip">
-      <string>Toggle all horizon gradient corrections (blend, denoise, blur) on or off</string>
-     </property>
-     <property name="text">
-      <string>Enable horizon corrections</string>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
+    <layout class="QHBoxLayout" name="enableCorrectionsRow">
+     <item>
+      <widget class="QLabel" name="enableCorrectionsLabel">
+       <property name="styleSheet">
+        <string notr="true">color: #334155; font-size: 12px;</string>
+       </property>
+       <property name="toolTip">
+        <string>Toggle all horizon gradient corrections (blend, denoise, blur) on or off</string>
+       </property>
+       <property name="text">
+        <string>Enable horizon corrections</string>
+       </property>
+       <property name="buddy">
+        <cstring>enableCorrections</cstring>
+       </property>
+      </widget>
+     </item>
+     <item alignment="Qt::AlignmentFlag::AlignRight">
+      <widget class="QCheckBox" name="enableCorrections">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::NoFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string>Toggle all horizon gradient corrections (blend, denoise, blur) on or off</string>
+       </property>
+       <property name="accessibleName">
+        <string>Enable horizon corrections</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QCheckBox#enableCorrections { spacing: 0px;}
+QCheckBox#enableCorrections::indicator { width: 36px; height: 20px; border-radius: 10px; }
+QCheckBox#enableCorrections::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
+QCheckBox#enableCorrections::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
+</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
    <item>
-    <widget class="QCheckBox" name="showGradientMask">
-     <property name="toolTip">
-      <string>Render the sky coverage gradient mask as a translucent red overlay on the canvas</string>
-     </property>
-     <property name="text">
-      <string>Show gradient mask (red overlay)</string>
-     </property>
-     <property name="checked">
-      <bool>false</bool>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="showGradientMaskRow">
+     <item>
+      <widget class="QLabel" name="showGradientMaskLabel">
+       <property name="styleSheet">
+        <string notr="true">color: #334155; font-size: 12px;</string>
+       </property>
+       <property name="toolTip">
+        <string>Render the sky coverage gradient mask as a translucent red overlay on the canvas</string>
+       </property>
+       <property name="text">
+        <string>Show gradient mask (red overlay)</string>
+       </property>
+       <property name="buddy">
+        <cstring>showGradientMask</cstring>
+       </property>
+      </widget>
+     </item>
+     <item alignment="Qt::AlignmentFlag::AlignRight">
+      <widget class="QCheckBox" name="showGradientMask">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::NoFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string>Render the sky coverage gradient mask as a translucent red overlay on the canvas</string>
+       </property>
+       <property name="accessibleName">
+        <string>Show gradient mask (red overlay)</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QCheckBox#showGradientMask { spacing: 0px;}
+QCheckBox#showGradientMask::indicator { width: 36px; height: 20px; border-radius: 10px; }
+QCheckBox#showGradientMask::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
+QCheckBox#showGradientMask::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
+</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="colorDenoiseRow">
@@ -399,34 +471,6 @@
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QToolButton" name="advancedToggle">
-       <property name="cursor">
-        <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
-       </property>
-       <property name="toolTip">
-        <string>Show advanced settings</string>
-       </property>
-       <property name="accessibleName">
-        <string>Show advanced settings</string>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-       <property name="checked">
-        <bool>false</bool>
-       </property>
-       <property name="arrowType">
-        <enum>Qt::ArrowType::RightArrow</enum>
-       </property>
-      </widget>
-     </item>
     </layout>
    </item>
    <item>
@@ -440,89 +484,6 @@
      <property name="wordWrap">
       <bool>true</bool>
      </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QWidget" name="advancedBody" native="true">
-     <layout class="QGridLayout" name="advancedGrid">
-      <property name="leftMargin">
-       <number>4</number>
-      </property>
-      <property name="topMargin">
-       <number>2</number>
-      </property>
-      <property name="rightMargin">
-       <number>4</number>
-      </property>
-      <property name="bottomMargin">
-       <number>2</number>
-      </property>
-      <property name="spacing">
-       <number>6</number>
-      </property>
-      <item row="0" column="0">
-       <widget class="QCheckBox" name="denoiseBand">
-        <property name="text">
-         <string>Denoise Horizon Band</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="denoiseRadiusLabel">
-        <property name="text">
-         <string>Denoise Radius:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="horizonDenoiseRadius">
-        <property name="styleSheet">
-         <string notr="true"/>
-        </property>
-        <property name="suffix">
-         <string> px</string>
-        </property>
-        <property name="minimum">
-         <number>1</number>
-        </property>
-        <property name="maximum">
-         <number>30</number>
-        </property>
-        <property name="value">
-         <number>5</number>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="denoiseStrengthLabel">
-        <property name="text">
-         <string>Denoise Strength:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QDoubleSpinBox" name="horizonDenoiseStrength">
-        <property name="styleSheet">
-         <string notr="true"/>
-        </property>
-        <property name="minimum">
-         <double>0.000000000000000</double>
-        </property>
-        <property name="maximum">
-         <double>1.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>0.050000000000000</double>
-        </property>
-        <property name="value">
-         <double>0.200000000000000</double>
-        </property>
-       </widget>
-      </item>
-     </layout>
     </widget>
    </item>
    <item>

@@ -15,16 +15,16 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
-    QHBoxLayout, QLabel, QPushButton, QSizePolicy,
-    QSpinBox, QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QHBoxLayout, QLabel,
+    QPushButton, QSizePolicy, QToolButton, QVBoxLayout,
+    QWidget)
 from . import resources_rc
 
 class Ui_DenoiseAlignSettings(object):
     def setupUi(self, DenoiseAlignSettings):
         if not DenoiseAlignSettings.objectName():
             DenoiseAlignSettings.setObjectName(u"DenoiseAlignSettings")
-        DenoiseAlignSettings.resize(340, 261)
+        DenoiseAlignSettings.resize(300, 261)
         self.layout = QVBoxLayout(DenoiseAlignSettings)
         self.layout.setSpacing(6)
         self.layout.setObjectName(u"layout")
@@ -88,50 +88,33 @@ class Ui_DenoiseAlignSettings(object):
 
         self.advancedBody = QWidget(DenoiseAlignSettings)
         self.advancedBody.setObjectName(u"advancedBody")
-        self.advancedGrid = QGridLayout(self.advancedBody)
-        self.advancedGrid.setSpacing(6)
-        self.advancedGrid.setObjectName(u"advancedGrid")
-        self.advancedGrid.setContentsMargins(4, 2, 4, 2)
-        self.warpFrames = QCheckBox(self.advancedBody)
-        self.warpFrames.setObjectName(u"warpFrames")
-        self.warpFrames.setChecked(True)
+        self.advancedLayout = QVBoxLayout(self.advancedBody)
+        self.advancedLayout.setSpacing(6)
+        self.advancedLayout.setObjectName(u"advancedLayout")
+        self.advancedLayout.setContentsMargins(4, 2, 4, 2)
+        self.useGPURow = QHBoxLayout()
+        self.useGPURow.setObjectName(u"useGPURow")
+        self.useGPULabel = QLabel(self.advancedBody)
+        self.useGPULabel.setObjectName(u"useGPULabel")
+        self.useGPULabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
-        self.advancedGrid.addWidget(self.warpFrames, 2, 0, 1, 2)
+        self.useGPURow.addWidget(self.useGPULabel)
 
         self.useGPU = QCheckBox(self.advancedBody)
         self.useGPU.setObjectName(u"useGPU")
+        self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.useGPU.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
+"QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
+"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
+"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
+"")
         self.useGPU.setChecked(True)
 
-        self.advancedGrid.addWidget(self.useGPU, 3, 0, 1, 2)
+        self.useGPURow.addWidget(self.useGPU, 0, Qt.AlignmentFlag.AlignRight)
 
-        self.detectorLabel = QLabel(self.advancedBody)
-        self.detectorLabel.setObjectName(u"detectorLabel")
 
-        self.advancedGrid.addWidget(self.detectorLabel, 0, 0, 1, 1)
-
-        self.detectorType = QComboBox(self.advancedBody)
-        self.detectorType.addItem("")
-        self.detectorType.addItem("")
-        self.detectorType.addItem("")
-        self.detectorType.setObjectName(u"detectorType")
-        self.detectorType.setStyleSheet(u"")
-
-        self.advancedGrid.addWidget(self.detectorType, 0, 1, 1, 1)
-
-        self.maxStarsLabel = QLabel(self.advancedBody)
-        self.maxStarsLabel.setObjectName(u"maxStarsLabel")
-
-        self.advancedGrid.addWidget(self.maxStarsLabel, 1, 0, 1, 1)
-
-        self.maxStars = QSpinBox(self.advancedBody)
-        self.maxStars.setObjectName(u"maxStars")
-        self.maxStars.setStyleSheet(u"")
-        self.maxStars.setMinimum(50)
-        self.maxStars.setMaximum(2000)
-        self.maxStars.setSingleStep(50)
-        self.maxStars.setValue(500)
-
-        self.advancedGrid.addWidget(self.maxStars, 1, 1, 1, 1)
+        self.advancedLayout.addLayout(self.useGPURow)
 
 
         self.layout.addWidget(self.advancedBody)
@@ -142,6 +125,9 @@ class Ui_DenoiseAlignSettings(object):
 
         self.layout.addWidget(self.error)
 
+#if QT_CONFIG(shortcut)
+        self.useGPULabel.setBuddy(self.useGPU)
+#endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(DenoiseAlignSettings)
 
@@ -163,14 +149,11 @@ class Ui_DenoiseAlignSettings(object):
 #endif // QT_CONFIG(accessibility)
         self.advancedToggle.setText("")
         self.alignStatus.setText(QCoreApplication.translate("DenoiseAlignSettings", u"Homographies: 0 computed", None))
-        self.warpFrames.setText(QCoreApplication.translate("DenoiseAlignSettings", u"Warp Frames for Stacking", None))
-        self.useGPU.setText(QCoreApplication.translate("DenoiseAlignSettings", u"Use GPU Acceleration", None))
-        self.detectorLabel.setText(QCoreApplication.translate("DenoiseAlignSettings", u"Detector:", None))
-        self.detectorType.setItemText(0, QCoreApplication.translate("DenoiseAlignSettings", u"Auto", None))
-        self.detectorType.setItemText(1, QCoreApplication.translate("DenoiseAlignSettings", u"ORB", None))
-        self.detectorType.setItemText(2, QCoreApplication.translate("DenoiseAlignSettings", u"AKAZE", None))
-
-        self.maxStarsLabel.setText(QCoreApplication.translate("DenoiseAlignSettings", u"Max Stars:", None))
+        self.useGPULabel.setText(QCoreApplication.translate("DenoiseAlignSettings", u"Use GPU Acceleration", None))
+#if QT_CONFIG(accessibility)
+        self.useGPU.setAccessibleName(QCoreApplication.translate("DenoiseAlignSettings", u"Use GPU Acceleration", None))
+#endif // QT_CONFIG(accessibility)
+        self.useGPU.setText("")
         pass
     # retranslateUi
 

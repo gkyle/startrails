@@ -117,6 +117,11 @@ class ProgressOverlay(QFrame):
         self.raise_()
 
     def update_progress(self, n, total, elapsed=None, remaining=None, desc=""):
+        if self.isHidden():
+            self.spinner.start()
+            self.update_position()
+            self.show()
+            self.raise_()
         if total > 0:
             pct = min(100, max(0, int(n / total * 100)))
             self.progressBar.setValue(pct)

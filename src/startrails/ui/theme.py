@@ -21,7 +21,7 @@ _DARK_FOREGROUND = {
     "#0284c7": "#38bdf8", "#0369a1": "#7dd3fc",
     "#1d4ed8": "#93c5fd", "#15803d": "#86efac",
     "#166534": "#bbf7d0", "#b45309": "#fbbf24",
-    "#92400e": "#fde68a", "#b91c1c": "#fca5a5",
+    "#92400e": "#fde68a", "#b91c1c": "#fca5a5", "#dc2626": "#fca5a5",
     "#ef4444": "#f87171", "#6b21a8": "#d8b4fe",
 }
 _DARK_BACKGROUND = {

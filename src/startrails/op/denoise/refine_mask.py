@@ -38,7 +38,7 @@ class RefineMask(Observable):
         Returns:
             Refined 2D float32 mask (H, W) in [0.0, 1.0], or None if cancelled.
         """
-        self.startJob(1)
+        self.startJob(2)
 
         if self.shouldInterrupt():
             return None
@@ -59,11 +59,13 @@ class RefineMask(Observable):
             foliage_protection=foliage_protection,
         )
 
+        self.updateJob(1)
+
         if self.shouldInterrupt():
             return None
 
         if export_path is not None:
             MaskHandler.save_mask(refined, export_path)
 
-        self.updateJob(1, refined)
+        self.updateJob(1)
         return refined

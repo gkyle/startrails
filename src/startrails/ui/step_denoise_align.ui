@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>340</width>
+    <width>300</width>
     <height>261</height>
    </rect>
   </property>
@@ -130,7 +130,7 @@
    </item>
    <item>
     <widget class="QWidget" name="advancedBody" native="true">
-     <layout class="QGridLayout" name="advancedGrid">
+     <layout class="QVBoxLayout" name="advancedLayout">
       <property name="leftMargin">
        <number>4</number>
       </property>
@@ -145,81 +145,49 @@
       </property>
       <property name="spacing">
        <number>6</number>
-      </property>
-      <item row="2" column="0" colspan="2">
-       <widget class="QCheckBox" name="warpFrames">
-        <property name="text">
-         <string>Warp Frames for Stacking</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0" colspan="2">
-       <widget class="QCheckBox" name="useGPU">
-        <property name="text">
-         <string>Use GPU Acceleration</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="detectorLabel">
-        <property name="text">
-         <string>Detector:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="detectorType">
-        <property name="styleSheet">
-         <string notr="true"/>
-        </property>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="useGPURow">
         <item>
-         <property name="text">
-          <string>Auto</string>
-         </property>
+         <widget class="QLabel" name="useGPULabel">
+          <property name="styleSheet">
+           <string notr="true">color: #334155; font-size: 12px;</string>
+          </property>
+          <property name="text">
+           <string>Use GPU Acceleration</string>
+          </property>
+          <property name="buddy">
+           <cstring>useGPU</cstring>
+          </property>
+         </widget>
         </item>
-        <item>
-         <property name="text">
-          <string>ORB</string>
-         </property>
+        <item alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QCheckBox" name="useGPU">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::FocusPolicy::NoFocus</enum>
+          </property>
+          <property name="accessibleName">
+           <string>Use GPU Acceleration</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">QCheckBox#useGPU { spacing: 0px;}
+QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }
+QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
+QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
+</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
-        <item>
-         <property name="text">
-          <string>AKAZE</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="maxStarsLabel">
-        <property name="text">
-         <string>Max Stars:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QSpinBox" name="maxStars">
-        <property name="styleSheet">
-         <string notr="true"/>
-        </property>
-        <property name="minimum">
-         <number>50</number>
-        </property>
-        <property name="maximum">
-         <number>2000</number>
-        </property>
-        <property name="singleStep">
-         <number>50</number>
-        </property>
-        <property name="value">
-         <number>500</number>
-        </property>
-       </widget>
+       </layout>
       </item>
      </layout>
     </widget>

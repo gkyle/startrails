@@ -15,7 +15,6 @@ class DenoiseConfig:
     star_images: List[Path] = field(default_factory=list)
     base_image: Optional[Path] = None
     noise_images: List[Path] = field(default_factory=list)
-    vignetting_images: List[Path] = field(default_factory=list)
     output_path: Optional[Path] = None
 
     # Cached intermediate base stacks

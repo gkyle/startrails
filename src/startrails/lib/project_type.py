@@ -27,7 +27,10 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
     """Resolve the authoritative output directory for a project file.
 
     Preserves legacy output directories (e.g. '<name>.project' for '<name>.project.json'
-    or when '<name>.project' exists beside '<name>.proj_startrails' / '<name>.proj_denoise').
+    or when '<name>.project' exists beside '<name>.proj_startrails').
+    For denoise projects ('<base>.proj_denoise'), resolves to '<base>.denoise'
+    (preserving legacy '<base>.denoise.project' if existing) to avoid naming collisions
+    with startrails projects having the same basename.
     Otherwise resolves to '<name>' directory in the project's parent directory.
     """
     path = Path(project_file).resolve()
@@ -48,10 +51,10 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
 
     if name.endswith(DENOISE_EXT):
         base = name[:-len(DENOISE_EXT)]
-        legacy_dir = parent / f"{base}.project"
+        legacy_dir = parent / f"{base}.denoise.project"
         if legacy_dir.is_dir():
             return legacy_dir
-        return parent / base
+        return parent / f"{base}.denoise"
 
     if name.endswith(".json"):
         return parent / name[:-5]

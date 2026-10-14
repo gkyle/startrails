@@ -1,5 +1,16 @@
 import time
-from PySide6.QtCore import QAbstractTableModel, QEvent, QModelIndex, QObject, QRect, QSize, Qt, Signal, QSignalBlocker
+from PySide6.QtCore import (
+    QAbstractTableModel,
+    QEvent,
+    QItemSelectionModel,
+    QModelIndex,
+    QObject,
+    QRect,
+    QSize,
+    Qt,
+    Signal,
+    QSignalBlocker,
+)
 from PySide6.QtGui import QAction, QActionGroup, QBrush, QFont, QIcon, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QHeaderView, QMenu, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QToolButton, QWidget
 
@@ -370,6 +381,8 @@ class FileSection(QFrame):
         self.ui.headerWidget.mousePressEvent = self._on_header_clicked
         self.ui.add.clicked.connect(self.addRequested.emit)
         self.ui.files.selectionModel().currentChanged.connect(self._selection_changed)
+        self.ui.files.clicked.connect(self._on_item_clicked)
+        self.ui.files.activated.connect(self._on_item_clicked)
         self.ui.files.customContextMenuRequested.connect(self._context_menu)
         self.ui.files.installEventFilter(self)
         self.model.summaryChanged.connect(self._refresh)
@@ -526,15 +539,27 @@ class FileSection(QFrame):
         with QSignalBlocker(self.ui.files.selectionModel()):
             self.model.set_files(files)
             index = self.model.index_for_file(current)
-            self.ui.files.setCurrentIndex(index)
+            if index.isValid():
+                self.ui.files.setCurrentIndex(index)
+                self.ui.files.selectionModel().select(
+                    index, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows
+                )
+            else:
+                self.ui.files.setCurrentIndex(QModelIndex())
+                self.ui.files.clearSelection()
         self._refresh()
 
     def focus_file(self, file):
         try:
             index = self.model.index_for_file(file)
             with QSignalBlocker(self.ui.files.selectionModel()):
-                self.ui.files.setCurrentIndex(index)
-                if not index.isValid():
+                if index.isValid():
+                    self.ui.files.setCurrentIndex(index)
+                    self.ui.files.selectionModel().select(
+                        index, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows
+                    )
+                else:
+                    self.ui.files.setCurrentIndex(QModelIndex())
                     self.ui.files.clearSelection()
             if index.isValid():
                 self.setExpanded(True)
@@ -543,9 +568,19 @@ class FileSection(QFrame):
         except RuntimeError:
             pass
 
+    setCurrentFile = focus_file
+
     def _selection_changed(self, current, previous):
         self._refresh()
         file = current.data(Qt.UserRole)
+        if file is not None:
+            self.showFile.emit(file)
+
+    def _on_item_clicked(self, index: QModelIndex):
+        if not index.isValid():
+            return
+        self._refresh()
+        file = index.data(Qt.UserRole)
         if file is not None:
             self.showFile.emit(file)
 

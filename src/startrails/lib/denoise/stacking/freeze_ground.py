@@ -128,9 +128,19 @@ class FreezeGroundStacker:
         use_gpu: bool = True,
         max_workers: Optional[int] = None,
         profiler: Optional[Any] = None,
-    ) -> HorizonCompositor:
+        progress_callback: Optional[Any] = None,
+        should_interrupt: Optional[Any] = None,
+    ) -> Optional[HorizonCompositor]:
         """Stack base sky and ground frames and assemble real-time HorizonCompositor."""
         backend_label = "GPU" if use_gpu else "CPU"
+
+        n_sky = len(aligned_sky_frames)
+        def _sky_cb(inc: int, data: Optional[dict] = None):
+            if progress_callback is not None:
+                d = {"stage": "sky", "total": n_sky}
+                if data:
+                    d.update(data)
+                progress_callback(inc, d)
 
         # 1. Stack sky region (aligned frames)
         if profiler is not None:
@@ -143,6 +153,8 @@ class FreezeGroundStacker:
                     iterations=sigma_clip_iterations,
                     use_gpu=use_gpu,
                     max_workers=max_workers,
+                    progress_callback=_sky_cb,
+                    should_interrupt=should_interrupt,
                 )
         else:
             sky_stack = cls.stack_frames(
@@ -153,7 +165,20 @@ class FreezeGroundStacker:
                 iterations=sigma_clip_iterations,
                 use_gpu=use_gpu,
                 max_workers=max_workers,
+                progress_callback=_sky_cb,
+                should_interrupt=should_interrupt,
             )
+
+        if sky_stack is None or (should_interrupt and should_interrupt()):
+            return None
+
+        n_ground = len(raw_ground_frames)
+        def _ground_cb(inc: int, data: Optional[dict] = None):
+            if progress_callback is not None:
+                d = {"stage": "ground", "total": n_ground}
+                if data:
+                    d.update(data)
+                progress_callback(inc, d)
 
         # 2. Stack ground region (stationary un-warped frames)
         if profiler is not None:
@@ -166,6 +191,8 @@ class FreezeGroundStacker:
                     iterations=sigma_clip_iterations,
                     use_gpu=use_gpu,
                     max_workers=max_workers,
+                    progress_callback=_ground_cb,
+                    should_interrupt=should_interrupt,
                 )
         else:
             ground_stack = cls.stack_frames(
@@ -176,7 +203,12 @@ class FreezeGroundStacker:
                 iterations=sigma_clip_iterations,
                 use_gpu=use_gpu,
                 max_workers=max_workers,
+                progress_callback=_ground_cb,
+                should_interrupt=should_interrupt,
             )
+
+        if ground_stack is None or (should_interrupt and should_interrupt()):
+            return None
 
 
         # Ensure any pixel with 0 sky coverage falls back to ground stack
@@ -287,7 +319,9 @@ class FreezeGroundStacker:
         iterations: int = 3,
         use_gpu: bool = True,
         max_workers: Optional[int] = None,
-    ) -> np.ndarray:
+        progress_callback: Optional[Any] = None,
+        should_interrupt: Optional[Any] = None,
+    ) -> Optional[np.ndarray]:
         """Stack a list of image frames using weighted/masked average or sigma-clipped mean.
 
         Args:
@@ -299,14 +333,18 @@ class FreezeGroundStacker:
             iterations: sigma-clipping iterations (default: 3)
             use_gpu: whether to use CuPy GPU acceleration if available (default: True)
             max_workers: thread count for CPU fallback (default: min(16, cpu_count))
+            progress_callback: optional callback receiving (increment, data_dict) per frame
+            should_interrupt: optional callable returning True if cancelled
 
         Returns:
-            stacked_image: float32 array of shape (H, W, C) or (H, W)
+            stacked_image: float32 array of shape (H, W, C) or (H, W) or None if interrupted
         """
         n_frames = len(frames)
         if n_frames == 0:
             raise ValueError("No frames to stack.")
         if n_frames == 1:
+            if progress_callback is not None:
+                progress_callback(1, {"frame_idx": 1, "total_frames": 1})
             return frames[0].copy()
 
         h, w = frames[0].shape[:2]
@@ -318,7 +356,7 @@ class FreezeGroundStacker:
 
         xp, is_gpu = get_array_module(use_gpu=use_gpu)
 
-        # Determine optimal chunk rows
+        # Determine optimal chunk rows and ensure at least n_frames chunks for granular progress
         if chunk_rows is None:
             chunk_rows = get_optimal_chunk_rows(
                 height=h,
@@ -328,6 +366,8 @@ class FreezeGroundStacker:
                 use_gpu=is_gpu,
                 default_cpu_rows=256,
             )
+        if n_frames > 1 and chunk_rows > max(1, h // n_frames):
+            chunk_rows = max(1, h // n_frames)
 
         is_soft_weights = (
             coverages is not None
@@ -336,12 +376,29 @@ class FreezeGroundStacker:
             and np.issubdtype(coverages[0].dtype, np.floating)
         )
 
+        progress_state = {"reported": 0}
+
+        def _emit_frame_progress(completed_count: int, total_count: int):
+            if progress_callback is None or total_count <= 0:
+                return
+            target = min(n_frames, int(completed_count * n_frames / total_count))
+            cur = progress_state["reported"]
+            if target > cur:
+                for step in range(cur + 1, target + 1):
+                    progress_callback(1, {"frame_idx": step, "total_frames": n_frames})
+                progress_state["reported"] = target
+
         # -------------------------------------------------------------
         # Path A: GPU Acceleration (CuPy)
         # -------------------------------------------------------------
         if is_gpu:
             try:
-                for y_start in range(0, h, chunk_rows):
+                y_starts = list(range(0, h, chunk_rows))
+                total_chunks = len(y_starts)
+                chunk_idx = 0
+                for y_start in y_starts:
+                    if should_interrupt and should_interrupt():
+                        return None
                     y_end = min(y_start + chunk_rows, h)
 
                     if is_rgb:
@@ -387,6 +444,8 @@ class FreezeGroundStacker:
                         stacked[y_start:y_end, :] = xp.asnumpy(chunk_result)
 
                     del chunk_stack, mask_stack, chunk_result
+                    chunk_idx += 1
+                    _emit_frame_progress(chunk_idx, total_chunks)
             finally:
                 free_gpu_memory()
 
@@ -441,20 +500,37 @@ class FreezeGroundStacker:
                     )
                 return y_s, y_e, res
 
+            total_chunks = len(chunks)
+            chunk_idx = 0
             if len(chunks) > 1 and workers > 1:
                 with ThreadPoolExecutor(max_workers=workers) as executor:
                     for y_s, y_e, chunk_res in executor.map(_process_chunk_task, chunks):
+                        if should_interrupt and should_interrupt():
+                            return None
                         if is_rgb:
                             stacked[y_s:y_e, :, :] = chunk_res
                         else:
                             stacked[y_s:y_e, :] = chunk_res
+                        chunk_idx += 1
+                        _emit_frame_progress(chunk_idx, total_chunks)
             else:
                 for item in chunks:
+                    if should_interrupt and should_interrupt():
+                        return None
                     y_s, y_e, chunk_res = _process_chunk_task(item)
                     if is_rgb:
                         stacked[y_s:y_e, :, :] = chunk_res
                     else:
                         stacked[y_s:y_e, :] = chunk_res
+                    chunk_idx += 1
+                    _emit_frame_progress(chunk_idx, total_chunks)
+
+        if progress_callback is not None:
+            cur = progress_state["reported"]
+            if cur < n_frames:
+                for step in range(cur + 1, n_frames + 1):
+                    progress_callback(1, {"frame_idx": step, "total_frames": n_frames})
+                progress_state["reported"] = n_frames
 
         return stacked
 

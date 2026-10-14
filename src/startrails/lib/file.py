@@ -95,7 +95,7 @@ class Operation(Enum):
 
 
 class DenoiseInputFile(File):
-    """File representation for denoise inputs (star, dark/noise, or flat/vignetting)."""
+    """File representation for denoise inputs (star or dark/noise frames)."""
 
     def __init__(
         self,

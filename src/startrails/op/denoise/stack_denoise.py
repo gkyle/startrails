@@ -8,6 +8,7 @@ import numpy as np
 
 from startrails.lib.util import Observable, imwrite
 from startrails.lib.denoise.config import DenoiseConfig
+from startrails.lib.denoise.io.mask import MaskHandler
 from startrails.lib.denoise.stacking.freeze_ground import FreezeGroundStacker
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 
@@ -34,10 +35,16 @@ class StackDenoise(Observable):
         Returns:
             HorizonCompositor or None if interrupted.
         """
-        self.startJob(2)
+        n_sky = len(aligned_sky_frames)
+        n_ground = len(raw_ground_frames)
+        total_steps = n_sky + n_ground + 1
+        self.startJob(total_steps)
 
         if self.shouldInterrupt():
             return None
+
+        def _on_frame_progress(inc: int, data: Optional[dict] = None):
+            self.updateJob(inc, data)
 
         compositor = FreezeGroundStacker.stack_base_and_prepare_compositor(
             aligned_sky_frames=aligned_sky_frames,
@@ -52,25 +59,40 @@ class StackDenoise(Observable):
             sigma_clip_iterations=getattr(config, "sigma_clip_iterations", 3),
             use_gpu=config.use_gpu,
             max_workers=config.max_workers,
+            progress_callback=_on_frame_progress,
+            should_interrupt=self.shouldInterrupt,
         )
 
-        self.updateJob(1, compositor)
-
-        if self.shouldInterrupt():
+        if compositor is None or self.shouldInterrupt():
             return None
 
-        # Save intermediate base stacks if paths are specified
+        self.updateJob(0, {"desc": "Saving base stacks and composite..."})
+
+        # Save intermediate base stacks, composite, and gradient mask if paths are specified
         if config.output_path or config.sky_stack_path or config.ground_stack_path:
-            folder = Path(config.output_path).resolve().parent if config.output_path else Path.cwd()
+            folder = (
+                Path(config.output_path).resolve().parent
+                if config.output_path
+                else (Path(config.sky_stack_path).resolve().parent if config.sky_stack_path else Path.cwd())
+            )
             sky_path = Path(config.sky_stack_path).resolve() if config.sky_stack_path else (folder / "sky_stack.tif")
             ground_path = Path(config.ground_stack_path).resolve() if config.ground_stack_path else (folder / "ground_stack.tif")
+            base_comp_path = folder / "base_composite.tif"
+            output_path = Path(config.output_path).resolve() if config.output_path else (folder / "composite.tif")
+            grad_mask_path = Path(config.gradient_mask_path).resolve() if config.gradient_mask_path else (folder / "gradient_mask.png")
             try:
                 imwrite(sky_path, compositor.sky_stack, convertBGR=True)
                 imwrite(ground_path, compositor.ground_stack, convertBGR=True)
+                imwrite(base_comp_path, compositor.base_composite, convertBGR=True)
+                imwrite(output_path, compositor.base_composite, convertBGR=True)
+                if compositor.gradient_mask is not None:
+                    MaskHandler.save_mask(compositor.gradient_mask, grad_mask_path)
                 config.sky_stack_path = sky_path
                 config.ground_stack_path = ground_path
+                config.output_path = output_path
+                config.gradient_mask_path = grad_mask_path
             except Exception as e:
                 logger.warning(f"Could not save intermediate base stacks: {e}")
 
-        self.updateJob(1, compositor)
+        self.updateJob(1, {"desc": "Stacking complete", "stage": "done", "compositor": compositor})
         return compositor
