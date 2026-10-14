@@ -13,11 +13,9 @@ def toggle_advanced_settings(widget: QWidget, checked: bool) -> None:
         toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
         toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
     p = widget
-    while p is not None:
+    while p is not None and not p.isWindow():
         p.updateGeometry()
-        if hasattr(p, "adjustSize"):
-            p.adjustSize()
-        if p.objectName() in ("stepCard", "StepCard") or hasattr(p, "cardLayout"):
+        if isinstance(p, StepCard):
             break
         p = p.parentWidget()
 
