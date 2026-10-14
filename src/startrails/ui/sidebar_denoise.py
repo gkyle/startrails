@@ -67,8 +67,16 @@ class SidebarDenoise(QWidget):
             card.expanded.connect(lambda c=card: self._collapse_other_steps(c))
         self.skyCard.expansion_changed.connect(self.skySettings.ui.showMaskOverlay.setChecked)
         self.skySettings.ui.showMaskOverlay.setChecked(self.skyCard.is_expanded)
+        self.sync_expanded_step()
 
         self.update_operations_progress(app)
+
+    def sync_expanded_step(self) -> None:
+        """Apply accordion behavior to a step that is already expanded."""
+        for card in self._step_cards:
+            if card.is_expanded:
+                self._collapse_other_steps(card)
+                break
 
     def _collapse_other_steps(self, expanded_card: StepCard) -> None:
         self.starFiles.setExpanded(False)

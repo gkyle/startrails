@@ -341,6 +341,9 @@ class DenoiseView(ModeView):
                 self.stack_card.setStatus("done")
         self.update_ready_states()
 
+        if self.sidebar is not None:
+            self.sidebar.sync_expanded_step()
+
     def _snapshot_config(self, task_id):
         revision = self.app.workflow.project.processing_revision
         try:
