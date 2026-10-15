@@ -1,8 +1,10 @@
 """Content-aware sky mask refinement using local color and luminance contrast."""
 
 from __future__ import annotations
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
-from typing import Optional
+from threading import Event
+from typing import Callable, Optional
 import cv2
 import numpy as np
 
@@ -113,8 +115,10 @@ class MaskRefiner:
         erosion_pixels: int = 0,
         foliage_protection: bool = True,
         as_bool: bool = False,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+        should_interrupt: Optional[Callable[[], bool]] = None,
         **kwargs,
-    ) -> np.ndarray:
+    ) -> Optional[np.ndarray]:
         """Refine a rough sky mask to match true physical image boundaries.
 
         Args:
@@ -124,10 +128,15 @@ class MaskRefiner:
             blur_window: neighborhood window for local color propagation (default: max(31, radius * 4 + 1))
             edge_alignment: whether to lock boundary to physical image gradients via guided filter (default: True)
             smooth_radius: subpixel anti-aliasing feather radius (default: 2.0)
+            progress_callback: receives (completed, total) regions on the calling thread,
+                initially with completed=0 after global preparation.
+            should_interrupt: optional cancellation check on the calling thread.
 
         Returns:
-            refined_mask: 2D float32 array (H, W) in [0.0, 1.0] snapped to natural horizons
+            Refined 2D mask, or None if cancelled.
         """
+        if should_interrupt and should_interrupt():
+            return None
         h, w = image.shape[:2]
         if rough_mask.shape[:2] != (h, w):
             raise ValueError(f"Mask shape {rough_mask.shape} does not match image shape {image.shape[:2]}")
@@ -137,6 +146,10 @@ class MaskRefiner:
         sky_sum = int(np.sum(bin_m))
         total_pixels = h * w
         if sky_sum == 0 or sky_sum == total_pixels:
+            if progress_callback:
+                progress_callback(0, 0)
+            if should_interrupt and should_interrupt():
+                return None
             bool_m = bin_m > 0
             if as_bool:
                 return bool_m
@@ -177,6 +190,8 @@ class MaskRefiner:
             rgb = np.broadcast_to(lum[..., None], (h, w, 3))
             channels = (lum,) * 4
 
+        if should_interrupt and should_interrupt():
+            return None
         # 3. Fit smooth 2D spatial sky background surface model from core sky
         s_scale = min(8, max(1, min(h, w) // 30))
         s_h, s_w = max(4, h // s_scale), max(4, w // s_scale)
@@ -232,6 +247,8 @@ class MaskRefiner:
         def_gnd_promoted = np.where(sky_holes, 0.0, 1.0 - dilated_m)
         del def_sky, dilated_m, dark_in_sky
 
+        if should_interrupt and should_interrupt():
+            return None
         # 4. Global fallback colors still include the entire image, including foliage.
         sky_count = max(float(np.sum(def_sky_promoted)), 1.0)
         gnd_count = max(float(np.sum(def_gnd_promoted)), 1.0)
@@ -251,12 +268,23 @@ class MaskRefiner:
         uncertain = ~fixed_sky & (def_gnd_promoted <= 0.5)
         guided_radius = max(2, min(5, radius // 8)) if edge_alignment else 0
         regions = cls._refinement_regions(uncertain, fixed_sky, core_sky, guided_radius, blur_window)
+        if should_interrupt and should_interrupt():
+            return None
+        if progress_callback:
+            progress_callback(0, len(regions))
+        if should_interrupt and should_interrupt():
+            return None
         refined_dtype = np.result_type(lum.dtype, np.float32) if edge_alignment else np.float32
         refined = fixed_sky.astype(refined_dtype)
         # Color means read half a blur window; guided filtering adds two box
         # filters. Clipping only at physical image edges preserves border rules.
         halo = blur_window // 2 + 2 * (guided_radius // 2)
-        for left, top, right, bottom in regions:
+        stop = Event()
+
+        def process_region(bounds):
+            if stop.is_set():
+                return
+            left, top, right, bottom = bounds
             x0, y0 = max(0, left - halo), max(0, top - halo)
             x1, y1 = min(w, right + halo), min(h, bottom + halo)
             region = np.s_[y0:y1, x0:x1]
@@ -265,8 +293,34 @@ class MaskRefiner:
                 def_gnd_promoted[region], core_sky[region], sky_holes[region],
                 fallback_colors, blur_window, guided_radius,
             )
-            refined[top:bottom, left:right] = local[top - y0:bottom - y0, left - x0:right - x0]
-            del local
+            if not stop.is_set():
+                # Output rectangles do not overlap; inputs are shared read-only.
+                refined[top:bottom, left:right] = local[top - y0:bottom - y0, left - x0:right - x0]
+
+        if len(regions) > 1:
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                futures = [executor.submit(process_region, region) for region in regions]
+                try:
+                    for completed, future in enumerate(as_completed(futures), 1):
+                        if should_interrupt and should_interrupt():
+                            return None
+                        future.result()
+                        if progress_callback:
+                            progress_callback(completed, len(regions))
+                        if should_interrupt and should_interrupt():
+                            return None
+                finally:
+                    stop.set()
+                    for future in futures:
+                        future.cancel()
+        elif regions:
+            process_region(regions[0])
+            if should_interrupt and should_interrupt():
+                return None
+            if progress_callback:
+                progress_callback(1, 1)
+        if should_interrupt and should_interrupt():
+            return None
         del def_sky_promoted, sky_holes, fixed_sky, uncertain
 
         # 6. Clean isolated noise speckles
@@ -285,12 +339,16 @@ class MaskRefiner:
             refined = np.where(feather_mask, feathered, refined)
 
         # 8. Erode refined mask inward by N pixels to prevent foreground bleed
+        if should_interrupt and should_interrupt():
+            return None
         if erosion_pixels > 0:
             k_erode = 2 * int(erosion_pixels) + 1
             kernel_erode = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k_erode, k_erode))
             refined = cv2.erode(refined, kernel_erode)
 
         # 9. Final mask is strictly boolean
+        if should_interrupt and should_interrupt():
+            return None
         bool_mask = refined > 0.5
         if as_bool:
             return bool_mask

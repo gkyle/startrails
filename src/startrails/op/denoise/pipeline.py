@@ -67,6 +67,10 @@ class DenoisePipeline(DenoiseOperation):
             if _report:
                 _report(progress, message)
 
+        def on_refine_progress(total, increment, count, done, data):
+            message = data.get("desc", "Refining sky mask...") if isinstance(data, dict) else "Refining sky mask..."
+            report(0.20 + 0.04 * count / max(total, 1), message)
+
         base_path = self._get_base_image_path()
         report(0.15, f"Reading base frame: {base_path.name}...")
         base_raw = imread(base_path, to_rgb=True, as_float=True)
@@ -100,6 +104,7 @@ class DenoisePipeline(DenoiseOperation):
                 report(0.20, f"Exporting refined mask: {mask_out.name}...")
             with profiler.measure("2b. Sky Mask Refinement"):
                 refine_op = RefineMask(self.cancel_event, self.cancel_check)
+                refine_op.addObserver(on_refine_progress)
                 sky_mask = refine_op.refine(
                     base_calibrated,
                     coarse_sky,
@@ -118,6 +123,7 @@ class DenoisePipeline(DenoiseOperation):
                 report(0.20, f"Exporting refined mask: {mask_out.name}...")
             with profiler.measure("2b. Sky Mask Refinement"):
                 refine_op = RefineMask(self.cancel_event, self.cancel_check)
+                refine_op.addObserver(on_refine_progress)
                 sky_mask = refine_op.refine(
                     base_calibrated,
                     sky_mask,

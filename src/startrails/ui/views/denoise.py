@@ -859,13 +859,22 @@ class DenoiseView(ModeView):
             progress_updater = ProgressBarUpdater(
                 getattr(self.shell, "progressBar", None),
                 getattr(self.shell, "label_progressBar", None),
-                total=2,
+                total=1000,
                 desc="Detecting sky mask...",
                 result_guard=self._result_guard(generation),
             )
             try:
+                reported = 0
+
+                def report_stage(offset, total, count, done, data):
+                    nonlocal reported
+                    target = offset + (500 if done else round(500 * count / max(total, 1)))
+                    increment = max(0, target - reported)
+                    reported += increment
+                    progress_updater.tick(1000, increment, reported, offset == 500 and done, data)
+
                 def on_detect_tick(total, inc, count, done, data=None):
-                    progress_updater.tick(2, inc, 1 if done else 0, False, data)
+                    report_stage(0, total, count, done, data)
 
                 # Step 1: Run model detection to generate coarse sky mask
                 coarse_mask = self.app.workflow.do_detect_sky(
@@ -879,10 +888,10 @@ class DenoiseView(ModeView):
                     return
 
                 # Step 2: Run refine mask pass with current settings (search radius, erosion pixels)
-                progress_updater.tick(2, 0, 1, False, {"desc": "Refining detected sky mask..."})
+                progress_updater.tick(1000, 0, reported, False, {"desc": "Refining detected sky mask..."})
 
                 def on_refine_tick(total, inc, count, done, data=None):
-                    progress_updater.tick(2, inc, 2 if done else 1, done, data)
+                    report_stage(500, total, count, done, data)
 
                 refined_mask = self.app.workflow.do_refine_mask(
                     ref.path,
