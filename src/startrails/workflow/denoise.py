@@ -89,27 +89,25 @@ class DenoiseWorkflow(Workflow):
     getStarFiles = get_star_files
 
     def add_star_files(self, paths: List[str], clear: bool = False) -> None:
+        previous_reference = self.project.get_reference_file()
         if clear:
             self.project.star_files = []
             self.project.reference_file = None
         for p in paths:
             file_obj = DenoiseInputFile(basename=os.path.basename(p), path=p)
             self.project.star_files.append(file_obj)
-        if self.project.star_files and self.project.reference_file is None:
-            self.project.set_reference_file(self.project.star_files[0])
-        self.invalidate_results(reference_changed=clear)
+        reference_changed = previous_reference is not None and self.project.get_reference_file() is not previous_reference
+        self.invalidate_results(reference_changed=clear or reference_changed)
 
     addStarFiles = add_star_files
 
     def remove_star_file(self, file: DenoiseInputFile) -> None:
         if file in self.project.star_files:
-            reference_changed = self.project.get_reference_file() is file
+            previous_reference = self.project.get_reference_file()
             self.project.star_files.remove(file)
-            if self.project.reference_file is file:
-                if self.project.star_files:
-                    self.project.set_reference_file(self.project.star_files[0])
-                else:
-                    self.project.reference_file = None
+            if previous_reference is file:
+                self.project.reference_file = None
+            reference_changed = self.project.get_reference_file() is not previous_reference
             self.invalidate_results(reference_changed=reference_changed)
 
     removeStarFile = remove_star_file
@@ -147,6 +145,9 @@ class DenoiseWorkflow(Workflow):
         if file is not self.project.get_reference_file():
             self.project.set_reference_file(file)
             self.invalidate_results(reference_changed=True)
+        elif self.project.reference_file is None:
+            self.project.set_reference_file(file)
+            self.save_project()
 
     setReferenceFile = set_reference_file
 

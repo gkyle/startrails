@@ -184,7 +184,7 @@ class DenoiseAlignSettings(QWidget):
         self.set_from_project()
 
     def set_reference_file(self, file: Optional[DenoiseInputFile]) -> None:
-        text = file.basename if file is not None and file.basename else ("First Star Frame" if file else "None")
+        text = file.basename if file is not None and file.basename else ("Reference Frame" if file else "None")
         self.ui.referenceFile.setText(text)
 
     def values(self) -> Dict[str, Any]:

@@ -163,13 +163,13 @@ class DenoiseProject(Unpickle):
         self.invalidate_results()
 
     def get_reference_file(self) -> Optional[DenoiseInputFile]:
-        """Return the authoritative reference frame, defaulting to the first star frame."""
+        """Return the chosen reference frame, defaulting to the middle star frame."""
         if self.reference_file is not None:
             for file in self.star_files:
                 if file is self.reference_file or file.file_id == self.reference_file.file_id:
                     return file
         if self.star_files:
-            return self.star_files[0]
+            return self.star_files[len(self.star_files) // 2]
         return None
 
     def set_reference_file(self, file: DenoiseInputFile) -> None:
