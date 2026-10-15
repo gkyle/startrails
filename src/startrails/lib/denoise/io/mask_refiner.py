@@ -12,6 +12,95 @@ logger = logging.getLogger(__name__)
 class MaskRefiner:
     """Refines rough user-drawn sky masks by snapping boundary edges to natural physical horizons."""
 
+    @staticmethod
+    def _refinement_regions(uncertain, fixed_sky, core_sky, guided_radius, blur_window, tile_size=512):
+        """Select output tiles; every filter reads a halo beyond these rectangles."""
+        active = uncertain.astype(np.uint8)
+        guided_halo = 2 * (guided_radius // 2)
+        if guided_radius:
+            # A guided filter preserves constant masks. Only uncertain values and
+            # transitions between known sky/ground can affect nearby outputs.
+            boundary = cv2.morphologyEx(
+                fixed_sky.astype(np.uint8), cv2.MORPH_GRADIENT, np.ones((3, 3), np.uint8)
+            )
+            active |= boundary
+            kernel = np.ones((2 * guided_halo + 1, 2 * guided_halo + 1), np.uint8)
+            active = cv2.dilate(active, kernel)
+            active[core_sky] = 0
+
+        h, w = active.shape
+        halo = blur_window // 2 + guided_halo
+        regions = []
+        read_pixels = 0
+        for y in range(0, h, tile_size):
+            bottom = min(h, y + tile_size)
+            run_start = None
+            for x in range(0, w, tile_size):
+                right = min(w, x + tile_size)
+                occupied = np.any(active[y:bottom, x:right])
+                if occupied and run_start is None:
+                    run_start = x
+                if run_start is not None and (not occupied or right == w):
+                    end = right if occupied else x
+                    dx, dy, width, height = cv2.boundingRect(active[y:bottom, run_start:end])
+                    left, top = run_start + dx, y + dy
+                    end, lower = left + width, top + height
+                    regions.append((left, top, end, lower))
+                    read_pixels += (
+                        (min(w, end + halo) - max(0, left - halo))
+                        * (min(h, lower + halo) - max(0, top - halo))
+                    )
+                    run_start = None
+
+        # Dense masks are cheaper as one region, using the same filter code.
+        if read_pixels >= h * w * 0.6:
+            return [(0, 0, w, h)]
+        return regions
+
+    @staticmethod
+    def _refine_region(channels, sky_weight, ground_weight, core_sky, sky_holes,
+                       fallback_colors, blur_window, guided_radius):
+        """Evaluate local filters on a region including its dependency halo."""
+        sky_safe = np.maximum(cv2.boxFilter(sky_weight, -1, (blur_window, blur_window)), 1e-4)
+        ground_safe = np.maximum(cv2.boxFilter(ground_weight, -1, (blur_window, blur_window)), 1e-4)
+        sky_distance = np.zeros(core_sky.shape, dtype=np.float32)
+        ground_distance = np.zeros(core_sky.shape, dtype=np.float32)
+        weighted = np.empty(core_sky.shape, dtype=np.result_type(channels[0].dtype, np.float32))
+        for channel, fallbacks in zip(channels, fallback_colors):
+            for weights, safe, fallback, distance in (
+                (sky_weight, sky_safe, fallbacks[0], sky_distance),
+                (ground_weight, ground_safe, fallbacks[1], ground_distance),
+            ):
+                np.multiply(channel, weights, out=weighted)
+                mean = cv2.boxFilter(weighted, -1, (blur_window, blur_window))
+                np.divide(mean, safe, out=mean)
+                mean[safe <= 1e-4] = fallback
+                np.subtract(channel, mean, out=mean)
+                np.square(mean, out=mean)
+                distance += mean
+        np.sqrt(sky_distance, out=sky_distance)
+        np.sqrt(ground_distance, out=ground_distance)
+        sky_distance += ground_distance
+        sky_distance += 1e-6
+        probability = np.divide(ground_distance, sky_distance, out=ground_distance)
+        refined = np.where(core_sky, 1.0, np.where(sky_holes, 1.0, np.where(ground_weight > 0.5, 0.0, probability)))
+        del weighted, mean, sky_safe, ground_safe, sky_distance, ground_distance, probability
+        del weights, safe, distance
+
+        if guided_radius:
+            guide = channels[-1]
+            window = (guided_radius, guided_radius)
+            mean_guide = cv2.boxFilter(guide, -1, window)
+            mean_mask = cv2.boxFilter(refined, -1, window)
+            mean_product = cv2.boxFilter(guide * refined, -1, window)
+            covariance = mean_product - mean_guide * mean_mask
+            variance = cv2.boxFilter(guide * guide, -1, window) - mean_guide * mean_guide
+            slope = covariance / (variance + 1e-3)
+            intercept = mean_mask - slope * mean_guide
+            filtered = cv2.boxFilter(slope, -1, window) * guide + cv2.boxFilter(intercept, -1, window)
+            refined = np.where(core_sky, 1.0, filtered)
+        return refined
+
     @classmethod
     def refine(
         cls,
@@ -143,58 +232,42 @@ class MaskRefiner:
         def_gnd_promoted = np.where(sky_holes, 0.0, 1.0 - dilated_m)
         del def_sky, dilated_m, dark_in_sky
 
-        # 4. Estimate local sky and ground color fields
-        safe_sky_weight = np.maximum(cv2.boxFilter(def_sky_promoted, -1, (blur_window, blur_window)), 1e-4)
-        safe_gnd_weight = np.maximum(cv2.boxFilter(def_gnd_promoted, -1, (blur_window, blur_window)), 1e-4)
-
+        # 4. Global fallback colors still include the entire image, including foliage.
         sky_count = max(float(np.sum(def_sky_promoted)), 1.0)
         gnd_count = max(float(np.sum(def_gnd_promoted)), 1.0)
-
-        dist_sky_sq = np.zeros((h, w), dtype=np.float32)
-        dist_gnd_sq = np.zeros((h, w), dtype=np.float32)
-        missing_sky = safe_sky_weight <= 1e-4
-        missing_gnd = safe_gnd_weight <= 1e-4
         weighted = np.empty((h, w), dtype=np.result_type(image.dtype, np.float32))
-
+        fallback_colors = []
         for ch in channels:
-            for weights, safe_weight, count, missing, distance in (
-                (def_sky_promoted, safe_sky_weight, sky_count, missing_sky, dist_sky_sq),
-                (def_gnd_promoted, safe_gnd_weight, gnd_count, missing_gnd, dist_gnd_sq),
-            ):
-                np.multiply(ch, weights, out=weighted)
-                fallback = float(np.sum(weighted)) / count
-                mean = cv2.boxFilter(weighted, -1, (blur_window, blur_window))
-                np.divide(mean, safe_weight, out=mean)
-                mean[missing] = fallback
-                np.subtract(ch, mean, out=mean)
-                np.square(mean, out=mean)
-                distance += mean
-        del weighted, mean, safe_sky_weight, safe_gnd_weight, missing_sky, missing_gnd
-        del weights, safe_weight, missing, distance, def_sky_promoted
+            np.multiply(ch, def_sky_promoted, out=weighted)
+            sky_color = float(np.sum(weighted)) / sky_count
+            np.multiply(ch, def_gnd_promoted, out=weighted)
+            ground_color = float(np.sum(weighted)) / gnd_count
+            fallback_colors.append((sky_color, ground_color))
+        del weighted
 
-        np.sqrt(dist_sky_sq, out=dist_sky_sq)
-        np.sqrt(dist_gnd_sq, out=dist_gnd_sq)
-        dist_sky_sq += dist_gnd_sq
-        dist_sky_sq += 1e-6
-        p_sky = np.divide(dist_gnd_sq, dist_sky_sq, out=dist_gnd_sq)
-        refined = np.where(core_sky, 1.0, np.where(sky_holes, 1.0, np.where(def_gnd_promoted > 0.5, 0.0, p_sky)))
-        del dist_sky_sq, dist_gnd_sq, p_sky, sky_holes
-
-        # 5. Edge-preserving Guided Filter for crisp subpixel branch & horizon alignment
-        if edge_alignment:
-            guide = lum
-            r = max(2, min(5, radius // 8))
-            eps = 1e-3
-            mean_I = cv2.boxFilter(guide, -1, (r, r))
-            mean_p = cv2.boxFilter(refined, -1, (r, r))
-            mean_Ip = cv2.boxFilter(guide * refined, -1, (r, r))
-            cov_Ip = mean_Ip - mean_I * mean_p
-            var_I = cv2.boxFilter(guide * guide, -1, (r, r)) - mean_I * mean_I
-            a = cov_Ip / (var_I + eps)
-            b = mean_p - a * mean_I
-            filtered = cv2.boxFilter(a, -1, (r, r)) * guide + cv2.boxFilter(b, -1, (r, r))
-            refined = np.where(core_sky, 1.0, filtered)
-            del mean_I, mean_p, mean_Ip, cov_Ip, var_I, a, b, filtered
+        # 5. Evaluate color fields and edge alignment only around changeable pixels.
+        # Known sky holes also create boundaries, even outside the uncertain ribbon.
+        fixed_sky = core_sky | sky_holes
+        uncertain = ~fixed_sky & (def_gnd_promoted <= 0.5)
+        guided_radius = max(2, min(5, radius // 8)) if edge_alignment else 0
+        regions = cls._refinement_regions(uncertain, fixed_sky, core_sky, guided_radius, blur_window)
+        refined_dtype = np.result_type(lum.dtype, np.float32) if edge_alignment else np.float32
+        refined = fixed_sky.astype(refined_dtype)
+        # Color means read half a blur window; guided filtering adds two box
+        # filters. Clipping only at physical image edges preserves border rules.
+        halo = blur_window // 2 + 2 * (guided_radius // 2)
+        for left, top, right, bottom in regions:
+            x0, y0 = max(0, left - halo), max(0, top - halo)
+            x1, y1 = min(w, right + halo), min(h, bottom + halo)
+            region = np.s_[y0:y1, x0:x1]
+            local = cls._refine_region(
+                tuple(ch[region] for ch in channels), def_sky_promoted[region],
+                def_gnd_promoted[region], core_sky[region], sky_holes[region],
+                fallback_colors, blur_window, guided_radius,
+            )
+            refined[top:bottom, left:right] = local[top - y0:bottom - y0, left - x0:right - x0]
+            del local
+        del def_sky_promoted, sky_holes, fixed_sky, uncertain
 
         # 6. Clean isolated noise speckles
         bin_refined = (refined > 0.5).astype(np.float32)
