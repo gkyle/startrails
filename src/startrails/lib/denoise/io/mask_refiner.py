@@ -78,17 +78,15 @@ class MaskRefiner:
             def_sky = cv2.erode(bin_m, k_search).astype(np.float32)
             dilated_m = cv2.dilate(bin_m, k_search).astype(np.float32)
 
-        # 2. RGB + Luminance guidance stack
+        # 2. Keep guidance channels as views rather than a full RGB+luminance copy.
         if image.ndim == 3 and image.shape[2] == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)[..., None]
-            features = np.concatenate([image, gray], axis=-1)
-        elif image.ndim == 3:
-            features = np.repeat(image[..., :1], 4, axis=-1)
+            lum = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+            rgb = image
+            channels = (*np.moveaxis(image, -1, 0), lum)
         else:
-            features = np.repeat(image[..., None], 4, axis=-1)
-
-        lum = features[..., 3]
-        rgb = features[..., :3]
+            lum = image[..., 0] if image.ndim == 3 else image
+            rgb = np.broadcast_to(lum[..., None], (h, w, 3))
+            channels = (lum,) * 4
 
         # 3. Fit smooth 2D spatial sky background surface model from core sky
         s_scale = min(8, max(1, min(h, w) // 30))
@@ -107,14 +105,24 @@ class MaskRefiner:
                 X = np.column_stack([np.ones_like(xs), xs, ys, xs**2, xs*ys, ys**2])
                 X_full = np.column_stack([np.ones_like(flat_x), flat_x, flat_y, flat_x**2, flat_x*flat_y, flat_y**2])
 
-            pred_rgb = np.zeros((h, w, 3), dtype=np.float32)
+            # All color channels share the same design matrix and decomposition.
+            coefficients, _, _, _ = np.linalg.lstsq(X, s_rgb[ys, xs], rcond=None)
+            pred_rgb = np.empty((h, w, 3), dtype=np.float32)
             for c in range(3):
-                coeffs_c, _, _, _ = np.linalg.lstsq(X, s_rgb[ys, xs, c], rcond=None)
-                pred_c = (X_full @ coeffs_c).reshape(s_h, s_w)
+                pred_c = (X_full @ coefficients[:, c]).reshape(s_h, s_w)
                 pred_rgb[..., c] = cv2.resize(pred_c, (w, h))
 
-            diff_rgb = np.linalg.norm(rgb - pred_rgb, axis=-1)
-            pred_lum = 0.299 * pred_rgb[..., 0] + 0.587 * pred_rgb[..., 1] + 0.114 * pred_rgb[..., 2]
+            # Bound temporary RGB differences without changing per-pixel arithmetic.
+            diff_rgb = np.empty((h, w), dtype=np.result_type(image.dtype, np.float32))
+            pred_lum = np.empty((h, w), dtype=np.float32)
+            for row in range(0, h, 128):
+                rows = slice(row, row + 128)
+                predicted = pred_rgb[rows]
+                diff_rgb[rows] = np.linalg.norm(rgb[rows] - predicted, axis=-1)
+                pred_lum[rows] = (
+                    0.299 * predicted[..., 0] + 0.587 * predicted[..., 1] + 0.114 * predicted[..., 2]
+                )
+            del predicted, pred_rgb, pred_c, X, X_full
             lum_ratio = lum / np.maximum(pred_lum, 1e-4)
 
             # Porous vegetation / canopy sky gap detection
@@ -124,6 +132,7 @@ class MaskRefiner:
 
             # Silhouette branches / needles extending into user sky
             dark_in_sky = (bin_m == 1) & ((lum_ratio < 0.45) | (diff_rgb > 0.20))
+            del diff_rgb, pred_lum, lum_ratio, dist_from_sky
         else:
             sky_holes = np.zeros((h, w), dtype=bool)
             dark_in_sky = np.zeros((h, w), dtype=bool)
@@ -132,6 +141,7 @@ class MaskRefiner:
 
         def_sky_promoted = np.where(sky_holes, 1.0, np.where(dark_in_sky, 0.0, def_sky))
         def_gnd_promoted = np.where(sky_holes, 0.0, 1.0 - dilated_m)
+        del def_sky, dilated_m, dark_in_sky
 
         # 4. Estimate local sky and ground color fields
         safe_sky_weight = np.maximum(cv2.boxFilter(def_sky_promoted, -1, (blur_window, blur_window)), 1e-4)
@@ -142,18 +152,33 @@ class MaskRefiner:
 
         dist_sky_sq = np.zeros((h, w), dtype=np.float32)
         dist_gnd_sq = np.zeros((h, w), dtype=np.float32)
+        missing_sky = safe_sky_weight <= 1e-4
+        missing_gnd = safe_gnd_weight <= 1e-4
+        weighted = np.empty((h, w), dtype=np.result_type(image.dtype, np.float32))
 
-        for c in range(features.shape[2]):
-            ch = features[:, :, c]
-            sky_sum = cv2.boxFilter(ch * def_sky_promoted, -1, (blur_window, blur_window))
-            gnd_sum = cv2.boxFilter(ch * def_gnd_promoted, -1, (blur_window, blur_window))
-            sky_c_mean = np.where(safe_sky_weight > 1e-4, sky_sum / safe_sky_weight, float(np.sum(ch * def_sky_promoted)) / sky_count)
-            gnd_c_mean = np.where(safe_gnd_weight > 1e-4, gnd_sum / safe_gnd_weight, float(np.sum(ch * def_gnd_promoted)) / gnd_count)
-            dist_sky_sq += (ch - sky_c_mean) ** 2
-            dist_gnd_sq += (ch - gnd_c_mean) ** 2
+        for ch in channels:
+            for weights, safe_weight, count, missing, distance in (
+                (def_sky_promoted, safe_sky_weight, sky_count, missing_sky, dist_sky_sq),
+                (def_gnd_promoted, safe_gnd_weight, gnd_count, missing_gnd, dist_gnd_sq),
+            ):
+                np.multiply(ch, weights, out=weighted)
+                fallback = float(np.sum(weighted)) / count
+                mean = cv2.boxFilter(weighted, -1, (blur_window, blur_window))
+                np.divide(mean, safe_weight, out=mean)
+                mean[missing] = fallback
+                np.subtract(ch, mean, out=mean)
+                np.square(mean, out=mean)
+                distance += mean
+        del weighted, mean, safe_sky_weight, safe_gnd_weight, missing_sky, missing_gnd
+        del weights, safe_weight, missing, distance, def_sky_promoted
 
-        p_sky = np.sqrt(dist_gnd_sq) / (np.sqrt(dist_sky_sq) + np.sqrt(dist_gnd_sq) + 1e-6)
+        np.sqrt(dist_sky_sq, out=dist_sky_sq)
+        np.sqrt(dist_gnd_sq, out=dist_gnd_sq)
+        dist_sky_sq += dist_gnd_sq
+        dist_sky_sq += 1e-6
+        p_sky = np.divide(dist_gnd_sq, dist_sky_sq, out=dist_gnd_sq)
         refined = np.where(core_sky, 1.0, np.where(sky_holes, 1.0, np.where(def_gnd_promoted > 0.5, 0.0, p_sky)))
+        del dist_sky_sq, dist_gnd_sq, p_sky, sky_holes
 
         # 5. Edge-preserving Guided Filter for crisp subpixel branch & horizon alignment
         if edge_alignment:
@@ -169,6 +194,7 @@ class MaskRefiner:
             b = mean_p - a * mean_I
             filtered = cv2.boxFilter(a, -1, (r, r)) * guide + cv2.boxFilter(b, -1, (r, r))
             refined = np.where(core_sky, 1.0, filtered)
+            del mean_I, mean_p, mean_Ip, cov_Ip, var_I, a, b, filtered
 
         # 6. Clean isolated noise speckles
         bin_refined = (refined > 0.5).astype(np.float32)
