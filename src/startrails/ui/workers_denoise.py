@@ -2,108 +2,13 @@
 
 from __future__ import annotations
 import logging
-from typing import Any, Optional
-import numpy as np
+from typing import Any
 
 from PySide6.QtCore import QThread, Signal
 
-from startrails.op.denoise.detect_sky import DetectSky
-from startrails.op.denoise.refine_mask import RefineMask
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 
 logger = logging.getLogger(__name__)
-
-
-class AutoMaskWorker(QThread):
-    """Background worker executing automatic sky detection followed by mask refinement."""
-
-    progress_status = Signal(str)
-    finished_success = Signal(object)
-    failed_error = Signal(str)
-
-    def __init__(
-        self,
-        image: np.ndarray,
-        model_type: str = "heuristic",
-        model_path: Optional[str] = None,
-        search_radius: Optional[int] = None,
-        erosion_pixels: int = 5,
-        device: str = "auto",
-        parent=None,
-    ):
-        super().__init__(parent)
-        self.image = image
-        self.model_type = model_type
-        self.model_path = model_path
-        self.search_radius = search_radius
-        self.erosion_pixels = erosion_pixels
-        self.device = device
-
-    def run(self):
-        try:
-            self.progress_status.emit(f"Detecting celestial sky ({self.model_type})...")
-            coarse_mask = DetectSky().detect(
-                self.image,
-                model_type=self.model_type,
-                model_path=self.model_path,
-                device=self.device,
-            )
-
-            if coarse_mask is None or self.isInterruptionRequested():
-                return
-            self.progress_status.emit(
-                f"Refining detected sky mask (erosion: {self.erosion_pixels}px)..."
-            )
-            refined_mask = RefineMask().refine(
-                self.image,
-                coarse_mask,
-                search_radius=self.search_radius,
-                erosion_pixels=self.erosion_pixels,
-            )
-            if refined_mask is not None and not self.isInterruptionRequested():
-                self.finished_success.emit(refined_mask)
-        except Exception as e:
-            logger.exception("AutoMaskWorker encountered an error")
-            self.failed_error.emit(str(e))
-
-
-class RefineMaskWorker(QThread):
-    """Background worker executing boundary mask refinement."""
-
-    progress_status = Signal(str)
-    finished_success = Signal(object)
-    failed_error = Signal(str)
-
-    def __init__(
-        self,
-        image: np.ndarray,
-        rough_mask: np.ndarray,
-        search_radius: Optional[int] = None,
-        erosion_pixels: int = 5,
-        parent=None,
-    ):
-        super().__init__(parent)
-        self.image = image
-        self.rough_mask = rough_mask
-        self.search_radius = search_radius
-        self.erosion_pixels = erosion_pixels
-
-    def run(self):
-        try:
-            self.progress_status.emit(
-                f"Refining mask boundary (erosion: {self.erosion_pixels}px)..."
-            )
-            refined = RefineMask().refine(
-                self.image,
-                self.rough_mask,
-                search_radius=self.search_radius,
-                erosion_pixels=self.erosion_pixels,
-            )
-            if refined is not None and not self.isInterruptionRequested():
-                self.finished_success.emit(refined)
-        except Exception as e:
-            logger.exception("RefineMaskWorker encountered an error")
-            self.failed_error.emit(str(e))
 
 
 class HorizonOverlayWorker(QThread):
@@ -218,18 +123,6 @@ class FinalCompositeSaveWorker(QThread):
                 logger.exception("FinalCompositeSaveWorker encountered an error")
                 self.failed_error.emit(str(e), self.request_id)
 
-
-AutoMaskWorker.progressStatus = property(lambda self: self.progress_status)
-
-RefineMaskWorker.progressStatus = property(lambda self: self.progress_status)
-
-AutoMaskWorker.finishedSuccess = property(lambda self: self.finished_success)
-
-RefineMaskWorker.finishedSuccess = property(lambda self: self.finished_success)
-
-AutoMaskWorker.failedError = property(lambda self: self.failed_error)
-
-RefineMaskWorker.failedError = property(lambda self: self.failed_error)
 
 HorizonOverlayWorker.failedError = property(lambda self: self.failed_error)
 
