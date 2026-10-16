@@ -606,11 +606,15 @@ class DenoiseView(ModeView):
             out_path = Path(worker.output_path)
             os.replace(staged_path, out_path)
             self._project.final_output_path = str(out_path)
+            self._output_saved = True
             self.app.workflow.save_project()
+            if self.tune_card is not None:
+                self.tune_card.setStatus("done")
             if self.output_files is not None:
                 self.output_files.set_files(self.app.workflow.get_output_file_list())
             if self.tune_settings is not None:
                 self.tune_settings.ui.tuneStatus.setText(f"Saved: {out_path.name}")
+            self.update_ready_states()
         except Exception as error:
             staged_path.unlink(missing_ok=True)
             self._on_background_error(str(error), req_id)

@@ -58,7 +58,7 @@ class SidebarDenoise(QWidget):
         self.btn_detect_sky = self.skySettings.ui.detect
         self.btn_align_stars = self.alignSettings.ui.run
         self.btn_stack = self.stackSettings.ui.run
-        self.btn_compose = self.tuneSettings.ui.run
+        self.btn_compose = getattr(self.tuneSettings.ui, "run", None)
 
         # Step card accordion behavior
         self._step_cards = (self.skyCard, self.alignCard, self.stackCard, self.tuneCard)

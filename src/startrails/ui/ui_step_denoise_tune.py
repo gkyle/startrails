@@ -16,8 +16,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QDoubleSpinBox, QHBoxLayout,
-    QLabel, QPushButton, QSizePolicy, QSlider,
-    QVBoxLayout, QWidget)
+    QLabel, QSizePolicy, QSlider, QVBoxLayout,
+    QWidget)
 
 from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
@@ -226,20 +226,6 @@ class Ui_DenoiseTuneSettings(object):
 
         self.layout.addWidget(self.tuneHint)
 
-        self.runLayout = QHBoxLayout()
-        self.runLayout.setSpacing(0)
-        self.runLayout.setObjectName(u"runLayout")
-        self.run = QPushButton(DenoiseTuneSettings)
-        self.run.setObjectName(u"run")
-        self.run.setEnabled(False)
-        self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.run.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-
-        self.runLayout.addWidget(self.run)
-
-
-        self.layout.addLayout(self.runLayout)
-
         self.tuneStatus = QLabel(DenoiseTuneSettings)
         self.tuneStatus.setObjectName(u"tuneStatus")
         self.tuneStatus.setStyleSheet(u"color: #64748b; font-size: 11px;")
@@ -295,10 +281,6 @@ class Ui_DenoiseTuneSettings(object):
         self.blurLabel.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Blur:", None))
         self.blurRadius.setSuffix(QCoreApplication.translate("DenoiseTuneSettings", u" px", None))
         self.tuneHint.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Adjust sliders to configure settings. Live canvas update activates once base stacks are generated.", None))
-#if QT_CONFIG(tooltip)
-        self.run.setToolTip(QCoreApplication.translate("DenoiseTuneSettings", u"Apply horizon gradient corrections and generate final image", None))
-#endif // QT_CONFIG(tooltip)
-        self.run.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Composite Final Image", None))
         self.tuneStatus.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Requires base stacks", None))
         pass
     # retranslateUi

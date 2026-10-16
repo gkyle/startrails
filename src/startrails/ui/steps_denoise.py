@@ -523,7 +523,8 @@ class DenoiseTuneSettings(QWidget):
             setattr(proj, k, v)
 
     def refresh_inputs(self, ready: bool = False) -> None:
-        self.ui.run.setEnabled(ready)
+        if hasattr(self.ui, "run"):
+            self.ui.run.setEnabled(ready)
         if ready:
             self.ui.tuneStatus.setText("Stacks ready for composite tuning")
         else:
