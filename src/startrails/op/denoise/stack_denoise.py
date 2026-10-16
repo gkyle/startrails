@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import logging
+import os
 from contextlib import nullcontext
 from startrails.lib.artifacts import ArtifactTransaction
 from pathlib import Path
@@ -88,8 +89,12 @@ class StackDenoise(DenoiseOperation):
             with nullcontext(transaction) if artifacts is not None else transaction:
                 imwrite(transaction.stage(sky_path), compositor.sky_stack, convertBGR=True)
                 imwrite(transaction.stage(ground_path), compositor.ground_stack, convertBGR=True)
-                imwrite(transaction.stage(base_comp_path), compositor.base_composite, convertBGR=True)
-                imwrite(transaction.stage(output_path), compositor.base_composite, convertBGR=True)
+                staged_base = transaction.stage(base_comp_path)
+                imwrite(staged_base, compositor.base_composite, convertBGR=True)
+                if output_path != base_comp_path.resolve():
+                    staged_output = transaction.stage(output_path)
+                    staged_output.unlink()
+                    os.link(staged_base, staged_output)
                 if compositor.gradient_mask is not None:
                     MaskHandler.save_mask(compositor.gradient_mask, transaction.stage(grad_mask_path))
                 if artifacts is None:
