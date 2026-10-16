@@ -1,7 +1,7 @@
 """Freeze Ground selective stacking algorithm with seamless boundary blending."""
 
 from __future__ import annotations
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import os
 from typing import Any, List, Optional
 import cv2
@@ -456,39 +456,38 @@ class FreezeGroundStacker:
         # -------------------------------------------------------------
         else:
             workers = max_workers or min(16, max(1, (os.cpu_count() or 1)))
+            max_in_flight = min(workers, 2)
+            chunk_ranges = iter(
+                (y_start, min(y_start + chunk_rows, h))
+                for y_start in range(0, h, chunk_rows)
+            )
 
-            chunks = []
-            for y_start in range(0, h, chunk_rows):
-                y_end = min(y_start + chunk_rows, h)
+            def _process_chunk_task(row_range):
+                y_s, y_e = row_range
                 if is_rgb:
-                    c_stack = np.array([f[y_start:y_end, :, :] for f in frames], dtype=np.float32)
+                    data = np.array([f[y_s:y_e, :, :] for f in frames], dtype=np.float32)
                 else:
-                    c_stack = np.array([f[y_start:y_end, :] for f in frames], dtype=np.float32)
+                    data = np.array([f[y_s:y_e, :] for f in frames], dtype=np.float32)
 
                 if coverages is not None:
                     if is_soft_weights:
-                        c_weights = np.array([c[y_start:y_end, :] for c in coverages], dtype=np.float32)
+                        weights = np.array([c[y_s:y_e, :] for c in coverages], dtype=np.float32)
                         if is_rgb:
-                            c_weights = np.repeat(c_weights[..., None], channels, axis=-1)
-                        c_mask = c_weights > 1e-4
+                            weights = np.repeat(weights[..., None], channels, axis=-1)
+                        mask = weights > 1e-4
                     else:
-                        c_weights = None
-                        c_mask = np.array([c[y_start:y_end, :] for c in coverages], dtype=bool)
+                        weights = None
+                        mask = np.array([c[y_s:y_e, :] for c in coverages], dtype=bool)
                         if is_rgb:
-                            c_mask = np.repeat(c_mask[..., None], channels, axis=-1)
+                            mask = np.repeat(mask[..., None], channels, axis=-1)
                 else:
-                    c_weights = None
-                    c_mask = np.ones_like(c_stack, dtype=bool)
-
-                chunks.append((y_start, y_end, c_stack, c_mask, c_weights))
-
-            def _process_chunk_task(item):
-                y_s, y_e, data, mask, w_arr = item
+                    weights = None
+                    mask = np.ones_like(data, dtype=bool)
                 if method == "sigma_clipped":
                     res = cls._sigma_clipped_chunk(
                         data,
                         mask,
-                        weights=w_arr,
+                        weights=weights,
                         sigma_threshold=sigma_threshold,
                         iterations=iterations,
                         xp=np,
@@ -497,29 +496,42 @@ class FreezeGroundStacker:
                     res = cls._average_chunk(
                         data,
                         mask,
-                        weights=w_arr,
+                        weights=weights,
                         xp=np,
                     )
                 return y_s, y_e, res
 
-            total_chunks = len(chunks)
+            total_chunks = (h + chunk_rows - 1) // chunk_rows
             chunk_idx = 0
-            if len(chunks) > 1 and workers > 1:
-                with ThreadPoolExecutor(max_workers=workers) as executor:
-                    for y_s, y_e, chunk_res in executor.map(_process_chunk_task, chunks):
-                        if should_interrupt and should_interrupt():
-                            return None
-                        if is_rgb:
-                            stacked[y_s:y_e, :, :] = chunk_res
-                        else:
-                            stacked[y_s:y_e, :] = chunk_res
-                        chunk_idx += 1
-                        _emit_frame_progress(chunk_idx, total_chunks)
+            if total_chunks > 1 and max_in_flight > 1:
+                with ThreadPoolExecutor(max_workers=max_in_flight) as executor:
+                    pending = set()
+                    for _ in range(max_in_flight):
+                        row_range = next(chunk_ranges, None)
+                        if row_range is not None:
+                            pending.add(executor.submit(_process_chunk_task, row_range))
+
+                    while pending:
+                        completed, pending = wait(pending, return_when=FIRST_COMPLETED)
+                        for future in completed:
+                            if should_interrupt and should_interrupt():
+                                return None
+                            y_s, y_e, chunk_res = future.result()
+                            if is_rgb:
+                                stacked[y_s:y_e, :, :] = chunk_res
+                            else:
+                                stacked[y_s:y_e, :] = chunk_res
+                            chunk_idx += 1
+                            _emit_frame_progress(chunk_idx, total_chunks)
+
+                            row_range = next(chunk_ranges, None)
+                            if row_range is not None:
+                                pending.add(executor.submit(_process_chunk_task, row_range))
             else:
-                for item in chunks:
+                for row_range in chunk_ranges:
                     if should_interrupt and should_interrupt():
                         return None
-                    y_s, y_e, chunk_res = _process_chunk_task(item)
+                    y_s, y_e, chunk_res = _process_chunk_task(row_range)
                     if is_rgb:
                         stacked[y_s:y_e, :, :] = chunk_res
                     else:
@@ -608,4 +620,3 @@ class FreezeGroundStacker:
             final_mean = xp.sum(xp.where(valid_mask, data, 0.0), axis=0) / counts
 
         return final_mean.astype(xp.float32)
-
