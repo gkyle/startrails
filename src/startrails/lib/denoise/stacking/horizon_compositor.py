@@ -42,8 +42,8 @@ class HorizonCompositor:
         denoise_eps: float = 1e-3,
     ):
         self._composition_lock = RLock()
-        self.sky_stack = sky_stack.astype(np.float32)
-        self.ground_stack = ground_stack.astype(np.float32)
+        self.sky_stack = sky_stack.astype(np.float32, copy=False)
+        self.ground_stack = ground_stack.astype(np.float32, copy=False)
         self.gradient_mask = np.clip(gradient_mask.astype(np.float32), 0.0, 1.0)
         self.sky_mask = (
             (sky_mask > 0.5).astype(np.float32)
@@ -62,14 +62,6 @@ class HorizonCompositor:
         else:
             self.smoothstep_3d = self.smoothstep_mask
 
-        # -----------------------------------------------------------------
-        # Horizon gradient parts (intersected with gradient mask)
-        # -----------------------------------------------------------------
-        # 1) Based on foreground stack:
-        self.part_foreground = self.ground_stack * self.smoothstep_3d
-        # 2) Based on sky stack:
-        self.part_sky = self.sky_stack * self.smoothstep_3d
-
         # Precompute edge-preserving guided filter for sky stack
         if self.sky_stack.ndim == 3:
             guide = (
@@ -83,8 +75,6 @@ class HorizonCompositor:
         self.denoised_sky = HorizonDenoiser.guided_filter(
             guide, self.sky_stack, radius=self.denoise_radius, eps=self.denoise_eps
         )
-        self.part_denoised = self.denoised_sky * self.smoothstep_3d
-
         # Precompute feathered boundary mask
         if self.feather_radius > 0:
             ksize = int(self.feather_radius * 4 + 1) | 1
