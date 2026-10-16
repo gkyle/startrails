@@ -157,7 +157,7 @@ class HorizonOverlayWorker(QThread):
 class FinalCompositeSaveWorker(QThread):
     """Background worker executing full composite generation and asynchronously writing _final.tif."""
 
-    finished_save = Signal(object, object, int)  # out_path (Path), full_image (np.ndarray), request_id
+    finished_save = Signal(object, int)  # out_path (Path), request_id
     failed_error = Signal(str, int)
 
     def __init__(
@@ -210,7 +210,7 @@ class FinalCompositeSaveWorker(QThread):
             if self._is_cancelled:
                 self.staged_path.unlink(missing_ok=True)
                 return
-            self.finished_save.emit(written, full_img, self.request_id)
+            self.finished_save.emit(written, self.request_id)
         except Exception as e:
             if self.staged_path is not None:
                 self.staged_path.unlink(missing_ok=True)
