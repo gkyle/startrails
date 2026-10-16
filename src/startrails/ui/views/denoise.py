@@ -590,7 +590,11 @@ class DenoiseView(ModeView):
         if self._pending_final_save and not self._disposed:
             self._dispatch_async_save_final_composite()
 
-    def _on_final_save_finished(self, staged_path: Any, req_id: int) -> None:
+    def _on_final_save_finished(
+        self, staged_path: Any, req_id: int, legacy_req_id: Optional[int] = None
+    ) -> None:
+        if legacy_req_id is not None:
+            req_id = legacy_req_id
         worker = self.sender() or self._final_save_worker
         staged_path = Path(staged_path)
         if not self._worker_is_current(worker, req_id, self._final_save_request_id):
