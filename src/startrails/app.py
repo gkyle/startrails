@@ -24,6 +24,7 @@ from startrails.lib.project_type import (
     InvalidProjectError,
 )
 from startrails.lib.gpu import GPUInfo
+from startrails.lib.recent import add_recent_project
 from startrails.workflow.base import Workflow
 from startrails.workflow.startrails import StarTrailsWorkflow
 from startrails.workflow.denoise import DenoiseWorkflow
@@ -249,6 +250,8 @@ class App:
 
         self.state["projectFile"] = self.project.projectFile
         self.saveAppState()
+        if not path.name.startswith("default."):
+            add_recent_project(self.project.projectFile)
 
     def saveProject(self):
         with open(self.project.projectFile, "w+") as f:
@@ -273,3 +276,5 @@ class App:
             self.project = Project(projectFile=fileName)
         self.workflow = self._create_workflow(self.project)
         self.saveProject()
+        if not Path(fileName).name.startswith("default."):
+            add_recent_project(self.project.projectFile)

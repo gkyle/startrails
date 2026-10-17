@@ -30,6 +30,8 @@ from startrails.lib.project_type import (
 from startrails.ui.views.base import ModeView
 from startrails.ui.views.startrails import StarTrailsView
 from startrails.ui.views.denoise import DenoiseView
+from startrails.ui.project_overlay import ProjectWelcomeOverlay
+from startrails.lib.recent import add_recent_project
 
 from startrails.app import App
 
@@ -37,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, app: "App"):
+    def __init__(self, app: "App", project_path: Optional[str] = None, show_welcome: Optional[bool] = None):
         QMainWindow.__init__(self)
         QImageReader.setAllocationLimit(0)
         theme = system_theme()
@@ -47,12 +49,43 @@ class MainWindow(QMainWindow):
         self.ui.canvasHost.setPalette(theme_palette(True))
         self.ui.canvas_main.setPalette(theme_palette(True))
         theme.register(self)
+
+        # Welcome and project selection overlay
+        self.project_overlay = ProjectWelcomeOverlay(self)
+        self.project_overlay.createStarTrailsRequested.connect(self.ui.doCreateNewStarTrailsProject)
+        self.project_overlay.createDenoiseRequested.connect(self.ui.doCreateNewDenoiseProject)
+        self.project_overlay.openStarTrailsRequested.connect(self.ui.doOpenStarTrailsProject)
+        self.project_overlay.openDenoiseRequested.connect(self.ui.doOpenDenoiseProject)
+        self.project_overlay.projectSelected.connect(self.ui.load_project_and_dismiss)
+        self.project_overlay.browseRequested.connect(self.ui.doBrowseAnyProject)
+        self.project_overlay.dismissed.connect(self.hide_project_overlay)
+        self.project_overlay.hide()
+
         self.show()
 
         # timer for updating GPU stats
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.ui.slotUpdateGPUStats)
         self.timer.start(5000)
+
+        if show_welcome is True:
+            self.show_project_overlay("welcome", can_dismiss=getattr(app, "project", None) is not None)
+
+    def show_project_overlay(self, mode: str = "welcome", can_dismiss: bool = True):
+        if hasattr(self, "project_overlay") and self.project_overlay is not None:
+            self.project_overlay.set_overlay_mode(mode, can_dismiss=can_dismiss)
+            self.project_overlay.setGeometry(0, 0, self.width(), self.height())
+            self.project_overlay.show()
+            self.project_overlay.raise_()
+
+    def hide_project_overlay(self):
+        if hasattr(self, "project_overlay") and self.project_overlay is not None:
+            self.project_overlay.hide()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "project_overlay") and self.project_overlay is not None:
+            self.project_overlay.setGeometry(0, 0, self.width(), self.height())
 
     def center(self):
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -530,6 +563,10 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             )
             return
 
+        if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "show_project_overlay"):
+            self.mainWindow.show_project_overlay("new", can_dismiss=True)
+            return
+
         QApplication.processEvents()
         filter_str = (
             f"StarTrails Project (*{STARTRAILS_EXT});;"
@@ -554,6 +591,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
                     file_path = str(path.with_suffix(STARTRAILS_EXT))
 
             self.app.newProject(file_path)
+            add_recent_project(file_path)
             self.switch_to_project_mode()
 
     def doOpenProject(self):
@@ -563,6 +601,10 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
                 "Operation in Progress",
                 "Cannot open a project while an operation is in progress. Please cancel or wait for it to complete.",
             )
+            return
+
+        if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "show_project_overlay"):
+            self.mainWindow.show_project_overlay("open", can_dismiss=True)
             return
 
         QApplication.processEvents()
@@ -580,12 +622,172 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             filter=filter_str,
         )
         if fileName:
-            try:
-                self.app.loadProject(fileName)
-                self.switch_to_project_mode()
-            except Exception as e:
-                logger.error(f"Failed to open project {fileName}: {e}")
-                QMessageBox.warning(None, "Open Project", f"Could not open project:\n{e}")
+            self.load_project_and_dismiss(fileName)
+
+    def doCreateNewStarTrailsProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot create a new project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        QApplication.processEvents()
+        filter_str = f"StarTrails Project (*{STARTRAILS_EXT});;All Files (*)"
+        parent = getattr(self, "mainWindow", None)
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent,
+            "Create New Star Trails Project",
+            f"projects/new_project{STARTRAILS_EXT}",
+            filter_str,
+        )
+
+        if file_path:
+            path = Path(file_path)
+            if not path.suffix:
+                file_path = str(path.with_suffix(STARTRAILS_EXT))
+
+            self.app.newProject(file_path)
+            add_recent_project(file_path)
+            self.switch_to_project_mode()
+            if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "hide_project_overlay"):
+                self.mainWindow.hide_project_overlay()
+
+    def doCreateNewDenoiseProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot create a new project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        QApplication.processEvents()
+        filter_str = f"Denoise Project (*{DENOISE_EXT});;All Files (*)"
+        parent = getattr(self, "mainWindow", None)
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent,
+            "Create New Denoise Project",
+            f"projects/new_project{DENOISE_EXT}",
+            filter_str,
+        )
+
+        if file_path:
+            path = Path(file_path)
+            if not path.suffix:
+                file_path = str(path.with_suffix(DENOISE_EXT))
+
+            self.app.newProject(file_path)
+            add_recent_project(file_path)
+            self.switch_to_project_mode()
+            if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "hide_project_overlay"):
+                self.mainWindow.hide_project_overlay()
+
+    def doOpenStarTrailsProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot open a project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        QApplication.processEvents()
+        filter_str = (
+            f"StarTrails Projects (*{STARTRAILS_EXT} *{LEGACY_STARTRAILS_EXT});;"
+            f"StarTrails Project (*{STARTRAILS_EXT});;"
+            f"Legacy Project (*{LEGACY_STARTRAILS_EXT});;"
+            "All Files (*)"
+        )
+        parent = getattr(self, "mainWindow", None)
+        fileName, _ = QFileDialog.getOpenFileName(
+            parent,
+            "Open Star Trails Project",
+            dir="projects",
+            filter=filter_str,
+        )
+        if fileName:
+            self.load_project_and_dismiss(fileName)
+
+    def doOpenDenoiseProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot open a project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        QApplication.processEvents()
+        filter_str = (
+            f"Denoise Project (*{DENOISE_EXT});;"
+            "All Files (*)"
+        )
+        parent = getattr(self, "mainWindow", None)
+        fileName, _ = QFileDialog.getOpenFileName(
+            parent,
+            "Open Denoise Project",
+            dir="projects",
+            filter=filter_str,
+        )
+        if fileName:
+            self.load_project_and_dismiss(fileName)
+
+    def doBrowseAnyProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot open a project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        QApplication.processEvents()
+        filter_str = (
+            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{LEGACY_STARTRAILS_EXT});;"
+            f"StarTrails Project (*{STARTRAILS_EXT});;"
+            f"Denoise Project (*{DENOISE_EXT});;"
+            f"Legacy Project (*{LEGACY_STARTRAILS_EXT});;"
+            "All Files (*)"
+        )
+        parent = getattr(self, "mainWindow", None)
+        fileName, _ = QFileDialog.getOpenFileName(
+            parent,
+            "Open Project",
+            dir="projects",
+            filter=filter_str,
+        )
+        if fileName:
+            self.load_project_and_dismiss(fileName)
+
+    def load_project_and_dismiss(self, fileName: str):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot open a project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        try:
+            self.app.loadProject(fileName)
+            add_recent_project(fileName)
+            self.switch_to_project_mode()
+            if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "hide_project_overlay"):
+                self.mainWindow.hide_project_overlay()
+        except Exception as e:
+            logger.error(f"Failed to open project {fileName}: {e}")
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(parent, "Open Project", f"Could not open project:\n{e}")
+            if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "project_overlay") and self.mainWindow.project_overlay is not None:
+                self.mainWindow.project_overlay.refresh_recent_projects()
 
     # -------------------------------------------------------------------------
     # Shared File & View Delegations
