@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 import logging
-import os
 from contextlib import nullcontext
 from startrails.lib.artifacts import ArtifactTransaction
 from pathlib import Path
@@ -91,9 +90,10 @@ class StackDenoise(DenoiseOperation):
                 staged_base = transaction.stage(base_comp_path)
                 imwrite(staged_base, compositor.base_composite, convertBGR=True)
                 if output_path != base_comp_path.resolve():
-                    staged_output = transaction.stage(output_path)
-                    staged_output.unlink()
-                    os.link(staged_base, staged_output)
+                    # Composition may overwrite the staged output in this transaction.
+                    # Keep the uncorrected base independent and encode for the output suffix.
+                    imwrite(transaction.stage(output_path), compositor.base_composite, convertBGR=True,
+                            quality=config.jpeg_quality, optimize=config.jpeg_optimize)
                 if compositor.gradient_mask is not None:
                     MaskHandler.save_mask(compositor.gradient_mask, transaction.stage(grad_mask_path))
                 if artifacts is None:
