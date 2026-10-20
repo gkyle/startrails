@@ -62,19 +62,6 @@ class HorizonCompositor:
         else:
             self.smoothstep_3d = self.smoothstep_mask
 
-        # Precompute edge-preserving guided filter for sky stack
-        if self.sky_stack.ndim == 3:
-            guide = (
-                0.299 * self.sky_stack[:, :, 0]
-                + 0.587 * self.sky_stack[:, :, 1]
-                + 0.114 * self.sky_stack[:, :, 2]
-            ).astype(np.float32)
-        else:
-            guide = self.sky_stack.astype(np.float32)
-
-        self.denoised_sky = HorizonDenoiser.guided_filter(
-            guide, self.sky_stack, radius=self.denoise_radius, eps=self.denoise_eps
-        )
         # Precompute feathered boundary mask
         if self.feather_radius > 0:
             ksize = int(self.feather_radius * 4 + 1) | 1
@@ -98,7 +85,7 @@ class HorizonCompositor:
         h, w = self.sky_stack.shape[:2]
         active_rows = np.where(np.any(self.smoothstep_mask > 1e-4, axis=1))[0]
         if len(active_rows) > 0:
-            pad = 32  # margin for Gaussian blur / filtering without border truncation
+            pad = max(32, int(self.denoise_radius * 4 + 1))
             self.roi_y0 = max(0, int(active_rows[0]) - pad)
             self.roi_y1 = min(h, int(active_rows[-1]) + 1 + pad)
         else:
@@ -114,9 +101,21 @@ class HorizonCompositor:
         self.roi_ground_stack = np.ascontiguousarray(self.ground_stack[y0:y1])
         self.roi_smoothstep_3d = np.ascontiguousarray(self.smoothstep_3d[y0:y1])
         self.roi_feathered_mask = np.ascontiguousarray(self.feathered_mask[y0:y1])
-        self.roi_denoised_sky = (
-            np.ascontiguousarray(self.denoised_sky[y0:y1]) if self.denoised_sky is not None else None
+
+        # Precompute edge-preserving guided filter strictly for the active horizon ROI
+        if self.roi_sky_stack.ndim == 3:
+            guide_roi = (
+                0.299 * self.roi_sky_stack[:, :, 0]
+                + 0.587 * self.roi_sky_stack[:, :, 1]
+                + 0.114 * self.roi_sky_stack[:, :, 2]
+            ).astype(np.float32)
+        else:
+            guide_roi = self.roi_sky_stack.astype(np.float32)
+
+        self.roi_denoised_sky = HorizonDenoiser.guided_filter(
+            guide_roi, self.roi_sky_stack, radius=self.denoise_radius, eps=self.denoise_eps
         )
+        self.denoised_sky = None
 
         # Precompute luminance and chrominance decompositions for independent color/value tuning
         if self.roi_sky_stack.ndim == 3 and self.roi_denoised_sky is not None:

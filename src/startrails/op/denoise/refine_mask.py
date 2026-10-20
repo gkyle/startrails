@@ -49,6 +49,9 @@ class RefineMask(DenoiseOperation):
             img = imread(image_or_path, to_rgb=True, as_float=True)
         else:
             img = image_or_path
+            if img.dtype != np.float32:
+                from startrails.lib.image_io import normalize_image
+                img = normalize_image(img)
 
         if self.shouldInterrupt():
             return None

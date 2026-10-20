@@ -1061,15 +1061,13 @@ class DenoiseView(ModeView):
             return
 
         vals = self.stack_settings.values() if self.stack_settings else {}
-        needs_prepare = self.last_align_result is None or not getattr(self.last_align_result, "aligned_sky_frames", None)
+        has_alignment = self.app.workflow.has_cached_alignment(config_snapshot)
+        needs_alignment = not has_alignment
         n_stars = len(stars)
-        total_stack_steps = n_stars + n_stars + 1
-        total_steps = (n_stars + total_stack_steps) if needs_prepare else total_stack_steps
+        total_stack_steps = n_stars * 4 + 1
+        total_steps = (n_stars + total_stack_steps) if needs_alignment else total_stack_steps
 
-        prepare_description = (
-            "Preparing aligned frames from saved transforms..."
-            if self.app.workflow.has_cached_alignment(config_snapshot) else "Aligning star frames..."
-        )
+        prepare_description = "Aligning star frames..."
         generation = self._generation
 
         def work():
@@ -1079,7 +1077,7 @@ class DenoiseView(ModeView):
             cfg.sigma_clip_iterations = vals.get("sigma_clip_iterations", 3)
             cfg.use_gpu = vals.get("use_gpu", True)
 
-            if needs_prepare:
+            if needs_alignment:
                 align_updater = ProgressBarUpdater(
                     getattr(self.shell, "progressBar", None),
                     getattr(self.shell, "label_progressBar", None),
@@ -1090,6 +1088,7 @@ class DenoiseView(ModeView):
 
                 align_result = self.app.workflow.do_align_stars(
                     config=cfg,
+                    warp_frames=False,
                     progress_bar=align_updater.tick,
                 )
                 if align_result is None:
@@ -1100,10 +1099,7 @@ class DenoiseView(ModeView):
                 if self.star_files is not None:
                     self._post_result(generation, lambda: self.star_files.set_files(self.app.workflow.get_star_files()))
 
-            n_sky = len(self.last_align_result.aligned_sky_frames) if self.last_align_result else n_stars
-            n_ground = len(self.last_align_result.raw_ground_frames) if self.last_align_result else n_stars
-            actual_stack_steps = n_sky + n_ground + 1
-
+            actual_stack_steps = n_stars * 4 + 1
             progress_updater = ProgressBarUpdater(
                 getattr(self.shell, "progressBar", None),
                 getattr(self.shell, "label_progressBar", None),
@@ -1113,13 +1109,11 @@ class DenoiseView(ModeView):
             )
 
             compositor = self.app.workflow.do_stack_denoise(
-                aligned_sky_frames=self.last_align_result.aligned_sky_frames,
-                sky_coverages=self.last_align_result.sky_coverages,
-                raw_ground_frames=self.last_align_result.raw_ground_frames,
-                sky_mask=self.last_align_result.sky_mask,
                 config=cfg,
+                sky_mask=self.last_align_result.sky_mask if self.last_align_result else None,
                 progress_bar=progress_updater.tick,
             )
+
             if compositor is None:
                 return
             def on_stack_done():
@@ -1144,9 +1138,16 @@ class DenoiseView(ModeView):
                             comp_file = OutputFile(basename=Path(comp_path).name, path=comp_path, operation="Composite")
 
                     if comp_file is not None:
-                        self.show_file(comp_file)
+                        self._horizon_preview_id = None
+                        if hasattr(self.shell, "currentFile"):
+                            self.shell.currentFile = comp_file
+                        if hasattr(self.shell, "label_imageName") and self.shell.label_imageName is not None:
+                            self.shell.label_imageName.setText(comp_file.basename)
                         if self.output_files is not None:
                             self.output_files.setCurrentFile(comp_file)
+                        signals = getSignals()
+                        if hasattr(signals, "focusFile"):
+                            signals.focusFile.emit(comp_file)
 
                     if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
                         self.shell.canvas_main.clear_horizon_overlay()

@@ -230,7 +230,7 @@ class DenoiseWorkflow(Workflow):
     def do_align_stars(
         self,
         config: Optional[DenoiseProject] = None,
-        warp_frames: bool = True,
+        warp_frames: bool = False,
         sky_mask: Optional[np.ndarray] = None,
         progress_bar: Optional[Any] = None,
     ) -> Optional[AlignResult]:
@@ -350,12 +350,12 @@ class DenoiseWorkflow(Workflow):
 
     def do_stack_denoise(
         self,
-        aligned_sky_frames: List[np.ndarray],
-        sky_coverages: List[np.ndarray],
-        raw_ground_frames: List[np.ndarray],
-        sky_mask: np.ndarray,
         config: Optional[DenoiseProject] = None,
+        sky_mask: Optional[np.ndarray] = None,
         progress_bar: Optional[Any] = None,
+        aligned_sky_frames: Optional[List[np.ndarray]] = None,
+        sky_coverages: Optional[List[np.ndarray]] = None,
+        raw_ground_frames: Optional[List[np.ndarray]] = None,
     ) -> Optional[HorizonCompositor]:
         cfg = config or self.get_config()
         if hasattr(self.project, "get_output_dir"):

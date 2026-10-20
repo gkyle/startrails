@@ -45,6 +45,14 @@ class StarDetector:
         else:
             gray = image.copy()
 
+        if gray.dtype == np.uint8:
+            gray = gray.astype(np.float32) / 255.0
+        elif gray.dtype == np.uint16:
+            gray = gray.astype(np.float32) / 65535.0
+        elif gray.dtype != np.float32:
+            max_v = float(np.iinfo(gray.dtype).max) if np.issubdtype(gray.dtype, np.integer) else 1.0
+            gray = gray.astype(np.float32) / max_v
+
         h, w = gray.shape
 
         if sky_mask is not None:

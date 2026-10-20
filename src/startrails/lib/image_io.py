@@ -94,11 +94,10 @@ def imwrite(
 
     # Float array scaling: scale float32/float64 to integer ranges for standard codecs
     if img.dtype in (numpy.float32, numpy.float64):
-        clipped = numpy.clip(img, 0.0, 1.0)
         if suffix in (".tif", ".tiff"):
-            img = (clipped * 65535.0 + 0.5).astype(numpy.uint16)
+            img = numpy.clip(img * 65535.0 + 0.5, 0.0, 65535.0).astype(numpy.uint16)
         else:
-            img = (clipped * 255.0 + 0.5).astype(numpy.uint8)
+            img = numpy.clip(img * 255.0 + 0.5, 0.0, 255.0).astype(numpy.uint8)
 
     if suffix in (".tif", ".tiff") and tiff_uint8_as_uint16 and img.dtype == numpy.uint8:
         img = img.astype(numpy.uint16) * 257

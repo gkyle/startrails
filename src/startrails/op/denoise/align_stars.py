@@ -42,7 +42,7 @@ class AlignStars(DenoiseOperation):
         """Prepare dark master calibration frame if configured."""
         master_dark: Optional[np.ndarray] = None
         if config.noise_images:
-            darks = [imread(p, to_rgb=True, as_float=True) for p in config.noise_images]
+            darks = [imread(p, to_rgb=True, as_float=False) for p in config.noise_images]
             master_dark = DarkCalibrator.compute_master_dark(darks, use_gpu=config.use_gpu)
 
         def calibrate(img: np.ndarray) -> np.ndarray:
@@ -65,7 +65,7 @@ class AlignStars(DenoiseOperation):
     def align(
         self,
         config: DenoiseProject,
-        warp_frames: bool = True,
+        warp_frames: bool = False,
         sky_mask: Optional[np.ndarray] = None,
         base_calibrated: Optional[np.ndarray] = None,
         calibrate_fn: Optional[Callable[[np.ndarray], np.ndarray]] = None,
@@ -95,8 +95,15 @@ class AlignStars(DenoiseOperation):
         base_path = self.get_base_image_path(config)
 
         if base_calibrated is None:
-            base_raw = imread(base_path, to_rgb=True, as_float=True)
+            base_raw = imread(base_path, to_rgb=True, as_float=False)
             base_calibrated = calibrate_fn(base_raw)
+        elif base_calibrated.dtype in (np.float32, np.float64):
+            sample = imread(base_path, to_rgb=False, as_float=False)
+            if sample.dtype == np.uint16:
+                base_calibrated = np.clip(base_calibrated * 65535.0 + 0.5, 0, 65535).astype(np.uint16)
+            elif sample.dtype == np.uint8:
+                base_calibrated = np.clip(base_calibrated * 255.0 + 0.5, 0, 255).astype(np.uint8)
+            del sample
         h, w = base_calibrated.shape[:2]
 
         if sky_mask is None:
@@ -124,7 +131,7 @@ class AlignStars(DenoiseOperation):
             if p_resolved == base_path:
                 frame_cal = base_calibrated
             else:
-                frame_raw = imread(p_path, to_rgb=True, as_float=True)
+                frame_raw = imread(p_path, to_rgb=True, as_float=False)
                 frame_cal = calibrate_fn(frame_raw)
 
             # Homography estimation

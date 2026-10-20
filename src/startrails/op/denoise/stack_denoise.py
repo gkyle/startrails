@@ -27,10 +27,10 @@ class StackDenoise(DenoiseOperation):
     def stack(
         self,
         config: DenoiseProject,
-        aligned_sky_frames: List[np.ndarray],
-        sky_coverages: List[np.ndarray],
-        raw_ground_frames: List[np.ndarray],
-        sky_mask: np.ndarray,
+        aligned_sky_frames: Optional[List[np.ndarray]] = None,
+        sky_coverages: Optional[List[np.ndarray]] = None,
+        raw_ground_frames: Optional[List[np.ndarray]] = None,
+        sky_mask: Optional[np.ndarray] = None,
         artifacts: Optional[ArtifactTransaction] = None,
     ) -> Optional[HorizonCompositor]:
         """Stack frames and prepare HorizonCompositor.
@@ -38,9 +38,13 @@ class StackDenoise(DenoiseOperation):
         Returns:
             HorizonCompositor or None if interrupted.
         """
-        n_sky = len(aligned_sky_frames)
-        n_ground = len(raw_ground_frames)
-        total_steps = n_sky + n_ground + 1
+        n_stars = len(getattr(config, "star_images", []))
+        if aligned_sky_frames is not None and len(aligned_sky_frames) > 0:
+            n_sky = len(aligned_sky_frames)
+            n_ground = len(raw_ground_frames or [])
+            total_steps = n_sky + n_ground + 1
+        else:
+            total_steps = (n_stars * 4 + 1) if n_stars else 1
         self.startJob(total_steps)
 
         if self.shouldInterrupt():
@@ -64,6 +68,7 @@ class StackDenoise(DenoiseOperation):
             max_workers=config.max_workers,
             progress_callback=_on_frame_progress,
             should_interrupt=self.shouldInterrupt,
+            config=config,
         )
 
         if compositor is None or self.shouldInterrupt():
@@ -92,8 +97,13 @@ class StackDenoise(DenoiseOperation):
                 if output_path != base_comp_path.resolve():
                     # Composition may overwrite the staged output in this transaction.
                     # Keep the uncorrected base independent and encode for the output suffix.
-                    imwrite(transaction.stage(output_path), compositor.base_composite, convertBGR=True,
-                            quality=config.jpeg_quality, optimize=config.jpeg_optimize)
+                    staged_out = transaction.stage(output_path)
+                    if output_path.suffix.lower() == base_comp_path.suffix.lower() and output_path.suffix.lower() in (".tif", ".tiff"):
+                        import shutil
+                        shutil.copyfile(staged_base, staged_out)
+                    else:
+                        imwrite(staged_out, compositor.base_composite, convertBGR=True,
+                                quality=config.jpeg_quality, optimize=config.jpeg_optimize)
                 if compositor.gradient_mask is not None:
                     MaskHandler.save_mask(compositor.gradient_mask, transaction.stage(grad_mask_path))
                 if artifacts is None:

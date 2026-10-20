@@ -73,7 +73,7 @@ class DenoisePipeline(DenoiseOperation):
 
         base_path = self._get_base_image_path()
         report(0.15, f"Reading base frame: {base_path.name}...")
-        base_raw = imread(base_path, to_rgb=True, as_float=True)
+        base_raw = imread(base_path, to_rgb=True, as_float=False)
         base_calibrated = calibrate_fn(base_raw)
         h, w = base_calibrated.shape[:2]
 
@@ -178,10 +178,10 @@ class DenoisePipeline(DenoiseOperation):
                 _report(prog, f"Aligned frame {count}/{total}: {name}")
             align_op.addObserver(_align_cb)
 
-        with profiler.measure("3. Frame Alignment & Warping"):
+        with profiler.measure("3. Frame Alignment"):
             align_result = align_op.align(
                 self.config,
-                warp_frames=True,
+                warp_frames=False,
                 sky_mask=sky_mask,
                 base_calibrated=base_calibrated,
                 calibrate_fn=calibrate_fn,
@@ -197,10 +197,7 @@ class DenoisePipeline(DenoiseOperation):
         with profiler.measure("4. Base Stacking"):
             compositor = stack_op.stack(
                 self.config,
-                align_result.aligned_sky_frames,
-                align_result.sky_coverages,
-                align_result.raw_ground_frames,
-                align_result.sky_mask,
+                sky_mask=align_result.sky_mask if align_result else sky_mask,
                 artifacts=self._artifacts,
             )
 
@@ -208,7 +205,7 @@ class DenoisePipeline(DenoiseOperation):
             raise CancelledError("Pipeline cancelled during stacking")
 
         self.last_compositor = compositor
-        return compositor, align_result.sky_coverages
+        return compositor, []
 
     def run(
         self,

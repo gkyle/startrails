@@ -59,6 +59,8 @@ class AutoSkyDetector:
         h, w = image.shape[:2]
         if image.dtype in (np.float32, np.float64):
             img_8u = np.clip(image * 255.0, 0, 255).astype(np.uint8)
+        elif image.dtype == np.uint16:
+            img_8u = (image >> 8).astype(np.uint8)
         else:
             img_8u = image.astype(np.uint8)
 
