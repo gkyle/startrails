@@ -140,19 +140,6 @@ class DenoisePipeline(DenoiseOperation):
             raise CancelledError()
         return base_calibrated, None, sky_mask, (h, w)
 
-    def compute_homographies(self, progress_callback: Optional[ProgressCallback] = None) -> dict[Path, np.ndarray]:
-        """Compute and cache alignment homographies for all star images."""
-        if self.config is None:
-            raise ValueError("No configuration provided.")
-        align_op = AlignStars(self.cancel_event, self.cancel_check)
-        if progress_callback:
-            def _cb(total, inc, count, done, data):
-                progress_callback(count / max(1, total), f"Aligned frame {count}/{total}")
-            align_op.addObserver(_cb)
-
-        align_op.align(self.config, warp_frames=False)
-        return self.config.homographies
-
     def stack_base_frames(
         self,
         progress_callback: Optional[ProgressCallback] = None,

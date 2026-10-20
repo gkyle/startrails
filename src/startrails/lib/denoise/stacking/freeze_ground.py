@@ -4,7 +4,6 @@ from __future__ import annotations
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import os
 from typing import Any, List, Optional
-import cv2
 import numpy as np
 
 from startrails.lib.denoise.enhancement.horizon_denoiser import HorizonDenoiser
@@ -19,98 +18,6 @@ from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 
 class FreezeGroundStacker:
     """Combines tracked/aligned sky stacking with stationary landscape ground stacking."""
-
-    @classmethod
-    def stack(
-        cls,
-        aligned_sky_frames: List[np.ndarray],
-        sky_coverages: Optional[List[np.ndarray]],
-        raw_ground_frames: List[np.ndarray],
-        sky_mask: np.ndarray,
-        use_multiband_blend: bool = False,
-        feather_radius: float = 3.0,
-        denoise_horizon_band: bool = False,
-        horizon_denoise_radius: int = 7,
-        horizon_denoise_eps: float = 2e-3,
-        horizon_denoise_strength: float = 0.2,
-        horizon_blend_percent: float = 60.0,
-        unwarped_blend_percent: Optional[float] = None,
-        horizon_blur_radius: float = 2.0,
-        enable_horizon_corrections: bool = True,
-        horizon_color_denoise_strength: Optional[float] = None,
-        horizon_value_denoise_strength: Optional[float] = None,
-        stack_method: str = "sigma_clipped",
-        sigma_clip_threshold: float = 1.2,
-        sigma_clip_iterations: int = 3,
-        use_gpu: bool = True,
-        max_workers: Optional[int] = None,
-        profiler: Optional[Any] = None,
-    ) -> np.ndarray:
-        """Execute Freeze Ground selective stacking.
-
-        Args:
-            aligned_sky_frames: List of frames warped into sky celestial alignment
-            sky_coverages: Coverage masks for warped sky frames
-            raw_ground_frames: List of stationary un-warped frames
-            sky_mask: 2D float32 array (H, W) where 1.0 = Sky and 0.0 = Ground
-            use_multiband_blend: Whether to use multi-resolution Laplacian pyramid blending (default False)
-            feather_radius: Gaussian blur radius for boundary anti-aliasing (default 3.0)
-            denoise_horizon_band: Whether to polish horizon transition band with guided filter
-            horizon_denoise_radius: Radius for guided filter
-            horizon_denoise_eps: Regularization epsilon for guided filter
-            horizon_denoise_strength: Strength multiplier for guided filter (default: 0.2)
-            horizon_blend_percent: Maximum percentage of unwarped sky included in blend (0-100%, default: 60.0)
-            unwarped_blend_percent: Alias for horizon_blend_percent
-            horizon_blur_radius: Gaussian blur radius applied to foreground sky input (default: 2.0)
-            enable_horizon_corrections: Whether all horizon gradient adjustments are enabled (default: True)
-            horizon_color_denoise_strength: Optional multiplier for chrominance smoothing
-            horizon_value_denoise_strength: Optional multiplier for luminance smoothing
-            stack_method: Stacking algorithm ('sigma_clipped' or 'mean')
-            sigma_clip_threshold: Standard deviations for outlier rejection in sigma-clipped mode
-            sigma_clip_iterations: Outlier rejection iterations
-            use_gpu: whether to use GPU acceleration if available (default: True)
-            max_workers: thread count for CPU fallback
-            profiler: optional latency profiler to record stage measurements
-
-        Returns:
-            stacked_image: Composite image with razor-sharp stars and razor-sharp ground
-        """
-        compositor = cls.stack_base_and_prepare_compositor(
-            aligned_sky_frames=aligned_sky_frames,
-            sky_coverages=sky_coverages,
-            raw_ground_frames=raw_ground_frames,
-            sky_mask=sky_mask,
-            feather_radius=feather_radius,
-            horizon_denoise_radius=horizon_denoise_radius,
-            horizon_denoise_eps=horizon_denoise_eps,
-            stack_method=stack_method,
-            sigma_clip_threshold=sigma_clip_threshold,
-            sigma_clip_iterations=sigma_clip_iterations,
-            use_gpu=use_gpu,
-            max_workers=max_workers,
-            profiler=profiler,
-        )
-        blend_pct = unwarped_blend_percent if unwarped_blend_percent is not None else horizon_blend_percent
-        if profiler is not None:
-            with profiler.measure("4c. Sky-Ground Blending"):
-                return compositor.composite(
-                    horizon_blend_percent=blend_pct,
-                    horizon_denoise_strength=horizon_denoise_strength,
-                    denoise_enabled=denoise_horizon_band,
-                    horizon_blur_radius=horizon_blur_radius,
-                    enable_corrections=enable_horizon_corrections,
-                    horizon_color_denoise_strength=horizon_color_denoise_strength,
-                    horizon_value_denoise_strength=horizon_value_denoise_strength,
-                )
-        return compositor.composite(
-            horizon_blend_percent=blend_pct,
-            horizon_denoise_strength=horizon_denoise_strength,
-            denoise_enabled=denoise_horizon_band,
-            horizon_blur_radius=horizon_blur_radius,
-            enable_corrections=enable_horizon_corrections,
-            horizon_color_denoise_strength=horizon_color_denoise_strength,
-            horizon_value_denoise_strength=horizon_value_denoise_strength,
-        )
 
     @classmethod
     def stack_base_and_prepare_compositor(
@@ -235,78 +142,6 @@ class FreezeGroundStacker:
             denoise_radius=horizon_denoise_radius,
             denoise_eps=horizon_denoise_eps,
         )
-
-    @classmethod
-    def _pyramid_blend(
-        cls,
-        img_sky: np.ndarray,
-        img_ground: np.ndarray,
-        mask: np.ndarray,
-        levels: Optional[int] = None,
-    ) -> np.ndarray:
-        """Laplacian pyramid multi-band blending to eliminate seam halos along horizon."""
-        h, w = img_sky.shape[:2]
-        if levels is None:
-            min_dim = min(h, w)
-            levels = max(1, min(5, int(np.floor(np.log2(min_dim))) - 3))
-
-        # Pad image to multiples of 2^levels
-        pad_h = ((1 << levels) - (h % (1 << levels))) % (1 << levels)
-        pad_w = ((1 << levels) - (w % (1 << levels))) % (1 << levels)
-
-        if pad_h > 0 or pad_w > 0:
-            img_sky = cv2.copyMakeBorder(img_sky, 0, pad_h, 0, pad_w, cv2.BORDER_REFLECT)
-            img_ground = cv2.copyMakeBorder(img_ground, 0, pad_h, 0, pad_w, cv2.BORDER_REFLECT)
-            mask = cv2.copyMakeBorder(mask, 0, pad_h, 0, pad_w, cv2.BORDER_REFLECT)
-
-        if mask.ndim == 2 and img_sky.ndim == 3:
-            mask = mask[..., None]
-
-        # Build Gaussian pyramid for mask
-        mask_pyr = [mask.astype(np.float32)]
-        for _ in range(levels):
-            mask_pyr.append(cv2.pyrDown(mask_pyr[-1]))
-
-        # Build Laplacian pyramids for sky and ground
-        def _get_laplacian_pyramid(img: np.ndarray):
-            gp = [img.astype(np.float32)]
-            for _ in range(levels):
-                gp.append(cv2.pyrDown(gp[-1]))
-
-            lp = [gp[levels]]
-            for i in range(levels, 0, -1):
-                size = (gp[i - 1].shape[1], gp[i - 1].shape[0])
-                expanded = cv2.pyrUp(gp[i], dstsize=size)
-                laplacian = gp[i - 1] - expanded
-                lp.append(laplacian)
-            return lp
-
-        sky_lp = _get_laplacian_pyramid(img_sky)
-        ground_lp = _get_laplacian_pyramid(img_ground)
-
-        # Combine pyramids using mask pyramid
-        blended_lp = []
-        blended_lp.append(
-            mask_pyr[levels] * sky_lp[0] + (1.0 - mask_pyr[levels]) * ground_lp[0]
-        )
-
-        for i in range(1, levels + 1):
-            mask_level = mask_pyr[levels - i]
-            blended_lp.append(
-                mask_level * sky_lp[i] + (1.0 - mask_level) * ground_lp[i]
-            )
-
-        # Reconstruct from Laplacian pyramid
-        reconstructed = blended_lp[0]
-        for i in range(1, levels + 1):
-            size = (blended_lp[i].shape[1], blended_lp[i].shape[0])
-            reconstructed = cv2.pyrUp(reconstructed, dstsize=size) + blended_lp[i]
-
-        # Crop back to original dimensions
-        if pad_h > 0 or pad_w > 0:
-            reconstructed = reconstructed[:h, :w]
-
-        return np.clip(reconstructed, 0.0, 1.0).astype(np.float32)
 
     @classmethod
     def stack_frames(

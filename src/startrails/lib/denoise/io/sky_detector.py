@@ -126,32 +126,6 @@ class AutoSkyDetector:
             raise ValueError(f"Unknown model_type: {model_type}. Expected 'auto', 'segformer', 'nightstack', or 'heuristic'.")
 
     @classmethod
-    def detect_and_refine(
-        cls,
-        image: np.ndarray,
-        model_type: str = "auto",
-        model_path: Optional[str] = None,
-        search_radius: Optional[int] = None,
-        erosion_pixels: int = 5,
-        device: str = "auto",
-    ) -> np.ndarray:
-        """Detect sky using auto masking and automatically refine edges to natural horizons."""
-        from startrails.lib.denoise.io.mask_refiner import MaskRefiner
-
-        coarse_sky = cls.detect(
-            image,
-            model_type=model_type,
-            model_path=model_path,
-            device=device,
-        )
-        return MaskRefiner.refine(
-            image,
-            coarse_sky,
-            search_radius=search_radius,
-            erosion_pixels=erosion_pixels,
-        )
-
-    @classmethod
     def _get_segformer_model(
         cls,
         model_path: Optional[str] = None,

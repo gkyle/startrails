@@ -29,11 +29,6 @@ class PipelineProfiler:
             self.counts[name] = self.counts.get(name, 0) + 1
             logger.debug(f"[LATENCY] {name}: {elapsed:.4f}s")
 
-    def record(self, name: str, elapsed: float) -> None:
-        """Directly record measured duration for a named operation."""
-        self.timings[name] = self.timings.get(name, 0.0) + elapsed
-        self.counts[name] = self.counts.get(name, 0) + 1
-
     def format_summary(self, total_elapsed: Optional[float] = None) -> str:
         """Generate a formatted multi-line table breakdown of latencies."""
         names = list(self.timings.keys())
