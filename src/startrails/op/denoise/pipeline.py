@@ -10,9 +10,9 @@ import numpy as np
 from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.util import imread
 from startrails.op.denoise.base import DenoiseOperation
-from startrails.lib.denoise.config import DenoiseConfig
-from startrails.lib.denoise.profiler import PipelineProfiler
-from startrails.lib.denoise.io.mask import MaskHandler
+from startrails.lib.project_denoise import DenoiseProject
+from startrails.lib.profiler import PipelineProfiler
+from startrails.lib.denoise.mask import MaskHandler
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 from startrails.op.denoise.detect_sky import DetectSky
 from startrails.op.denoise.refine_mask import RefineMask
@@ -28,7 +28,7 @@ ProgressCallback = Callable[[float, str], None]
 class DenoisePipeline(DenoiseOperation):
     """Orchestrates image calibration, sky detection, alignment, stacking, and composition."""
 
-    def __init__(self, config: Optional[DenoiseConfig] = None, cancel_event=None, cancel_check=None):
+    def __init__(self, config: Optional[DenoiseProject] = None, cancel_event=None, cancel_check=None):
         super().__init__(cancel_event, cancel_check)
         self.config = config
         self._artifacts = None
@@ -211,7 +211,7 @@ class DenoisePipeline(DenoiseOperation):
 
     def run(
         self,
-        config: Optional[DenoiseConfig] = None,
+        config: Optional[DenoiseProject] = None,
         progress_callback: Optional[ProgressCallback] = None,
     ) -> Path:
         """Run the complete denoise pipeline according to configuration.

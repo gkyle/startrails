@@ -591,7 +591,7 @@ class DenoiseView(ModeView):
             self._dispatch_async_save_final_composite()
 
     def _on_final_save_finished(
-        self, staged_path: Any, req_id: int, legacy_req_id: Optional[int] = None
+        self, staged_path: Any, req_id: Any, legacy_req_id: Optional[int] = None
     ) -> None:
         if legacy_req_id is not None:
             req_id = legacy_req_id
@@ -667,7 +667,7 @@ class DenoiseView(ModeView):
             elif hasattr(self.app.workflow, "project") and getattr(self.app.workflow.project, "gradient_mask_path", None):
                 p = Path(self.app.workflow.project.gradient_mask_path)
                 if p.exists():
-                    from startrails.lib.denoise.io.mask import MaskHandler
+                    from startrails.lib.denoise.mask import MaskHandler
                     mask = MaskHandler.load_mask(p)
             if mask is not None:
                 self.shell.canvas_main.set_gradient_mask(mask)
@@ -685,7 +685,7 @@ class DenoiseView(ModeView):
             path = str(candidate) if candidate.is_file() else None
         if path is None or not Path(path).is_file():
             return None
-        from startrails.lib.denoise.io.mask import MaskHandler
+        from startrails.lib.denoise.mask import MaskHandler
         return MaskHandler.load_mask(path)
 
     def _has_existing_stacks(self) -> bool:
@@ -712,7 +712,7 @@ class DenoiseView(ModeView):
 
             grad_p = Path(proj.gradient_mask_path) if getattr(proj, "gradient_mask_path", None) else (out_dir / "gradient_mask.png")
             if grad_p.exists():
-                from startrails.lib.denoise.io.mask import MaskHandler
+                from startrails.lib.denoise.mask import MaskHandler
                 gradient_mask = MaskHandler.load_mask(grad_p)
             elif getattr(proj, "homographies", None) and mask is not None:
                 try:
@@ -727,7 +727,7 @@ class DenoiseView(ModeView):
                                 cov = cv2.warpPerspective(np.ones((h, w), dtype=np.float32), H_mat, (w, h), flags=cv2.INTER_NEAREST)
                                 coverages.append(cov)
                     if coverages:
-                        from startrails.lib.denoise.io.mask import MaskHandler
+                        from startrails.lib.denoise.mask import MaskHandler
                         gradient_mask = MaskHandler.compute_gradient_mask(coverages, sky_mask=mask)
                         MaskHandler.save_mask(gradient_mask, grad_p)
                         proj.gradient_mask_path = str(grad_p)
@@ -829,7 +829,7 @@ class DenoiseView(ModeView):
 
     def _save_mask_to_project(self, mask: np.ndarray) -> None:
         out_mask = self._get_project_mask_path()
-        from startrails.lib.denoise.io.mask import MaskHandler
+        from startrails.lib.denoise.mask import MaskHandler
         MaskHandler.save_brush_mask(mask, out_mask)
         if hasattr(self.app.workflow, "project") and self.app.workflow.project is not None:
             self.app.workflow.project.mask_path = str(out_mask)
@@ -1308,27 +1308,15 @@ DenoiseView.showFile = DenoiseView.show_file
 DenoiseView.updateReadyStates = DenoiseView.update_ready_states
 
 DenoiseView.starFiles = property(lambda self: self.star_files, lambda self, value: setattr(self, "star_files", value))
-
 DenoiseView.noiseFiles = property(lambda self: self.noise_files, lambda self, value: setattr(self, "noise_files", value))
-
 DenoiseView.outputFiles = property(lambda self: self.output_files, lambda self, value: setattr(self, "output_files", value))
-
 DenoiseView.skySettings = property(lambda self: self.sky_settings, lambda self, value: setattr(self, "sky_settings", value))
-
 DenoiseView.alignSettings = property(lambda self: self.align_settings, lambda self, value: setattr(self, "align_settings", value))
-
 DenoiseView.stackSettings = property(lambda self: self.stack_settings, lambda self, value: setattr(self, "stack_settings", value))
-
 DenoiseView.tuneSettings = property(lambda self: self.tune_settings, lambda self, value: setattr(self, "tune_settings", value))
-
 DenoiseView.skyCard = property(lambda self: self.sky_card, lambda self, value: setattr(self, "sky_card", value))
-
 DenoiseView.alignCard = property(lambda self: self.align_card, lambda self, value: setattr(self, "align_card", value))
-
 DenoiseView.stackCard = property(lambda self: self.stack_card, lambda self, value: setattr(self, "stack_card", value))
-
 DenoiseView.tuneCard = property(lambda self: self.tune_card, lambda self, value: setattr(self, "tune_card", value))
-
 DenoiseView.pushButton_newProject = property(lambda self: self.new_project_button, lambda self, value: setattr(self, "new_project_button", value))
-
 DenoiseView.pushButton_openProject = property(lambda self: self.open_project_button, lambda self, value: setattr(self, "open_project_button", value))

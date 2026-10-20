@@ -1,22 +1,55 @@
 """Project model and state persistence for Denoise mode (.proj_denoise)."""
 
 from __future__ import annotations
-import os
+import copy
+from dataclasses import asdict, dataclass
 import hashlib
 import json
-import copy
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import jsonpickle
+import numpy as np
 
 from startrails.lib.file import DenoiseInputFile, Unpickle
-from dataclasses import asdict
-from startrails.lib.denoise.config import DenoiseConfig, DenoiseSettings
 from startrails.lib.project_type import get_project_output_dir, DENOISE_EXT
 
 
+@dataclass
+class DenoiseSettings:
+    """Authoritative defaults for persisted and runtime denoise settings."""
+    jpeg_quality: int = 95
+    jpeg_optimize: bool = True
+    mask_search_radius: Optional[int] = None
+    mask_erosion_pixels: int = 5
+    mask_foliage_protection: bool = True
+    refine_sky_mask: bool = False
+    auto_mask: bool = False
+    auto_mask_model: Optional[str] = None
+    auto_mask_path: Optional[str] = None
+    export_refined_mask: bool = True
+    export_gradient_mask: bool = True
+    taper_mask_edges: bool = True
+    mask_taper_pixels: int = 5
+    enable_horizon_corrections: bool = True
+    denoise_horizon_band: bool = True
+    horizon_denoise_radius: int = 5
+    horizon_denoise_eps: float = 1e-3
+    horizon_denoise_strength: float = 0.2
+    horizon_color_denoise_strength: float = 1.0
+    horizon_value_denoise_strength: float = 0.2
+    horizon_blend_percent: float = 60.0
+    horizon_blur_radius: float = 2.0
+    stack_method: str = "sigma_clipped"
+    sigma_clip_threshold: float = 1.2
+    sigma_clip_iterations: int = 3
+    use_gpu: bool = True
+    max_workers: Optional[int] = None
+    verbose: bool = False
+
+
 class DenoiseProject(Unpickle):
-    """Project state model for the astrophotography Denoise workflow."""
+    """Project state model and runtime configuration for the astrophotography Denoise workflow."""
 
     def __init__(
         self,
@@ -25,33 +58,77 @@ class DenoiseProject(Unpickle):
         noise_files: Optional[List[DenoiseInputFile]] = None,
         vignetting_files: Optional[List[DenoiseInputFile]] = None,
         reference_file: Optional[DenoiseInputFile] = None,
-        **legacy_kwargs,
+        *,
+        star_images: Optional[List[Path | str]] = None,
+        base_image: Optional[Path | str] = None,
+        noise_images: Optional[List[Path | str]] = None,
+        mask_array: Optional[np.ndarray] = None,
+        output_path: Optional[Path | str] = None,
+        sky_stack_path: Optional[Path | str] = None,
+        ground_stack_path: Optional[Path | str] = None,
+        mask_path: Optional[Path | str] = None,
+        refined_mask_path: Optional[Path | str] = None,
+        gradient_mask_path: Optional[Path | str] = None,
+        homographies: Optional[Dict[Any, Any]] = None,
+        **kwargs,
     ):
         super().__init__()
-        self.project_file = legacy_kwargs.pop("projectFile", project_file)
-        if legacy_kwargs:
-            raise TypeError(f"Unexpected project arguments: {tuple(legacy_kwargs)}")
-        self.star_files: List[DenoiseInputFile] = list(star_files) if star_files is not None else []
-        self.noise_files: List[DenoiseInputFile] = list(noise_files) if noise_files is not None else []
+        self.project_file = kwargs.pop("projectFile", project_file)
+
+        # Star files / images
+        if star_files is not None:
+            self.star_files = list(star_files)
+        elif star_images is not None:
+            self.star_files = [DenoiseInputFile(basename=Path(p).name, path=str(p)) for p in star_images]
+        else:
+            self.star_files = []
+
+        # Noise / dark files
+        if noise_files is not None:
+            self.noise_files = list(noise_files)
+        elif noise_images is not None:
+            self.noise_files = [DenoiseInputFile(basename=Path(p).name, path=str(p)) for p in noise_images]
+        else:
+            self.noise_files = []
+
+        # Vignetting / flat files
         self.vignetting_files: List[DenoiseInputFile] = (
             list(vignetting_files) if vignetting_files is not None else []
         )
-        self.reference_file: Optional[DenoiseInputFile] = reference_file
+
+        # Reference / base frame
+        if reference_file is not None:
+            self.reference_file = reference_file
+        elif base_image is not None:
+            base_str = str(base_image)
+            base_res = Path(base_image).resolve()
+            match = next((f for f in self.star_files if f.path == base_str or Path(f.path).resolve() == base_res), None)
+            self.reference_file = match if match is not None else DenoiseInputFile(basename=Path(base_image).name, path=base_str)
+        else:
+            self.reference_file = None
 
         # Sidecars and intermediate outputs
-        self.mask_path: Optional[str] = None
-        self.refined_mask_path: Optional[str] = None
-        self.gradient_mask_path: Optional[str] = None
-        self.sky_stack_path: Optional[str] = None
-        self.ground_stack_path: Optional[str] = None
-        self.output_path: Optional[str] = None
-        self.final_output_path: Optional[str] = None
+        self.mask_path: Optional[str | Path] = mask_path
+        self.refined_mask_path: Optional[str | Path] = refined_mask_path
+        self.gradient_mask_path: Optional[str | Path] = gradient_mask_path
+        self.sky_stack_path: Optional[str | Path] = sky_stack_path
+        self.ground_stack_path: Optional[str | Path] = ground_stack_path
+        self.output_path: Optional[str | Path] = output_path
+        self.final_output_path: Optional[str | Path] = None
+        self.mask_array: Optional[np.ndarray] = mask_array
 
-        # Alignment homographies: mapped by path string or identifier
-        self.homographies: Dict[str, Any] = {}
+        # Alignment homographies
+        self.homographies: Dict[Any, Any] = dict(homographies) if homographies is not None else {}
 
-        for name, value in asdict(DenoiseSettings()).items():
-            setattr(self, name, value)
+        # Settings
+        default_settings = asdict(DenoiseSettings())
+        for name, default_val in default_settings.items():
+            setattr(self, name, kwargs.pop(name, default_val))
+
+        # Any extra kwargs
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
         self.processing_revision = 0
         self.alignment_signature = None
         self.stack_signature = None
@@ -59,9 +136,51 @@ class DenoiseProject(Unpickle):
         self.mask_invalidated = False
         self.bind_files()
 
+    @property
+    def star_images(self) -> List[Path]:
+        return [Path(f.path) for f in self.star_files if f.path]
+
+    @star_images.setter
+    def star_images(self, paths: List[Path | str]) -> None:
+        self.star_files = [DenoiseInputFile(basename=Path(p).name, path=str(p)) for p in paths]
+        self.bind_files()
+
+    @property
+    def noise_images(self) -> List[Path]:
+        return [Path(f.path) for f in self.noise_files if f.path]
+
+    @noise_images.setter
+    def noise_images(self, paths: List[Path | str]) -> None:
+        self.noise_files = [DenoiseInputFile(basename=Path(p).name, path=str(p)) for p in paths]
+        self.bind_files()
+
+    @property
+    def base_image(self) -> Optional[Path]:
+        ref = self.get_reference_file()
+        return Path(ref.path) if ref and ref.path else None
+
+    @base_image.setter
+    def base_image(self, path: Optional[Path | str]) -> None:
+        if path is None:
+            self.reference_file = None
+        else:
+            p_str = str(path)
+            p_res = Path(path).resolve()
+            match = next((f for f in self.star_files if f.path == p_str or Path(f.path).resolve() == p_res), None)
+            ref_file = match if match is not None else DenoiseInputFile(basename=Path(path).name, path=p_str)
+            self.reference_file = ref_file
+            if match is not None:
+                self.bind_files()
+
     def bind_files(self):
         for file in self.star_files + self.noise_files + self.vignetting_files:
             file.bind_project(self)
+
+    def __getstate__(self):
+        state = dict(self.__dict__)
+        # Transient in-memory mask array should not be persisted into project json
+        state.pop("mask_array", None)
+        return state
 
     def __setstate__(self, state):
         state = dict(state)
@@ -168,13 +287,20 @@ class DenoiseProject(Unpickle):
             for file in self.star_files:
                 if file is self.reference_file or file.file_id == self.reference_file.file_id:
                     return file
+            ref_path = getattr(self.reference_file, "path", None)
+            if ref_path:
+                ref_res = Path(ref_path).resolve()
+                for file in self.star_files:
+                    if file.path == ref_path or Path(file.path).resolve() == ref_res:
+                        return file
+            return self.reference_file
         if self.star_files:
             return self.star_files[len(self.star_files) // 2]
         return None
 
     def set_reference_file(self, file: DenoiseInputFile) -> None:
         """Mark a single input frame as the active reference frame."""
-        if file not in self.star_files:
+        if file not in self.star_files and not any(f.path == file.path for f in self.star_files):
             raise ValueError("Reference frame must be a star input in this project")
         self.reference_file = file
         self.bind_files()
@@ -190,8 +316,17 @@ class DenoiseProject(Unpickle):
             return name[:-5]
         return Path(self.project_file).stem
 
-    def to_denoise_config(self) -> DenoiseConfig:
-        """Construct a DenoiseConfig instance matching this project's current state."""
+    @property
+    def projectFile(self) -> str:  # noqa: N802 - compatibility property for host shell
+        """Compatibility property for host shell and persistence."""
+        return self.project_file
+
+    @projectFile.setter
+    def projectFile(self, value: str) -> None:  # noqa: N802
+        self.project_file = value
+
+    def to_denoise_config(self) -> DenoiseProject:
+        """Construct an isolated DenoiseProject snapshot matching operation configuration."""
         ref = self.get_reference_file()
         base_path = Path(ref.path) if ref and ref.path else None
 
@@ -205,24 +340,27 @@ class DenoiseProject(Unpickle):
         if mask_p is None and not self.mask_invalidated and (out_dir / "mask.png").exists():
             mask_p = out_dir / "mask.png"
 
-        # Writable engine destinations never come from serialized artifact refs.
         sky_stack_p = out_dir / "sky_stack.tif"
         ground_stack_p = out_dir / "ground_stack.tif"
         refined_mask_p = out_dir / "refined_mask.png"
         gradient_mask_p = out_dir / "gradient_mask.png"
         output_p = out_dir / f"{stem}.tif"
 
-        return DenoiseConfig(
-            star_images=[Path(f.path) for f in self.star_files if f.path],
-            base_image=base_path,
-            noise_images=[Path(f.path) for f in self.noise_files if f.path],
-            output_path=output_p,
-            sky_stack_path=sky_stack_p,
-            ground_stack_path=ground_stack_p,
-            mask_path=mask_p,
-            homographies=homographies_dict,
-            **{name: getattr(self, name) for name in asdict(DenoiseSettings())},
-        )
+        snapshot = copy.copy(self)
+        snapshot.star_files = [copy.copy(f) for f in self.star_files]
+        snapshot.noise_files = [copy.copy(f) for f in self.noise_files]
+        snapshot.vignetting_files = [copy.copy(f) for f in self.vignetting_files]
+        snapshot.reference_file = copy.copy(self.reference_file) if self.reference_file else None
+        snapshot.homographies = homographies_dict
+        snapshot.output_path = output_p
+        snapshot.sky_stack_path = sky_stack_p
+        snapshot.ground_stack_path = ground_stack_p
+        snapshot.refined_mask_path = refined_mask_p
+        snapshot.gradient_mask_path = gradient_mask_p
+        snapshot.mask_path = mask_p
+        snapshot.mask_array = copy.deepcopy(self.mask_array) if self.mask_array is not None else None
+        snapshot.bind_files()
+        return snapshot
 
     @classmethod
     def ensure_default_project(cls, path: str = "projects/default.proj_denoise") -> DenoiseProject:
@@ -241,5 +379,5 @@ class DenoiseProject(Unpickle):
             f.write(jsonpickle.encode(default_proj, indent=4))
         return default_proj
 
-# Serialized legacy projects and the generic host still use this spelling.
-DenoiseProject.projectFile = property(lambda self: self.project_file, lambda self, value: setattr(self, "project_file", value))
+
+__all__ = ["DenoiseProject", "DenoiseSettings"]

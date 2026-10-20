@@ -6,8 +6,9 @@ import tempfile
 
 
 class ArtifactTransaction:
-    def __init__(self, cancel_check=None):
+    def __init__(self, cancel_check=None, prefix: str = ".artifact-"):
         self.cancel_check = cancel_check
+        self.prefix = prefix
         self.staged = {}
 
     def check_cancelled(self):
@@ -19,7 +20,7 @@ class ArtifactTransaction:
         destination = Path(destination).resolve()
         if destination not in self.staged:
             destination.parent.mkdir(parents=True, exist_ok=True)
-            descriptor, name = tempfile.mkstemp(prefix=".denoise-", suffix=destination.suffix,
+            descriptor, name = tempfile.mkstemp(prefix=self.prefix, suffix=destination.suffix,
                                                dir=destination.parent)
             os.close(descriptor)
             self.staged[destination] = Path(name)
@@ -34,7 +35,7 @@ class ArtifactTransaction:
                 if not staged.is_file() or staged.stat().st_size == 0:
                     raise OSError(f"Output was not written: {destination}")
                 if destination.exists():
-                    descriptor, name = tempfile.mkstemp(prefix=".denoise-backup-", dir=destination.parent)
+                    descriptor, name = tempfile.mkstemp(prefix=f"{self.prefix}backup-", dir=destination.parent)
                     os.close(descriptor)
                     backup = Path(name)
                     try:

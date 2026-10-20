@@ -7,7 +7,7 @@ import numpy as np
 
 from startrails.op.denoise.base import DenoiseOperation
 from startrails.lib.util import imread
-from startrails.lib.denoise.io.sky_detector import AutoSkyDetector
+from startrails.lib.denoise.sky_detector import AutoSkyDetector
 
 
 class DetectSky(DenoiseOperation):

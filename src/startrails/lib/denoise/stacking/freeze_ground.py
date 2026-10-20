@@ -7,7 +7,7 @@ from typing import Any, List, Optional
 import numpy as np
 
 from startrails.lib.denoise.enhancement.horizon_denoiser import HorizonDenoiser
-from startrails.lib.denoise.io.mask import MaskHandler
+from startrails.lib.denoise.mask import MaskHandler
 from startrails.lib.gpu import (
     free_gpu_memory,
     get_array_module,

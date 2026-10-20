@@ -18,13 +18,16 @@ _MODEL_CACHE: dict[str, Tuple[Any, Any, str, int]] = {}
 
 def _get_local_nightstack_dir() -> Optional[Path]:
     """Find local nightstack weights directory in repository or current working directory."""
-    candidates = [
-        Path("models/detectSky/nightstack"),
-        Path(__file__).resolve().parents[5] / "models" / "detectSky" / "nightstack",
-    ]
-    for candidate in candidates:
-        if candidate.is_dir() and ((candidate / "model.safetensors").exists() or (candidate / "config.json").exists()):
-            return candidate.resolve()
+    root = Path(__file__).resolve()
+    while root.parent != root:
+        if (root / "models" / "detectSky" / "nightstack").is_dir():
+            target = root / "models" / "detectSky" / "nightstack"
+            if (target / "model.safetensors").exists() or (target / "config.json").exists():
+                return target.resolve()
+        root = root.parent
+    candidate = Path("models/detectSky/nightstack").resolve()
+    if candidate.is_dir() and ((candidate / "model.safetensors").exists() or (candidate / "config.json").exists()):
+        return candidate
     return None
 
 

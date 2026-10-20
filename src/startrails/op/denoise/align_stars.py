@@ -9,8 +9,8 @@ import numpy as np
 
 from startrails.lib.util import imread
 from startrails.op.denoise.base import DenoiseOperation
-from startrails.lib.denoise.config import DenoiseConfig
-from startrails.lib.denoise.io.mask import MaskHandler
+from startrails.lib.project_denoise import DenoiseProject
+from startrails.lib.denoise.mask import MaskHandler
 from startrails.lib.denoise.calibration.dark import DarkCalibrator
 from startrails.lib.denoise.alignment.detector import StarDetector, Star
 from startrails.lib.denoise.alignment.matcher import StarMatcher
@@ -38,7 +38,7 @@ class AlignStars(DenoiseOperation):
         super().__init__(cancel_event, cancel_check)
 
     @staticmethod
-    def prepare_calibrator(config: DenoiseConfig) -> Callable[[np.ndarray], np.ndarray]:
+    def prepare_calibrator(config: DenoiseProject) -> Callable[[np.ndarray], np.ndarray]:
         """Prepare dark master calibration frame if configured."""
         master_dark: Optional[np.ndarray] = None
         if config.noise_images:
@@ -53,7 +53,7 @@ class AlignStars(DenoiseOperation):
         return calibrate
 
     @staticmethod
-    def get_base_image_path(config: DenoiseConfig) -> Path:
+    def get_base_image_path(config: DenoiseProject) -> Path:
         """Resolve base reference frame path."""
         if config.base_image:
             return Path(config.base_image).resolve()
@@ -64,7 +64,7 @@ class AlignStars(DenoiseOperation):
 
     def align(
         self,
-        config: DenoiseConfig,
+        config: DenoiseProject,
         warp_frames: bool = True,
         sky_mask: Optional[np.ndarray] = None,
         base_calibrated: Optional[np.ndarray] = None,

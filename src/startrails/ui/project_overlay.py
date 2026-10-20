@@ -8,7 +8,7 @@ Supports selecting between "Star Trails" and "Denoise" workflows for:
 
 from __future__ import annotations
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Optional, Literal, override
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QColor, QFont, QIcon, QKeyEvent, QPainter, QPixmap
 from PySide6.QtWidgets import (
@@ -57,6 +57,7 @@ class ClickableCard(QFrame):
         super().__init__(parent)
         self.setCursor(Qt.PointingHandCursor)
 
+    @override
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.clicked.emit()
@@ -560,10 +561,12 @@ class ProjectWelcomeOverlay(QWidget):
             self.dismissed.emit()
             self.hide()
 
+    @override
     def mousePressEvent(self, event):
         # Prevent clicks on the dark backdrop from passing through to underlying controls
         event.accept()
 
+    @override
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Escape:
             if self._can_dismiss:

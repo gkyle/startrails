@@ -11,8 +11,8 @@ import numpy as np
 
 from startrails.lib.util import imwrite
 from startrails.op.denoise.base import DenoiseOperation
-from startrails.lib.denoise.config import DenoiseConfig
-from startrails.lib.denoise.io.mask import MaskHandler
+from startrails.lib.project_denoise import DenoiseProject
+from startrails.lib.denoise.mask import MaskHandler
 from startrails.lib.denoise.stacking.freeze_ground import FreezeGroundStacker
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 
@@ -27,7 +27,7 @@ class StackDenoise(DenoiseOperation):
 
     def stack(
         self,
-        config: DenoiseConfig,
+        config: DenoiseProject,
         aligned_sky_frames: List[np.ndarray],
         sky_coverages: List[np.ndarray],
         raw_ground_frames: List[np.ndarray],

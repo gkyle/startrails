@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 
 from startrails.lib.file import DenoiseInputFile, OutputFile
-from startrails.lib.denoise.config import DenoiseConfig
+from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 from startrails.op.denoise.detect_sky import DetectSky
 from startrails.op.denoise.refine_mask import RefineMask
@@ -149,16 +149,12 @@ class DenoiseWorkflow(Workflow):
             self.project.set_reference_file(file)
             self.save_project()
 
-    setReferenceFile = set_reference_file
-
-    def get_config(self) -> DenoiseConfig:
-        """Return a DenoiseConfig representation of current project state."""
+    def get_config(self) -> DenoiseProject:
+        """Return a DenoiseProject representation of current project state."""
         self.project.validate_cached_results()
         if self.project.mask_path and not self.project.mask_invalidated and not Path(self.project.mask_path).is_file():
             raise FileNotFoundError(f"Sky mask is missing: {self.project.mask_path}. Detect or paint a replacement mask.")
         return self.project.to_denoise_config()
-
-    getConfig = get_config
 
     # -------------------------------------------------------------------------
     # Observable pipeline operations
@@ -193,8 +189,6 @@ class DenoiseWorkflow(Workflow):
                 detector.removeObserver(progress_bar)
             self.save_project()
 
-    doDetectSky = do_detect_sky
-
     def do_refine_mask(
         self,
         image: np.ndarray,
@@ -224,10 +218,8 @@ class DenoiseWorkflow(Workflow):
                 refiner.removeObserver(progress_bar)
             self.save_project()
 
-    doRefineMask = do_refine_mask
-
     @staticmethod
-    def has_cached_alignment(config: DenoiseConfig) -> bool:
+    def has_cached_alignment(config: DenoiseProject) -> bool:
         """Whether all non-reference frames have reusable transforms."""
         if not config.star_images:
             return False
@@ -237,7 +229,7 @@ class DenoiseWorkflow(Workflow):
 
     def do_align_stars(
         self,
-        config: Optional[DenoiseConfig] = None,
+        config: Optional[DenoiseProject] = None,
         warp_frames: bool = True,
         sky_mask: Optional[np.ndarray] = None,
         progress_bar: Optional[Any] = None,
@@ -270,8 +262,6 @@ class DenoiseWorkflow(Workflow):
             if progress_bar is not None:
                 aligner.removeObserver(progress_bar)
             self.save_project()
-
-    doAlignStars = do_align_stars
 
     def _get_project_stem(self) -> str:
         if self.project is not None and hasattr(self.project, "get_project_stem"):
@@ -366,7 +356,7 @@ class DenoiseWorkflow(Workflow):
         sky_coverages: List[np.ndarray],
         raw_ground_frames: List[np.ndarray],
         sky_mask: np.ndarray,
-        config: Optional[DenoiseConfig] = None,
+        config: Optional[DenoiseProject] = None,
         progress_bar: Optional[Any] = None,
     ) -> Optional[HorizonCompositor]:
         cfg = config or self.get_config()
@@ -414,12 +404,10 @@ class DenoiseWorkflow(Workflow):
                 stacker.removeObserver(progress_bar)
             self.save_project()
 
-    doStackDenoise = do_stack_denoise
-
     def do_compose_horizon(
         self,
         compositor: HorizonCompositor,
-        config: Optional[DenoiseConfig] = None,
+        config: Optional[DenoiseProject] = None,
         progress_bar: Optional[Any] = None,
         sky_coverages: Optional[List[np.ndarray]] = None,
         write_output: bool = True,
@@ -457,11 +445,9 @@ class DenoiseWorkflow(Workflow):
                 composer.removeObserver(progress_bar)
             self.save_project()
 
-    doComposeHorizon = do_compose_horizon
-
     def do_pipeline(
         self,
-        config: Optional[DenoiseConfig] = None,
+        config: Optional[DenoiseProject] = None,
         progress_bar: Optional[Any] = None,
         progress_callback: Optional[Callable[[float, str], None]] = None,
     ) -> Path:
@@ -492,5 +478,3 @@ class DenoiseWorkflow(Workflow):
             if progress_bar is not None:
                 pipeline.removeObserver(progress_bar)
             self.save_project()
-
-    doPipeline = do_pipeline

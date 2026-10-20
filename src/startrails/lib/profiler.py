@@ -29,14 +29,18 @@ class PipelineProfiler:
             self.counts[name] = self.counts.get(name, 0) + 1
             logger.debug(f"[LATENCY] {name}: {elapsed:.4f}s")
 
-    def format_summary(self, total_elapsed: Optional[float] = None) -> str:
+    def format_summary(
+        self,
+        total_elapsed: Optional[float] = None,
+        title: str = "Performance Latency Breakdown",
+    ) -> str:
         """Generate a formatted multi-line table breakdown of latencies."""
         names = list(self.timings.keys())
         col_w = max([len(n) for n in names] + [len("Total Elapsed"), 32]) + 2
         sep_len = col_w + 35
         total = total_elapsed if total_elapsed is not None else (time.perf_counter() - self.start_time)
 
-        lines: List[str] = ["\n===== Denoise Performance Latency Breakdown ====="]
+        lines: List[str] = [f"\n===== {title} ====="]
 
         for name, dur in self.timings.items():
             pct = (dur / total * 100.0) if total > 0 else 0.0

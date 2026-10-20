@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from PySide6.QtCore import Qt, QSignalBlocker, Signal
 from PySide6.QtWidgets import QWidget
 
-from startrails.lib.denoise.config import DenoiseSettings
+from startrails.lib.project_denoise import DenoiseSettings
 from .steps import toggle_advanced_settings
 from .ui_step_denoise_sky import Ui_DenoiseSkySettings
 from .ui_step_denoise_align import Ui_DenoiseAlignSettings

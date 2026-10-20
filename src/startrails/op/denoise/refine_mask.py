@@ -7,8 +7,8 @@ import numpy as np
 
 from startrails.op.denoise.base import DenoiseOperation
 from startrails.lib.util import imread
-from startrails.lib.denoise.io.mask import MaskHandler
-from startrails.lib.denoise.io.mask_refiner import MaskRefiner
+from startrails.lib.denoise.mask import MaskHandler
+from startrails.lib.denoise.mask_refiner import MaskRefiner
 
 
 class RefineMask(DenoiseOperation):

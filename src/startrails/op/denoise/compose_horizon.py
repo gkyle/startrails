@@ -10,8 +10,8 @@ import numpy as np
 
 from startrails.lib.util import imwrite
 from startrails.op.denoise.base import DenoiseOperation
-from startrails.lib.denoise.config import DenoiseConfig
-from startrails.lib.denoise.io.mask import MaskHandler
+from startrails.lib.project_denoise import DenoiseProject
+from startrails.lib.denoise.mask import MaskHandler
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class ComposeHorizon(DenoiseOperation):
     def compose(
         self,
         compositor: HorizonCompositor,
-        config: DenoiseConfig,
+        config: DenoiseProject,
         sky_coverages: Optional[List[np.ndarray]] = None,
         write_output: bool = True,
         artifacts: Optional[ArtifactTransaction] = None,
