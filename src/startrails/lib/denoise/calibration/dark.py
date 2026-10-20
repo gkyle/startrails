@@ -8,7 +8,7 @@ import numpy as np
 
 from startrails.lib.gpu import free_gpu_memory, get_array_module
 from startrails.lib.image_io import imread, normalize_image
-from startrails.lib.denoise.stacking.memmap_buffer import MemmapFrameBuffer
+from startrails.lib.denoise.stacking.memmap_buffer import MemmapFrameBuffer, read_frame_chunk
 
 
 class DarkCalibrator:
@@ -32,16 +32,16 @@ class DarkCalibrator:
             return normalize_image(first)
         shape = first.shape
         with MemmapFrameBuffer((len(paths), *shape), np.float32, scratch_dir, prefix="st_dark_") as buffer:
-            buffer.mmap[0] = normalize_image(first)
+            buffer.write_frame(0, normalize_image(first))
             del first
             for index, path in enumerate(paths[1:], start=1):
                 cls._check_cancelled(should_interrupt)
                 frame = imread(path, to_rgb=True, as_float=False)
                 if frame.shape != shape:
                     raise ValueError(f"Dark frame {path} has shape {frame.shape}; expected {shape}.")
-                buffer.mmap[index] = normalize_image(frame)
+                buffer.write_frame(index, normalize_image(frame))
                 del frame
-            return cls.compute_master_dark(buffer.mmap, use_gpu=use_gpu, should_interrupt=should_interrupt)
+            return cls.compute_master_dark(buffer, use_gpu=use_gpu, should_interrupt=should_interrupt)
 
     @staticmethod
     def _check_cancelled(should_interrupt):
@@ -51,7 +51,7 @@ class DarkCalibrator:
     @classmethod
     def compute_master_dark(
         cls,
-        darks: Sequence[np.ndarray] | np.ndarray,
+        darks: Sequence[np.ndarray] | np.ndarray | MemmapFrameBuffer,
         use_gpu: bool = True,
         chunk_rows: int = 1024,
         should_interrupt: Optional[Callable[[], bool]] = None,
@@ -61,21 +61,22 @@ class DarkCalibrator:
             raise ValueError("No dark frames provided.")
         cls._check_cancelled(should_interrupt)
         if len(darks) == 1:
-            return normalize_image(darks[0])
+            first = darks.read_frame(0) if isinstance(darks, MemmapFrameBuffer) else darks[0]
+            return normalize_image(first)
 
-        h, w = darks[0].shape[:2]
-        out = np.zeros_like(darks[0], dtype=np.float32)
+        frame_shape = darks.frame_shape if isinstance(darks, MemmapFrameBuffer) else darks[0].shape
+        h, w = frame_shape[:2]
+        out = np.zeros(frame_shape, dtype=np.float32)
         xp, is_gpu = get_array_module(use_gpu=use_gpu)
-        channels = darks[0].shape[2] if darks[0].ndim == 3 else 1
+        channels = frame_shape[2] if len(frame_shape) == 3 else 1
         # Leave room for the input, median workspace and any GPU upload buffer.
         bytes_per_row = len(darks) * w * channels * np.dtype(np.float32).itemsize * 3
         chunk_rows = max(1, min(chunk_rows, (64 * 1024**2) // bytes_per_row))
 
         def read_chunk(start, end):
-            chunk = np.empty((len(darks), end - start, *darks[0].shape[1:]), dtype=np.float32)
-            for index, frame in enumerate(darks):
-                cls._check_cancelled(should_interrupt)
-                chunk[index] = normalize_image(frame[start:end])
+            cls._check_cancelled(should_interrupt)
+            chunk = read_frame_chunk(darks, start, end, normalize=True)
+            np.clip(chunk, 0.0, 1.0, out=chunk)
             return chunk
 
         if is_gpu:

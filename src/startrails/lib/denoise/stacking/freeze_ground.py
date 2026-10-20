@@ -10,7 +10,7 @@ import numpy as np
 from startrails.lib.denoise.alignment.warper import ImageWarper
 from startrails.lib.denoise.enhancement.horizon_denoiser import HorizonDenoiser
 from startrails.lib.denoise.mask import MaskHandler
-from startrails.lib.denoise.stacking.memmap_buffer import MemmapFrameBuffer
+from startrails.lib.denoise.stacking.memmap_buffer import MemmapFrameBuffer, read_frame_chunk
 from startrails.lib.gpu import (
     free_gpu_memory,
     get_array_module,
@@ -129,8 +129,8 @@ class FreezeGroundStacker:
                             coverage, taper_radius=float(config.mask_taper_pixels)
                         )
 
-                    sky_buf.mmap[idx] = warped
-                    cov_buf.mmap[idx] = coverage
+                    sky_buf.write_frame(idx, warped)
+                    cov_buf.write_frame(idx, coverage)
                     total_sky_cov += coverage.astype(np.float32)
                     del frame_float, warped, coverage
 
@@ -147,8 +147,8 @@ class FreezeGroundStacker:
                 if profiler is not None:
                     with profiler.measure(f"4a. Sky Region Stacking ({backend_label})"):
                         sky_stack = cls.stack_frames(
-                            sky_buf.mmap,
-                            coverages=cov_buf.mmap,
+                            sky_buf,
+                            coverages=cov_buf,
                             method=stack_method,
                             sigma_threshold=sigma_clip_threshold,
                             iterations=sigma_clip_iterations,
@@ -159,8 +159,8 @@ class FreezeGroundStacker:
                         )
                 else:
                     sky_stack = cls.stack_frames(
-                        sky_buf.mmap,
-                        coverages=cov_buf.mmap,
+                        sky_buf,
+                        coverages=cov_buf,
                         method=stack_method,
                         sigma_threshold=sigma_clip_threshold,
                         iterations=sigma_clip_iterations,
@@ -184,7 +184,7 @@ class FreezeGroundStacker:
                     frame_raw = imread(p_resolved, to_rgb=True, as_float=False)
                     frame_cal = calibrate_fn(frame_raw)
                     del frame_raw
-                    ground_buf.mmap[idx] = normalize_image(frame_cal)
+                    ground_buf.write_frame(idx, normalize_image(frame_cal))
                     del frame_cal
 
                     if progress_callback is not None:
@@ -200,7 +200,7 @@ class FreezeGroundStacker:
                 if profiler is not None:
                     with profiler.measure(f"4b. Ground Region Stacking ({backend_label})"):
                         ground_stack = cls.stack_frames(
-                            ground_buf.mmap,
+                            ground_buf,
                             coverages=None,
                             method=stack_method,
                             sigma_threshold=sigma_clip_threshold,
@@ -212,7 +212,7 @@ class FreezeGroundStacker:
                         )
                 else:
                     ground_stack = cls.stack_frames(
-                        ground_buf.mmap,
+                        ground_buf,
                         coverages=None,
                         method=stack_method,
                         sigma_threshold=sigma_clip_threshold,
@@ -371,8 +371,8 @@ class FreezeGroundStacker:
     @classmethod
     def stack_frames(
         cls,
-        frames: List[np.ndarray],
-        coverages: Optional[List[np.ndarray]] = None,
+        frames: List[np.ndarray] | np.ndarray | MemmapFrameBuffer,
+        coverages: Optional[List[np.ndarray] | np.ndarray | MemmapFrameBuffer] = None,
         chunk_rows: Optional[int] = None,
         method: str = "sigma_clipped",
         sigma_threshold: float = 1.2,
@@ -381,11 +381,12 @@ class FreezeGroundStacker:
         max_workers: Optional[int] = None,
         progress_callback: Optional[Any] = None,
         should_interrupt: Optional[Any] = None,
+        memory_budget_bytes: int = 256 * 1024**2,
     ) -> Optional[np.ndarray]:
         """Stack a list of image frames using weighted/masked average or sigma-clipped mean.
 
         Args:
-            frames: list of N float32 arrays of shape (H, W, C) or (H, W)
+            frames: disk-backed storage or N arrays of shape (H, W, C) or (H, W)
             coverages: optional list of N boolean or float masks (H, W) where True/weight > 0 = valid pixel
             chunk_rows: rows to process at a time (default: auto-computed based on memory)
             method: stacking algorithm ('sigma_clipped' or 'mean')
@@ -395,6 +396,8 @@ class FreezeGroundStacker:
             max_workers: thread count for CPU fallback (default: min(16, cpu_count))
             progress_callback: optional callback receiving (increment, data_dict) per frame
             should_interrupt: optional callable returning True if cancelled
+            memory_budget_bytes: estimated scratch budget across active workers;
+                excludes full-frame outputs and has a minimum of one row per worker
 
         Returns:
             stacked_image: float32 array of shape (H, W, C) or (H, W) or None if interrupted
@@ -404,32 +407,27 @@ class FreezeGroundStacker:
         n_frames = len(frames)
         if n_frames == 0:
             raise ValueError("No frames to stack.")
-        f_dtype = frames[0].dtype
-        if f_dtype == np.uint8:
-            norm_scale = 1.0 / 255.0
-        elif f_dtype == np.uint16:
-            norm_scale = 1.0 / 65535.0
-        elif np.issubdtype(f_dtype, np.integer):
-            norm_scale = 1.0 / float(np.iinfo(f_dtype).max)
-        else:
-            norm_scale = 1.0
-
         if n_frames == 1:
             if progress_callback is not None:
                 progress_callback(1, {"frame_idx": 1, "total_frames": 1})
-            f0 = frames[0]
-            if norm_scale != 1.0:
-                return (f0.astype(np.float32) * norm_scale).clip(0.0, 1.0)
+            f0 = frames.read_frame(0) if isinstance(frames, MemmapFrameBuffer) else frames[0]
+            if np.issubdtype(f0.dtype, np.integer):
+                return normalize_image(f0)
             return f0.copy() if f0.dtype == np.float32 else f0.astype(np.float32)
 
-        h, w = frames[0].shape[:2]
-        is_rgb = (frames[0].ndim == 3)
-        channels = frames[0].shape[2] if is_rgb else 1
+        frame_shape = frames.frame_shape if isinstance(frames, MemmapFrameBuffer) else frames[0].shape
+        h, w = frame_shape[:2]
+        is_rgb = len(frame_shape) == 3
+        channels = frame_shape[2] if is_rgb else 1
 
         out_shape = (h, w, channels) if is_rgb else (h, w)
         stacked = np.zeros(out_shape, dtype=np.float32)
 
         xp, is_gpu = get_array_module(use_gpu=use_gpu)
+        workers = max_workers or min(16, max(1, (os.cpu_count() or 1)))
+        max_in_flight = 1 if is_gpu else min(workers, 2)
+        if memory_budget_bytes <= 0:
+            raise ValueError("memory_budget_bytes must be positive.")
 
         # Determine optimal chunk rows and ensure at least n_frames chunks for granular progress
         if chunk_rows is None:
@@ -443,6 +441,11 @@ class FreezeGroundStacker:
             )
         if n_frames > 1 and chunk_rows > max(1, h // n_frames):
             chunk_rows = max(1, h // n_frames)
+        # Include float64 sigma intermediates, masks and repeated RGB weights.
+        # Bound scratch across workers even when callers request large chunks.
+        bytes_per_row = n_frames * w * channels * 96
+        budget_rows = max(1, memory_budget_bytes // (max_in_flight * bytes_per_row))
+        chunk_rows = max(1, min(chunk_rows, budget_rows))
 
         if coverages is not None:
             if hasattr(coverages, "dtype"):
@@ -479,29 +482,13 @@ class FreezeGroundStacker:
                         return None
                     y_end = min(y_start + chunk_rows, h)
 
-                    if isinstance(frames, (list, tuple)):
-                        if is_rgb:
-                            raw_chunk = np.array([f[y_start:y_end, :, :] for f in frames], dtype=np.float32)
-                        else:
-                            raw_chunk = np.array([f[y_start:y_end, :] for f in frames], dtype=np.float32)
-                    else:
-                        if is_rgb:
-                            raw_chunk = np.ascontiguousarray(frames[:, y_start:y_end, :, :], dtype=np.float32)
-                        else:
-                            raw_chunk = np.ascontiguousarray(frames[:, y_start:y_end, :], dtype=np.float32)
-
+                    raw_chunk = read_frame_chunk(frames, y_start, y_end, normalize=True)
                     chunk_stack = xp.asarray(raw_chunk)
                     del raw_chunk
 
-                    if norm_scale != 1.0:
-                        chunk_stack *= xp.float32(norm_scale)
-
                     if coverages is not None:
                         if is_soft_weights:
-                            if isinstance(coverages, (list, tuple)):
-                                raw_cov = np.array([c[y_start:y_end, :] for c in coverages], dtype=np.float32)
-                            else:
-                                raw_cov = np.ascontiguousarray(coverages[:, y_start:y_end, :], dtype=np.float32)
+                            raw_cov = read_frame_chunk(coverages, y_start, y_end)
                             weight_stack = xp.asarray(raw_cov)
                             del raw_cov
                             if is_rgb:
@@ -509,10 +496,7 @@ class FreezeGroundStacker:
                             mask_stack = weight_stack > 1e-4
                         else:
                             weight_stack = None
-                            if isinstance(coverages, (list, tuple)):
-                                raw_cov = np.array([c[y_start:y_end, :] for c in coverages], dtype=bool)
-                            else:
-                                raw_cov = np.ascontiguousarray(coverages[:, y_start:y_end, :], dtype=bool)
+                            raw_cov = read_frame_chunk(coverages, y_start, y_end, dtype=bool)
                             mask_stack = xp.asarray(raw_cov)
                             del raw_cov
                             if is_rgb:
@@ -555,8 +539,6 @@ class FreezeGroundStacker:
         # Path B: Multithreaded CPU Fallback (NumPy)
         # -------------------------------------------------------------
         else:
-            workers = max_workers or min(16, max(1, (os.cpu_count() or 1)))
-            max_in_flight = min(workers, 2)
             chunk_ranges = iter(
                 (y_start, min(y_start + chunk_rows, h))
                 for y_start in range(0, h, chunk_rows)
@@ -564,35 +546,17 @@ class FreezeGroundStacker:
 
             def _process_chunk_task(row_range):
                 y_s, y_e = row_range
-                if isinstance(frames, (list, tuple)):
-                    if is_rgb:
-                        data = np.array([f[y_s:y_e, :, :] for f in frames], dtype=np.float32)
-                    else:
-                        data = np.array([f[y_s:y_e, :] for f in frames], dtype=np.float32)
-                else:
-                    if is_rgb:
-                        data = np.ascontiguousarray(frames[:, y_s:y_e, :, :], dtype=np.float32)
-                    else:
-                        data = np.ascontiguousarray(frames[:, y_s:y_e, :], dtype=np.float32)
-
-                if norm_scale != 1.0:
-                    data *= np.float32(norm_scale)
+                data = read_frame_chunk(frames, y_s, y_e, normalize=True)
 
                 if coverages is not None:
                     if is_soft_weights:
-                        if isinstance(coverages, (list, tuple)):
-                            weights = np.array([c[y_s:y_e, :] for c in coverages], dtype=np.float32)
-                        else:
-                            weights = np.ascontiguousarray(coverages[:, y_s:y_e, :], dtype=np.float32)
+                        weights = read_frame_chunk(coverages, y_s, y_e)
                         if is_rgb:
                             weights = np.repeat(weights[..., None], channels, axis=-1)
                         mask = weights > 1e-4
                     else:
                         weights = None
-                        if isinstance(coverages, (list, tuple)):
-                            mask = np.array([c[y_s:y_e, :] for c in coverages], dtype=bool)
-                        else:
-                            mask = np.ascontiguousarray(coverages[:, y_s:y_e, :], dtype=bool)
+                        mask = read_frame_chunk(coverages, y_s, y_e, dtype=bool)
                         if is_rgb:
                             mask = np.repeat(mask[..., None], channels, axis=-1)
                 else:
