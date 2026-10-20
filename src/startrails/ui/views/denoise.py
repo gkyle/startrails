@@ -986,8 +986,8 @@ class DenoiseView(ModeView):
             ref = self.app.workflow.get_reference_file()
             if ref is None:
                 return
-            from startrails.lib.denoise.reader import ImageReader
-            img = ImageReader.read(ref.path).data
+            from startrails.lib.util import imread
+            img = imread(ref.path, to_rgb=True, as_float=True)
             h, w = img.shape[:2]
             mask = np.zeros((h, w), dtype=np.float32)
             self._save_mask_to_project(mask)
@@ -1003,8 +1003,8 @@ class DenoiseView(ModeView):
             ref = self.app.workflow.get_reference_file()
             if ref is None:
                 return
-            from startrails.lib.denoise.reader import ImageReader
-            img = ImageReader.read(ref.path).data
+            from startrails.lib.util import imread
+            img = imread(ref.path, to_rgb=True, as_float=True)
             h, w = img.shape[:2]
             mask = np.ones((h, w), dtype=np.float32)
             self._save_mask_to_project(mask)
