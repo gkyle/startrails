@@ -111,6 +111,30 @@ class CanvasLabel(QLabel):
                 return
         super().keyPressEvent(ev)
 
+    def _prepare_file_display(self, file: Optional[File]) -> None:
+        """Update file identity and clear state belonging to the previous image."""
+        if self.findBrightestMode:
+            self.setFindBrightestMode(False)
+        if self.maskEditMode:
+            self.set_mask_edit_mode(False)
+        self.clear_horizon_overlay()
+        self.set_gradient_mask_visible(False)
+        # clear previous active mask points
+        if isinstance(self.file, InputFile):
+            self.file.activeMaskPoints = []
+        self.file = file
+
+    def set_file_pixels(
+        self,
+        file: Optional[File],
+        pixels: np.ndarray,
+        reset_zoom_and_position: bool = False,
+        is_bgr: Optional[bool] = None,
+    ) -> None:
+        """Display already-decoded pixels with their file identity."""
+        self._prepare_file_display(file)
+        self.setFromNumpyArray(pixels, resetZoomAndPosition=reset_zoom_and_position, is_bgr=is_bgr)
+
     def setFile(self, file: File, reload: bool = False) -> None:
         if (
             not reload
@@ -122,18 +146,9 @@ class CanvasLabel(QLabel):
         ):
             return
 
-        if self.findBrightestMode:
-            self.setFindBrightestMode(False)
-        if self.maskEditMode:
-            self.set_mask_edit_mode(False)
-        self.clear_horizon_overlay()
-        self.set_gradient_mask_visible(False)
-        # clear previous active mask points
-        if isinstance(self.file, InputFile):
-            self.file.activeMaskPoints = []
+        self._prepare_file_display(file)
 
         if file is not None and getattr(file, "path", None):
-            self.file = file
             QImageReader.setAllocationLimit(0)
             newPixmap = QPixmap(file.path)
             # Sometimes we're writing over a file at the same moment we try to replace the pixmap. Try to not replace useful pixels with nil.

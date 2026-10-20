@@ -1150,11 +1150,10 @@ class DenoiseView(ModeView):
                             signals.focusFile.emit(comp_file)
 
                     if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-                        self.shell.canvas_main.clear_horizon_overlay()
-                        self.shell.canvas_main.set_mask_edit_mode(False)
-                        self.shell.canvas_main.setFromNumpyArray(
+                        self.shell.canvas_main.set_file_pixels(
+                            comp_file,
                             compositor.base_composite,
-                            resetZoomAndPosition=False,
+                            reset_zoom_and_position=False,
                             is_bgr=False,
                         )
                         self._horizon_preview_id = id(compositor)
