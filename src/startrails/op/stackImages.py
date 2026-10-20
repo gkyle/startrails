@@ -188,7 +188,7 @@ class StackImages(Observable):
                     mempool = cupy.get_default_memory_pool()
                     mempool.free_all_blocks()
 
-                    gpuMemoryAvailable = gpuInfo.getGpuMemoryAvailable()
+                    gpuMemoryAvailable = gpuInfo.get_gpu_memory_available()
                     if gpuMemoryAvailable is None:
                         availableBytes = 0
                     else:

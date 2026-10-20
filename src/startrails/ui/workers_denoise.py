@@ -123,9 +123,3 @@ class FinalCompositeSaveWorker(QThread):
                 logger.exception("FinalCompositeSaveWorker encountered an error")
                 self.failed_error.emit(str(e), self.request_id)
 
-
-HorizonOverlayWorker.failedError = property(lambda self: self.failed_error)
-
-FinalCompositeSaveWorker.failedError = property(lambda self: self.failed_error)
-
-FinalCompositeSaveWorker.finishedSave = property(lambda self: self.finished_save)

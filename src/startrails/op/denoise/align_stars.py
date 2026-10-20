@@ -47,7 +47,7 @@ class AlignStars(DenoiseOperation):
 
         def calibrate(img: np.ndarray) -> np.ndarray:
             if master_dark is not None:
-                img = DarkCalibrator.apply_dark(img, master_dark)
+                img = DarkCalibrator.subtract_dark(img, master_dark)
             return img
 
         return calibrate

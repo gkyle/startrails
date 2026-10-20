@@ -133,7 +133,8 @@ class App:
         self.workflow.toggleExcludeFromStack(file)
 
     def getOutputFileList(self) -> List[OutputFile]:
-        return getattr(self.workflow, "getOutputFileList", lambda: [])()
+        fn = getattr(self.workflow, "get_output_file_list", getattr(self.workflow, "getOutputFileList", None))
+        return fn() if fn is not None else []
 
     def clearOutputFileList(self) -> None:
         if hasattr(self.workflow, "clearOutputFileList"):

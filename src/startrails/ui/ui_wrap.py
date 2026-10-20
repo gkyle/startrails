@@ -880,10 +880,12 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     def slotUpdateGPUStats(self):
         if not hasattr(self.app, "gpuInfo") or self.app.gpuInfo is None:
             return
-        gpu_data_available = self.app.gpuInfo.getGpuPresent()
+        get_present = getattr(self.app.gpuInfo, "get_gpu_present", getattr(self.app.gpuInfo, "getGpuPresent", None))
+        gpu_data_available = get_present() if callable(get_present) else False
         if gpu_data_available:
             self.frame_gpu_label.setVisible(False)
-            gpu_utilization = self.app.gpuInfo.getGpuUtilization()
+            get_util = getattr(self.app.gpuInfo, "get_gpu_utilization", getattr(self.app.gpuInfo, "getGpuUtilization", None))
+            gpu_utilization = get_util() if callable(get_util) else None
             if gpu_utilization is None:
                 self.frame_gpu_util.setVisible(False)
             else:
@@ -893,8 +895,10 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
                     "GPU: {:.0f}%".format(gpu_utilization * 100)
                 )
 
-            gpu_mem_total = self.app.gpuInfo.getGpuMemeoryTotal()
-            gpu_mem_available = self.app.gpuInfo.getGpuMemoryAvailable()
+            get_total = getattr(self.app.gpuInfo, "get_gpu_memory_total", getattr(self.app.gpuInfo, "getGpuMemoryTotal", getattr(self.app.gpuInfo, "getGpuMemeoryTotal", None)))
+            gpu_mem_total = get_total() if callable(get_total) else None
+            get_avail = getattr(self.app.gpuInfo, "get_gpu_memory_available", getattr(self.app.gpuInfo, "getGpuMemoryAvailable", None))
+            gpu_mem_available = get_avail() if callable(get_avail) else None
             if gpu_mem_total is None:
                 self.frame_gpu_mem.setVisible(False)
             else:

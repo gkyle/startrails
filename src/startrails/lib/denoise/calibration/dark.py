@@ -68,8 +68,3 @@ class DarkCalibrator:
             np.maximum(light, 0.0, out=light)
             return light
         return np.maximum(light - master_dark, 0.0).astype(np.float32)
-
-    @staticmethod
-    def apply_dark(light: np.ndarray, master_dark: np.ndarray, in_place: bool = False) -> np.ndarray:
-        """Apply dark frame subtraction (alias for subtract_dark)."""
-        return DarkCalibrator.subtract_dark(light, master_dark, in_place=in_place)

@@ -528,22 +528,3 @@ class DenoiseTuneSettings(QWidget):
         else:
             self.ui.tuneStatus.setText("Requires stacked sky and ground frames")
 
-DenoiseSkySettings.settingsChanged = property(lambda self: self.settings_changed)
-
-DenoiseAlignSettings.settingsChanged = property(lambda self: self.settings_changed)
-
-DenoiseStackSettings.settingsChanged = property(lambda self: self.settings_changed)
-
-DenoiseTuneSettings.settingsChanged = property(lambda self: self.settings_changed)
-
-DenoiseSkySettings.brushRadiusChanged = property(lambda self: self.brush_radius_changed)
-
-DenoiseSkySettings.clearMaskRequested = property(lambda self: self.clear_mask_requested)
-
-DenoiseSkySettings.fullFrameRequested = property(lambda self: self.full_frame_requested)
-
-DenoiseSkySettings.refineMaskRequested = property(lambda self: self.refine_mask_requested)
-
-DenoiseSkySettings.maskEditToggled = property(lambda self: self.mask_edit_toggled)
-
-DenoiseTuneSettings.gradientMaskToggled = property(lambda self: self.gradient_mask_toggled)

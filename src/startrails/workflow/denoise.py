@@ -322,8 +322,6 @@ class DenoiseWorkflow(Workflow):
 
         return out_files
 
-    getOutputFileList = get_output_file_list
-
     def remove_output_file(self, file: OutputFile) -> None:
         if file is None or not getattr(file, "path", None):
             return

@@ -432,21 +432,6 @@ class CanvasLabel(QLabel):
     def clear_horizon_overlay(self) -> None:
         self.set_horizon_patches([])
 
-    # Compatibility aliases for earlier canvas consumers.
-    set_mask_array = set_denoise_mask
-    get_mask = get_denoise_mask
-    clear_mask = clear_denoise_mask
-    fill_mask = fill_denoise_mask
-    set_brush_radius = set_brush_radius
-    set_mask_visible = set_mask_edit_mode
-    is_mask_visible = is_mask_edit_mode
-    set_gradient_mask = set_gradient_mask
-    get_gradient_mask = get_gradient_mask
-    set_gradient_mask_visible = set_gradient_mask_visible
-    is_gradient_mask_visible = is_gradient_mask_visible
-    set_horizon_overlay = set_horizon_overlay
-    clear_horizon_overlay = clear_horizon_overlay
-
     def setPixmap(self, pixmap: QPixmap, doResetZoomAndPosition: bool = True) -> None:
         self.pixmap = pixmap
         if pixmap is None or pixmap.width() == 0 or pixmap.height() == 0:
@@ -821,33 +806,3 @@ class CanvasLabel(QLabel):
 
     def translateAndScaleMousePoint(self, x: int, y: int, scale: float) -> List[float]:
         return [(x - self.posX) / self.zoom_factor / scale, (y - self.posY) / self.zoom_factor / scale]
-
-CanvasLabel.setDenoiseMask = CanvasLabel.set_denoise_mask
-
-CanvasLabel.getDenoiseMask = CanvasLabel.get_denoise_mask
-
-CanvasLabel.clearDenoiseMask = CanvasLabel.clear_denoise_mask
-
-CanvasLabel.fillDenoiseMask = CanvasLabel.fill_denoise_mask
-
-CanvasLabel.setMaskEditMode = CanvasLabel.set_mask_edit_mode
-
-CanvasLabel.isMaskEditMode = CanvasLabel.is_mask_edit_mode
-
-CanvasLabel.setBrushRadius = CanvasLabel.set_brush_radius
-
-CanvasLabel.setGradientMask = CanvasLabel.set_gradient_mask
-
-CanvasLabel.getGradientMask = CanvasLabel.get_gradient_mask
-
-CanvasLabel.setGradientMaskVisible = CanvasLabel.set_gradient_mask_visible
-
-CanvasLabel.isGradientMaskVisible = CanvasLabel.is_gradient_mask_visible
-
-CanvasLabel.setHorizonOverlay = CanvasLabel.set_horizon_overlay
-
-CanvasLabel.clearHorizonOverlay = CanvasLabel.clear_horizon_overlay
-
-CanvasLabel.maskChanged = property(lambda self: self.mask_changed)
-
-CanvasLabel.brushRadiusChanged = property(lambda self: self.brush_radius_changed)

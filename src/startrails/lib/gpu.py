@@ -61,9 +61,13 @@ def free_gpu_memory() -> None:
         pass
 
 
-def toGB(bytes_val: float | int) -> float:
+def to_gb(bytes_val: float | int) -> float:
     """Convert bytes to gigabytes."""
     return bytes_val / (1024 * 1024 * 1024)
+
+
+# Backwards compatibility alias for module-level function
+toGB = to_gb
 
 
 class GPUInfo:
@@ -93,7 +97,7 @@ class GPUInfo:
             self.useNVML = False
             self.nvmlHandle = None
 
-    def getGpuNames(self) -> List[List[str]]:
+    def get_gpu_names(self) -> List[List[str]]:
         try:
             if self.mpsAvailable:
                 return [["mps", "Apple Silicon GPU (MPS)"]]
@@ -113,7 +117,7 @@ class GPUInfo:
             pass
         return []
 
-    def getGpuPresent(self) -> bool:
+    def get_gpu_present(self) -> bool:
         return self.cudaAvailable or self.mpsAvailable or is_cupy_available()
 
     def get_gpu_memory_bytes(self) -> Optional[Tuple[int, int]]:
@@ -139,29 +143,26 @@ class GPUInfo:
                 pass
         return None
 
-    def getGpuMemory(self) -> Optional[Tuple[float, float]]:  # Return (total GB, available GB)
+    def get_gpu_memory(self) -> Optional[Tuple[float, float]]:  # Return (total GB, available GB)
         mem = self.get_gpu_memory_bytes()
         if mem:
             total_bytes, free_bytes = mem
-            return float(toGB(total_bytes)), float(toGB(free_bytes))
+            return float(to_gb(total_bytes)), float(to_gb(free_bytes))
         return None
 
-    def getGpuMemeoryTotal(self) -> Optional[float]:
+    def get_gpu_memory_total(self) -> Optional[float]:
         mem = self.get_gpu_memory_bytes()
         if mem:
-            return float(toGB(mem[0]))
+            return float(to_gb(mem[0]))
         return None
 
-    # Typo alias for backwards compatibility
-    getGpuMemoryTotal = getGpuMemeoryTotal
-
-    def getGpuMemoryAvailable(self) -> Optional[float]:
+    def get_gpu_memory_available(self) -> Optional[float]:
         mem = self.get_gpu_memory_bytes()
         if mem:
-            return float(toGB(mem[1]))
+            return float(to_gb(mem[1]))
         return None
 
-    def getGpuUtilization(self) -> Optional[float]:
+    def get_gpu_utilization(self) -> Optional[float]:
         try:
             if self.mpsAvailable:
                 return None
@@ -179,7 +180,7 @@ class GPUInfo:
             return None
         total_bytes, free_bytes = mem
 
-        names = self.getGpuNames()
+        names = self.get_gpu_names()
         device_name = names[0][1] if names else "GPU"
 
         dev_id = 0
@@ -205,11 +206,6 @@ class GPUInfo:
     @staticmethod
     def free_memory() -> None:
         """Release unused memory blocks back to the GPU allocator."""
-        free_gpu_memory()
-
-    @staticmethod
-    def free_gpu_memory() -> None:
-        """Alias for freeMemory."""
         free_gpu_memory()
 
 
@@ -248,9 +244,3 @@ def get_optimal_chunk_rows(
     chunk_rows = int(target_vram // bytes_per_row)
     chunk_rows = max(128, min(height, 512, chunk_rows))
     return chunk_rows
-
-GPUInfo.getInfo = GPUInfo.get_info
-
-GPUInfo.freeMemory = staticmethod(GPUInfo.free_memory)
-
-GPUInfo.getGpuMemoryBytes = GPUInfo.get_gpu_memory_bytes
