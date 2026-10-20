@@ -97,13 +97,6 @@ class AlignStars(DenoiseOperation):
         if base_calibrated is None:
             base_raw = imread(base_path, to_rgb=True, as_float=False)
             base_calibrated = calibrate_fn(base_raw)
-        elif base_calibrated.dtype in (np.float32, np.float64):
-            sample = imread(base_path, to_rgb=False, as_float=False)
-            if sample.dtype == np.uint16:
-                base_calibrated = np.clip(base_calibrated * 65535.0 + 0.5, 0, 65535).astype(np.uint16)
-            elif sample.dtype == np.uint8:
-                base_calibrated = np.clip(base_calibrated * 255.0 + 0.5, 0, 255).astype(np.uint8)
-            del sample
         h, w = base_calibrated.shape[:2]
 
         if sky_mask is None:

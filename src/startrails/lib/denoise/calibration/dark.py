@@ -7,6 +7,7 @@ from typing import List, Optional
 import numpy as np
 
 from startrails.lib.gpu import free_gpu_memory, get_array_module
+from startrails.lib.image_io import normalize_image
 
 
 class DarkCalibrator:
@@ -19,26 +20,22 @@ class DarkCalibrator:
         use_gpu: bool = True,
         chunk_rows: int = 1024,
     ) -> np.ndarray:
-        """Compute master dark frame using median combination with GPU or multithreaded CPU."""
+        """Compute a normalized float32 median, preserving fractional dark values."""
         if not darks:
             raise ValueError("No dark frames provided.")
         if len(darks) == 1:
-            return darks[0].copy()
+            return normalize_image(darks[0])
 
         h, w = darks[0].shape[:2]
-        target_dtype = darks[0].dtype
-        out = np.zeros_like(darks[0], dtype=target_dtype)
+        out = np.zeros_like(darks[0], dtype=np.float32)
         xp, is_gpu = get_array_module(use_gpu=use_gpu)
 
         if is_gpu:
             try:
                 for y in range(0, h, chunk_rows):
                     y_end = min(y + chunk_rows, h)
-                    chunk_gpu = xp.array([d[y:y_end] for d in darks], dtype=xp.float32)
+                    chunk_gpu = xp.asarray(np.stack([normalize_image(d[y:y_end]) for d in darks]))
                     res_gpu = xp.median(chunk_gpu, axis=0)
-                    if np.issubdtype(target_dtype, np.integer):
-                        max_val = np.iinfo(target_dtype).max
-                        res_gpu = xp.clip(res_gpu + 0.5, 0, max_val).astype(getattr(xp, target_dtype.name))
                     out[y:y_end] = xp.asnumpy(res_gpu)
                     del chunk_gpu, res_gpu
                 return out
@@ -50,13 +47,8 @@ class DarkCalibrator:
 
         def _process_chunk(y_range):
             y_s, y_e = y_range
-            st = np.stack([d[y_s:y_e] for d in darks], axis=0)
-            res = np.median(st, axis=0)
-            if np.issubdtype(target_dtype, np.integer):
-                max_val = np.iinfo(target_dtype).max
-                res = np.clip(res + 0.5, 0, max_val).astype(target_dtype)
-            else:
-                res = res.astype(target_dtype)
+            st = np.stack([normalize_image(d[y_s:y_e]) for d in darks], axis=0)
+            res = np.median(st, axis=0).astype(np.float32)
             return y_s, y_e, res
 
         if len(chunks) > 1 and workers > 1:
@@ -72,18 +64,16 @@ class DarkCalibrator:
 
     @staticmethod
     def subtract_dark(light: np.ndarray, master_dark: np.ndarray, in_place: bool = False) -> np.ndarray:
-        """Subtract master dark frame from light frame."""
-        import cv2
-        if light.dtype == master_dark.dtype and light.dtype in (np.uint8, np.uint16):
-            if in_place:
-                cv2.subtract(light, master_dark, dst=light)
-                return light
-            return cv2.subtract(light, master_dark)
+        """Subtract on a normalized scale, without quantizing calibrated pixels.
+
+        Integer inputs are converted to float32 even when in_place is requested.
+        Floating masters are already normalized by compute_master_dark.
+        """
+        dark = master_dark if np.issubdtype(master_dark.dtype, np.floating) else normalize_image(master_dark)
         if in_place and light.dtype in (np.float32, np.float64):
-            np.subtract(light, master_dark, out=light)
-            np.maximum(light, 0.0, out=light)
-            return light
-        res = np.maximum(light.astype(np.float32) - master_dark.astype(np.float32), 0.0)
-        if np.issubdtype(light.dtype, np.integer):
-            res = np.clip(res + 0.5, 0, np.iinfo(light.dtype).max)
-        return res.astype(light.dtype)
+            result = np.clip(light, 0.0, 1.0, out=light)
+        else:
+            result = normalize_image(light)
+        np.subtract(result, dark, out=result)
+        np.maximum(result, 0.0, out=result)
+        return result
