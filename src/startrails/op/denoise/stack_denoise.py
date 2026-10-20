@@ -32,7 +32,6 @@ class StackDenoise(DenoiseOperation):
         sky_coverages: List[np.ndarray],
         raw_ground_frames: List[np.ndarray],
         sky_mask: np.ndarray,
-        base_icc: Optional[bytes] = None,
         artifacts: Optional[ArtifactTransaction] = None,
     ) -> Optional[HorizonCompositor]:
         """Stack frames and prepare HorizonCompositor.

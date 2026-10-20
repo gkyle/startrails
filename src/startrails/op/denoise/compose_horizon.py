@@ -29,7 +29,6 @@ class ComposeHorizon(DenoiseOperation):
         compositor: HorizonCompositor,
         config: DenoiseConfig,
         sky_coverages: Optional[List[np.ndarray]] = None,
-        base_icc: Optional[bytes] = None,
         write_output: bool = True,
         artifacts: Optional[ArtifactTransaction] = None,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:

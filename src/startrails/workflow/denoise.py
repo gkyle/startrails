@@ -367,7 +367,6 @@ class DenoiseWorkflow(Workflow):
         raw_ground_frames: List[np.ndarray],
         sky_mask: np.ndarray,
         config: Optional[DenoiseConfig] = None,
-        base_icc: Optional[bytes] = None,
         progress_bar: Optional[Any] = None,
     ) -> Optional[HorizonCompositor]:
         cfg = config or self.get_config()
@@ -395,7 +394,6 @@ class DenoiseWorkflow(Workflow):
                 sky_coverages=sky_coverages,
                 raw_ground_frames=raw_ground_frames,
                 sky_mask=sky_mask,
-                base_icc=base_icc,
             )
             if compositor is not None and not stacker.shouldInterrupt() and hasattr(self.project, "get_output_dir"):
                 out_dir = self.project.get_output_dir()
@@ -424,7 +422,6 @@ class DenoiseWorkflow(Workflow):
         config: Optional[DenoiseConfig] = None,
         progress_bar: Optional[Any] = None,
         sky_coverages: Optional[List[np.ndarray]] = None,
-        base_icc: Optional[bytes] = None,
         write_output: bool = True,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
         """Blend sky and ground stacks with seamless horizon band smoothing."""
@@ -447,7 +444,6 @@ class DenoiseWorkflow(Workflow):
                 compositor=compositor,
                 config=cfg,
                 sky_coverages=sky_coverages,
-                base_icc=base_icc,
                 write_output=write_output,
             )
             if result and result[1] and hasattr(self.project, "get_output_dir"):

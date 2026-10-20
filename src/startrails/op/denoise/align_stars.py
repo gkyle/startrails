@@ -28,7 +28,6 @@ class AlignResult:
     sky_coverages: List[np.ndarray] = field(default_factory=list)
     raw_ground_frames: List[np.ndarray] = field(default_factory=list)
     base_calibrated: Optional[np.ndarray] = None
-    base_icc: Optional[bytes] = None
     sky_mask: Optional[np.ndarray] = None
 
 
@@ -179,6 +178,5 @@ class AlignStars(DenoiseOperation):
             sky_coverages=sky_coverages,
             raw_ground_frames=raw_ground_frames,
             base_calibrated=base_calibrated,
-            base_icc=None,
             sky_mask=sky_mask,
         )

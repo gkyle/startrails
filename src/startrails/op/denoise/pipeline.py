@@ -56,7 +56,7 @@ class DenoisePipeline(DenoiseOperation):
         calibrate_fn: Callable[[np.ndarray], np.ndarray],
         profiler: Optional[PipelineProfiler] = None,
         _report: Optional[ProgressCallback] = None,
-    ) -> Tuple[np.ndarray, Optional[bytes], Optional[np.ndarray], Tuple[int, int]]:
+    ) -> Tuple[np.ndarray, Optional[np.ndarray], Tuple[int, int]]:
         """Load and calibrate base image, load/auto-detect/refine sky mask."""
         if self.config is None:
             raise ValueError("No configuration provided.")
@@ -138,13 +138,13 @@ class DenoisePipeline(DenoiseOperation):
 
         if self.shouldInterrupt():
             raise CancelledError()
-        return base_calibrated, None, sky_mask, (h, w)
+        return base_calibrated, sky_mask, (h, w)
 
     def stack_base_frames(
         self,
         progress_callback: Optional[ProgressCallback] = None,
         profiler: Optional[PipelineProfiler] = None,
-    ) -> Tuple[HorizonCompositor, List[np.ndarray], Optional[bytes]]:
+    ) -> Tuple[HorizonCompositor, List[np.ndarray]]:
         """Calibrate, align, and stack base sky and ground frames."""
         if self.config is None:
             raise ValueError("No configuration provided.")
@@ -163,7 +163,7 @@ class DenoisePipeline(DenoiseOperation):
         calibrate_fn = AlignStars.prepare_calibrator(self.config)
 
         with profiler.measure("1 & 2. Frame Loading & Mask Preparation"):
-            base_calibrated, base_icc, sky_mask, (h, w) = self._load_base_and_mask(
+            base_calibrated, sky_mask, (h, w) = self._load_base_and_mask(
                 calibrate_fn, profiler=profiler, _report=_report
             )
 
@@ -200,7 +200,6 @@ class DenoisePipeline(DenoiseOperation):
                 align_result.sky_coverages,
                 align_result.raw_ground_frames,
                 align_result.sky_mask,
-                base_icc=base_icc,
                 artifacts=self._artifacts,
             )
 
@@ -208,7 +207,7 @@ class DenoisePipeline(DenoiseOperation):
             raise CancelledError("Pipeline cancelled during stacking")
 
         self.last_compositor = compositor
-        return compositor, align_result.sky_coverages, None
+        return compositor, align_result.sky_coverages
 
     def run(
         self,
@@ -248,7 +247,7 @@ class DenoisePipeline(DenoiseOperation):
         with ArtifactTransaction(self.shouldInterrupt) as transaction:
             self._artifacts = transaction
             try:
-                compositor, sky_coverages, base_icc = self.stack_base_frames(
+                compositor, sky_coverages = self.stack_base_frames(
                     progress_callback=_report,
                     profiler=profiler,
                 )
@@ -264,7 +263,6 @@ class DenoisePipeline(DenoiseOperation):
                         compositor,
                         self.config,
                         sky_coverages=sky_coverages,
-                        base_icc=base_icc,
                         write_output=True,
                         artifacts=self._artifacts,
                     )
