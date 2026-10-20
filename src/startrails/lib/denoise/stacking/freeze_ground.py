@@ -4,7 +4,7 @@ from __future__ import annotations
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import os
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Callable, List, Optional
 import numpy as np
 
 from startrails.lib.denoise.alignment.warper import ImageWarper
@@ -43,6 +43,7 @@ class FreezeGroundStacker:
         should_interrupt: Optional[Any] = None,
         config: Optional[Any] = None,
         scratch_dir: Optional[Path | str] = None,
+        calibrate_fn: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     ) -> Optional[HorizonCompositor]:
         """Stack base sky and ground frames and assemble real-time HorizonCompositor.
 
@@ -62,7 +63,10 @@ class FreezeGroundStacker:
 
             from startrails.op.denoise.align_stars import AlignStars
             base_path = AlignStars.get_base_image_path(config)
-            calibrate_fn = AlignStars.prepare_calibrator(config)
+            if calibrate_fn is None:
+                calibrate_fn = AlignStars.prepare_calibrator(
+                    config, should_interrupt=should_interrupt, scratch_dir=scratch_dir,
+                )
 
             sample = imread(base_path, to_rgb=True, as_float=False)
             h, w = sample.shape[:2]

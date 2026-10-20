@@ -1,65 +1,106 @@
 """Calibration support code: dark frame integration and subtraction."""
 
 from __future__ import annotations
-from concurrent.futures import ThreadPoolExecutor
-import os
-from typing import List, Optional
+from concurrent.futures import CancelledError
+from pathlib import Path
+from typing import Callable, Optional, Sequence
 import numpy as np
 
 from startrails.lib.gpu import free_gpu_memory, get_array_module
-from startrails.lib.image_io import normalize_image
+from startrails.lib.image_io import imread, normalize_image
+from startrails.lib.denoise.stacking.memmap_buffer import MemmapFrameBuffer
 
 
 class DarkCalibrator:
     """Handles dark frame integration and subtraction."""
 
     @classmethod
+    def compute_master_dark_from_paths(
+        cls,
+        paths: Sequence[Path | str],
+        use_gpu: bool = True,
+        scratch_dir: Optional[Path | str] = None,
+        should_interrupt: Optional[Callable[[], bool]] = None,
+    ) -> np.ndarray:
+        """Stage one decoded dark at a time and integrate disk-backed chunks."""
+        if not paths:
+            raise ValueError("No dark frames provided.")
+        cls._check_cancelled(should_interrupt)
+        first = imread(paths[0], to_rgb=True, as_float=False)
+        if len(paths) == 1:
+            cls._check_cancelled(should_interrupt)
+            return normalize_image(first)
+        shape = first.shape
+        with MemmapFrameBuffer((len(paths), *shape), np.float32, scratch_dir, prefix="st_dark_") as buffer:
+            buffer.mmap[0] = normalize_image(first)
+            del first
+            for index, path in enumerate(paths[1:], start=1):
+                cls._check_cancelled(should_interrupt)
+                frame = imread(path, to_rgb=True, as_float=False)
+                if frame.shape != shape:
+                    raise ValueError(f"Dark frame {path} has shape {frame.shape}; expected {shape}.")
+                buffer.mmap[index] = normalize_image(frame)
+                del frame
+            return cls.compute_master_dark(buffer.mmap, use_gpu=use_gpu, should_interrupt=should_interrupt)
+
+    @staticmethod
+    def _check_cancelled(should_interrupt):
+        if should_interrupt and should_interrupt():
+            raise CancelledError("Dark calibration cancelled")
+
+    @classmethod
     def compute_master_dark(
         cls,
-        darks: List[np.ndarray],
+        darks: Sequence[np.ndarray] | np.ndarray,
         use_gpu: bool = True,
         chunk_rows: int = 1024,
+        should_interrupt: Optional[Callable[[], bool]] = None,
     ) -> np.ndarray:
         """Compute a normalized float32 median, preserving fractional dark values."""
-        if not darks:
+        if len(darks) == 0:
             raise ValueError("No dark frames provided.")
+        cls._check_cancelled(should_interrupt)
         if len(darks) == 1:
             return normalize_image(darks[0])
 
         h, w = darks[0].shape[:2]
         out = np.zeros_like(darks[0], dtype=np.float32)
         xp, is_gpu = get_array_module(use_gpu=use_gpu)
+        channels = darks[0].shape[2] if darks[0].ndim == 3 else 1
+        # Leave room for the input, median workspace and any GPU upload buffer.
+        bytes_per_row = len(darks) * w * channels * np.dtype(np.float32).itemsize * 3
+        chunk_rows = max(1, min(chunk_rows, (64 * 1024**2) // bytes_per_row))
+
+        def read_chunk(start, end):
+            chunk = np.empty((len(darks), end - start, *darks[0].shape[1:]), dtype=np.float32)
+            for index, frame in enumerate(darks):
+                cls._check_cancelled(should_interrupt)
+                chunk[index] = normalize_image(frame[start:end])
+            return chunk
 
         if is_gpu:
             try:
                 for y in range(0, h, chunk_rows):
+                    cls._check_cancelled(should_interrupt)
                     y_end = min(y + chunk_rows, h)
-                    chunk_gpu = xp.asarray(np.stack([normalize_image(d[y:y_end]) for d in darks]))
+                    chunk_gpu = xp.asarray(read_chunk(y, y_end))
                     res_gpu = xp.median(chunk_gpu, axis=0)
                     out[y:y_end] = xp.asnumpy(res_gpu)
                     del chunk_gpu, res_gpu
+                cls._check_cancelled(should_interrupt)
                 return out
             finally:
                 free_gpu_memory()
 
-        chunks = [(y, min(y + chunk_rows, h)) for y in range(0, h, chunk_rows)]
-        workers = min(16, os.cpu_count() or 4)
+        # Serial chunks prevent CPU count from multiplying peak median memory.
+        for start in range(0, h, chunk_rows):
+            cls._check_cancelled(should_interrupt)
+            end = min(start + chunk_rows, h)
+            chunk = read_chunk(start, end)
+            out[start:end] = np.median(chunk, axis=0, overwrite_input=True)
+            del chunk
 
-        def _process_chunk(y_range):
-            y_s, y_e = y_range
-            st = np.stack([normalize_image(d[y_s:y_e]) for d in darks], axis=0)
-            res = np.median(st, axis=0).astype(np.float32)
-            return y_s, y_e, res
-
-        if len(chunks) > 1 and workers > 1:
-            with ThreadPoolExecutor(max_workers=workers) as pool:
-                for y_s, y_e, res in pool.map(_process_chunk, chunks):
-                    out[y_s:y_e] = res
-        else:
-            for y_range in chunks:
-                y_s, y_e, res = _process_chunk(y_range)
-                out[y_s:y_e] = res
-
+        cls._check_cancelled(should_interrupt)
         return out
 
     @staticmethod

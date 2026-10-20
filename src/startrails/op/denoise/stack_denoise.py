@@ -5,7 +5,7 @@ import logging
 from contextlib import nullcontext
 from startrails.lib.artifacts import ArtifactTransaction
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
 import numpy as np
 
 from startrails.lib.util import imwrite
@@ -32,6 +32,7 @@ class StackDenoise(DenoiseOperation):
         raw_ground_frames: Optional[List[np.ndarray]] = None,
         sky_mask: Optional[np.ndarray] = None,
         artifacts: Optional[ArtifactTransaction] = None,
+        calibrate_fn: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     ) -> Optional[HorizonCompositor]:
         """Stack frames and prepare HorizonCompositor.
 
@@ -69,6 +70,7 @@ class StackDenoise(DenoiseOperation):
             progress_callback=_on_frame_progress,
             should_interrupt=self.shouldInterrupt,
             config=config,
+            calibrate_fn=calibrate_fn,
         )
 
         if compositor is None or self.shouldInterrupt():

@@ -38,12 +38,21 @@ class AlignStars(DenoiseOperation):
         super().__init__(cancel_event, cancel_check)
 
     @staticmethod
-    def prepare_calibrator(config: DenoiseProject) -> Callable[[np.ndarray], np.ndarray]:
+    def prepare_calibrator(
+        config: DenoiseProject,
+        should_interrupt: Optional[Callable[[], bool]] = None,
+        scratch_dir: Optional[Path | str] = None,
+    ) -> Callable[[np.ndarray], np.ndarray]:
         """Prepare dark master calibration frame if configured."""
         master_dark: Optional[np.ndarray] = None
         if config.noise_images:
-            darks = [imread(p, to_rgb=True, as_float=False) for p in config.noise_images]
-            master_dark = DarkCalibrator.compute_master_dark(darks, use_gpu=config.use_gpu)
+            if scratch_dir is None:
+                output = config.output_path or config.sky_stack_path
+                scratch_dir = Path(output).resolve().parent if output else None
+            master_dark = DarkCalibrator.compute_master_dark_from_paths(
+                config.noise_images, use_gpu=config.use_gpu,
+                scratch_dir=scratch_dir, should_interrupt=should_interrupt,
+            )
 
         def calibrate(img: np.ndarray) -> np.ndarray:
             if master_dark is not None:
@@ -91,7 +100,7 @@ class AlignStars(DenoiseOperation):
             return None
 
         if calibrate_fn is None:
-            calibrate_fn = self.prepare_calibrator(config)
+            calibrate_fn = self.prepare_calibrator(config, should_interrupt=self.shouldInterrupt)
         base_path = self.get_base_image_path(config)
 
         if base_calibrated is None:
