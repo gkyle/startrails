@@ -68,7 +68,6 @@ class FreezeGroundStacker:
             h, w = sample.shape[:2]
             is_rgb = (sample.ndim == 3)
             channels = sample.shape[2] if is_rgb else 1
-            native_dtype = sample.dtype
             buf_shape = (n_stars, h, w, channels) if is_rgb else (n_stars, h, w)
             del sample
 
@@ -171,7 +170,9 @@ class FreezeGroundStacker:
                 return None
 
             # 2. Ground Staging & Stacking
-            with MemmapFrameBuffer(buf_shape, dtype=native_dtype, scratch_dir=scratch_dir, prefix="st_ground_") as ground_buf:
+            # A common normalized scale preserves mixed input bit depths and
+            # fractional calibrated values without quantizing to the base dtype.
+            with MemmapFrameBuffer(buf_shape, dtype=np.float32, scratch_dir=scratch_dir, prefix="st_ground_") as ground_buf:
                 for idx, p in enumerate(star_images):
                     if should_interrupt and should_interrupt():
                         return None
@@ -179,7 +180,7 @@ class FreezeGroundStacker:
                     frame_raw = imread(p_resolved, to_rgb=True, as_float=False)
                     frame_cal = calibrate_fn(frame_raw)
                     del frame_raw
-                    ground_buf.mmap[idx] = frame_cal
+                    ground_buf.mmap[idx] = normalize_image(frame_cal)
                     del frame_cal
 
                     if progress_callback is not None:
