@@ -42,7 +42,7 @@
       <widget class="QComboBox" name="modelType">
        <item>
         <property name="text">
-         <string>Nightstack (v6 Fine-Tuned)</string>
+         <string>Nightstack (Fine-tuned SegFormer)</string>
         </property>
        </item>
        <item>

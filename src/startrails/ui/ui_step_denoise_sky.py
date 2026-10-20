@@ -259,7 +259,7 @@ class Ui_DenoiseSkySettings(object):
 
     def retranslateUi(self, DenoiseSkySettings):
         self.modelLabel.setText(QCoreApplication.translate("DenoiseSkySettings", u"Model:", None))
-        self.modelType.setItemText(0, QCoreApplication.translate("DenoiseSkySettings", u"Nightstack (v6 Fine-Tuned)", None))
+        self.modelType.setItemText(0, QCoreApplication.translate("DenoiseSkySettings", u"Nightstack (Fine-tuned SegFormer)", None))
         self.modelType.setItemText(1, QCoreApplication.translate("DenoiseSkySettings", u"SegFormer (ADE20K Pretrained)", None))
 
 #if QT_CONFIG(tooltip)
