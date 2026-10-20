@@ -69,15 +69,13 @@ class ComposeHorizon(DenoiseOperation):
                 imwrite(transaction.stage(output_path), stacked, convertBGR=True,
                         quality=config.jpeg_quality, optimize=config.jpeg_optimize)
 
-                if config.export_gradient_mask and sky_coverages:
+                if config.export_gradient_mask and compositor.gradient_mask is not None:
                     grad_mask_out = (
                         Path(config.gradient_mask_path).resolve()
                         if config.gradient_mask_path
                         else output_path.parent / f"{output_path.stem}.gradient_mask.png"
                     )
-                    h, w = stacked.shape[:2]
-                    sky_mask = MaskHandler.create_mask(shape=(h, w), mask_path=config.mask_path, mask_array=config.mask_array)
-                    gradient_mask = MaskHandler.compute_gradient_mask(sky_coverages, sky_mask=sky_mask)
+                    gradient_mask = compositor.gradient_mask
                     MaskHandler.save_mask(gradient_mask, transaction.stage(grad_mask_out))
                     config.gradient_mask_path = grad_mask_out
                     self.last_gradient_mask = gradient_mask
