@@ -144,10 +144,13 @@ class AlignStars(DenoiseOperation):
                     if matrix is not None:
                         config.homographies[p_resolved] = matrix
 
+            if matrix is None:
+                logger.warning("Could not align frame %s; excluding it from the sky stack", p_path)
+
             if warp_frames:
                 if matrix is None:
                     warped = frame_cal.copy()
-                    coverage = (sky_mask > 0.5) if sky_mask is not None else np.ones((h, w), dtype=bool)
+                    coverage = np.zeros((h, w), dtype=bool)
                 else:
                     warped, in_bounds = ImageWarper.warp(frame_cal, matrix, (h, w))
                     if sky_mask is not None:
