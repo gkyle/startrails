@@ -42,8 +42,6 @@ class Ui_DenoiseSkySettings(object):
         self.modelType = QComboBox(DenoiseSkySettings)
         self.modelType.addItem("")
         self.modelType.addItem("")
-        self.modelType.addItem("")
-        self.modelType.addItem("")
         self.modelType.setObjectName(u"modelType")
 
         self.modelRow.addWidget(self.modelType)
@@ -263,8 +261,6 @@ class Ui_DenoiseSkySettings(object):
         self.modelLabel.setText(QCoreApplication.translate("DenoiseSkySettings", u"Model:", None))
         self.modelType.setItemText(0, QCoreApplication.translate("DenoiseSkySettings", u"Nightstack (v6 Fine-Tuned)", None))
         self.modelType.setItemText(1, QCoreApplication.translate("DenoiseSkySettings", u"SegFormer (ADE20K Pretrained)", None))
-        self.modelType.setItemText(2, QCoreApplication.translate("DenoiseSkySettings", u"Heuristic (Classic/Color)", None))
-        self.modelType.setItemText(3, QCoreApplication.translate("DenoiseSkySettings", u"Auto (Best Available)", None))
 
 #if QT_CONFIG(tooltip)
         self.detect.setToolTip(QCoreApplication.translate("DenoiseSkySettings", u"Run automatic celestial sky detection and horizon refinement", None))

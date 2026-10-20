@@ -164,12 +164,12 @@ class DenoiseWorkflow(Workflow):
         self,
         image: np.ndarray,
         progress_bar: Optional[Any] = None,
-        model_type: str = "auto",
+        model_type: str = "nightstack",
         model_path: Optional[str] = None,
         device: str = "auto",
         input_size: int = 1024,
     ) -> Optional[np.ndarray]:
-        """Run autonomous neural / heuristic sky detection."""
+        """Run autonomous neural sky detection."""
         detector = self._new_operation(DetectSky)
         if progress_bar is not None:
             detector.addObserver(progress_bar)

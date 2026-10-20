@@ -86,7 +86,7 @@ class DenoisePipeline(DenoiseOperation):
             )
 
         if self.config.auto_mask:
-            model_name = self.config.auto_mask_model or "auto"
+            model_name = self.config.auto_mask_model or "nightstack"
             report(0.18, f"Running auto sky detection ({model_name})...")
             with profiler.measure("2a. Automatic Sky Detection"):
                 detect_op = DetectSky(self.cancel_event, self.cancel_check)

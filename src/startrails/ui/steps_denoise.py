@@ -32,8 +32,6 @@ class DenoiseSkySettings(QWidget):
     MODEL_MAP = {
         0: "nightstack",
         1: "segformer",
-        2: "heuristic",
-        3: "auto",
     }
     REV_MODEL_MAP = {v: k for k, v in MODEL_MAP.items()}
 

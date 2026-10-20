@@ -19,7 +19,7 @@ class DetectSky(DenoiseOperation):
     def detect(
         self,
         image_or_path: Union[np.ndarray, str, Path],
-        model_type: str = "auto",
+        model_type: str = "nightstack",
         model_path: Optional[str] = None,
         device: str = "auto",
         input_size: int = 1024,
@@ -28,7 +28,7 @@ class DetectSky(DenoiseOperation):
 
         Args:
             image_or_path: Input image array or filepath.
-            model_type: "auto", "segformer", "nightstack", or "heuristic".
+            model_type: "nightstack" (default) or "segformer".
             model_path: Optional custom path or HF model id.
             device: "auto", "cuda", or "cpu".
             input_size: Maximum dimension during neural inference.

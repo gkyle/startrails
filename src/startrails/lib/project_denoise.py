@@ -25,7 +25,7 @@ class DenoiseSettings:
     mask_foliage_protection: bool = True
     refine_sky_mask: bool = False
     auto_mask: bool = False
-    auto_mask_model: Optional[str] = None
+    auto_mask_model: str = "nightstack"
     auto_mask_path: Optional[str] = None
     export_refined_mask: bool = True
     export_gradient_mask: bool = True

@@ -16,32 +16,29 @@ logger = logging.getLogger(__name__)
 _MODEL_CACHE: dict[str, Tuple[Any, Any, str, int]] = {}
 
 
-def _get_local_nightstack_dir() -> Optional[Path]:
+def _get_local_nightstack_dir() -> Path:
     """Find local nightstack weights directory in repository or current working directory."""
     root = Path(__file__).resolve()
     while root.parent != root:
-        if (root / "models" / "detectSky" / "nightstack").is_dir():
-            target = root / "models" / "detectSky" / "nightstack"
-            if (target / "model.safetensors").exists() or (target / "config.json").exists():
-                return target.resolve()
+        candidate = root / "models" / "detectSky" / "nightstack"
+        if candidate.is_dir() and ((candidate / "model.safetensors").exists() or (candidate / "config.json").exists()):
+            return candidate.resolve()
         root = root.parent
     candidate = Path("models/detectSky/nightstack").resolve()
-    if candidate.is_dir() and ((candidate / "model.safetensors").exists() or (candidate / "config.json").exists()):
-        return candidate
-    return None
+    return candidate
 
 
 class AutoSkyDetector:
     """Detect celestial sky region autonomously without requiring manual user brush masks."""
 
-    DEFAULT_NIGHT_MODEL = "dvd1016/nightstack-v6-segformer-b0"
+    DEFAULT_NIGHT_MODEL = str(_get_local_nightstack_dir())
     DEFAULT_SEGFORMER_MODEL = "nvidia/segformer-b0-finetuned-ade-512-512"
 
     @classmethod
     def detect(
         cls,
         image: np.ndarray,
-        model_type: str = "auto",
+        model_type: str = "nightstack",
         model_path: Optional[str] = None,
         device: str = "auto",
         input_size: int = 1024,
@@ -50,7 +47,7 @@ class AutoSkyDetector:
 
         Args:
             image: 2D or 3D numpy array (H, W) or (H, W, C), uint8 [0, 255] or float [0.0, 1.0]
-            model_type: "auto", "segformer", "nightstack", or "heuristic"
+            model_type: "nightstack" (default) or "segformer"
             model_path: Optional custom path or HF model id
             device: "auto", "cuda", or "cpu"
             input_size: Maximum dimension to downsample image during neural inference (default: 1024)
@@ -74,42 +71,32 @@ class AutoSkyDetector:
         else:
             raise ValueError(f"Unsupported image shape: {image.shape}")
 
-        # 2. Determine engine
-        selected_model = model_type.lower()
-        if selected_model == "auto":
-            if model_path is not None:
-                selected_model = "nightstack"
-            else:
-                try:
-                    import torch
-                    import transformers
-                    selected_model = "nightstack"
-                except ImportError:
-                    logger.info("PyTorch or Transformers not installed. Using heuristic sky detection.")
-                    selected_model = "heuristic"
-
-        if selected_model == "nightstack" and model_path is None:
-            local_dir = _get_local_nightstack_dir()
-            if local_dir is not None:
-                model_path = str(local_dir)
-            else:
-                model_path = cls.DEFAULT_NIGHT_MODEL
-        elif selected_model == "segformer" and model_path is None:
-            model_path = cls.DEFAULT_SEGFORMER_MODEL
+        # 2. Determine engine & model path
+        selected_model = (model_type or "nightstack").lower()
+        if selected_model == "nightstack":
+            model_path = model_path or cls.DEFAULT_NIGHT_MODEL
+        elif selected_model == "segformer":
+            model_path = model_path or cls.DEFAULT_SEGFORMER_MODEL
+        else:
+            raise ValueError(
+                f"Unknown model_type: '{model_type}'. Expected 'nightstack' or 'segformer'."
+            )
 
         os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 
-        # 3. Dispatch to engine
-        if selected_model in ("segformer", "nightstack"):
-            try:
-                return cls._detect_segformer(
-                    rgb,
-                    model_path=model_path,
-                    device=device,
-                    input_size=input_size,
+        # 3. Execute neural inference
+        try:
+            return cls._detect_segformer(
+                rgb,
+                model_path=model_path,
+                device=device,
+                input_size=input_size,
+            )
+        except Exception as e:
+            if device != "cpu":
+                logger.warning(
+                    f"Neural inference on {device} failed ({e}). Retrying neural inference on CPU..."
                 )
-            except Exception as e:
-                logger.warning(f"Neural inference on {device} failed ({e}). Retrying neural inference on CPU...")
                 try:
                     import torch
                     if torch.cuda.is_available():
@@ -121,12 +108,9 @@ class AutoSkyDetector:
                         input_size=input_size,
                     )
                 except Exception as e_cpu:
-                    logger.warning(f"CPU neural inference failed ({e_cpu}). Falling back to heuristic detector.")
-                    return cls._detect_heuristic(rgb)
-        elif selected_model == "heuristic":
-            return cls._detect_heuristic(rgb)
-        else:
-            raise ValueError(f"Unknown model_type: {model_type}. Expected 'auto', 'segformer', 'nightstack', or 'heuristic'.")
+                    logger.error(f"CPU neural inference failed: {e_cpu}")
+                    raise
+            raise
 
     @classmethod
     def _get_segformer_model(
@@ -138,7 +122,7 @@ class AutoSkyDetector:
         import torch
         from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 
-        target_path = model_path or cls.DEFAULT_SEGFORMER_MODEL
+        target_path = model_path or cls.DEFAULT_NIGHT_MODEL
         target_p = Path(target_path)
         if target_p.is_file():
             target_path = str(target_p.parent)
@@ -196,10 +180,10 @@ class AutoSkyDetector:
             with torch.no_grad():
                 outputs = model(pixel_values=pixel_values)
                 logits = outputs.logits
-                upsampled = torch.nn.functional.interpolate(
-                    logits, size=(h, w), mode="bilinear", align_corners=False
-                )
-                probs = torch.softmax(upsampled, dim=1)[0, sky_idx].float().cpu().numpy()
+                probs_feat = torch.softmax(logits, dim=1)[0, sky_idx].float().cpu().numpy()
+                probs = cv2.resize(probs_feat, (w, h), interpolation=cv2.INTER_LINEAR)
+            if dev == "cuda" and torch.cuda.is_available():
+                torch.cuda.empty_cache()
         except Exception as err:
             if dev == "cuda":
                 logger.warning(
@@ -215,55 +199,4 @@ class AutoSkyDetector:
                 )
             raise
 
-        actual_path = str(model_path or getattr(model.config, "_name_or_path", "")).lower()
-        if "ade" in actual_path and np.mean(probs > 0.5) < 0.05:
-            logger.warning(
-                f"SegFormer (ADE20K) detected only {np.mean(probs > 0.5)*100:.2f}% sky. "
-                "Automatically falling back to astrophotography-tuned NightStack model..."
-            )
-            local_dir = _get_local_nightstack_dir()
-            night_model_path = str(local_dir) if local_dir else cls.DEFAULT_NIGHT_MODEL
-            return cls._detect_segformer(
-                rgb,
-                model_path=night_model_path,
-                device=device,
-                input_size=input_size,
-            )
-
         return np.clip(probs, 0.0, 1.0).astype(np.float32)
-
-    @classmethod
-    def _detect_heuristic(cls, rgb: np.ndarray) -> np.ndarray:
-        """Physics & astrophotography-specific heuristic sky detection fallback."""
-        h, w = rgb.shape[:2]
-        gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255.0
-
-        dw = min(600, w)
-        dh = int(round(h * (dw / w)))
-        s_gray = cv2.resize(gray, (dw, dh), interpolation=cv2.INTER_AREA)
-        s_rgb = cv2.resize(rgb, (dw, dh), interpolation=cv2.INTER_AREA).astype(np.float32) / 255.0
-
-        # 1. Star Detection via Difference of Gaussians (DoG)
-        g1 = cv2.GaussianBlur(s_gray, (3, 3), 0.8)
-        g2 = cv2.GaussianBlur(s_gray, (7, 7), 2.0)
-        dog = np.maximum(g1 - g2, 0)
-        star_thresh = max(0.015, float(np.percentile(dog, 95)))
-        stars = (dog > star_thresh).astype(np.float32)
-        star_density = cv2.boxFilter(stars, -1, (51, 51))
-
-        # 2. Color Gradient Prior
-        b_ratio = s_rgb[..., 2] / (s_rgb[..., 0] + s_rgb[..., 1] + 1e-3)
-        b_score = np.clip((b_ratio - 0.7) * 2.0, 0.0, 1.0)
-
-        # 3. Celestial Signal & Elevation Gating
-        sky_signal = (star_density * 4.0) + (b_score * 0.8)
-        y_coords = np.linspace(0, 1, dh)[:, None]
-        elev_gate = np.clip(1.2 - y_coords, 0.0, 1.0)
-        raw_prob = np.clip(sky_signal * elev_gate, 0.0, 1.0)
-
-        # Clean coarse mask
-        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
-        coarse = cv2.morphologyEx(raw_prob, cv2.MORPH_CLOSE, k)
-
-        prob_full = cv2.resize(coarse, (w, h), interpolation=cv2.INTER_LINEAR)
-        return np.clip(prob_full, 0.0, 1.0).astype(np.float32)

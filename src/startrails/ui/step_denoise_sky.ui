@@ -50,16 +50,6 @@
          <string>SegFormer (ADE20K Pretrained)</string>
         </property>
        </item>
-       <item>
-        <property name="text">
-         <string>Heuristic (Classic/Color)</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>Auto (Best Available)</string>
-        </property>
-       </item>
       </widget>
      </item>
     </layout>
