@@ -117,6 +117,7 @@ class StarMatcher:
                         r1 = s_min / s_max
                         r2 = s_mid / s_max
                         features.append([r1, r2])
-                        indices.append((sides[0][1][0], sides[1][1][0], sides[2][1][0]))
+                        # The opposite vertex is stable when detections reorder a triangle.
+                        indices.append((sides[0][1][2], sides[1][1][2], sides[2][1][2]))
 
         return np.array(features, dtype=np.float32), indices
