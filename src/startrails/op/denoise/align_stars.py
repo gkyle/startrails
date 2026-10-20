@@ -68,6 +68,7 @@ class AlignStars(DenoiseOperation):
         warp_frames: bool = True,
         sky_mask: Optional[np.ndarray] = None,
         base_calibrated: Optional[np.ndarray] = None,
+        calibrate_fn: Optional[Callable[[np.ndarray], np.ndarray]] = None,
     ) -> Optional[AlignResult]:
         """Align all star images in config to base reference frame.
 
@@ -76,6 +77,7 @@ class AlignStars(DenoiseOperation):
             warp_frames: Whether to warp images and produce aligned_sky_frames and coverages.
             sky_mask: Pre-computed or user-defined sky mask (H, W). If None, resolved from config.
             base_calibrated: Pre-loaded and calibrated base image array. If None, loaded from disk.
+            calibrate_fn: Prepared calibration shared with base loading. If None, prepared here.
 
         Returns:
             AlignResult or None if interrupted.
@@ -88,7 +90,8 @@ class AlignStars(DenoiseOperation):
         if self.shouldInterrupt():
             return None
 
-        calibrate_fn = self.prepare_calibrator(config)
+        if calibrate_fn is None:
+            calibrate_fn = self.prepare_calibrator(config)
         base_path = self.get_base_image_path(config)
 
         if base_calibrated is None:

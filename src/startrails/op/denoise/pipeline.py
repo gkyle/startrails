@@ -184,6 +184,7 @@ class DenoisePipeline(DenoiseOperation):
                 warp_frames=True,
                 sky_mask=sky_mask,
                 base_calibrated=base_calibrated,
+                calibrate_fn=calibrate_fn,
             )
 
         if align_result is None or self.shouldInterrupt():
