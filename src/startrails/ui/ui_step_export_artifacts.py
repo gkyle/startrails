@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'step_export_artifacts.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.2
+## Created by: Qt User Interface Compiler version 6.12.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -22,13 +22,6 @@ class Ui_ExportSettings(object):
     def setupUi(self, exportSettings):
         if not exportSettings.objectName():
             exportSettings.setObjectName(u"exportSettings")
-        exportSettings.setStyleSheet(u"QCheckBox {\n"
-"    font-size: 12px;\n"
-"    color: #1e293b;\n"
-"    spacing: 6px;\n"
-"    border: 2px solid transparent;\n"
-"}\n"
-"QCheckBox:focus:enabled { border-color: #0f172a; }")
         self.layout = QVBoxLayout(exportSettings)
         self.layout.setSpacing(6)
         self.layout.setObjectName(u"layout")

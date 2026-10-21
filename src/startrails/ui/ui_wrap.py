@@ -1,6 +1,10 @@
-from typing import Optional
-from PySide6.QtGui import (QPixmap, QGuiApplication)
-from PySide6.QtCore import QThreadPool, QTimer, QPoint, Qt, QObject, Slot, QSignalBlocker
+from functools import partial
+import logging
+from pathlib import Path
+from typing import Any, Dict, Optional, TYPE_CHECKING
+import numpy as np
+from PySide6.QtGui import (QPixmap, QGuiApplication, QImageReader)
+from PySide6.QtCore import QThreadPool, QTimer, QPoint, Qt, QObject, Slot
 from PySide6.QtWidgets import (
     QWidget,
     QFileDialog,
@@ -8,11 +12,8 @@ from PySide6.QtWidgets import (
     QApplication,
     QMessageBox,
 )
-from functools import partial
-import numpy as np
 
-from startrails.app import App
-from startrails.ui.progress import ProgressBarUpdater
+from startrails.ui.progress import ProgressBarUpdater, progress_scope
 from startrails.ui.progress_overlay import ProgressOverlay
 from startrails.ui.signals import AsyncWorker, getSignals
 from startrails.ui.sidebar import Sidebar
@@ -20,12 +21,27 @@ from startrails.ui.ui_interface import Ui_MainWindow
 from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.theme import system_theme, theme_palette
 from startrails.lib.file import File, InputFile, OutputFile
-from startrails.lib.source_map import SourceLookup, SourceMapError
+from startrails.lib.project_type import (
+    STARTRAILS_EXT,
+    DENOISE_EXT,
+    LEGACY_STARTRAILS_EXT,
+    detect_project_type,
+)
+from startrails.ui.views.base import ModeView
+from startrails.ui.views.startrails import StarTrailsView
+from startrails.ui.views.denoise import DenoiseView
+from startrails.ui.project_overlay import ProjectWelcomeOverlay
+from startrails.lib.recent import add_recent_project
+
+from startrails.app import App
+
+logger = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, app: App):
+    def __init__(self, app: "App", project_path: Optional[str] = None, show_welcome: Optional[bool] = None):
         QMainWindow.__init__(self)
+        QImageReader.setAllocationLimit(0)
         theme = system_theme()
         self.ui = Ui_AppWindow(app)
         self.ui.setupUi(self)
@@ -33,12 +49,43 @@ class MainWindow(QMainWindow):
         self.ui.canvasHost.setPalette(theme_palette(True))
         self.ui.canvas_main.setPalette(theme_palette(True))
         theme.register(self)
+
+        # Welcome and project selection overlay
+        self.project_overlay = ProjectWelcomeOverlay(self)
+        self.project_overlay.createStarTrailsRequested.connect(self.ui.doCreateNewStarTrailsProject)
+        self.project_overlay.createDenoiseRequested.connect(self.ui.doCreateNewDenoiseProject)
+        self.project_overlay.openStarTrailsRequested.connect(self.ui.doOpenStarTrailsProject)
+        self.project_overlay.openDenoiseRequested.connect(self.ui.doOpenDenoiseProject)
+        self.project_overlay.projectSelected.connect(self.ui.load_project_and_dismiss)
+        self.project_overlay.browseRequested.connect(self.ui.doBrowseAnyProject)
+        self.project_overlay.dismissed.connect(self.hide_project_overlay)
+        self.project_overlay.hide()
+
         self.show()
 
         # timer for updating GPU stats
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.ui.slotUpdateGPUStats)
         self.timer.start(5000)
+
+        if show_welcome is True:
+            self.show_project_overlay("welcome", can_dismiss=getattr(app, "project", None) is not None)
+
+    def show_project_overlay(self, mode: str = "welcome", can_dismiss: bool = True):
+        if hasattr(self, "project_overlay") and self.project_overlay is not None:
+            self.project_overlay.set_overlay_mode(mode, can_dismiss=can_dismiss)
+            self.project_overlay.setGeometry(0, 0, self.width(), self.height())
+            self.project_overlay.show()
+            self.project_overlay.raise_()
+
+    def hide_project_overlay(self):
+        if hasattr(self, "project_overlay") and self.project_overlay is not None:
+            self.project_overlay.hide()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "project_overlay") and self.project_overlay is not None:
+            self.project_overlay.setGeometry(0, 0, self.width(), self.height())
 
     def center(self):
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -57,6 +104,10 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.ui.doCancelOp()
+        if hasattr(self.ui, "active_view") and self.ui.active_view is not None:
+            self.ui.active_view.teardown()
+        for view in self.ui.findChildren(DenoiseView):
+            view.wait_for_workers()
         if self.ui.op_queue is not None and hasattr(self.ui.op_queue, "clear"):
             self.ui.op_queue.clear()
             self.ui.op_queue.waitForDone(1000)
@@ -69,13 +120,16 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     app = None
     op_queue = None
     persistentSettings = {}
-    currentFile: File = None
-
+    currentFile: Optional[File] = None
     pushButton_findBrightest = None
 
-    def __init__(self, app: App):
+    def __init__(self, app: "App"):
         super().__init__()
         self.app = app
+        self.mainWindow: Optional[MainWindow] = None
+        self.active_view: Optional[ModeView] = None
+        self.current_project_token = object()
+        self._visible_task_token = None
         self.op_queue = QThreadPool()
         self.op_queue.setMaxThreadCount(1)
         self.enqueued_tasks = set()
@@ -91,12 +145,47 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.pushButton_cancelOp = None
         self.pushButton_findBrightest = None
 
-        settings = app.getWindowSettings()
+        # Determine initial active view
+        mode_name = "startrails"
+        if hasattr(app, "workflow") and getattr(app.workflow, "mode_name", None):
+            mode_name = app.workflow.mode_name
+        elif hasattr(app, "project") and getattr(app, "project", None) is not None:
+            try:
+                mode_name = detect_project_type(app.project)
+            except Exception:
+                mode_name = "startrails"
+
+        if mode_name == "denoise":
+            self.active_view = DenoiseView(app, self)
+        else:
+            self.active_view = StarTrailsView(app, self)
+
+        settings = getattr(app, "getWindowSettings", lambda: None)()
         if settings is not None:
             self.persistentSettings = settings
 
-    def __getattr__(self, name):
+    def __setattr__(self, name: str, value: Any) -> None:
+        super().__setattr__(name, value)
+        if name == "sidebar" and hasattr(self, "active_view") and self.active_view is not None:
+            if hasattr(self.active_view, "sidebar"):
+                self.active_view.sidebar = value
+        elif name == "inputFiles" and hasattr(self, "active_view") and self.active_view is not None:
+            if hasattr(self.active_view, "inputFiles"):
+                self.active_view.inputFiles = value
+        elif name == "outputFiles" and hasattr(self, "active_view") and self.active_view is not None:
+            if hasattr(self.active_view, "outputFiles"):
+                self.active_view.outputFiles = value
+
+    def __getattr__(self, name: str) -> Any:
+        # Check active_view first for mode-specific widgets or methods
+        view = self.__dict__.get("active_view")
+        if view is not None and hasattr(view, name):
+            return getattr(view, name)
+
         sidebar = self.__dict__.get("sidebar")
+        if sidebar is None and view is not None:
+            sidebar = getattr(view, "sidebar", None)
+
         if sidebar is not None:
             if hasattr(sidebar.ui, name):
                 return getattr(sidebar.ui, name)
@@ -157,69 +246,13 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     def setupUi(self, MainWindow):
         super().setupUi(MainWindow)
         self.setParent(MainWindow)
-        if hasattr(self, "sidebar") and isinstance(self.sidebar, Sidebar):
-            self.sidebar.init_app(self.app)
-        else:
-            self.sidebar = Sidebar(self.app, self)
-        self.bodySplitter.setSizes([self.bodySplitter.widget(0).maximumWidth(), 1000])
-        self.bodySplitter.setStretchFactor(0, 0)
-        self.bodySplitter.setStretchFactor(1, 1)
-        # The sidebar is fixed-width; disable the invisible handle's hit area.
-        self.bodySplitter.handle(1).setEnabled(False)
-
-        self.inputFiles = self.sidebar.inputs
-        self.outputFiles = self.sidebar.outputs
-        # Keep operation bindings local to the existing controller/queue.
-        self.pushButton_newProject = self.sidebar.ui.newProject
-        self.pushButton_openProject = self.sidebar.ui.openProject
-        self.pushButton_stackImages = self.sidebar.stack.ui.run
-        self.pushButton_removeStreaks = self.sidebar.detect.ui.run
-        self.pushButton_exportMasks = self.sidebar.tools.ui.masks
-        self.pushButton_exportTraining = self.sidebar.review.ui.training
-        self.checkBox_showDeletedMasks = self.sidebar.review.ui.showDeletedMasks
-        self.pushButton_findBrightest = getattr(self.sidebar.review.ui, "findBrightest", None)
-        self.pushButton_fillGaps = self.sidebar.fill.ui.run
-
-        MainWindow.setWindowTitle("StarTrails AI")
-
-        # Set window size
-        screen_resolution = QGuiApplication.primaryScreen().availableGeometry()
-        width = screen_resolution.width()
-        height = screen_resolution.height()
-
-        MainWindow.resize(int(width * 0.80), int(height * 0.90))
-        MainWindow.center()
-
-        # Bind events
-        self.pushButton_newProject.clicked.connect(self.doNewProject)
-        self.pushButton_openProject.clicked.connect(self.doOpenProject)
-        self.inputFiles.addRequested.connect(self.selectInputFiles)
-        self.pushButton_stackImages.clicked.connect(self.doStack)
-        self.pushButton_removeStreaks.clicked.connect(self.doDetectStreaks)
-        self.pushButton_exportMasks.clicked.connect(self.doExportMasks)
-        self.pushButton_exportTraining.clicked.connect(self.doExportTrainingStreaks)
-        self.pushButton_fillGaps.clicked.connect(self.doFillGaps)
-
-        self.checkBox_showDeletedMasks.stateChanged.connect(self.onShowDeletedMasksChanged)
-
-        self.signals = getSignals()
-        self.signals.startProgress.connect(self.slotStartProgress)
-        self.signals.incrementProgress.connect(self.slotIncrementProgressBar)
-        self.signals.finishProgress.connect(self.slotFinishProgress)
-        self.signals.updateFile.connect(self.slotUpdateFile)
-        self.signals.showFile.connect(self.showFile)
-        self.signals.fileMetadataChanged.connect(self.slotFileIndicators)
-        self.signals.refreshReadiness.connect(self.slotRefreshReadiness)
-        self.signals.drawInputFileList.connect(self.slotRefreshInputs)
-        self.signals.drawOutputFileList.connect(self.slotRefreshOutputs)
-        self.signals.findBrightestFrame.connect(self.doFindBrightFrame)
-        self.signals.sourceLookupReady.connect(self.slotSourceLookupReady)
-        self.signals.updateGPUStats.connect(self.slotUpdateGPUStats)
+        self.mainWindow = MainWindow
 
         # Replace placeholders
         self.canvas_main: CanvasLabel = replaceWidget(
             self.canvas_main,
-            CanvasLabel("", QPixmap()))
+            CanvasLabel("", QPixmap()),
+        )
 
         # Floating progress overlay over canvasHost
         self.progressOverlay = ProgressOverlay(self.canvasHost)
@@ -227,203 +260,172 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.label_progressBar = self.progressOverlay.label_progressBar
         self.pushButton_cancelOp = self.progressOverlay.pushButton_cancelOp
         self.pushButton_cancelOp.clicked.connect(self.doCancelOp)
-        if self.pushButton_findBrightest is not None:
-            self.pushButton_findBrightest.toggled.connect(self.canvas_main.setFindBrightestMode)
-            self.canvas_main.findBrightestModeChanged.connect(self.pushButton_findBrightest.setChecked)
-        self.sidebar.review.ui.nextSource.clicked.connect(self.nextSourceCandidate)
-        self.sidebar.review.ui.backToStack.clicked.connect(self.backToSourceStack)
 
+        # Connect shared shell signals
+        self.signals = getSignals()
+        self.signals.startProgress.connect(self.slotStartProgress)
+        self.signals.incrementProgress.connect(self.slotIncrementProgressBar)
+        self.signals.finishProgress.connect(self.slotFinishProgress)
+        self.signals.start_task_progress.connect(self._start_task_progress)
+        self.signals.finish_task_progress.connect(self._finish_task_progress)
+        self.signals.updateFile.connect(self.slotUpdateFile)
+        self.signals.showFile.connect(self.showFile)
+        self.signals.updateGPUStats.connect(self.slotUpdateGPUStats)
+
+        # Set window size
+        screen_resolution = QGuiApplication.primaryScreen().availableGeometry()
+        width = screen_resolution.width()
+        height = screen_resolution.height()
+        MainWindow.resize(int(width * 0.80), int(height * 0.90))
+        MainWindow.center()
+
+        self.switch_to_project_mode()
         self.slotUpdateGPUStats()
 
-        for section in (self.inputFiles, self.outputFiles):
-            section.showFile.connect(self.showFile)
-            section.removeFile.connect(self.slotRemoveFile)
-            section.excludeFile.connect(self.slotExcludeFile)
-            self.signals.focusFile.connect(section.focus_file)
-        self.inputFiles.sortRequested.connect(self.slotSortInputFiles)
-        self.inputFiles.model.summaryChanged.connect(self.updateReadyStates)
-        self.resetProjectView()
-
-    @Slot()
-    def updateReadyStates(self, _=None):
-        self.readyInputImages = bool(self.app.getInputFileList())
-        self.readyStreaksRemoved = bool(self.inputFiles.model.mask_files)
-        self.readyManualStreaksRemoved = bool(self.inputFiles.model.manual_files)
-
-        self.pushButton_stackImages.setEnabled(self.readyInputImages)
-        self.pushButton_removeStreaks.setEnabled(self.readyInputImages)
-        self.pushButton_exportMasks.setEnabled(self.readyStreaksRemoved)
-        self.pushButton_exportTraining.setEnabled(self.readyManualStreaksRemoved)
-        self.sidebar.stack.set_has_masks(self.readyStreaksRemoved)
-        self.sidebar.detectCard.setSubtitle("Ready to detect streaks" if self.readyInputImages else "Add input files to begin")
-        self.sidebar.stackCard.setSubtitle("Ready · detection is optional" if self.readyInputImages else "Add input files to begin")
-        self.updateFillEligibility()
-        self.sidebar.update_operations_progress(self.app, self.currentFile)
-
-    def updateFillEligibility(self):
-        eligible = isinstance(self.currentFile, OutputFile) and self.currentFile.operation == "Stacked"
-        self.pushButton_fillGaps.setEnabled(eligible)
-        bright_eligible = (
-            isinstance(self.currentFile, OutputFile)
-            and self.currentFile.operation in ("Stacked", "FillGaps")
+    def set_view(self, mode_name: str, force: bool = False) -> None:
+        """Switch active ModeView, reconstruct sidebar in bodySplitter, and rebind."""
+        needs_rebuild = (
+            force
+            or (self.active_view is None)
+            or (getattr(self.active_view, "sidebar_widget", None) is None)
+            or (self.active_view.mode_name != mode_name)
         )
-        if self.pushButton_findBrightest is not None:
-            self.pushButton_findBrightest.setEnabled(bright_eligible)
-            if not bright_eligible and self.pushButton_findBrightest.isChecked():
-                self.pushButton_findBrightest.setChecked(False)
-        self.sidebar.fillCard.setSubtitle("Ready to fill gaps" if eligible else "Select a stacked output image")
-        self.sidebar.fill.ui.target.setText(self.currentFile.basename if eligible else "Select a stacked output image to fill its gaps.")
-        self.sidebar.update_operations_progress(self.app, self.currentFile)
+        if not needs_rebuild:
+            self.active_view.resetProjectView()
+            self._update_window_title(mode_name)
+            return
 
-    def resetProjectView(self):
-        self.clearSourceLookup()
-        self.showFile(None)
-        self.inputFiles.set_files(self.app.getInputFileList())
-        sortBy = getattr(getattr(self.app, "project", None), "sortBy", "date") or "date"
-        sortOrder = getattr(getattr(self.app, "project", None), "sortOrder", "asc") or "asc"
-        self.inputFiles.set_sort_state(sortBy, sortOrder)
-        self.outputFiles.set_files(self.app.getOutputFileList())
-        self.sidebar.reset_settings()
-        self.updateReadyStates()
-        files = self.app.getInputFileList() or self.app.getOutputFileList()
-        if files:
-            self.showFile(files[0])
+        if self.active_view is not None:
+            self.active_view.teardown()
 
-    @Slot(File)
-    def slotRefreshInputs(self, focus=None):
-        self.inputFiles.set_files(self.app.getInputFileList())
-        sortBy = getattr(getattr(self.app, "project", None), "sortBy", "date") or "date"
-        sortOrder = getattr(getattr(self.app, "project", None), "sortOrder", "asc") or "asc"
-        self.inputFiles.set_sort_state(sortBy, sortOrder)
-        self.sidebar.refresh_inputs()
-        self.updateReadyStates()
-        if focus is not None:
-            self.showFile(focus)
+        # Remove existing sidebar widget from splitter index 0 if switching modes
+        if hasattr(self, "bodySplitter") and self.bodySplitter is not None:
+            if self.bodySplitter.count() > 1:
+                old_widget = self.bodySplitter.widget(0)
+                if old_widget is not None and old_widget is not self.canvasHost:
+                    if mode_name == "denoise" or not isinstance(old_widget, Sidebar):
+                        old_widget.setParent(None)
 
-    @Slot(str, str)
-    def slotSortInputFiles(self, sortBy: str, sortOrder: str):
-        if hasattr(self.app, "sortInputFiles"):
-            self.app.sortInputFiles(sortBy=sortBy, sortOrder=sortOrder)
-        self.slotRefreshInputs(focus=self.currentFile)
-
-    @Slot(File)
-    def slotRefreshOutputs(self, focus=None):
-        self.outputFiles.model.sync_files(self.app.getOutputFileList())
-        if focus is not None:
-            self.showFile(focus)
-
-    @Slot(File)
-    def slotFileIndicators(self, file):
-        self.inputFiles.model.update_file(file)
-        self.outputFiles.model.update_file(file)
-
-    @Slot()
-    def slotRefreshReadiness(self):
-        # Detection sends a preview only for every twentieth file. Reconcile all
-        # metadata once at completion, without changing those preview events.
-        self.inputFiles.model.refresh_annotations()
-
-    def onShowDeletedMasksChanged(self, state):
-        self.canvas_main.showDeletedMasks = bool(state)
-        self.canvas_main.repaint()
-
-    def slotUpdateGPUStats(self):
-        gpu_data_available = self.app.gpuInfo.getGpuPresent()
-        if gpu_data_available:
-            self.frame_gpu_label.setVisible(False)
-            gpu_utilization = self.app.gpuInfo.getGpuUtilization()
-            if gpu_utilization is None:
-                self.frame_gpu_util.setVisible(False)
-            else:
-                self.frame_gpu_util.setVisible(True)
-                self.progressBar_gpu_util.setValue(gpu_utilization * 100)
-                self.progressBar_gpu_util.setFormat(
-                    "GPU: {:.0f}%".format(gpu_utilization * 100)
-                )
-
-            gpu_mem_total = self.app.gpuInfo.getGpuMemeoryTotal()
-            gpu_mem_available = self.app.gpuInfo.getGpuMemoryAvailable()
-            if gpu_mem_total is None:
-                self.frame_gpu_mem.setVisible(False)
-            else:
-                mem_util = (gpu_mem_total - gpu_mem_available) / gpu_mem_total
-                self.progressBar_gpu_mem.setValue(mem_util * 100)
-                self.progressBar_gpu_mem.setFormat(
-                    "GPU Mem: {:.0f}%  {:.1f}GB / {:.1f}GB".format(
-                        mem_util * 100, (gpu_mem_total - gpu_mem_available), gpu_mem_total
-                    )
-                )
-
-            gpu_data_available = (gpu_utilization is not None) or (gpu_mem_total is not None)
-
-        if not gpu_data_available:
-            self.frame_gpu_label.setVisible(True)
-            self.frame_gpu_util.setVisible(False)
-            self.frame_gpu_mem.setVisible(False)
-            self.label_gpu.setText("NO GPU")
-
-    @Slot(File)
-    def slotUpdateFile(self, file: File):
-        self.app.saveProject()
-        self.signals.fileMetadataChanged.emit(file)
-
-    @Slot(File)
-    def slotRemoveFile(self, file: File):
-        was_current = file is self.currentFile
-        if isinstance(file, InputFile):
-            if file not in self.app.getInputFileList():
-                return
-            self.app.removeInputFile(file)
-            section = self.inputFiles
-        elif isinstance(file, OutputFile):
-            if file not in self.app.getOutputFileList():
-                return
-            self.app.removeOutputFile(file)
-            section = self.outputFiles
+        if mode_name == "denoise":
+            self.active_view = DenoiseView(self.app, self)
         else:
-            return
-        with QSignalBlocker(section.ui.files.selectionModel()):
-            section.model.remove_file(file)
-        if was_current:
-            self.showFile(None)
-        self.sidebar.refresh_inputs()
-        self.updateReadyStates()
+            self.active_view = StarTrailsView(self.app, self)
+        self.active_view.setParent(self)
 
-    @Slot(File)
-    def slotExcludeFile(self, file: InputFile):
-        if file not in self.app.getInputFileList():
-            return
-        self.app.toggleExcludeFromStack(file)
-        self.inputFiles.model.update_file(file)
+        if hasattr(self, "bodySplitter") and self.bodySplitter is not None:
+            sidebar_widget = self.active_view.build_sidebar(self.bodySplitter)
+            if self.bodySplitter.indexOf(sidebar_widget) != 0:
+                self.bodySplitter.insertWidget(0, sidebar_widget)
+            self.sidebar = sidebar_widget
+            self.inputFiles = getattr(self.active_view, "inputFiles", None)
+            self.outputFiles = getattr(self.active_view, "outputFiles", None)
+            self.pushButton_newProject = getattr(self.active_view, "pushButton_newProject", None)
+            self.pushButton_openProject = getattr(self.active_view, "pushButton_openProject", None)
+            self.pushButton_stackImages = getattr(self.active_view, "pushButton_stackImages", None)
+            self.pushButton_removeStreaks = getattr(self.active_view, "pushButton_removeStreaks", None)
+            self.pushButton_exportMasks = getattr(self.active_view, "pushButton_exportMasks", None)
+            self.pushButton_exportTraining = getattr(self.active_view, "pushButton_exportTraining", None)
+            self.checkBox_showDeletedMasks = getattr(self.active_view, "checkBox_showDeletedMasks", None)
+            self.pushButton_findBrightest = getattr(self.active_view, "pushButton_findBrightest", None)
+            self.pushButton_fillGaps = getattr(self.active_view, "pushButton_fillGaps", None)
+            if mode_name == "denoise":
+                sidebar_width = 300
+                sidebar_widget.setMinimumSize(sidebar_width, 0)
+                sidebar_widget.setMaximumSize(sidebar_width, 16777215)
+                self.bodySplitter.setHandleWidth(4)
+                self.bodySplitter.setSizes([sidebar_width, 1000])
+                self.bodySplitter.setStretchFactor(0, 0)
+                self.bodySplitter.setStretchFactor(1, 1)
+                handle = self.bodySplitter.handle(1)
+                if handle is not None:
+                    handle.setEnabled(True)
+            else:
+                sidebar_width = 300
+                sidebar_widget.setMinimumSize(sidebar_width, 0)
+                sidebar_widget.setMaximumSize(sidebar_width, 16777215)
+                self.bodySplitter.setHandleWidth(0)
+                self.bodySplitter.setSizes([sidebar_width, 1000])
+                self.bodySplitter.setStretchFactor(0, 0)
+                self.bodySplitter.setStretchFactor(1, 1)
+                handle = self.bodySplitter.handle(1)
+                if handle is not None:
+                    handle.setEnabled(False)
+
+        self.active_view.bind()
+        self.active_view.resetProjectView()
+        self._update_window_title(mode_name)
+
+    def _update_window_title(self, mode_name: str) -> None:
+        title = "StarTrails AI — Denoise" if mode_name == "denoise" else "StarTrails AI"
+        if self.mainWindow is not None:
+            self.mainWindow.setWindowTitle(title)
+        if hasattr(self, "label_4") and self.label_4 is not None:
+            self.label_4.setText(title)
+
+    def switch_to_project_mode(self) -> None:
+        """Inspect app.workflow or app.project and configure the appropriate mode view."""
+        self.current_project_token = object()
+        self._visible_task_token = None
+        self.slotFinishProgress()
+        mode_name = "startrails"
+        if hasattr(self.app, "workflow") and getattr(self.app.workflow, "mode_name", None):
+            mode_name = self.app.workflow.mode_name
+        elif hasattr(self.app, "project") and getattr(self.app, "project", None) is not None:
+            try:
+                mode_name = detect_project_type(self.app.project)
+            except Exception:
+                mode_name = "startrails"
+        self.set_view(mode_name)
+
+    # -------------------------------------------------------------------------
+    # Shared Task Queue & Progress Lifecycle
+    # -------------------------------------------------------------------------
 
     def enqueue_task(self, task_id: str, title: str, total: int, desc: str, work_func):
         if task_id in self.enqueued_tasks:
             return False
 
         self.enqueued_tasks.add(task_id)
+        task_token = (self.current_project_token, object())
 
         # Show the overlay immediately on the GUI thread if no other task is already running
         if len(self.enqueued_tasks) == 1:
-            self.slotStartProgress(title, total, desc)
+            self._start_task_progress(task_token, title, total, desc)
 
         def run_task():
-            # If we start a task, we should show the overlay
-            if hasattr(self.signals, "startProgress"):
+            # Discard stale result if project changed prior to worker starting
+            if task_token[0] is not self.current_project_token:
+                self.enqueued_tasks.discard(task_id)
+                return
+
+            if hasattr(self.signals, "start_task_progress"):
                 try:
-                    self.signals.startProgress.emit(title, total, desc)
+                    self.signals.start_task_progress.emit(task_token, title, total, desc)
                 except RuntimeError:
                     pass
             self.current_running_task = task_id
             try:
-                work_func()
+                with progress_scope(task_token):
+                    work_func()
             finally:
                 if self.current_running_task == task_id:
                     self.current_running_task = None
                 self.enqueued_tasks.discard(task_id)
+                self.signals.finish_task_progress.emit(task_token)
 
-        worker = AsyncWorker(run_task)
+        worker = AsyncWorker(run_task, finish_progress=False)
         self.op_queue.start(worker)
         return True
+
+    def _start_task_progress(self, task_token, title, total, desc):
+        if task_token[0] is self.current_project_token:
+            self._visible_task_token = task_token
+            self.slotStartProgress(title, total, desc)
+
+    def _finish_task_progress(self, task_token):
+        if task_token is self._visible_task_token and task_token[0] is self.current_project_token:
+            self._visible_task_token = None
+            self.slotFinishProgress()
 
     @Slot(object, object, object)
     def slotStartProgress(self, *args, **kwargs):
@@ -464,11 +466,27 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         if self.progressOverlay is not None:
             self.progressOverlay.finish()
 
-    def slotIncrementProgressBar(self, progressUpdater: ProgressBarUpdater, total: int, increment: int, count: int, done: bool, data: Optional[File]):
+    def slotIncrementProgressBar(
+        self,
+        progressUpdater: ProgressBarUpdater,
+        total: int,
+        increment: int,
+        count: int,
+        done: bool,
+        data: Any = None,
+    ):
+        task_token = getattr(progressUpdater, "task_token", None)
+        if task_token is not None and (
+            task_token[0] is not self.current_project_token or task_token is not self._visible_task_token
+        ):
+            return
+        result_guard = getattr(progressUpdater, "result_guard", None)
+        if result_guard is not None and not result_guard():
+            return
         progressUpdater.total = total
         progressUpdater.update(increment)
         if self.progressOverlay is not None:
-            if done or (total > 0 and count >= total):
+            if (done or (total > 0 and count >= total)) and self.current_running_task is None:
                 self.progressOverlay.finish()
             else:
                 elapsed = None
@@ -477,300 +495,482 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
                     try:
                         elapsed = progressUpdater._time() - progressUpdater.start_t
                         fmt_dict = getattr(progressUpdater, "format_dict", {}) or {}
-                        rate = fmt_dict.get('rate') or (
+                        rate = fmt_dict.get("rate") or (
                             progressUpdater.n / elapsed if elapsed > 0 else 0
                         )
                         remaining = (total - progressUpdater.n) / rate if rate > 0 else 0
                     except Exception:
                         pass
+                if data is not None and isinstance(data, dict):
+                    if "desc" in data and data["desc"]:
+                        progressUpdater.desc = str(data["desc"])
+                        if progressUpdater.qlabel is not None:
+                            progressUpdater.qlabel.setText(str(data["desc"]))
+                    elif "stage" in data and "frame_idx" in data and "total" in data:
+                        stage_name = "sky" if data["stage"] == "sky" else ("ground" if data["stage"] == "ground" else data["stage"])
+                        new_desc = f"Stacking {stage_name} frame {data['frame_idx']}/{data['total']}..."
+                        progressUpdater.desc = new_desc
+                        if progressUpdater.qlabel is not None:
+                            progressUpdater.qlabel.setText(new_desc)
+                    elif "filename" in data and "index" in data and "total" in data:
+                        new_desc = f"Aligning frame {data['index']+1}/{data['total']}: {data['filename']}"
+                        progressUpdater.desc = new_desc
+                        if progressUpdater.qlabel is not None:
+                            progressUpdater.qlabel.setText(new_desc)
+
                 desc = getattr(progressUpdater, "desc", "")
                 n = getattr(progressUpdater, "n", count)
+                indeterminate = isinstance(data, dict) and bool(data.get("indeterminate"))
                 self.progressOverlay.update_progress(
-                    n, total,
-                    elapsed=elapsed,
-                    remaining=remaining,
-                    desc=desc
+                    n, 0 if indeterminate else total, elapsed=elapsed,
+                    remaining=None if indeterminate else remaining, desc=desc
                 )
         if data is not None:
             if isinstance(data, np.ndarray):
                 # In-memory preview update
-                self.canvas_main.setFromNumpyArray(data, resetZoomAndPosition=False)
+                if hasattr(self, "canvas_main") and self.canvas_main is not None:
+                    self.canvas_main.setFromNumpyArray(data, resetZoomAndPosition=False)
             elif isinstance(data, File):
-                if isinstance(data, OutputFile):
-                    self.outputFiles.model.sync_files(self.app.getOutputFileList())
+                output_files = getattr(self, "outputFiles", None)
+                if output_files is not None and hasattr(output_files, "model"):
+                    output_files.model.sync_files(self.app.getOutputFileList())
                 self.slotFileIndicators(data)
                 self.showFile(data)
-            else:
-                raise ValueError(f"Unknown data type: {type(data)}")
-
-    def selectInputFiles(self, *, clear=True):
-
-        QApplication.processEvents()
-
-        # Check if there are existing files and ask user whether to clear them
-        existing_files = self.app.getInputFileList()
-        if existing_files and clear:
-            reply = QMessageBox.question(
-                None,
-                "Clear existing files?",
-                f"There are {len(existing_files)} files already loaded.\n\nDo you want to clear existing files before adding new ones?",
-                QMessageBox.StandardButton.Yes,
-                QMessageBox.StandardButton.No,
-            )
-            clear = reply == QMessageBox.StandardButton.Yes
-
-        fileNames, _ = QFileDialog.getOpenFileNames(filter="Image Files (*.jpg *.jpeg *.tif *.tiff)")
-        if fileNames:
-            self.app.addInputFiles(fileNames, clear=clear)
-            if clear and isinstance(self.currentFile, InputFile):
-                self.showFile(None)
-            self.slotRefreshInputs()
-            self.inputFiles.setExpanded(True)
-            if self.currentFile is None:
-                self.showFile(self.app.getInputFileList()[0])
-
-        self.pushButton_stackImages.setEnabled(len(self.app.getInputFileList()) > 0)
-        self.pushButton_removeStreaks.setEnabled(len(self.app.getInputFileList()) > 0)
-        self.updateReadyStates()
-
-    @Slot(File)
-    def showFile(self, file: Optional[File]):
-        session = self.sourceLookupSession
-        if session and file not in [session["basis"], *session["result"].candidates]:
-            self.clearSourceLookup()
-        self.currentFile = file
-        self.canvas_main.setFile(file)
-        self.label_imageName.setText(file.basename if file is not None else "")
-        self.signals.focusFile.emit(file)
-        self.updateFillEligibility()
-
-    def doFindBrightFrame(self, file, x, y):
-        if not isinstance(file, OutputFile) or file.operation not in ("Stacked", "FillGaps"):
-            return
-        canvas = self.canvas_main
-        view = (canvas.zoom_factor, canvas.posX, canvas.posY)
-
-        def lookup():
-            try:
-                result = self.app.locateSources(x, y, file)
-            except SourceMapError as error:
-                result = SourceLookup(message=str(error))
-            self.signals.sourceLookupReady.emit((file, result, view))
-
-        self.enqueue_task("findBrightFrame", "Locate Source", 0,
-                          "Reading saved source map...", lookup)
-
-    def clearSourceLookup(self):
-        self.sourceLookupSession = None
-        self.sidebar.review.ui.nextSource.setEnabled(False)
-        self.sidebar.review.ui.backToStack.setEnabled(False)
-        self.sidebar.review.ui.sourceLookupStatus.clear()
-
-    @Slot(object)
-    def slotSourceLookupReady(self, packet):
-        basis, result, view = packet
-        # Ignore a result delivered after switching projects or selecting another image.
-        if basis not in self.app.getOutputFileList() or self.currentFile is not basis:
-            return
-        self.clearSourceLookup()
-        self.sidebar.reviewCard.setExpanded(True)
-        if not result.candidates:
-            self.sidebar.review.ui.sourceLookupStatus.setText(result.message)
-            return
-        self.sourceLookupSession = dict(basis=basis, result=result, view=view, index=0)
-        self.showSourceCandidate()
-
-    def showSourceCandidate(self):
-        session = self.sourceLookupSession
-        if session is None:
-            return
-        candidates = session["result"].candidates
-        file = candidates[session["index"]]
-        if file not in self.app.getInputFileList():
-            self.clearSourceLookup()
-            self.sidebar.review.ui.sourceLookupStatus.setText("This source is no longer in the project.")
-            return
-        self.showFile(file)
-        self.restoreSourceView(session["view"])
-        self.sidebar.review.ui.nextSource.setEnabled(len(candidates) > 1)
-        self.sidebar.review.ui.backToStack.setEnabled(True)
-        status = f"Candidate {session['index'] + 1} of {len(candidates)}: {file.basename}"
-        if session["result"].message:
-            status += "\n" + session["result"].message
-        self.sidebar.review.ui.sourceLookupStatus.setText(status)
-
-    def restoreSourceView(self, view):
-        canvas = self.canvas_main
-        canvas.zoom_factor, canvas.posX, canvas.posY = view
-        canvas.repaint()
-
-    def nextSourceCandidate(self):
-        session = self.sourceLookupSession
-        if session:
-            session["index"] = (session["index"] + 1) % len(session["result"].candidates)
-            self.showSourceCandidate()
-
-    def backToSourceStack(self):
-        session = self.sourceLookupSession
-        if session:
-            if session["basis"] not in self.app.getOutputFileList():
-                self.clearSourceLookup()
-                return
-            self.showFile(session["basis"])
-            self.restoreSourceView(session["view"])
-
-    def doFillGaps(self):
-        def f():
-            progressUpdater = ProgressBarUpdater(
-                self.progressBar, self.label_progressBar, total=1, desc="Filling Gaps:")
-            fileFillGaps = self.app.doFillGaps(self.currentFile, progressUpdater.tick)
-            try:
-                self.signals.refreshReadiness.emit()
-                self.signals.drawOutputFileList.emit(fileFillGaps)
-            except RuntimeError:
-                pass
-
-        self.enqueue_task(
-            "fillGaps",
-            "Fill Gaps",
-            1,
-            "Filling gaps...",
-            f
-        )
-
-    def doStack(self, _=None):
-        QApplication.processEvents()
-        settings = self.sidebar.stack.values()
-        if settings is None:
-            return
-        streaksRemoved = settings.pop("streaksRemoved")
-
-        files = self.app.getInputFileList()
-        total = len(list(files))
-
-        def f(fileList):
-            total = len(list(fileList))
-            progressUpdater = ProgressBarUpdater(
-                self.progressBar, self.label_progressBar, total=total, desc="Stacking:")
-            file = self.app.doStack(streaksRemoved, progressUpdater.tick, **settings)
-            try:
-                self.signals.drawOutputFileList.emit(file)
-            except RuntimeError:
-                pass
-
-        self.enqueue_task(
-            "stack",
-            "Stack Images",
-            total,
-            f"Processing frame 1 of {total}",
-            partial(f, self.app.getInputFileList())
-        )
-
-    def doExportTrainingStreaks(self):
-
-        reply = QMessageBox.question(
-            None,
-            "Export training data",
-            f"This process will export manually labeled streaks, deleted streaks, and random negative examples as training data as 512x512px cropped training images and labels. You can share these samples with the project or use them to train your own models.\n\nContinue?",
-            QMessageBox.StandardButton.Yes,
-            QMessageBox.StandardButton.No,
-        )
-
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-
-        folderName = QFileDialog.getExistingDirectory(caption="Choose folder to save mask files")
-        if not folderName:
-            return
-        files = self.app.getInputFileList()
-        total = len(list(files))
-
-        def f(folderName):
-            total = len(list(self.app.getInputFileList()))
-            progressUpdater = ProgressBarUpdater(
-                self.progressBar, self.label_progressBar, total=total, desc="Exporting Training Labels:")
-            self.app.doExportTrainingStreaks(folderName, progressUpdater.tick)
-
-        self.enqueue_task(
-            "exportTraining",
-            "Export Training Data",
-            total,
-            f"Exporting sample 1 of {total}",
-            partial(f, folderName)
-        )
-
-    def doDetectStreaks(self):
-        settings = self.sidebar.detect.values()
-        if settings is None:
-            return
-
-        files = self.app.getInputFileList()
-        total = len(list(files))
-
-        def f(fileList):
-            total = len(list(fileList))
-            progressUpdater = ProgressBarUpdater(
-                self.progressBar, self.label_progressBar, total=total, desc="Removing Streaks:")
-            self.app.doDetectStreaks(progressUpdater.tick, **settings)
-            try:
-                self.signals.refreshReadiness.emit()
-            except RuntimeError:
-                pass
-
-        self.enqueue_task(
-            "detectStreaks",
-            "Detect Streaks",
-            total,
-            f"Processing frame 1 of {total}",
-            partial(f, self.app.getInputFileList())
-        )
-
-    def doNewProject(self):
-        QApplication.processEvents()
-        file_path, _ = QFileDialog.getSaveFileName(
-            None,
-            "Create a New Project",
-            "projects/new_project.project.json",
-            "Project Files (*.project.json)"
-        )
-
-        if file_path:
-            self.app.newProject(file_path)
-            self.resetProjectView()
-
-    def doOpenProject(self):
-        QApplication.processEvents()
-        fileName, _ = QFileDialog.getOpenFileName(dir="projects", filter="Project Files (*.project.json)")
-        if fileName:
-            self.app.loadProject(fileName)
-            self.resetProjectView()
-
-    def doExportMasks(self):
-        folderName = QFileDialog.getExistingDirectory(caption="Choose folder to save mask files")
-        if not folderName:
-            return
-        files = self.app.getInputFileList()
-        total = len(list(files))
-
-        def f(folderName):
-            total = len(list(self.app.getInputFileList()))
-            progressUpdater = ProgressBarUpdater(
-                self.progressBar, self.label_progressBar, total=total, desc="Exporting Training Labels:")
-            self.app.doExportMaskedImages(folderName, progressUpdater.tick)
-
-        self.enqueue_task(
-            "exportMasks",
-            "Export Artifacts",
-            total,
-            f"Exporting mask 1 of {total}",
-            partial(f, folderName)
-        )
+            elif isinstance(data, dict):
+                preview = None
+                for key in ("stacked", "image", "preview"):
+                    if key in data and isinstance(data[key], np.ndarray):
+                        preview = data[key]
+                        break
+                if preview is not None and hasattr(self, "canvas_main") and self.canvas_main is not None:
+                    self.canvas_main.setFromNumpyArray(preview, resetZoomAndPosition=False, is_bgr=data.get("color_space") != "rgb")
 
     def doCancelOp(self):
-        self.app.doInterruptOperation()
+        if hasattr(self.app, "doInterruptOperation"):
+            self.app.doInterruptOperation()
         if self.progressOverlay is not None:
             self.progressOverlay.label_progressBar.setText("Cancelling...")
             self.progressOverlay.pushButton_cancelOp.setEnabled(False)
+
+    # -------------------------------------------------------------------------
+    # Project File Operations
+    # -------------------------------------------------------------------------
+
+    def doNewProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            QMessageBox.warning(
+                None,
+                "Operation in Progress",
+                "Cannot create a new project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "show_project_overlay"):
+            self.mainWindow.show_project_overlay("new", can_dismiss=True)
+            return
+
+        QApplication.processEvents()
+        filter_str = (
+            f"StarTrails Project (*{STARTRAILS_EXT});;"
+            f"Denoise Project (*{DENOISE_EXT});;"
+            f"Legacy Project (*{LEGACY_STARTRAILS_EXT})"
+        )
+        file_path, selected_filter = QFileDialog.getSaveFileName(
+            None,
+            "Create a New Project",
+            f"projects/new_project{STARTRAILS_EXT}",
+            filter_str,
+        )
+
+        if file_path:
+            path = Path(file_path)
+            if not path.suffix:
+                if DENOISE_EXT in selected_filter:
+                    file_path = str(path.with_suffix(DENOISE_EXT))
+                elif LEGACY_STARTRAILS_EXT in selected_filter:
+                    file_path = str(path) + LEGACY_STARTRAILS_EXT
+                else:
+                    file_path = str(path.with_suffix(STARTRAILS_EXT))
+
+            self.app.newProject(file_path)
+            add_recent_project(file_path)
+            self.switch_to_project_mode()
+
+    def doOpenProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            QMessageBox.warning(
+                None,
+                "Operation in Progress",
+                "Cannot open a project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "show_project_overlay"):
+            self.mainWindow.show_project_overlay("open", can_dismiss=True)
+            return
+
+        QApplication.processEvents()
+        filter_str = (
+            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{LEGACY_STARTRAILS_EXT});;"
+            f"StarTrails Project (*{STARTRAILS_EXT});;"
+            f"Denoise Project (*{DENOISE_EXT});;"
+            f"Legacy Project (*{LEGACY_STARTRAILS_EXT});;"
+            "All Files (*)"
+        )
+        fileName, _ = QFileDialog.getOpenFileName(
+            None,
+            "Open Project",
+            dir="projects",
+            filter=filter_str,
+        )
+        if fileName:
+            self.load_project_and_dismiss(fileName)
+
+    def doCreateNewStarTrailsProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot create a new project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        QApplication.processEvents()
+        filter_str = f"StarTrails Project (*{STARTRAILS_EXT});;All Files (*)"
+        parent = getattr(self, "mainWindow", None)
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent,
+            "Create New Star Trails Project",
+            f"projects/new_project{STARTRAILS_EXT}",
+            filter_str,
+        )
+
+        if file_path:
+            path = Path(file_path)
+            if not path.suffix:
+                file_path = str(path.with_suffix(STARTRAILS_EXT))
+
+            self.app.newProject(file_path)
+            add_recent_project(file_path)
+            self.switch_to_project_mode()
+            if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "hide_project_overlay"):
+                self.mainWindow.hide_project_overlay()
+
+    def doCreateNewDenoiseProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot create a new project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        QApplication.processEvents()
+        filter_str = f"Denoise Project (*{DENOISE_EXT});;All Files (*)"
+        parent = getattr(self, "mainWindow", None)
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent,
+            "Create New Denoise Project",
+            f"projects/new_project{DENOISE_EXT}",
+            filter_str,
+        )
+
+        if file_path:
+            path = Path(file_path)
+            if not path.suffix:
+                file_path = str(path.with_suffix(DENOISE_EXT))
+
+            self.app.newProject(file_path)
+            add_recent_project(file_path)
+            self.switch_to_project_mode()
+            if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "hide_project_overlay"):
+                self.mainWindow.hide_project_overlay()
+
+    def doOpenStarTrailsProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot open a project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        QApplication.processEvents()
+        filter_str = (
+            f"StarTrails Projects (*{STARTRAILS_EXT} *{LEGACY_STARTRAILS_EXT});;"
+            f"StarTrails Project (*{STARTRAILS_EXT});;"
+            f"Legacy Project (*{LEGACY_STARTRAILS_EXT});;"
+            "All Files (*)"
+        )
+        parent = getattr(self, "mainWindow", None)
+        fileName, _ = QFileDialog.getOpenFileName(
+            parent,
+            "Open Star Trails Project",
+            dir="projects",
+            filter=filter_str,
+        )
+        if fileName:
+            self.load_project_and_dismiss(fileName)
+
+    def doOpenDenoiseProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot open a project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        QApplication.processEvents()
+        filter_str = (
+            f"Denoise Project (*{DENOISE_EXT});;"
+            "All Files (*)"
+        )
+        parent = getattr(self, "mainWindow", None)
+        fileName, _ = QFileDialog.getOpenFileName(
+            parent,
+            "Open Denoise Project",
+            dir="projects",
+            filter=filter_str,
+        )
+        if fileName:
+            self.load_project_and_dismiss(fileName)
+
+    def doBrowseAnyProject(self):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot open a project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        QApplication.processEvents()
+        filter_str = (
+            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{LEGACY_STARTRAILS_EXT});;"
+            f"StarTrails Project (*{STARTRAILS_EXT});;"
+            f"Denoise Project (*{DENOISE_EXT});;"
+            f"Legacy Project (*{LEGACY_STARTRAILS_EXT});;"
+            "All Files (*)"
+        )
+        parent = getattr(self, "mainWindow", None)
+        fileName, _ = QFileDialog.getOpenFileName(
+            parent,
+            "Open Project",
+            dir="projects",
+            filter=filter_str,
+        )
+        if fileName:
+            self.load_project_and_dismiss(fileName)
+
+    def load_project_and_dismiss(self, fileName: str):
+        if self.enqueued_tasks or self.current_running_task is not None:
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(
+                parent,
+                "Operation in Progress",
+                "Cannot open a project while an operation is in progress. Please cancel or wait for it to complete.",
+            )
+            return
+
+        try:
+            self.app.loadProject(fileName)
+            add_recent_project(fileName)
+            self.switch_to_project_mode()
+            if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "hide_project_overlay"):
+                self.mainWindow.hide_project_overlay()
+        except Exception as e:
+            logger.error(f"Failed to open project {fileName}: {e}")
+            parent = getattr(self, "mainWindow", None)
+            QMessageBox.warning(parent, "Open Project", f"Could not open project:\n{e}")
+            if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "project_overlay") and self.mainWindow.project_overlay is not None:
+                self.mainWindow.project_overlay.refresh_recent_projects()
+
+    # -------------------------------------------------------------------------
+    # Shared File & View Delegations
+    # -------------------------------------------------------------------------
+
+    @Slot(File)
+    def showFile(self, file: Optional[File]):
+        self.currentFile = file
+        if self.active_view is not None:
+            self.active_view.showFile(file)
+        else:
+            if hasattr(self, "canvas_main") and self.canvas_main is not None:
+                self.canvas_main.setFile(file)
+            if hasattr(self, "label_imageName") and self.label_imageName is not None:
+                self.label_imageName.setText(file.basename if file is not None else "")
+
+    def resetProjectView(self):
+        if self.active_view is not None:
+            self.active_view.resetProjectView()
+
+    @Slot()
+    def updateReadyStates(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "updateReadyStates"):
+            res = self.active_view.updateReadyStates(*args, **kwargs)
+            self.readyInputImages = getattr(self.active_view, "readyInputImages", False)
+            self.readyStreaksRemoved = getattr(self.active_view, "readyStreaksRemoved", False)
+            self.readyManualStreaksRemoved = getattr(self.active_view, "readyManualStreaksRemoved", False)
+            return res
+
+    def updateFillEligibility(self):
+        if self.active_view is not None and hasattr(self.active_view, "updateFillEligibility"):
+            self.active_view.updateFillEligibility()
+
+    @Slot(File)
+    def slotUpdateFile(self, file: File):
+        if hasattr(self.app, "saveProject"):
+            self.app.saveProject()
+        self.signals.fileMetadataChanged.emit(file)
+
+    @Slot(File)
+    def slotRefreshInputs(self, focus=None):
+        if self.active_view is not None and hasattr(self.active_view, "slotRefreshInputs"):
+            self.active_view.slotRefreshInputs(focus)
+
+    @Slot(str, str)
+    def slotSortInputFiles(self, sortBy: str, sortOrder: str):
+        if self.active_view is not None and hasattr(self.active_view, "slotSortInputFiles"):
+            self.active_view.slotSortInputFiles(sortBy, sortOrder)
+
+    @Slot(File)
+    def slotRefreshOutputs(self, focus=None):
+        if self.active_view is not None and hasattr(self.active_view, "slotRefreshOutputs"):
+            self.active_view.slotRefreshOutputs(focus)
+
+    @Slot(File)
+    def slotFileIndicators(self, file: File):
+        if self.active_view is not None and hasattr(self.active_view, "slotFileIndicators"):
+            self.active_view.slotFileIndicators(file)
+
+    @Slot()
+    def slotRefreshReadiness(self):
+        if self.active_view is not None and hasattr(self.active_view, "slotRefreshReadiness"):
+            self.active_view.slotRefreshReadiness()
+
+    @Slot(File)
+    def slotRemoveFile(self, file: File):
+        if self.active_view is not None and hasattr(self.active_view, "slotRemoveFile"):
+            self.active_view.slotRemoveFile(file)
+
+    @Slot(File)
+    def slotExcludeFile(self, file: InputFile):
+        if self.active_view is not None and hasattr(self.active_view, "slotExcludeFile"):
+            self.active_view.slotExcludeFile(file)
+
+    def selectInputFiles(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "selectInputFiles"):
+            return self.active_view.selectInputFiles(*args, **kwargs)
+
+    def onShowDeletedMasksChanged(self, state):
+        if self.active_view is not None and hasattr(self.active_view, "onShowDeletedMasksChanged"):
+            self.active_view.onShowDeletedMasksChanged(state)
+        elif hasattr(self, "canvas_main") and self.canvas_main is not None:
+            self.canvas_main.showDeletedMasks = bool(state)
+            self.canvas_main.repaint()
+
+    # -------------------------------------------------------------------------
+    # GPU Stats
+    # -------------------------------------------------------------------------
+
+    def slotUpdateGPUStats(self):
+        if not hasattr(self.app, "gpuInfo") or self.app.gpuInfo is None:
+            return
+        get_present = getattr(self.app.gpuInfo, "get_gpu_present", getattr(self.app.gpuInfo, "getGpuPresent", None))
+        gpu_data_available = get_present() if callable(get_present) else False
+        if gpu_data_available:
+            self.frame_gpu_label.setVisible(False)
+            get_util = getattr(self.app.gpuInfo, "get_gpu_utilization", getattr(self.app.gpuInfo, "getGpuUtilization", None))
+            gpu_utilization = get_util() if callable(get_util) else None
+            if gpu_utilization is None:
+                self.frame_gpu_util.setVisible(False)
+            else:
+                self.frame_gpu_util.setVisible(True)
+                self.progressBar_gpu_util.setValue(gpu_utilization * 100)
+                self.progressBar_gpu_util.setFormat(
+                    "GPU: {:.0f}%".format(gpu_utilization * 100)
+                )
+
+            get_total = getattr(self.app.gpuInfo, "get_gpu_memory_total", getattr(self.app.gpuInfo, "getGpuMemoryTotal", getattr(self.app.gpuInfo, "getGpuMemeoryTotal", None)))
+            gpu_mem_total = get_total() if callable(get_total) else None
+            get_avail = getattr(self.app.gpuInfo, "get_gpu_memory_available", getattr(self.app.gpuInfo, "getGpuMemoryAvailable", None))
+            gpu_mem_available = get_avail() if callable(get_avail) else None
+            if gpu_mem_total is None:
+                self.frame_gpu_mem.setVisible(False)
+            else:
+                mem_util = (gpu_mem_total - gpu_mem_available) / gpu_mem_total
+                self.progressBar_gpu_mem.setValue(mem_util * 100)
+                self.progressBar_gpu_mem.setFormat(
+                    "GPU Mem: {:.0f}%  {:.1f}GB / {:.1f}GB".format(
+                        mem_util * 100, (gpu_mem_total - gpu_mem_available), gpu_mem_total
+                    )
+                )
+
+            gpu_data_available = (gpu_utilization is not None) or (gpu_mem_total is not None)
+
+        if not gpu_data_available:
+            self.frame_gpu_label.setVisible(True)
+            self.frame_gpu_util.setVisible(False)
+            self.frame_gpu_mem.setVisible(False)
+            self.label_gpu.setText("NO GPU")
+
+    # -------------------------------------------------------------------------
+    # Forwarded Mode Operations & Review Sessions
+    # -------------------------------------------------------------------------
+
+    def doFillGaps(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doFillGaps"):
+            return self.active_view.doFillGaps(*args, **kwargs)
+
+    def doStack(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doStack"):
+            return self.active_view.doStack(*args, **kwargs)
+
+    def doExportTrainingStreaks(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doExportTrainingStreaks"):
+            return self.active_view.doExportTrainingStreaks(*args, **kwargs)
+
+    def doDetectStreaks(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doDetectStreaks"):
+            return self.active_view.doDetectStreaks(*args, **kwargs)
+
+    def doExportMasks(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doExportMasks"):
+            return self.active_view.doExportMasks(*args, **kwargs)
+
+    def doFindBrightFrame(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doFindBrightFrame"):
+            return self.active_view.doFindBrightFrame(*args, **kwargs)
+
+    def clearSourceLookup(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "clearSourceLookup"):
+            return self.active_view.clearSourceLookup(*args, **kwargs)
+
+    def slotSourceLookupReady(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "slotSourceLookupReady"):
+            return self.active_view.slotSourceLookupReady(*args, **kwargs)
+
+    def showSourceCandidate(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "showSourceCandidate"):
+            return self.active_view.showSourceCandidate(*args, **kwargs)
+
+    def restoreSourceView(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "restoreSourceView"):
+            return self.active_view.restoreSourceView(*args, **kwargs)
+
+    def nextSourceCandidate(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "nextSourceCandidate"):
+            return self.active_view.nextSourceCandidate(*args, **kwargs)
+
+    def backToSourceStack(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "backToSourceStack"):
+            return self.active_view.backToSourceStack(*args, **kwargs)
 
 
 def replaceWidget(placeHolder: QWidget, newWidget: QWidget):

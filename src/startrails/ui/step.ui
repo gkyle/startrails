@@ -17,12 +17,12 @@
    </sizepolicy>
   </property>
   <property name="styleSheet">
-   <string notr="true">QFrame#stepCard {
+   <string notr="true">QFrame#StepCard, StepCard {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
 }
-QFrame#stepCard:hover {
+QFrame#StepCard:hover, StepCard:hover {
     border-color: #cbd5e1;
 }
 QPushButton#toggle {
@@ -162,7 +162,7 @@ QPushButton#toggle:focus:enabled { border-color: #0f172a; }</string>
            <cursorShape>PointingHandCursor</cursorShape>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::FocusPolicy::NoFocus</enum>
+           <enum>Qt::FocusPolicy::StrongFocus</enum>
           </property>
           <property name="text">
            <string>Step Title</string>

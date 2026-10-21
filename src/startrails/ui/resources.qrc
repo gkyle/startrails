@@ -16,5 +16,10 @@
   <file alias="chevron_right_dark.svg">icons/chevron_right_dark.svg</file>
   <file alias="sort.svg">icons/sort.svg</file>
   <file alias="sort_dark.svg">icons/sort_dark.svg</file>
+  <file alias="add.svg">icons/add.svg</file>
+  <file alias="add_dark.svg">icons/add_dark.svg</file>
+  <file alias="project_startrails.png">icons/project_startrails.png</file>
+  <file alias="project_denoise.png">icons/project_denoise.png</file>
+  <file alias="styles.qss">styles.qss</file>
  </qresource>
 </RCC>

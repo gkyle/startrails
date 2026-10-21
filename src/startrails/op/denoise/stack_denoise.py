@@ -1,0 +1,122 @@
+"""Observable operation for freeze-ground celestial sky and stationary landscape stacking."""
+
+from __future__ import annotations
+import logging
+from contextlib import nullcontext
+from startrails.lib.denoise.defaults import DEFAULT_HORIZON_FEATHER_RADIUS
+from startrails.lib.artifacts import ArtifactTransaction
+from pathlib import Path
+from typing import Callable, List, Optional
+import numpy as np
+
+from startrails.lib.util import imwrite
+from startrails.op.denoise.base import DenoiseOperation
+from startrails.lib.project_denoise import DenoiseProject
+from startrails.lib.denoise.mask import MaskHandler
+from startrails.lib.denoise.stacking.freeze_ground import FreezeGroundStacker
+from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
+
+logger = logging.getLogger(__name__)
+
+
+class StackDenoise(DenoiseOperation):
+    """Executes Freeze-Ground sigma-clipped or mean stacking of sky and ground frames."""
+
+    def __init__(self, cancel_event=None, cancel_check=None):
+        super().__init__(cancel_event, cancel_check)
+
+    def stack(
+        self,
+        config: DenoiseProject,
+        aligned_sky_frames: Optional[List[np.ndarray]] = None,
+        sky_coverages: Optional[List[np.ndarray]] = None,
+        raw_ground_frames: Optional[List[np.ndarray]] = None,
+        sky_mask: Optional[np.ndarray] = None,
+        artifacts: Optional[ArtifactTransaction] = None,
+        calibrate_fn: Optional[Callable[[np.ndarray], np.ndarray]] = None,
+    ) -> Optional[HorizonCompositor]:
+        """Stack frames and prepare HorizonCompositor.
+
+        Returns:
+            HorizonCompositor or None if interrupted.
+        """
+        n_stars = len(config.star_images)
+        if aligned_sky_frames is not None and len(aligned_sky_frames) > 0:
+            n_sky = len(aligned_sky_frames)
+            n_ground = len(raw_ground_frames or [])
+            total_steps = n_sky + n_ground + 1
+        else:
+            total_steps = (n_stars * 4 + 1) if n_stars else 1
+        self.startJob(total_steps)
+
+        if self.shouldInterrupt():
+            return None
+
+        def _on_frame_progress(inc: int, data: Optional[dict] = None):
+            self.updateJob(inc, data)
+
+        compositor = FreezeGroundStacker.stack_base_and_prepare_compositor(
+            aligned_sky_frames=aligned_sky_frames,
+            sky_coverages=sky_coverages,
+            raw_ground_frames=raw_ground_frames,
+            sky_mask=sky_mask,
+            feather_radius=DEFAULT_HORIZON_FEATHER_RADIUS,
+            horizon_denoise_radius=config.horizon_denoise_radius,
+            horizon_denoise_eps=config.horizon_denoise_eps,
+            stack_method=config.stack_method,
+            sigma_clip_threshold=config.sigma_clip_threshold,
+            sigma_clip_iterations=config.sigma_clip_iterations,
+            use_gpu=config.use_gpu,
+            max_workers=config.max_workers,
+            progress_callback=_on_frame_progress,
+            should_interrupt=self.shouldInterrupt,
+            config=config,
+            calibrate_fn=calibrate_fn,
+        )
+
+        if compositor is None or self.shouldInterrupt():
+            return None
+
+        self.updateJob(0, {"desc": "Saving base stacks and composite..."})
+
+        # Save intermediate base stacks, composite, and gradient mask if paths are specified
+        if config.output_path or config.sky_stack_path or config.ground_stack_path:
+            folder = (
+                Path(config.output_path).resolve().parent
+                if config.output_path
+                else (Path(config.sky_stack_path).resolve().parent if config.sky_stack_path else Path.cwd())
+            )
+            sky_path = config.artifact_path("sky_stack")
+            ground_path = config.artifact_path("ground_stack")
+            base_comp_path = folder / "base_composite.tif"
+            output_path = Path(config.output_path).resolve() if config.output_path else (folder / "composite.tif")
+            grad_mask_path = config.artifact_path("gradient_mask")
+            destinations = [sky_path, ground_path, base_comp_path, output_path, grad_mask_path]
+            resolved_destinations = {path.resolve() for path in destinations}
+            if len(resolved_destinations) != len(destinations):
+                raise ValueError("Stack output and intermediate artifact paths must be distinct")
+            transaction = artifacts or ArtifactTransaction(self.shouldInterrupt)
+            compression = config.compress_intermediate_tiffs
+            with nullcontext(transaction) if artifacts is not None else transaction:
+                imwrite(transaction.stage(sky_path), compositor.sky_stack, convertBGR=True, compression=compression)
+                imwrite(transaction.stage(ground_path), compositor.ground_stack, convertBGR=True, compression=compression)
+                staged_base = transaction.stage(base_comp_path)
+                imwrite(staged_base, compositor.base_composite, convertBGR=True, compression=compression)
+                staged_out = transaction.stage(output_path)
+                if compression and output_path.suffix.lower() == base_comp_path.suffix.lower() and output_path.suffix.lower() in (".tif", ".tiff"):
+                    import shutil
+                    shutil.copyfile(staged_base, staged_out)
+                else:
+                    imwrite(staged_out, compositor.base_composite, convertBGR=True,
+                            quality=config.jpeg_quality, optimize=config.jpeg_optimize)
+                if compositor.gradient_mask is not None:
+                    MaskHandler.save_mask(compositor.gradient_mask, transaction.stage(grad_mask_path))
+                if artifacts is None:
+                    transaction.commit()
+            config.sky_stack_path = sky_path
+            config.ground_stack_path = ground_path
+            config.output_path = output_path
+            config.gradient_mask_path = grad_mask_path
+
+        self.updateJob(1, {"desc": "Stacking complete", "stage": "done", "compositor": compositor})
+        return compositor

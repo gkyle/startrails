@@ -3,12 +3,15 @@
 Designer forms remain the light-mode source. Only color declarations are adapted;
 layout, selectors and state rules are shared by both appearances.
 """
+from pathlib import Path
 import re
 from weakref import WeakKeyDictionary, WeakSet
 
 from PySide6.QtCore import QObject, QTimer, Qt
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication, QWidget
+
+STYLE_PATH = Path(__file__).resolve().parent / "styles.qss"
 
 
 _DARK_FOREGROUND = {
@@ -18,7 +21,7 @@ _DARK_FOREGROUND = {
     "#0284c7": "#38bdf8", "#0369a1": "#7dd3fc",
     "#1d4ed8": "#93c5fd", "#15803d": "#86efac",
     "#166534": "#bbf7d0", "#b45309": "#fbbf24",
-    "#92400e": "#fde68a", "#b91c1c": "#fca5a5",
+    "#92400e": "#fde68a", "#b91c1c": "#fca5a5", "#dc2626": "#fca5a5",
     "#ef4444": "#f87171", "#6b21a8": "#d8b4fe",
 }
 _DARK_BACKGROUND = {
@@ -66,6 +69,7 @@ def dark_stylesheet(source: str) -> str:
     for direction in ("down", "right"):
         source = source.replace(f"/chevron_{direction}.svg", f"/chevron_{direction}_dark.svg")
     source = source.replace("/sort.svg", "/sort_dark.svg")
+    source = source.replace("/add.svg", "/add_dark.svg")
 
     def declaration(match):
         start, space, name, separator, value = match.groups()
@@ -127,6 +131,7 @@ class SystemTheme(QObject):
         self._roots = WeakSet()
         self._styles = WeakKeyDictionary()
         self.dark = False
+        self._base_style = STYLE_PATH.read_text(encoding="utf-8") if STYLE_PATH.exists() else ""
         app.styleHints().colorSchemeChanged.connect(self._system_changed)
         self.apply_scheme(app.styleHints().colorScheme())
 
@@ -138,6 +143,9 @@ class SystemTheme(QObject):
         self.dark = (is_dark(self.app.palette()) if scheme == Qt.ColorScheme.Unknown
                      else scheme == Qt.ColorScheme.Dark)
         self.app.setPalette(theme_palette(self.dark))
+        if self._base_style:
+            base = dark_stylesheet(self._base_style) if self.dark else self._base_style
+            self.app.setStyleSheet(base)
         for root in self._roots:
             self._apply_widget(root)
 

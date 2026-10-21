@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'step_detect_streaks.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.2
+## Created by: Qt User Interface Compiler version 6.12.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -19,37 +19,15 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QDoubleSpi
     QFrame, QGridLayout, QHBoxLayout, QLabel,
     QPushButton, QSizePolicy, QToolButton, QVBoxLayout,
     QWidget)
+
+from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
 
 class Ui_DetectSettings(object):
     def setupUi(self, DetectSettings):
         if not DetectSettings.objectName():
             DetectSettings.setObjectName(u"DetectSettings")
-        DetectSettings.resize(232, 204)
-        DetectSettings.setStyleSheet(u"QLabel {\n"
-"    color: #334155;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QDoubleSpinBox, QSpinBox, QComboBox, QLineEdit {\n"
-"    background-color: #ffffff;\n"
-"    border: 1px solid #64748b;\n"
-"    border-radius: 4px;\n"
-"    padding: 4px 6px;\n"
-"    font-size: 12px;\n"
-"    color: #0f172a;\n"
-"}\n"
-"QDoubleSpinBox:focus, QSpinBox:focus, QComboBox:focus, QLineEdit:focus {\n"
-"    border: 2px solid #0369a1;\n"
-"    padding: 3px 5px;\n"
-"}\n"
-"QCheckBox {\n"
-"    font-size: 12px;\n"
-"    color: #1e293b;\n"
-"    spacing: 6px;\n"
-"    border: 2px solid transparent;\n"
-"}\n"
-"QDoubleSpinBox::up-arrow, QSpinBox::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }\n"
-"QDoubleSpinBox::down-arrow, QSpinBox::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }")
+        DetectSettings.resize(232, 206)
         self.layout = QVBoxLayout(DetectSettings)
         self.layout.setSpacing(6)
         self.layout.setObjectName(u"layout")
@@ -61,62 +39,14 @@ class Ui_DetectSettings(object):
         self.run.setObjectName(u"run")
         self.run.setEnabled(False)
         self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.run.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.run.setStyleSheet(u"QPushButton#run {\n"
-"    font-weight: bold;\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    padding: 0px 12px;\n"
-"    border-top-left-radius: 6px;\n"
-"    border-bottom-left-radius: 6px;\n"
-"    border-top-right-radius: 0px;\n"
-"    border-bottom-right-radius: 0px;\n"
-"    font-size: 13px;\n"
-"    border: 2px solid transparent;\n"
-"    min-height: 34px;\n"
-"    max-height: 34px;\n"
-"}\n"
-"QPushButton#run:hover {\n"
-"    background-color: #075985;\n"
-"}\n"
-"QPushButton#run:disabled {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #94a3b8;\n"
-"}\n"
-"QPushButton#run:focus:enabled { border-color: #ffffff; }")
+        self.run.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.runLayout.addWidget(self.run)
 
         self.advancedToggle = QToolButton(DetectSettings)
         self.advancedToggle.setObjectName(u"advancedToggle")
         self.advancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.advancedToggle.setStyleSheet(u"QToolButton#advancedToggle {\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    padding: 0px;\n"
-"    border-top-left-radius: 0px;\n"
-"    border-bottom-left-radius: 0px;\n"
-"    border-top-right-radius: 6px;\n"
-"    border-bottom-right-radius: 6px;\n"
-"    border: 2px solid transparent;\n"
-"    border-left: 1px solid #075985;\n"
-"    min-height: 34px;\n"
-"    max-height: 34px;\n"
-"    min-width: 28px;\n"
-"    max-width: 28px;\n"
-"}\n"
-"QToolButton#advancedToggle:hover {\n"
-"    background-color: #075985;\n"
-"}\n"
-"QToolButton#advancedToggle:focus:enabled {\n"
-"    border-color: #ffffff;\n"
-"}\n"
-"QToolButton#advancedToggle:disabled {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #94a3b8;\n"
-"    border-left: 1px solid #cbd5e1;\n"
-"}")
+        self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.advancedToggle.setCheckable(True)
         self.advancedToggle.setChecked(True)
         self.advancedToggle.setArrowType(Qt.ArrowType.DownArrow)
@@ -128,9 +58,6 @@ class Ui_DetectSettings(object):
 
         self.advancedBody = QWidget(DetectSettings)
         self.advancedBody.setObjectName(u"advancedBody")
-        self.advancedBody.setStyleSheet(u"QWidget#advancedBody {\n"
-"    background: transparent;\n"
-"}")
         self.advancedLayout = QVBoxLayout(self.advancedBody)
         self.advancedLayout.setSpacing(6)
         self.advancedLayout.setObjectName(u"advancedLayout")
@@ -146,6 +73,7 @@ class Ui_DetectSettings(object):
 
         self.confidence = QDoubleSpinBox(self.advancedBody)
         self.confidence.setObjectName(u"confidence")
+        self.confidence.setStyleSheet(u"")
         self.confidence.setMaximum(1.000000000000000)
         self.confidence.setSingleStep(0.050000000000000)
         self.confidence.setValue(0.300000000000000)
@@ -241,26 +169,23 @@ class Ui_DetectSettings(object):
 
         self.mergeThreshold = QDoubleSpinBox(self.advancedBody)
         self.mergeThreshold.setObjectName(u"mergeThreshold")
+        self.mergeThreshold.setStyleSheet(u"")
         self.mergeThreshold.setMaximum(1.000000000000000)
         self.mergeThreshold.setSingleStep(0.050000000000000)
         self.mergeThreshold.setValue(0.200000000000000)
 
         self.fields.addWidget(self.mergeThreshold, 2, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
 
-        self.useGPULabel = QLabel(self.advancedBody)
+        self.useGPULabel = CheckboxLabel(self.advancedBody)
         self.useGPULabel.setObjectName(u"useGPULabel")
+        self.useGPULabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         self.fields.addWidget(self.useGPULabel, 3, 0, 1, 1)
 
         self.useGPU = QCheckBox(self.advancedBody)
         self.useGPU.setObjectName(u"useGPU")
         self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.useGPU.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
-"QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
-"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
-"")
+        self.useGPU.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.useGPU.setChecked(True)
 
         self.fields.addWidget(self.useGPU, 3, 1, 1, 1, Qt.AlignmentFlag.AlignRight)
@@ -275,8 +200,6 @@ class Ui_DetectSettings(object):
 
         self.error = QLabel(DetectSettings)
         self.error.setObjectName(u"error")
-        self.error.setStyleSheet(u"font-size: 11px;\n"
-"color: #b91c1c;")
         self.error.setWordWrap(True)
 
         self.layout.addWidget(self.error)

@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'interface.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.2
+## Created by: Qt User Interface Compiler version 6.12.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -242,8 +242,8 @@ class Ui_MainWindow(object):
         self.bodySplitter.setChildrenCollapsible(False)
         self.sidebar = Sidebar(self.bodySplitter)
         self.sidebar.setObjectName(u"sidebar")
-        self.sidebar.setMinimumSize(QSize(320, 0))
-        self.sidebar.setMaximumSize(QSize(320, 16777215))
+        self.sidebar.setMinimumSize(QSize(280, 0))
+        self.sidebar.setMaximumSize(QSize(280, 16777215))
         self.bodySplitter.addWidget(self.sidebar)
         self.canvasHost = QWidget(self.bodySplitter)
         self.canvasHost.setObjectName(u"canvasHost")

@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'step_review_detections.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.2
+## Created by: Qt User Interface Compiler version 6.12.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -18,6 +18,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout,
     QLabel, QPushButton, QSizePolicy, QVBoxLayout,
     QWidget)
+
+from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
 
 class Ui_reviewSettings(object):
@@ -126,8 +128,9 @@ class Ui_reviewSettings(object):
 
         self.showDeletedMasksLayout = QHBoxLayout()
         self.showDeletedMasksLayout.setObjectName(u"showDeletedMasksLayout")
-        self.showDeletedMasksLabel = QLabel(reviewSettings)
+        self.showDeletedMasksLabel = CheckboxLabel(reviewSettings)
         self.showDeletedMasksLabel.setObjectName(u"showDeletedMasksLabel")
+        self.showDeletedMasksLabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.showDeletedMasksLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.showDeletedMasksLayout.addWidget(self.showDeletedMasksLabel)

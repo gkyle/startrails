@@ -9,10 +9,13 @@ __pycache__/
 .python-version
 .venv
 env/
+tmp/
 venv/
 ENV/
 env.bak/
 venv.bak/
+*.egg-info
+AGENTS.md
 
 # Startrails
 data/

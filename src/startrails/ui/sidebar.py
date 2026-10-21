@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QWidget
 from startrails.lib.file import OutputFile
 from .file_manager import FileSection
 from .steps import StepCard, DetectSettings, ReviewSettings, StackSettings, FillSettings, AdditionalToolsSettings
+from .theme import system_theme
 
 
 class Sidebar(QWidget):
@@ -66,6 +67,8 @@ class Sidebar(QWidget):
                             self.fillCard, self.toolsCard)
         for card in self._step_cards:
             card.expanded.connect(lambda card=card: self._collapse_other_steps(card))
+
+        system_theme().register(self)
 
     def _collapse_other_steps(self, expanded_card):
         self.inputs.setExpanded(False)

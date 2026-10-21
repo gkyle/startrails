@@ -1,21 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>Sidebar</class>
- <widget class="QWidget" name="sidebar">
+ <widget class="QWidget" name="Sidebar">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>200</width>
+    <height>215</height>
+   </rect>
+  </property>
   <property name="minimumSize">
    <size>
-    <width>320</width>
+    <width>200</width>
     <height>0</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
-    <width>320</width>
+    <width>200</width>
     <height>16777215</height>
    </size>
   </property>
   <property name="styleSheet">
-   <string notr="true">QWidget#sidebar {
+   <string notr="true">QWidget#Sidebar {
     background-color: #f8fafc;
 }
 QScrollArea#scroll {
@@ -48,45 +56,7 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
 }
 QScrollBar:horizontal {
     height: 0px;
-}
-QLabel#projectTitle, QLabel#operationsTitle {
-    font-size: 15px;
-    font-weight: bold;
-    color: #0f172a;
-}
-QLabel#operationsProgressLabel {
-    font-size: 11px;
-    color: #64748b;
-    font-weight: 500;
-}
-QProgressBar#operationsProgress {
-    background-color: #e2e8f0;
-    border-radius: 3px;
-    max-height: 6px;
-    min-height: 6px;
-    border: none;
-}
-QProgressBar#operationsProgress::chunk {
-    background-color: #16a34a;
-    border-radius: 3px;
-}
-QPushButton#newProject, QPushButton#openProject {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 2px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-weight: 500;
-    font-size: 12px;
-}
-QPushButton#newProject:hover, QPushButton#openProject:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}
-QPushButton#newProject:pressed, QPushButton#openProject:pressed {
-    background-color: #e2e8f0;
-}
-QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { border-color: #0f172a; }</string>
+}</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">
@@ -107,15 +77,23 @@ QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { bo
    <item>
     <widget class="QScrollArea" name="scroll">
      <property name="frameShape">
-      <enum>QFrame::NoFrame</enum>
+      <enum>QFrame::Shape::NoFrame</enum>
      </property>
      <property name="horizontalScrollBarPolicy">
-      <enum>Qt::ScrollBarAlwaysOff</enum>
+      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
      </property>
      <property name="widgetResizable">
       <bool>true</bool>
      </property>
      <widget class="QWidget" name="content">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>213</width>
+        <height>230</height>
+       </rect>
+      </property>
       <layout class="QVBoxLayout" name="contentLayout">
        <property name="spacing">
         <number>8</number>
@@ -133,13 +111,6 @@ QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { bo
         <number>8</number>
        </property>
        <item>
-        <widget class="QLabel" name="projectTitle">
-         <property name="text">
-          <string>Project Images</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <layout class="QHBoxLayout" name="projectActions">
          <property name="spacing">
           <number>6</number>
@@ -148,6 +119,27 @@ QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { bo
           <widget class="QPushButton" name="newProject">
            <property name="cursor">
             <cursorShape>PointingHandCursor</cursorShape>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton#newProject {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#newProject:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#newProject:pressed {
+    background-color: #e2e8f0;
+}
+QPushButton#newProject:focus:enabled {
+    border-color: #0f172a;
+}</string>
            </property>
            <property name="text">
             <string>New Project</string>
@@ -159,12 +151,47 @@ QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { bo
            <property name="cursor">
             <cursorShape>PointingHandCursor</cursorShape>
            </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton#openProject {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#openProject:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#openProject:pressed {
+    background-color: #e2e8f0;
+}
+QPushButton#openProject:focus:enabled {
+    border-color: #0f172a;
+}</string>
+           </property>
            <property name="text">
             <string>Open Project</string>
            </property>
           </widget>
          </item>
         </layout>
+       </item>
+       <item>
+        <widget class="QLabel" name="projectTitle">
+         <property name="styleSheet">
+          <string notr="true">QLabel#projectTitle {
+    font-size: 15px;
+    font-weight: bold;
+    color: #0f172a;
+}</string>
+         </property>
+         <property name="text">
+          <string>Project Images</string>
+         </property>
+        </widget>
        </item>
        <item>
         <layout class="QVBoxLayout" name="inputLayout"/>
@@ -192,30 +219,73 @@ QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { bo
           </property>
           <item>
            <widget class="QLabel" name="operationsTitle">
+            <property name="styleSheet">
+             <string notr="true">QLabel#operationsTitle {
+    font-size: 15px;
+    font-weight: bold;
+    color: #0f172a;
+}</string>
+            </property>
             <property name="text">
              <string>Operations</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="operationsProgressLabel">
-            <property name="text">
-             <string>0 of 4 steps complete</string>
+           <layout class="QVBoxLayout" name="verticalLayout">
+            <property name="leftMargin">
+             <number>10</number>
             </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QProgressBar" name="operationsProgress">
-            <property name="maximum">
-             <number>4</number>
+            <property name="topMargin">
+             <number>6</number>
             </property>
-            <property name="value">
-             <number>0</number>
+            <property name="rightMargin">
+             <number>10</number>
             </property>
-            <property name="textVisible">
-             <bool>false</bool>
+            <property name="bottomMargin">
+             <number>6</number>
             </property>
-           </widget>
+            <item>
+             <widget class="QLabel" name="operationsProgressLabel">
+              <property name="styleSheet">
+               <string notr="true">QLabel#operationsProgressLabel {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 500;
+}</string>
+              </property>
+              <property name="text">
+               <string>0 of 4 steps complete</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QProgressBar" name="operationsProgress">
+              <property name="styleSheet">
+               <string notr="true">QProgressBar#operationsProgress {
+    background-color: #e2e8f0;
+    border-radius: 3px;
+    max-height: 6px;
+    min-height: 6px;
+    border: none;
+}
+QProgressBar#operationsProgress::chunk {
+    background-color: #16a34a;
+    border-radius: 3px;
+}</string>
+              </property>
+              <property name="maximum">
+               <number>4</number>
+              </property>
+              <property name="value">
+               <number>0</number>
+              </property>
+              <property name="textVisible">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </widget>
@@ -238,7 +308,7 @@ QPushButton#newProject:focus:enabled, QPushButton#openProject:focus:enabled { bo
        <item>
         <spacer name="bottomSpace">
          <property name="orientation">
-          <enum>Qt::Vertical</enum>
+          <enum>Qt::Orientation::Vertical</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>

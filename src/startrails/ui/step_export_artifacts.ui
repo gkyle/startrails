@@ -2,15 +2,6 @@
 <ui version="4.0">
  <class>ExportSettings</class>
  <widget class="QWidget" name="exportSettings">
-  <property name="styleSheet">
-    <string notr="true">QCheckBox {
-    font-size: 12px;
-    color: #1e293b;
-    spacing: 6px;
-    border: 2px solid transparent;
-}
-QCheckBox:focus:enabled { border-color: #0f172a; }</string>
-   </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">
     <number>6</number>

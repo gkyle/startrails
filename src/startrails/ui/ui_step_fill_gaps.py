@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'step_fill_gaps.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.2
+## Created by: Qt User Interface Compiler version 6.12.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -39,24 +39,7 @@ class Ui_fillSettings(object):
         self.run.setObjectName(u"run")
         self.run.setEnabled(False)
         self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.run.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.run.setStyleSheet(u"QPushButton#run {\n"
-"    font-weight: bold;\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    padding: 7px 12px;\n"
-"    border-radius: 6px;\n"
-"    font-size: 13px;\n"
-"    border: 2px solid transparent;\n"
-"}\n"
-"QPushButton#run:hover {\n"
-"    background-color: #075985;\n"
-"}\n"
-"QPushButton#run:disabled {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #94a3b8;\n"
-"}\n"
-"QPushButton#run:focus:enabled { border-color: #ffffff; }")
+        self.run.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.layout.addWidget(self.run)
 

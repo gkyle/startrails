@@ -17,13 +17,37 @@
    </sizepolicy>
   </property>
   <property name="styleSheet">
-   <string notr="true">QFrame#fileSection {
+   <string notr="true">QFrame#fileSection, FileSection {
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
 }
-QFrame#fileSection:hover {
+QFrame#fileSection:hover, FileSection:hover {
     border-color: #cbd5e1;
+}
+QScrollBar:vertical {
+    border: none;
+    background: #f1f5f9;
+    width: 6px;
+    border-radius: 3px;
+    margin: 2px 0px 2px 0px;
+}
+QScrollBar::handle:vertical {
+    background: #cbd5e1;
+    min-height: 24px;
+    border-radius: 3px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #94a3b8;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+QScrollBar:horizontal {
+    height: 0px;
 }
 QLabel#chevron {
     min-width: 14px;
@@ -50,23 +74,7 @@ QLabel#count {
     border-radius: 9px;
     min-width: 14px;
 }
-QPushButton#add {
-    border: 2px solid transparent;
-    border-radius: 3px;
-    font-weight: bold;
-    font-size: 13px;
-    color: #475569;
-    background: transparent;
-    min-width: 20px;
-    max-width: 20px;
-    min-height: 20px;
-    max-height: 20px;
-}
-QPushButton#add:hover {
-    background-color: #e2e8f0;
-    color: #0f172a;
-}
-QToolButton#sort {
+QToolButton#add, QToolButton#sort {
     border: 2px solid transparent;
     border-radius: 3px;
     background: transparent;
@@ -75,10 +83,15 @@ QToolButton#sort {
     min-height: 20px;
     max-height: 20px;
     padding: 0px;
-    qproperty-icon: url(:/startrails/ui/sort.svg);
     qproperty-iconSize: 14px 14px;
 }
-QToolButton#sort:hover {
+QToolButton#add {
+    qproperty-icon: url(:/startrails/ui/add.svg);
+}
+QToolButton#sort {
+    qproperty-icon: url(:/startrails/ui/sort.svg);
+}
+QToolButton#add:hover, QToolButton#sort:hover {
     background-color: #e2e8f0;
 }
 QToolButton#sort::menu-indicator {
@@ -136,7 +149,7 @@ QMenu::separator {
     margin: 4px 6px;
 }
 QToolButton#toggle:focus:enabled { border-color: #0f172a; }
-QPushButton#add:focus:enabled { border-color: #0f172a; }
+QToolButton#add:focus:enabled { border-color: #0f172a; }
 QToolButton#sort:focus:enabled { border-color: #0f172a; }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
@@ -313,7 +326,7 @@ QToolButton#sort:focus:enabled { border-color: #0f172a; }</string>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="add">
+       <widget class="QToolButton" name="add">
         <property name="cursor">
          <cursorShape>PointingHandCursor</cursorShape>
         </property>
@@ -321,7 +334,23 @@ QToolButton#sort:focus:enabled { border-color: #0f172a; }</string>
          <string>Add files…</string>
         </property>
         <property name="text">
-         <string>+</string>
+         <string/>
+        </property>
+        <property name="accessibleName">
+         <string>Add files</string>
+        </property>
+        <property name="focusPolicy">
+         <enum>Qt::FocusPolicy::StrongFocus</enum>
+        </property>
+        <property name="icon">
+         <iconset resource="resources.qrc">
+          <normaloff>:/startrails/ui/add.svg</normaloff>:/startrails/ui/add.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>14</width>
+          <height>14</height>
+         </size>
         </property>
        </widget>
       </item>

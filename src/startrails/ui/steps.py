@@ -1,7 +1,32 @@
 """Behavior for Designer-authored operation cards and settings."""
 from types import SimpleNamespace
-from PySide6.QtCore import Qt, QSignalBlocker, QObject, Signal
+from PySide6.QtCore import Qt, QSignalBlocker, QObject, Signal, Property
 from PySide6.QtWidgets import QFrame, QWidget, QButtonGroup
+
+
+def update_gpu_checkbox(checkbox, app, enabled=True):
+    gpu_info = getattr(app, "gpuInfo", None)
+    gpu_available = bool(gpu_info and gpu_info.get_gpu_present())
+    if not gpu_available:
+        with QSignalBlocker(checkbox):
+            checkbox.setChecked(False)
+    checkbox.setEnabled(enabled and gpu_available)
+
+
+def toggle_advanced_settings(widget: QWidget, checked: bool) -> None:
+    body = getattr(widget.ui, "advancedBody", None)
+    if body is not None:
+        body.setVisible(checked)
+    toggle = getattr(widget.ui, "advancedToggle", None)
+    if toggle is not None:
+        toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
+        toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
+    p = widget
+    while p is not None and not p.isWindow():
+        p.updateGeometry()
+        if isinstance(p, StepCard):
+            break
+        p = p.parentWidget()
 
 
 class SegmentedButtonGroup(QObject):
@@ -57,6 +82,26 @@ from .ui_step_additional_tools import Ui_ToolsSettings
 
 class StepCard(QFrame):
     expanded = Signal()
+    expansion_changed = Signal(bool)
+
+    def add_body(self, body):
+        """Qt Designer custom-container page insertion API."""
+        self.ui.contentLayout.addWidget(body)
+
+    def _set_title(self, value):
+        self.ui.toggle.setText(value)
+        self.ui.toggle.setAccessibleName(value)
+
+    def _set_step_number(self, value):
+        self.has_number = value > 0
+        self.ui.number.setText(str(value) if value else "")
+        self.ui.statusBadge.setVisible(self.has_number)
+        self._update_status_appearance()
+
+    title = Property(str, lambda self: self.ui.toggle.text(), _set_title)
+    step_number = Property(int, lambda self: int(self.ui.number.text() or 0), _set_step_number)
+    is_expanded = Property(bool, lambda self: self.ui.toggle.isChecked(), lambda self, value: self.setExpanded(value))
+    subtitle = Property(str, lambda self: self.ui.subtitle.text(), lambda self, value: self.setSubtitle(value))
 
     def __init__(self, title="Step", body=None, number=None, expanded=False, parent=None, ui=None, prefix=None):
         if isinstance(title, QWidget) and parent is None:
@@ -104,6 +149,7 @@ class StepCard(QFrame):
         super(QWidget, self.ui.headerWidget).mousePressEvent(event)
 
     def setExpanded(self, expanded):
+        expanded = bool(expanded and self._status != "locked")
         with QSignalBlocker(self.ui.toggle):
             self.ui.toggle.setChecked(expanded)
         self.ui.chevron.setProperty("expanded", expanded)
@@ -120,6 +166,7 @@ class StepCard(QFrame):
         target.updateGeometry()
         if expanded:
             self.expanded.emit()
+        self.expansion_changed.emit(expanded)
 
     def setSubtitle(self, text):
         self.ui.subtitle.setText(text)
@@ -133,6 +180,9 @@ class StepCard(QFrame):
         if subtitle is not None:
             self.ui.subtitle.setText(subtitle)
         self._update_status_appearance()
+        self.ui.toggle.setEnabled(status != "locked")
+        if status == "locked":
+            self.setExpanded(False)
         if not self.ui.toggle.isChecked():
             target = self.frame if getattr(self, "frame", None) is not None else self
             target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
@@ -203,21 +253,7 @@ class DetectSettings(QWidget):
         self.reset()
 
     def _toggle_advanced(self, checked):
-        body = getattr(self.ui, "advancedBody", None)
-        if body is not None:
-            body.setVisible(checked)
-        toggle = getattr(self.ui, "advancedToggle", None)
-        if toggle is not None:
-            toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
-            toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
-        p = self
-        while p is not None:
-            p.updateGeometry()
-            if hasattr(p, "adjustSize"):
-                p.adjustSize()
-            if p.objectName() in ("stepCard", "StepCard") or hasattr(p, "cardLayout"):
-                break
-            p = p.parentWidget()
+        toggle_advanced_settings(self, checked)
 
     def reset(self):
         self.ui.confidence.setValue(0.3)
@@ -232,7 +268,7 @@ class DetectSettings(QWidget):
         files = self.app.getInputFileList() if (self.app and hasattr(self.app, "getInputFileList")) else []
         first = files[0] if files else None
         self.ui.run.setEnabled(bool(files))
-        self.ui.useGPU.setEnabled(bool(files))
+        update_gpu_checkbox(self.ui.useGPU, self.app, enabled=bool(files))
         if first is not self._first_file:
             self._first_file = first
             self.suggest_device(True)
@@ -245,7 +281,7 @@ class DetectSettings(QWidget):
         except (OSError, ValueError):
             available = False
         with QSignalBlocker(self.ui.useGPU):
-            self.ui.useGPU.setChecked(bool(available))
+            self.ui.useGPU.setChecked(bool(available) and self.ui.useGPU.isEnabled())
 
     def values(self):
         for field in (self.ui.confidence, self.ui.mergeThreshold):
@@ -333,21 +369,7 @@ class StackSettings(QWidget):
         self.reset()
 
     def _toggle_advanced(self, checked):
-        body = getattr(self.ui, "advancedBody", None)
-        if body is not None:
-            body.setVisible(checked)
-        toggle = getattr(self.ui, "advancedToggle", None)
-        if toggle is not None:
-            toggle.setArrowType(Qt.DownArrow if checked else Qt.RightArrow)
-            toggle.setToolTip("Hide advanced settings" if checked else "Show advanced settings")
-        p = self
-        while p is not None:
-            p.updateGeometry()
-            if hasattr(p, "adjustSize"):
-                p.adjustSize()
-            if p.objectName() in ("stepCard", "StepCard") or hasattr(p, "cardLayout"):
-                break
-            p = p.parentWidget()
+        toggle_advanced_settings(self, checked)
 
     def reset(self):
         self.ui.fade.setCurrentIndex(3)
@@ -370,7 +392,7 @@ class StackSettings(QWidget):
         files = self.app.getInputFileList() if (self.app and hasattr(self.app, "getInputFileList")) else []
         first = files[0] if files else None
         self.ui.run.setEnabled(bool(files))
-        self.ui.useGPU.setEnabled(bool(files))
+        update_gpu_checkbox(self.ui.useGPU, self.app, enabled=bool(files))
         if first is not self._first_file:
             self._first_file = first
             self.suggest_batch(True)
@@ -390,7 +412,7 @@ class StackSettings(QWidget):
             device = "GPU" if available else "CPU"
             self.ui.memory.setText(f"Suggested batch: {size} · {memory / 1024**3:.2f} GB {device}")
         with QSignalBlocker(self.ui.useGPU):
-            self.ui.useGPU.setChecked(bool(available))
+            self.ui.useGPU.setChecked(bool(available) and self.ui.useGPU.isEnabled())
 
     def values(self):
         for field in (self.ui.batchSize, self.ui.fadeAmount):

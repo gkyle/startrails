@@ -1,10 +1,22 @@
 import time
-from PySide6.QtCore import QAbstractTableModel, QEvent, QModelIndex, QObject, QRect, QSize, Qt, Signal, QSignalBlocker
+from PySide6.QtCore import (
+    QAbstractTableModel,
+    QEvent,
+    QItemSelectionModel,
+    QModelIndex,
+    QObject,
+    QRect,
+    QSize,
+    Qt,
+    Signal,
+    QSignalBlocker,
+    Property,
+)
 from PySide6.QtGui import QAction, QActionGroup, QBrush, QFont, QIcon, QPainter, QPen
 from PySide6.QtWidgets import QFrame, QHeaderView, QMenu, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QToolButton, QWidget
 
 from types import SimpleNamespace
-from startrails.lib.file import File, InputFile
+from startrails.lib.file import File, InputFile, DenoiseInputFile
 from . import resources_rc  # Register SVG icons when this module is used directly.
 from .ui_file_manager import Ui_FileSection
 from .theme import is_dark, themed_color
@@ -72,6 +84,42 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
                     badges.append((f"{deleted}", color("#fef3c7", "background"), color("#b45309"), color("#fde68a", "border")))
                 if excluded:
                     badges.append(("Excluded", color("#fee2e2", "background"), color("#b91c1c"), color("#fecaca", "border")))
+
+                if badges:
+                    x = option.rect.left() + 4
+                    badge_font = QFont(option.font)
+                    badge_font.setPointSize(8)
+                    badge_font.setWeight(QFont.DemiBold)
+                    painter.setFont(badge_font)
+                    fm = painter.fontMetrics()
+                    badge_h = 16
+                    y = option.rect.top() + (option.rect.height() - badge_h) // 2
+
+                    for text, bg_col, text_col, border_col in badges:
+                        text_w = fm.horizontalAdvance(text)
+                        badge_w = max(18, text_w + 10)
+                        if x + badge_w > option.rect.right() - 2:
+                            break
+                        pill_rect = QRect(x, y, badge_w, badge_h)
+                        painter.setPen(QPen(border_col, 1))
+                        painter.setBrush(QBrush(bg_col))
+                        painter.drawRoundedRect(pill_rect, 4, 4)
+
+                        painter.setPen(text_col)
+                        painter.drawText(pill_rect, Qt.AlignCenter, text)
+                        x += badge_w + 4
+                else:
+                    painter.setPen(color("#64748b"))
+                    font = QFont(option.font)
+                    font.setPointSize(9)
+                    painter.setFont(font)
+                    painter.drawText(option.rect, Qt.AlignVCenter | Qt.AlignLeft, "—")
+            elif isinstance(file, DenoiseInputFile):
+                badges = []
+                if getattr(file, "is_reference", False):
+                    badges.append(("Reference", color("#eff6ff", "background"), color("#1d4ed8"), color("#bfdbfe", "border")))
+                if getattr(file, "aligned", False):
+                    badges.append(("Aligned", color("#dcfce7", "background"), color("#15803d"), color("#bbf7d0", "border")))
 
                 if badges:
                     x = option.rect.left() + 4
@@ -178,12 +226,23 @@ class FileModel(QAbstractTableModel):
                 return (f"{file.path}{time_str}\nAutomatic masks: {auto}\nManual masks: {manual}\n"
                         f"Manually deleted masks: {deleted}\n"
                         f"{'Excluded from' if excluded else 'Included in'} stack")
-            return f"{file.path}\n{file.operation}"
+            elif isinstance(file, DenoiseInputFile):
+                ref_txt = "Reference frame" if getattr(file, "is_reference", False) else "Input frame"
+                align_txt = "Aligned" if getattr(file, "aligned", False) else "Not aligned"
+                return f"{file.path}\n{ref_txt} · {align_txt}"
+            return f"{file.path}\n{getattr(file, 'operation', '')}"
         if role == Qt.DisplayRole:
             if index.column() == 0:
                 return file.basename
+            if isinstance(file, DenoiseInputFile):
+                parts = []
+                if getattr(file, "is_reference", False):
+                    parts.append("Reference")
+                if getattr(file, "aligned", False):
+                    parts.append("Aligned")
+                return " · ".join(parts) or "—"
             if not isinstance(file, InputFile):
-                return file.operation
+                return getattr(file, "operation", "")
             auto, manual, deleted, excluded = self._states[file]
             parts = [f"{label}:{count}" for label, count in (("A", auto), ("M", manual), ("D", deleted)) if count]
             if excluded:
@@ -269,13 +328,41 @@ class FileSection(QFrame):
     excludeFile = Signal(File)
     addRequested = Signal()
     sortRequested = Signal(str, str)
+    setReferenceRequested = Signal(File)
 
-    def __init__(self, title="Files", inputs=False, parent=None, ui=None, prefix=None):
+    def _set_title(self, value):
+        self.ui.toggle.setText(value)
+        self.ui.files.setAccessibleName(value)
+
+    def _set_inputs(self, value):
+        self._inputs = value
+        self.model._inputs = value
+        self.ui.add.setVisible(value)
+        if getattr(self.ui, "sort", None) is not None:
+            self.ui.sort.setVisible(value)
+        if value:
+            self.ui.icon.setPixmap(QIcon(":/startrails/ui/star.svg").pixmap(16, 16))
+            if not hasattr(self, "sort_menu"):
+                self._setup_sort_control()
+        self._refresh()
+
+    def _set_show_legend(self, value):
+        self._show_legend = value
+        if self.ui.legend is not None:
+            self.ui.legend.setVisible(value)
+
+    title = Property(str, lambda self: self.ui.toggle.text(), _set_title)
+    inputs = Property(bool, lambda self: self._inputs, _set_inputs)
+    show_legend = Property(bool, lambda self: self._show_legend, _set_show_legend)
+    is_expanded = Property(bool, lambda self: self.ui.toggle.isChecked(), lambda self, value: self.setExpanded(value))
+
+    def __init__(self, title="Files", inputs=False, parent=None, ui=None, prefix=None, show_legend=None, expanded=None):
         if isinstance(title, QWidget) and parent is None:
             parent = title
             title = "Files"
         super().__init__(parent)
         self._inputs = inputs
+        self._show_legend = inputs if show_legend is None else bool(show_legend)
         self._sort_by = "date"
         self._sort_order = "asc"
         self.frame = getattr(ui, f"{prefix}Section") if ui and prefix else self
@@ -302,7 +389,7 @@ class FileSection(QFrame):
         if getattr(self.ui, "sort", None) is not None:
             self.ui.sort.setVisible(inputs)
         if getattr(self.ui, "legend", None) is not None:
-            self.ui.legend.setVisible(inputs)
+            self.ui.legend.setVisible(self._show_legend)
 
         if inputs:
             self.ui.icon.setPixmap(QIcon(":/startrails/ui/star.svg").pixmap(16, 16))
@@ -321,10 +408,13 @@ class FileSection(QFrame):
         self.ui.headerWidget.mousePressEvent = self._on_header_clicked
         self.ui.add.clicked.connect(self.addRequested.emit)
         self.ui.files.selectionModel().currentChanged.connect(self._selection_changed)
+        self.ui.files.clicked.connect(self._on_item_clicked)
+        self.ui.files.activated.connect(self._on_item_clicked)
         self.ui.files.customContextMenuRequested.connect(self._context_menu)
         self.ui.files.installEventFilter(self)
         self.model.summaryChanged.connect(self._refresh)
-        self.setExpanded(inputs)
+        initial_expanded = inputs if expanded is None else bool(expanded)
+        self.setExpanded(initial_expanded)
         self._refresh()
 
     def _setup_sort_control(self):
@@ -447,7 +537,7 @@ class FileSection(QFrame):
             self.ui.toggle.toggle()
             event.accept()
             return
-        super(QWidget, self.ui.headerWidget).mousePressEvent(event)
+        QWidget.mousePressEvent(self.ui.headerWidget, event)
 
     def setExpanded(self, expanded):
         with QSignalBlocker(self.ui.toggle):
@@ -456,6 +546,8 @@ class FileSection(QFrame):
         self.ui.chevron.style().unpolish(self.ui.chevron)
         self.ui.chevron.style().polish(self.ui.chevron)
         self.ui.body.setVisible(expanded)
+        if getattr(self.ui, "legend", None) is not None:
+            self.ui.legend.setVisible(expanded and self._show_legend)
         target = self.frame if getattr(self, "frame", None) is not None else self
         if not expanded:
             target.setFixedHeight(36)
@@ -474,15 +566,27 @@ class FileSection(QFrame):
         with QSignalBlocker(self.ui.files.selectionModel()):
             self.model.set_files(files)
             index = self.model.index_for_file(current)
-            self.ui.files.setCurrentIndex(index)
+            if index.isValid():
+                self.ui.files.setCurrentIndex(index)
+                self.ui.files.selectionModel().select(
+                    index, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows
+                )
+            else:
+                self.ui.files.setCurrentIndex(QModelIndex())
+                self.ui.files.clearSelection()
         self._refresh()
 
     def focus_file(self, file):
         try:
             index = self.model.index_for_file(file)
             with QSignalBlocker(self.ui.files.selectionModel()):
-                self.ui.files.setCurrentIndex(index)
-                if not index.isValid():
+                if index.isValid():
+                    self.ui.files.setCurrentIndex(index)
+                    self.ui.files.selectionModel().select(
+                        index, QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows
+                    )
+                else:
+                    self.ui.files.setCurrentIndex(QModelIndex())
                     self.ui.files.clearSelection()
             if index.isValid():
                 self.setExpanded(True)
@@ -491,9 +595,19 @@ class FileSection(QFrame):
         except RuntimeError:
             pass
 
+    setCurrentFile = focus_file
+
     def _selection_changed(self, current, previous):
         self._refresh()
         file = current.data(Qt.UserRole)
+        if file is not None:
+            self.showFile.emit(file)
+
+    def _on_item_clicked(self, index: QModelIndex):
+        if not index.isValid():
+            return
+        self._refresh()
+        file = index.data(Qt.UserRole)
         if file is not None:
             self.showFile.emit(file)
 
@@ -518,6 +632,11 @@ class FileSection(QFrame):
         if isinstance(file, InputFile):
             self.excludeFile.emit(file)
 
+    def _set_reference(self):
+        file = self.current_file()
+        if file is not None:
+            self.setReferenceRequested.emit(file)
+
     def _context_menu(self, pos):
         index = self.ui.files.indexAt(pos)
         menu = QMenu(self.frame if getattr(self, "frame", None) is not None else self)
@@ -531,6 +650,10 @@ class FileSection(QFrame):
                     exclude.setCheckable(True)
                     exclude.setChecked(file.excludeFromStack)
                     menu.addSeparator()
+                elif isinstance(file, DenoiseInputFile):
+                    if not getattr(file, "is_reference", False):
+                        menu.addAction("Set as Reference Frame", self._set_reference)
+                        menu.addSeparator()
                 menu.addAction("Remove from Project", self._remove)
                 if self._inputs:
                     menu.addSeparator()

@@ -332,27 +332,7 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
         <string>Fade amount</string>
        </property>
        <property name="styleSheet">
-        <string notr="true">QSpinBox#fadeAmount {
-    background-color: #ffffff;
-    border: 1px solid #64748b;
-    border-radius: 4px;
-    padding: 4px 6px;
-    font-size: 12px;
-    color: #0f172a;
-    min-width: 75px;
-    max-width: 75px;
-}
-QSpinBox#fadeAmount:focus {
-    border: 2px solid #0369a1;
-    padding: 3px 5px;
-}
-QSpinBox#fadeAmount:disabled {
-    background-color: #f1f5f9;
-    color: #94a3b8;
-    border-color: #e2e8f0;
-}
-QSpinBox#fadeAmount::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }
-QSpinBox#fadeAmount::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }</string>
+        <string notr="true"/>
        </property>
        <property name="suffix">
         <string>%</string>
@@ -381,31 +361,7 @@ QSpinBox#fadeAmount::down-arrow { image: url(:/startrails/ui/arrow_down.svg); wi
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton#run {
-    font-weight: bold;
-    background-color: #0369a1;
-    color: #ffffff;
-    padding: 0px 12px;
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
-    border-top-right-radius: 0px;
-    border-bottom-right-radius: 0px;
-    font-size: 13px;
-    border: 2px solid transparent;
-    min-height: 34px;
-    max-height: 34px;
-}
-QPushButton#run:hover {
-    background-color: #075985;
-}
-QPushButton#run:disabled {
-    background-color: #e2e8f0;
-    color: #94a3b8;
-}
-QPushButton#run:focus:enabled { border-color: #ffffff; }</string>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="text">
         <string>Stack Images</string>
@@ -418,41 +374,13 @@ QPushButton#run:focus:enabled { border-color: #ffffff; }</string>
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="toolTip">
         <string>Advanced settings</string>
        </property>
        <property name="accessibleName">
         <string>Advanced settings</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QToolButton#advancedToggle {
-    background-color: #0369a1;
-    color: #ffffff;
-    padding: 0px;
-    border-top-left-radius: 0px;
-    border-bottom-left-radius: 0px;
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
-    border: 2px solid transparent;
-    border-left: 1px solid #075985;
-    min-height: 34px;
-    max-height: 34px;
-    min-width: 28px;
-    max-width: 28px;
-}
-QToolButton#advancedToggle:hover {
-    background-color: #075985;
-}
-QToolButton#advancedToggle:focus:enabled {
-    border-color: #ffffff;
-}
-QToolButton#advancedToggle:disabled {
-    background-color: #e2e8f0;
-    color: #94a3b8;
-    border-left: 1px solid #cbd5e1;
-}</string>
        </property>
        <property name="text">
         <string/>
@@ -472,11 +400,6 @@ QToolButton#advancedToggle:disabled {
    </item>
    <item>
     <widget class="QWidget" name="advancedBody" native="true">
-     <property name="styleSheet">
-      <string notr="true">QWidget#advancedBody {
-    background: transparent;
-}</string>
-     </property>
      <layout class="QVBoxLayout" name="advancedLayout">
       <property name="spacing">
        <number>6</number>
@@ -499,7 +422,10 @@ QToolButton#advancedToggle:disabled {
          <number>8</number>
         </property>
         <item row="0" column="0">
-         <widget class="QLabel" name="useGPULabel">
+         <widget class="CheckboxLabel" name="useGPULabel">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
           <property name="styleSheet">
            <string notr="true">QLabel#useGPULabel {
     color: #334155;
@@ -520,17 +446,10 @@ QToolButton#advancedToggle:disabled {
            <cursorShape>PointingHandCursor</cursorShape>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::FocusPolicy::NoFocus</enum>
+           <enum>Qt::FocusPolicy::StrongFocus</enum>
           </property>
           <property name="accessibleName">
            <string>Use GPU for stacking</string>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">QCheckBox#useGPU { spacing: 0px;}
-QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }
-QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
-</string>
           </property>
           <property name="text">
            <string/>
@@ -562,22 +481,7 @@ QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg);
            <string>Batch size</string>
           </property>
           <property name="styleSheet">
-           <string notr="true">QSpinBox#batchSize {
-    background-color: #ffffff;
-    border: 1px solid #64748b;
-    border-radius: 4px;
-    padding: 4px 6px;
-    font-size: 12px;
-    color: #0f172a;
-    min-width: 75px;
-    max-width: 75px;
-}
-QSpinBox#batchSize:focus {
-    border: 2px solid #0369a1;
-    padding: 3px 5px;
-}
-QSpinBox#batchSize::up-arrow { image: url(:/startrails/ui/arrow_up.svg); width: 10px; height: 6px; }
-QSpinBox#batchSize::down-arrow { image: url(:/startrails/ui/arrow_down.svg); width: 10px; height: 6px; }</string>
+           <string notr="true"/>
           </property>
           <property name="minimum">
            <number>1</number>
@@ -614,12 +518,6 @@ QSpinBox#batchSize::down-arrow { image: url(:/startrails/ui/arrow_down.svg); wid
    </item>
    <item>
     <widget class="QLabel" name="error">
-     <property name="styleSheet">
-      <string notr="true">QLabel#error {
-    font-size: 11px;
-    color: #b91c1c;
-}</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -630,12 +528,19 @@ QSpinBox#batchSize::down-arrow { image: url(:/startrails/ui/arrow_down.svg); wid
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CheckboxLabel</class>
+   <extends>QLabel</extends>
+   <header>startrails.ui.checkbox_label</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="resources.qrc"/>
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="stackFadeGroup"/>
   <buttongroup name="stackStreaksGroup"/>
+  <buttongroup name="stackFadeGroup"/>
  </buttongroups>
 </ui>

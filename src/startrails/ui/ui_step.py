@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'step.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.2
+## Created by: Qt User Interface Compiler version 6.12.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -28,12 +28,12 @@ class Ui_StepCard(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(StepCard.sizePolicy().hasHeightForWidth())
         StepCard.setSizePolicy(sizePolicy)
-        StepCard.setStyleSheet(u"QFrame#stepCard {\n"
+        StepCard.setStyleSheet(u"QFrame#StepCard, StepCard {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
 "    border-radius: 8px;\n"
 "}\n"
-"QFrame#stepCard:hover {\n"
+"QFrame#StepCard:hover, StepCard:hover {\n"
 "    border-color: #cbd5e1;\n"
 "}\n"
 "QPushButton#toggle {\n"
@@ -110,7 +110,7 @@ class Ui_StepCard(object):
         sizePolicy2.setHeightForWidth(self.toggle.sizePolicy().hasHeightForWidth())
         self.toggle.setSizePolicy(sizePolicy2)
         self.toggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.toggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.toggle.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.toggle.setCheckable(True)
         self.toggle.setChecked(True)
 

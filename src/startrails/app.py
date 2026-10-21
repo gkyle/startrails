@@ -1,25 +1,35 @@
-from typing import List, Any, Dict, Optional
-import jsonpickle
+from __future__ import annotations
+import logging
 import os
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+import jsonpickle
 
 # Use deferred loading for torch and modules that use torch to reduce startup latency.
 from deferred_import import deferred_import
-torch = deferred_import('torch')
-dsm = deferred_import('startrails.op.detectStreaks')
-fgm = deferred_import('startrails.op.fillGaps')
+torch = deferred_import("torch")
+dsm = deferred_import("startrails.op.detectStreaks")
+fgm = deferred_import("startrails.op.fillGaps")
 
-try:
-    import cupy
-except:
-    pass
 from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.util import Observable
-from startrails.op.exportMaskedImages import ExportMaskedImages
-from startrails.op.exportStreaksTraining import ExportStreaksDetectTraining
-from startrails.lib.source_map import locate_sources, output_sidecar, relative_path
-from startrails.op.stackImages import StackImages
-from startrails.ui.project import Project
+from startrails.lib.project import Project
+from startrails.lib.project_denoise import DenoiseProject
+from startrails.lib.project_type import (
+    STARTRAILS_EXT,
+    DENOISE_EXT,
+    TYPE_DENOISE,
+    detect_project_type_from_path,
+    UnsupportedProjectError,
+    InvalidProjectError,
+)
 from startrails.lib.gpu import GPUInfo
+from startrails.lib.recent import add_recent_project
+from startrails.workflow.base import Workflow
+from startrails.workflow.startrails import StarTrailsWorkflow
+from startrails.workflow.denoise import DenoiseWorkflow
+
+logger = logging.getLogger(__name__)
 
 
 class App:
@@ -28,181 +38,141 @@ class App:
     def __init__(self):
         try:
             torch.cuda.init()
-        except Exception as e:
+        except Exception:
             pass
-        self.loadAppState()
-        self.loadProject(self.state["projectFile"])
-        self.loadAppState()
-        self.activeOperation: Observable = None
+        self.activeOperation: Optional[Observable] = None
         self.gpuInfo = GPUInfo()
+        self._workflow: Optional[Workflow] = None
+
+        self.loadAppState()
+
+        # Ensure default denoise project exists on disk
+        DenoiseProject.ensure_default_project(f"projects/default{DENOISE_EXT}")
+
+        default_proj = self.state.get("projectFile", f"projects/default{STARTRAILS_EXT}")
+        if not os.path.exists(default_proj) and os.path.exists("projects/default.project.json"):
+            default_proj = "projects/default.project.json"
+
+        try:
+            self.loadProject(default_proj)
+        except Exception as e:
+            logger.warning(f"Could not load project {default_proj}: {e}")
+            self.newProject(f"projects/default{STARTRAILS_EXT}")
+        self.loadAppState()
+
+    @property
+    def workflow(self) -> Workflow:
+        wf = getattr(self, "_workflow", None)
+        if wf is None:
+            proj = getattr(self, "project", None)
+            wf = self._create_workflow(proj)
+            self._workflow = wf
+        return wf
+
+    @workflow.setter
+    def workflow(self, wf: Workflow) -> None:
+        self._workflow = wf
+
+    def _create_workflow(self, project: Any) -> Workflow:
+        if isinstance(project, DenoiseProject):
+            return DenoiseWorkflow(self)
+        return StarTrailsWorkflow(self)
+
+    # -------------------------------------------------------------------------
+    # Delegated StarTrails Workflow methods (backward compatibility)
+    # -------------------------------------------------------------------------
 
     def getInputFileList(self) -> List[InputFile]:
-        return self.project.rawInputFiles
+        return getattr(self.workflow, "getInputFileList", lambda: [])()
 
     def clearInputFileList(self) -> None:
-        self.project.rawInputFiles = []
-        self.saveProject()
+        if hasattr(self.workflow, "clearInputFileList"):
+            self.workflow.clearInputFileList()
 
     def appendInputFile(self, basename: str, path: str) -> InputFile:
-        file = InputFile(basename, path)
-        self.project.rawInputFiles.append(file)
-        self.sortInputFiles()
-        return file
+        return self.workflow.appendInputFile(basename, path)
 
     def addInputFiles(self, paths: List[str], clear: bool = False) -> None:
-        """Import one selection and persist once, keeping existing file objects."""
-        from concurrent.futures import ThreadPoolExecutor
-
-        def make_input(p):
-            return InputFile(os.path.basename(p), p)
-
-        if len(paths) > 16:
-            with ThreadPoolExecutor(max_workers=16) as pool:
-                added = list(pool.map(make_input, paths))
-        else:
-            added = [make_input(p) for p in paths]
-
-        if clear:
-            self.project.rawInputFiles = []
-        self.project.rawInputFiles.extend(added)
-        self.sortInputFiles()
+        self.workflow.addInputFiles(paths, clear=clear)
 
     def sortInputFiles(self, sortBy: Optional[str] = None, sortOrder: Optional[str] = None) -> None:
-        if sortBy is not None:
-            self.project.sortBy = sortBy
-        if sortOrder is not None:
-            self.project.sortOrder = sortOrder
+        if hasattr(self, "workflow") and self.workflow is not None:
+            self.workflow.sortInputFiles(sortBy=sortBy, sortOrder=sortOrder)
+            return
 
-        sort_by = getattr(self.project, "sortBy", "date") or "date"
-        sort_order = getattr(self.project, "sortOrder", "asc") or "asc"
+        # Fallback for standalone/mock callers like FakeApp in unittests
+        project = getattr(self, "project", None)
+        if project is None:
+            return
+        if sortBy is not None:
+            project.sortBy = sortBy
+        if sortOrder is not None:
+            project.sortOrder = sortOrder
+
+        sort_by = getattr(project, "sortBy", "date") or "date"
+        sort_order = getattr(project, "sortOrder", "asc") or "asc"
         reverse = (sort_order.lower() == "desc")
 
         if sort_by in ("name", "filename"):
-            self.project.rawInputFiles.sort(
+            project.rawInputFiles.sort(
                 key=lambda file: (file.basename.lower() if file.basename else "", file.get_mtime()),
                 reverse=reverse,
             )
-        else:  # "date" default
-            self.project.rawInputFiles.sort(
+        else:
+            project.rawInputFiles.sort(
                 key=lambda file: (file.get_mtime(), file.basename.lower() if file.basename else ""),
                 reverse=reverse,
             )
-        self.saveProject()
+        if hasattr(self, "saveProject"):
+            self.saveProject()
 
     def removeInputFile(self, file: InputFile) -> None:
-        self.project.rawInputFiles.remove(file)
-        self.saveProject()
+        self.workflow.removeInputFile(file)
 
     def toggleExcludeFromStack(self, file: InputFile) -> None:
-        file.excludeFromStack = not file.excludeFromStack
-        self.saveProject()
+        self.workflow.toggleExcludeFromStack(file)
 
     def getOutputFileList(self) -> List[OutputFile]:
-        return self.project.outputFiles
+        fn = getattr(self.workflow, "get_output_file_list", getattr(self.workflow, "getOutputFileList", None))
+        return fn() if fn is not None else []
 
     def clearOutputFileList(self) -> None:
-        self.project.outputFiles = []
-        self.saveProject()
+        if hasattr(self.workflow, "clearOutputFileList"):
+            self.workflow.clearOutputFileList()
 
     def appendOutputFile(self, basename, path, operation, fadeGradient=None) -> OutputFile:
-        file = OutputFile(basename, path, operation, fadeGradient=fadeGradient)
-        self.project.outputFiles.append(file)
-        self.saveProject()
-        return file
+        return self.workflow.appendOutputFile(basename, path, operation, fadeGradient=fadeGradient)
 
     def removeOutputFile(self, file: OutputFile) -> None:
-        self.project.outputFiles.remove(file)
-        self.saveProject()
+        self.workflow.removeOutputFile(file)
 
-    def doStack(self, satellitesRemoved, progressBar, fade=False, fadeAmount=(0.0, 0.0), batchSize=None, useGPU=True):
-        stackImages = StackImages(useGPU)
-        filteredInputFiles = list(filter(lambda file: not file.excludeFromStack, self.project.rawInputFiles))
-        if not filteredInputFiles:
-            raise ValueError("Include at least one input image in the stack.")
-        outDir = self.project.projectFile.replace(".json", "")
-        filename = StackImages.suggestOutFileName(filteredInputFiles[0], outDir)
-        os.makedirs(outDir, exist_ok=True)
+    def doStack(self, *args, **kwargs):
+        return self.workflow.doStack(*args, **kwargs)
 
-        fadeGradient = None
-        if fade:
-            fadeGradient = StackImages.makeFadeGradient(len(filteredInputFiles), fadeAmount)
-        basename = os.path.basename(filename)
-        file = self.appendOutputFile(basename, filename, "Stacked", fadeGradient=fadeGradient)
-        stackImages.addObserver(progressBar)
-        self.activeOperation = stackImages
-        try:
-            stackImages.stack(filteredInputFiles, file, satellitesRemoved, fade,
-                              fadeGradient=fadeGradient, batchSize=batchSize)
-        finally:
-            self.activeOperation = None
-            stackImages.removeObserver(progressBar)
-        self.saveProject()
-        return file
+    def doDetectStreaks(self, *args, **kwargs):
+        return self.workflow.doDetectStreaks(*args, **kwargs)
 
-    def doDetectStreaks(self, progressBar, useGPU, confThreshold, mergeMethod, mergeThreshold):
-        detectStreaks = dsm.DetectStreaks(useGPU)
-        detectStreaks.addObserver(progressBar)
-        self.activeOperation = detectStreaks
-        try:
-            detectStreaks.detectStreaks(self.getInputFileList(), confThreshold, mergeMethod, mergeThreshold)
-        finally:
-            self.activeOperation = None
-            detectStreaks.removeObserver(progressBar)
-        self.saveProject()
+    def doFindBrightFrame(self, *args, **kwargs):
+        return self.workflow.doFindBrightFrame(*args, **kwargs)
 
-    def doFindBrightFrame(self, x, y, basisFile: OutputFile, progressBar):
-        """Compatibility entry point for callers requesting just the best source."""
-        result = self.locateSources(x, y, basisFile)
-        return result.candidates[0] if result.candidates else None
+    def locateSources(self, *args, **kwargs):
+        return self.workflow.locateSources(*args, **kwargs)
 
-    def locateSources(self, x, y, basisFile: OutputFile):
-        # Consult the saved stack, including sources now excluded from future stacks.
-        return locate_sources(basisFile, list(self.project.rawInputFiles), x, y)
+    def doExportTrainingStreaks(self, *args, **kwargs):
+        return self.workflow.doExportTrainingStreaks(*args, **kwargs)
 
-    def doExportTrainingStreaks(self, outDir: str, progressBar):
-        exportStreaksTraining = ExportStreaksDetectTraining()
-        exportStreaksTraining.addObserver(progressBar)
-        self.activeOperation = exportStreaksTraining
-        try:
-            exportStreaksTraining.cropAndLabelFiles(self.getInputFileList(), outDir)
-        finally:
-            self.activeOperation = None
-            exportStreaksTraining.removeObserver(progressBar)
+    def doExportMaskedImages(self, *args, **kwargs):
+        return self.workflow.doExportMaskedImages(*args, **kwargs)
 
-    def doExportMaskedImages(self, outDir: str, progressBar):
-        exportMaskedImages = ExportMaskedImages()
-        exportMaskedImages.addObserver(progressBar)
-        self.activeOperation = exportMaskedImages
-        try:
-            exportMaskedImages.exportMaskedImages(self.getInputFileList(), outDir)
-        finally:
-            self.activeOperation = None
-            exportMaskedImages.removeObserver(progressBar)
+    def doFillGaps(self, *args, **kwargs):
+        return self.workflow.doFillGaps(*args, **kwargs)
 
-    def doFillGaps(self, file: OutputFile, progressBar):
-        fillGaps = fgm.FillGaps()
-        fillGaps.addObserver(progressBar)
-        outDir = self.project.projectFile.replace(".json", "")
-        filenameFillGaps, fileNameFillGapsMask = fgm.FillGaps.suggestOutFileName(file, outDir)
-        fileFillGaps = self.appendOutputFile(
-            os.path.basename(filenameFillGaps), filenameFillGaps, "FillGaps")
-        fileFillGapsMask = self.appendOutputFile(
-            os.path.basename(fileNameFillGapsMask), fileNameFillGapsMask, "FillGapsMask")
-        self.activeOperation = fillGaps
-        try:
-            fillGaps.fillGaps(file, fileFillGaps, fileFillGapsMask)
-        finally:
-            self.activeOperation = None
-            fillGaps.removeObserver(progressBar)
-        fileFillGaps.fadeGradient = file.fadeGradient
-        fileFillGapsMask.fadeGradient = file.fadeGradient
-        if file.sourceMap and not fillGaps.shouldInterrupt():
-            directory = os.path.dirname(os.path.abspath(fileFillGaps.path))
-            fileFillGaps.sourceMap = relative_path(output_sidecar(file, "sourceMap"), directory)
-            fileFillGaps.sourceStack = relative_path(file.path, directory)
-            fileFillGaps.gapMask = relative_path(fileFillGapsMask.path, directory)
-        self.saveProject()
-        return fileFillGaps
+    def stackSuggestBatchSize(self, file: InputFile, useGPU=True):
+        return self.workflow.stackSuggestBatchSize(file, useGPU=useGPU)
+
+    # -------------------------------------------------------------------------
+    # Core Application State & Project Management
+    # -------------------------------------------------------------------------
 
     def doInterruptOperation(self):
         if self.activeOperation:
@@ -213,9 +183,9 @@ class App:
             with open(self.stateFile, "r") as f:
                 self.state = jsonpickle.decode(f.read())
         except Exception as e:
-            print(e)
+            logger.debug(f"Could not load stateFile {self.stateFile}: {e}")
             self.state = {
-                "projectFile": "projects/default.project.json",
+                "projectFile": f"projects/default{STARTRAILS_EXT}",
             }
 
     def saveAppState(self):
@@ -223,21 +193,66 @@ class App:
             f.write(jsonpickle.encode(self.state, indent=4))
 
     def loadProject(self, projectFile: str) -> None:
+        path = Path(projectFile)
+        if not path.exists():
+            if path.name.startswith("default."):
+                proj_type = detect_project_type_from_path(path)
+                if proj_type == TYPE_DENOISE:
+                    self.project = DenoiseProject(projectFile=str(path))
+                else:
+                    self.project = Project(projectFile=str(path))
+                self.workflow = self._create_workflow(self.project)
+                self.saveProject()
+                return
+            raise FileNotFoundError(f"Project file not found: {projectFile}")
+
+        # Validate format/type before replacing the active project
         try:
-            with open(projectFile, "r") as f:
-                self.project = jsonpickle.decode(f.read(), on_missing="error")
+            raw_text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            try:
+                raw_text = path.read_text(encoding="latin-1")
+            except Exception as e:
+                raise InvalidProjectError(f"Could not read project file '{path}': {e}") from e
+
+        stripped = raw_text.strip()
+        if stripped.startswith("<?xml") or stripped.startswith("<project") or path.suffix.lower() == ".xml":
+            raise UnsupportedProjectError(
+                f"Unsupported XML project file: '{path.name}'. StarTrails does not support XML project files."
+            )
+
+        try:
+            loaded_proj = jsonpickle.decode(raw_text, on_missing="error")
+        except Exception as e:
+            raise InvalidProjectError(f"Failed to decode project file '{path}': {e}") from e
+
+        if not isinstance(loaded_proj, (Project, DenoiseProject)):
+            raise InvalidProjectError(
+                f"File '{path}' does not contain a recognized StarTrails or Denoise project (got {type(loaded_proj).__name__})."
+            )
+
+        # Treat the chosen Open filename as the authoritative save path
+        if isinstance(loaded_proj, DenoiseProject):
+            loaded_proj.relocate(str(path))
+        else:
+            loaded_proj.projectFile = str(path)
+
+        # Validation succeeded: safely replace active project and workflow
+        self.project = loaded_proj
+        self.workflow = self._create_workflow(self.project)
+
+        if isinstance(self.project, Project):
             if not getattr(self.project, "sortBy", None):
                 self.project.sortBy = "date"
             if not getattr(self.project, "sortOrder", None):
                 self.project.sortOrder = "asc"
-            self.state["projectFile"] = self.project.projectFile
-            self.saveAppState()
             if any(getattr(f, "timestamp", 0) == 0 for f in self.project.rawInputFiles):
                 self.sortInputFiles()
-        except Exception as e:
-            print(e)
-            self.project = Project()
-            self.saveProject()
+
+        self.state["projectFile"] = self.project.projectFile
+        self.saveAppState()
+        if not path.name.startswith("default."):
+            add_recent_project(self.project.projectFile)
 
     def saveProject(self):
         with open(self.project.projectFile, "w+") as f:
@@ -255,9 +270,12 @@ class App:
         self.saveProject()
 
     def newProject(self, fileName: str):
-        self.project = Project(projectFile=fileName)
+        proj_type = detect_project_type_from_path(fileName)
+        if proj_type == TYPE_DENOISE:
+            self.project = DenoiseProject(projectFile=fileName)
+        else:
+            self.project = Project(projectFile=fileName)
+        self.workflow = self._create_workflow(self.project)
         self.saveProject()
-
-    def stackSuggestBatchSize(self, file: InputFile, useGPU=True):
-        return StackImages.suggestBatchSize(file.path, gpuInfo=self.gpuInfo, useGPU=useGPU,
-                                           sourceCount=len(self.getInputFileList()))
+        if not Path(fileName).name.startswith("default."):
+            add_recent_project(self.project.projectFile)

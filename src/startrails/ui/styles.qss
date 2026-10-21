@@ -1,0 +1,218 @@
+/* Startrails AI - Global Stylesheet */
+
+/* Typography & Base Labels */
+QLabel {
+    color: #334155;
+    font-size: 12px;
+}
+
+/* Input Fields (SpinBoxes, DoubleSpinBoxes, ComboBoxes, LineEdits) */
+QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit {
+    background-color: #ffffff;
+    border: 1px solid #a4b4cb;
+    border-top-left-radius: 2px;
+    border-bottom-left-radius: 2px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    font-size: 12px;
+    color: #0f172a;
+    height: 15px;
+}
+
+QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QLineEdit:focus {
+    border: 2px solid #0369a1;
+}
+
+QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled, QLineEdit:disabled {
+    background-color: #f1f5f9;
+    color: #94a3b8;
+    border-color: #cbd5e1;
+}
+
+QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    width: 16px;
+    height: 10px;
+    right: 2px;
+}
+
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-position: top right;
+    top: 1px;
+}
+
+
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-position: bottom right;
+    bottom: 1px;
+}
+
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow, QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    width: 100%;
+    height: 100%;
+}
+
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: url(:/startrails/ui/arrow_up.svg);
+}
+
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: url(:/startrails/ui/arrow_down.svg);
+}
+
+/* CheckBoxes */
+QCheckBox {
+    font-size: 12px;
+    color: #1e293b;
+    spacing: 6px;
+    border: 2px solid transparent;
+}
+
+QCheckBox:focus:enabled {
+    border-color: #0f172a;
+}
+
+QCheckBox#useGPU,
+QCheckBox#compressIntermediateTiffs,
+QCheckBox#showMaskOverlay,
+QCheckBox#enableCorrections,
+QCheckBox#showGradientMask {
+    spacing: 0px;
+}
+
+QCheckBox#useGPU::indicator,
+QCheckBox#compressIntermediateTiffs::indicator,
+QCheckBox#showMaskOverlay::indicator,
+QCheckBox#enableCorrections::indicator,
+QCheckBox#showGradientMask::indicator {
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+}
+
+QCheckBox#useGPU::indicator:unchecked,
+QCheckBox#compressIntermediateTiffs::indicator:unchecked,
+QCheckBox#showMaskOverlay::indicator:unchecked,
+QCheckBox#enableCorrections::indicator:unchecked,
+QCheckBox#showGradientMask::indicator:unchecked {
+    image: url(:/startrails/ui/switch_off.svg);
+}
+
+QCheckBox#useGPU::indicator:checked,
+QCheckBox#compressIntermediateTiffs::indicator:checked,
+QCheckBox#showMaskOverlay::indicator:checked,
+QCheckBox#enableCorrections::indicator:checked,
+QCheckBox#showGradientMask::indicator:checked {
+    image: url(:/startrails/ui/switch_on.svg);
+}
+
+QCheckBox#useGPU:focus:enabled,
+QCheckBox#compressIntermediateTiffs:focus:enabled,
+QCheckBox#showMaskOverlay:focus:enabled,
+QCheckBox#enableCorrections:focus:enabled,
+QCheckBox#showGradientMask:focus:enabled {
+    border-color: transparent;
+}
+
+/* Horizontal Sliders */
+QSlider::groove:horizontal {
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+
+QSlider::sub-page:horizontal {
+    background: #0369a1;
+    border-radius: 2px;
+}
+
+QSlider::handle:horizontal {
+    background: #0369a1;
+    border: 2px solid #ffffff;
+    width: 14px;
+    margin-top: -5px;
+    margin-bottom: -5px;
+    border-radius: 7px;
+}
+
+QSlider::handle:horizontal:hover {
+    background: #0284c7;
+}
+
+/* Primary Capsule Action Button (Detect Streaks, Align Stars, Stack, Composite) */
+QPushButton#run {
+    font-weight: bold;
+    background-color: #0369a1;
+    color: #ffffff;
+    padding: 0px 12px;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+    font-size: 13px;
+    border: none;
+    min-height: 34px;
+    max-height: 34px;
+}
+
+QWidget#fillSettings QPushButton#run {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+QPushButton#run:hover {
+    background-color: #075985;
+}
+
+QPushButton#run:disabled {
+    background-color: #e2e8f0;
+    color: #94a3b8;
+}
+
+QPushButton#run:focus:enabled {
+    border: none;
+    background-color: #0c4a6e;
+}
+
+/* Advanced Settings Toggle Capsule Button */
+QToolButton#advancedToggle {
+    background-color: #0369a1;
+    color: #ffffff;
+    padding: 0px;
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    border: none;
+    border-left: 1px solid transparent;
+    min-height: 34px;
+    max-height: 34px;
+    min-width: 28px;
+    max-width: 28px;
+}
+
+QToolButton#advancedToggle:hover {
+    background-color: #075985;
+}
+
+QToolButton#advancedToggle:focus:enabled {
+    border: none;
+    background-color: #0c4a6e;
+}
+
+QToolButton#advancedToggle:disabled {
+    background-color: #e2e8f0;
+    color: #94a3b8;
+    border-left: 1px solid #cbd5e1;
+}
+
+/* Advanced Options Container */
+QWidget#advancedBody {
+    background: transparent;
+}
+
+/* Error Labels */
+QLabel#error {
+    color: #b91c1c;
+    font-size: 11px;
+}

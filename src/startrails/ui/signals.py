@@ -5,10 +5,11 @@ from startrails.lib.file import File
 
 
 class AsyncWorker(QRunnable):
-    def __init__(self, work, parent=None):
+    def __init__(self, work, parent=None, finish_progress=True):
         super().__init__(parent)
         self.signals = getSignals()
         self.work = work
+        self.finish_progress = finish_progress
 
     def run(self):
         try:
@@ -16,7 +17,8 @@ class AsyncWorker(QRunnable):
                 self.work()
         finally:
             try:
-                self.signals.finishProgress.emit()
+                if self.finish_progress:
+                    self.signals.finishProgress.emit()
             except RuntimeError:
                 pass
 
@@ -25,6 +27,8 @@ class Signals(QObject):
     startProgress: Signal = Signal(object, object, object)
     incrementProgress: Signal = Signal(object, int, int, int, bool, object)
     finishProgress: Signal = Signal()
+    start_task_progress = Signal(object, object, object, object)
+    finish_task_progress = Signal(object)
 
     showFile: Signal = Signal(File)
     updateGPUStats: Signal = Signal()

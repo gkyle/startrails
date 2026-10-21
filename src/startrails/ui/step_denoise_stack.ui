@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DenoiseStackSettings</class>
+ <widget class="QWidget" name="DenoiseStackSettings">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>300</width>
+    <height>270</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing">
+    <number>6</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="methodRow">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="methodLabel">
+       <property name="text">
+        <string>Method</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="method">
+       <item>
+        <property name="text">
+         <string>Sigma Clipped Mean</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Arithmetic Mean</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="thresholdRow">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="sigmaThresholdLabel">
+       <property name="text">
+        <string>Threshold</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDoubleSpinBox" name="sigmaThreshold">
+       <property name="maximumSize">
+        <size>
+         <width>80</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="suffix">
+        <string> σ</string>
+       </property>
+       <property name="minimum">
+        <double>0.500000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>5.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="runLayout">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="run">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string>Stack sky and ground base frames without blend or denoise</string>
+       </property>
+       <property name="text">
+        <string>Generate Base Stack</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="advancedToggle">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
+       </property>
+       <property name="toolTip">
+        <string>Show advanced settings</string>
+       </property>
+       <property name="accessibleName">
+        <string>Show advanced settings</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+       <property name="arrowType">
+        <enum>Qt::ArrowType::RightArrow</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="outputFileName">
+     <property name="styleSheet">
+      <string notr="true">font-size: 11px; color: #64748b;</string>
+     </property>
+     <property name="text">
+      <string>Output: project.tif</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="stackStatus">
+     <property name="styleSheet">
+      <string notr="true">color: #64748b; font-size: 11px;</string>
+     </property>
+     <property name="text">
+      <string>Base stacks: Not generated</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="advancedBody" native="true">
+     <layout class="QVBoxLayout" name="advancedLayout">
+      <property name="spacing">
+       <number>4</number>
+      </property>
+      <property name="leftMargin">
+       <number>4</number>
+      </property>
+      <property name="topMargin">
+       <number>2</number>
+      </property>
+      <property name="rightMargin">
+       <number>4</number>
+      </property>
+      <property name="bottomMargin">
+       <number>2</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="useGPURow">
+        <item>
+         <widget class="CheckboxLabel" name="useGPULabel">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: #334155; font-size: 12px;</string>
+          </property>
+          <property name="text">
+           <string>Use GPU Acceleration</string>
+          </property>
+          <property name="buddy">
+           <cstring>useGPU</cstring>
+          </property>
+         </widget>
+        </item>
+        <item alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QCheckBox" name="useGPU">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="focusPolicy">
+           <enum>Qt::FocusPolicy::StrongFocus</enum>
+          </property>
+          <property name="accessibleName">
+           <string>Use GPU Acceleration</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="compressionRow">
+        <item>
+         <widget class="CheckboxLabel" name="compressionLabel">
+          <property name="text"><string>Compress intermediate TIFFs</string></property>
+          <property name="wordWrap"><bool>true</bool></property>
+          <property name="buddy"><cstring>compressIntermediateTiffs</cstring></property>
+          <property name="toolTip"><string>Smaller sky, ground, and base TIFF files. Turning this off saves faster and uses more disk space. Final TIFF exports remain compressed.</string></property>
+         </widget>
+        </item>
+        <item alignment="Qt::AlignmentFlag::AlignRight">
+         <widget class="QCheckBox" name="compressIntermediateTiffs">
+          <property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property>
+          <property name="focusPolicy"><enum>Qt::FocusPolicy::StrongFocus</enum></property>
+          <property name="accessibleName"><string>Compress intermediate TIFFs</string></property>
+          <property name="toolTip"><string>Save smaller intermediate TIFFs with lossless compression. Final TIFF exports remain compressed.</string></property>
+          <property name="text"><string/></property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="iterationsRow">
+        <item>
+         <widget class="QLabel" name="sigmaIterationsLabel">
+          <property name="text">
+           <string>Iterations:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="sigmaIterations">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>10</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="error">
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CheckboxLabel</class>
+   <extends>QLabel</extends>
+   <header>startrails.ui.checkbox_label</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

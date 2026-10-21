@@ -1,3 +1,7 @@
+import os
+import sys
+from pathlib import Path
+from typing import Optional, Union
 import cv2
 import numpy
 try:
@@ -5,18 +9,7 @@ try:
 except:
     pass
 
-IMWRITE_OPTIONS = [cv2.IMWRITE_JPEG_QUALITY, 100]
-
-
-def imwrite(outfile, img, convertBGR=False):
-    try:
-        if not isinstance(img, numpy.ndarray):  # convert cupy array to numpy
-            img = cp.asnumpy(img)
-    except:
-        pass
-    if convertBGR:
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(outfile, img, IMWRITE_OPTIONS)
+from startrails.lib.image_io import IMWRITE_OPTIONS, imread, imwrite
 
 
 def applyMask(image, masks):
