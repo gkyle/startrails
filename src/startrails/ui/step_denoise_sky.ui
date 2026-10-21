@@ -234,20 +234,13 @@ QPushButton#refineMask:disabled {
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="toolTip">
         <string>Show sky mask on canvas and enable interactive brush editing tools</string>
        </property>
        <property name="accessibleName">
         <string>Show and edit mask overlay</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QCheckBox#showMaskOverlay { spacing: 0px;}
-QCheckBox#showMaskOverlay::indicator { width: 36px; height: 20px; border-radius: 10px; }
-QCheckBox#showMaskOverlay::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#showMaskOverlay::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
-</string>
        </property>
        <property name="text">
         <string/>

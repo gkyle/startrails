@@ -240,14 +240,14 @@ class Ui_StackSettings(object):
         self.run.setObjectName(u"run")
         self.run.setEnabled(False)
         self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.run.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.run.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.runLayout.addWidget(self.run)
 
         self.advancedToggle = QToolButton(StackSettings)
         self.advancedToggle.setObjectName(u"advancedToggle")
         self.advancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.advancedToggle.setCheckable(True)
         self.advancedToggle.setChecked(True)
         self.advancedToggle.setArrowType(Qt.ArrowType.DownArrow)
@@ -279,12 +279,7 @@ class Ui_StackSettings(object):
         self.useGPU = QCheckBox(self.advancedBody)
         self.useGPU.setObjectName(u"useGPU")
         self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.useGPU.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
-"QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
-"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
-"")
+        self.useGPU.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.useGPU.setChecked(True)
 
         self.gpuBatchGrid.addWidget(self.useGPU, 0, 1, 1, 1, Qt.AlignmentFlag.AlignRight)

@@ -162,7 +162,7 @@ QPushButton#toggle:focus:enabled { border-color: #0f172a; }</string>
            <cursorShape>PointingHandCursor</cursorShape>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::FocusPolicy::NoFocus</enum>
+           <enum>Qt::FocusPolicy::StrongFocus</enum>
           </property>
           <property name="text">
            <string>Step Title</string>

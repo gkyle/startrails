@@ -104,7 +104,7 @@
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="toolTip">
         <string>Stack sky and ground base frames without blend or denoise</string>
@@ -120,7 +120,7 @@
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="toolTip">
         <string>Show advanced settings</string>
@@ -209,17 +209,10 @@
            <cursorShape>PointingHandCursor</cursorShape>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::FocusPolicy::NoFocus</enum>
+           <enum>Qt::FocusPolicy::StrongFocus</enum>
           </property>
           <property name="accessibleName">
            <string>Use GPU Acceleration</string>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">QCheckBox#useGPU { spacing: 0px;}
-QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }
-QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
-</string>
           </property>
           <property name="text">
            <string/>
@@ -241,16 +234,9 @@ QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg);
         <item alignment="Qt::AlignmentFlag::AlignRight">
          <widget class="QCheckBox" name="compressIntermediateTiffs">
           <property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property>
-          <property name="focusPolicy"><enum>Qt::FocusPolicy::NoFocus</enum></property>
+          <property name="focusPolicy"><enum>Qt::FocusPolicy::StrongFocus</enum></property>
           <property name="accessibleName"><string>Compress intermediate TIFFs</string></property>
           <property name="toolTip"><string>Save smaller intermediate TIFFs with lossless compression. Final TIFF exports remain compressed.</string></property>
-          <property name="styleSheet">
-           <string notr="true">QCheckBox#compressIntermediateTiffs { spacing: 0px; }
-QCheckBox#compressIntermediateTiffs::indicator { width: 36px; height: 20px; border-radius: 10px; }
-QCheckBox#compressIntermediateTiffs::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#compressIntermediateTiffs::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
-</string>
-          </property>
           <property name="text"><string/></property>
          </widget>
         </item>

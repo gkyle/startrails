@@ -43,12 +43,7 @@ class Ui_DenoiseTuneSettings(object):
         self.enableCorrections = QCheckBox(DenoiseTuneSettings)
         self.enableCorrections.setObjectName(u"enableCorrections")
         self.enableCorrections.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.enableCorrections.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.enableCorrections.setStyleSheet(u"QCheckBox#enableCorrections { spacing: 0px;}\n"
-"QCheckBox#enableCorrections::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
-"QCheckBox#enableCorrections::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#enableCorrections::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
-"")
+        self.enableCorrections.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.enableCorrectionsRow.addWidget(self.enableCorrections, 0, Qt.AlignmentFlag.AlignRight)
 
@@ -67,12 +62,7 @@ class Ui_DenoiseTuneSettings(object):
         self.showGradientMask = QCheckBox(DenoiseTuneSettings)
         self.showGradientMask.setObjectName(u"showGradientMask")
         self.showGradientMask.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showGradientMask.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.showGradientMask.setStyleSheet(u"QCheckBox#showGradientMask { spacing: 0px;}\n"
-"QCheckBox#showGradientMask::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
-"QCheckBox#showGradientMask::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#showGradientMask::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
-"")
+        self.showGradientMask.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.showGradientMask.setChecked(False)
 
         self.showGradientMaskRow.addWidget(self.showGradientMask, 0, Qt.AlignmentFlag.AlignRight)

@@ -39,24 +39,7 @@ class Ui_fillSettings(object):
         self.run.setObjectName(u"run")
         self.run.setEnabled(False)
         self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.run.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.run.setStyleSheet(u"QPushButton#run {\n"
-"    font-weight: bold;\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    padding: 0px 12px;\n"
-"    border-radius: 6px;\n"
-"    font-size: 13px;\n"
-"    border: none;\n"
-"}\n"
-"QPushButton#run:hover {\n"
-"    background-color: #075985;\n"
-"}\n"
-"QPushButton#run:disabled {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #94a3b8;\n"
-"}\n"
-"")
+        self.run.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.layout.addWidget(self.run)
 

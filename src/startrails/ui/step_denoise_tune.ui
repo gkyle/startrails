@@ -54,20 +54,13 @@
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="toolTip">
         <string>Toggle all horizon gradient corrections (blend, denoise, blur) on or off</string>
        </property>
        <property name="accessibleName">
         <string>Enable horizon corrections</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QCheckBox#enableCorrections { spacing: 0px;}
-QCheckBox#enableCorrections::indicator { width: 36px; height: 20px; border-radius: 10px; }
-QCheckBox#enableCorrections::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#enableCorrections::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
-</string>
        </property>
        <property name="text">
         <string/>
@@ -104,20 +97,13 @@ QCheckBox#enableCorrections::indicator:checked { image: url(:/startrails/ui/swit
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="toolTip">
         <string>Render the sky coverage gradient mask as a translucent red overlay on the canvas</string>
        </property>
        <property name="accessibleName">
         <string>Show gradient mask (red overlay)</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QCheckBox#showGradientMask { spacing: 0px;}
-QCheckBox#showGradientMask::indicator { width: 36px; height: 20px; border-radius: 10px; }
-QCheckBox#showGradientMask::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#showGradientMask::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
-</string>
        </property>
        <property name="text">
         <string/>

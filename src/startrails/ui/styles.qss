@@ -72,25 +72,45 @@ QCheckBox:focus:enabled {
     border-color: #0f172a;
 }
 
-QCheckBox#useGPU {
+QCheckBox#useGPU,
+QCheckBox#compressIntermediateTiffs,
+QCheckBox#showMaskOverlay,
+QCheckBox#enableCorrections,
+QCheckBox#showGradientMask {
     spacing: 0px;
 }
 
-QCheckBox#useGPU::indicator {
+QCheckBox#useGPU::indicator,
+QCheckBox#compressIntermediateTiffs::indicator,
+QCheckBox#showMaskOverlay::indicator,
+QCheckBox#enableCorrections::indicator,
+QCheckBox#showGradientMask::indicator {
     width: 36px;
     height: 20px;
     border-radius: 10px;
 }
 
-QCheckBox#useGPU::indicator:unchecked {
+QCheckBox#useGPU::indicator:unchecked,
+QCheckBox#compressIntermediateTiffs::indicator:unchecked,
+QCheckBox#showMaskOverlay::indicator:unchecked,
+QCheckBox#enableCorrections::indicator:unchecked,
+QCheckBox#showGradientMask::indicator:unchecked {
     image: url(:/startrails/ui/switch_off.svg);
 }
 
-QCheckBox#useGPU::indicator:checked {
+QCheckBox#useGPU::indicator:checked,
+QCheckBox#compressIntermediateTiffs::indicator:checked,
+QCheckBox#showMaskOverlay::indicator:checked,
+QCheckBox#enableCorrections::indicator:checked,
+QCheckBox#showGradientMask::indicator:checked {
     image: url(:/startrails/ui/switch_on.svg);
 }
 
-QCheckBox#useGPU:focus:enabled {
+QCheckBox#useGPU:focus:enabled,
+QCheckBox#compressIntermediateTiffs:focus:enabled,
+QCheckBox#showMaskOverlay:focus:enabled,
+QCheckBox#enableCorrections:focus:enabled,
+QCheckBox#showGradientMask:focus:enabled {
     border-color: transparent;
     border-bottom: 2px solid #0369a1;
 }
@@ -136,6 +156,11 @@ QPushButton#run {
     max-height: 34px;
 }
 
+QWidget#fillSettings QPushButton#run {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
 QPushButton#run:hover {
     background-color: #075985;
 }
@@ -146,11 +171,6 @@ QPushButton#run:disabled {
 }
 
 QPushButton#run:focus:enabled {
-    border: 2px solid #ffffff;
-}
-
-QWidget#alignSettings QPushButton#run:focus:enabled,
-QWidget#DenoiseAlignSettings QPushButton#run:focus:enabled {
     border: none;
     background-color: #0c4a6e;
 }
@@ -177,11 +197,6 @@ QToolButton#advancedToggle:hover {
 }
 
 QToolButton#advancedToggle:focus:enabled {
-    border: 2px solid #ffffff;
-}
-
-QWidget#alignSettings QToolButton#advancedToggle:focus:enabled,
-QWidget#DenoiseAlignSettings QToolButton#advancedToggle:focus:enabled {
     border: none;
     background-color: #0c4a6e;
 }

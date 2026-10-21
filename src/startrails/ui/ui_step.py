@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'step.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.8.2
+## Created by: Qt User Interface Compiler version 6.12.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -110,7 +110,7 @@ class Ui_StepCard(object):
         sizePolicy2.setHeightForWidth(self.toggle.sizePolicy().hasHeightForWidth())
         self.toggle.setSizePolicy(sizePolicy2)
         self.toggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.toggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.toggle.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.toggle.setCheckable(True)
         self.toggle.setChecked(True)
 

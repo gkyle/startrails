@@ -76,14 +76,14 @@ class Ui_DenoiseStackSettings(object):
         self.run.setObjectName(u"run")
         self.run.setEnabled(False)
         self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.run.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.run.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.runLayout.addWidget(self.run)
 
         self.advancedToggle = QToolButton(DenoiseStackSettings)
         self.advancedToggle.setObjectName(u"advancedToggle")
         self.advancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.advancedToggle.setCheckable(True)
         self.advancedToggle.setChecked(False)
         self.advancedToggle.setArrowType(Qt.ArrowType.RightArrow)
@@ -124,12 +124,7 @@ class Ui_DenoiseStackSettings(object):
         self.useGPU = QCheckBox(self.advancedBody)
         self.useGPU.setObjectName(u"useGPU")
         self.useGPU.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.useGPU.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.useGPU.setStyleSheet(u"QCheckBox#useGPU { spacing: 0px;}\n"
-"QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
-"QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
-"")
+        self.useGPU.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.useGPURow.addWidget(self.useGPU, 0, Qt.AlignmentFlag.AlignRight)
 
@@ -147,12 +142,7 @@ class Ui_DenoiseStackSettings(object):
         self.compressIntermediateTiffs = QCheckBox(self.advancedBody)
         self.compressIntermediateTiffs.setObjectName(u"compressIntermediateTiffs")
         self.compressIntermediateTiffs.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.compressIntermediateTiffs.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.compressIntermediateTiffs.setStyleSheet(u"QCheckBox#compressIntermediateTiffs { spacing: 0px; }\n"
-"QCheckBox#compressIntermediateTiffs::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
-"QCheckBox#compressIntermediateTiffs::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#compressIntermediateTiffs::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
-"")
+        self.compressIntermediateTiffs.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.compressionRow.addWidget(self.compressIntermediateTiffs, 0, Qt.AlignmentFlag.AlignRight)
 

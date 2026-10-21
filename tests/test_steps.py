@@ -5,8 +5,13 @@ from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from support import QtTestCase
 from startrails.lib.file import InputFile
-from startrails.ui.steps import DetectSettings, StackSettings, StepCard
-from startrails.ui.steps_denoise import DenoiseAlignSettings
+from startrails.ui.steps import DetectSettings, FillSettings, StackSettings, StepCard
+from startrails.ui.steps_denoise import (
+    DenoiseAlignSettings,
+    DenoiseSkySettings,
+    DenoiseStackSettings,
+    DenoiseTuneSettings,
+)
 
 
 class SettingsTests(QtTestCase):
@@ -76,3 +81,36 @@ class SettingsTests(QtTestCase):
         before = align.ui.useGPU.isChecked()
         QTest.keyClick(align.ui.useGPU, Qt.Key.Key_Space)
         self.assertNotEqual(align.ui.useGPU.isChecked(), before)
+
+    def test_other_step_controls_accept_keyboard_focus(self):
+        forms = (
+            (DetectSettings(self.app), ("run", "advancedToggle", "useGPU")),
+            (StackSettings(self.app), ("run", "advancedToggle", "useGPU")),
+            (FillSettings(), ("run",)),
+            (DenoiseSkySettings(), ("showMaskOverlay",)),
+            (DenoiseStackSettings(), ("run", "advancedToggle", "useGPU", "compressIntermediateTiffs")),
+            (DenoiseTuneSettings(), ("enableCorrections", "showGradientMask")),
+        )
+        for form, names in forms:
+            if hasattr(form.ui, "advancedToggle"):
+                form.ui.advancedToggle.setChecked(True)
+            form.show()
+            form.activateWindow()
+            self.qt.processEvents()
+            for name in names:
+                with self.subTest(form=type(form).__name__, control=name):
+                    control = getattr(form.ui, name)
+                    control.setEnabled(True)
+                    self.assertTrue(control.focusPolicy() & Qt.FocusPolicy.TabFocus)
+                    control.setFocus()
+                    self.qt.processEvents()
+                    self.assertTrue(control.hasFocus())
+
+        card = StepCard("Step", FillSettings(), 1)
+        card.show()
+        card.activateWindow()
+        self.qt.processEvents()
+        self.assertTrue(card.ui.toggle.focusPolicy() & Qt.FocusPolicy.TabFocus)
+        card.ui.toggle.setFocus()
+        self.qt.processEvents()
+        self.assertTrue(card.ui.toggle.hasFocus())

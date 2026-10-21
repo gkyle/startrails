@@ -147,12 +147,7 @@ class Ui_DenoiseSkySettings(object):
         self.showMaskOverlay = QCheckBox(DenoiseSkySettings)
         self.showMaskOverlay.setObjectName(u"showMaskOverlay")
         self.showMaskOverlay.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showMaskOverlay.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.showMaskOverlay.setStyleSheet(u"QCheckBox#showMaskOverlay { spacing: 0px;}\n"
-"QCheckBox#showMaskOverlay::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
-"QCheckBox#showMaskOverlay::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#showMaskOverlay::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
-"")
+        self.showMaskOverlay.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.showMaskOverlay.setChecked(False)
 
         self.showMaskOverlayRow.addWidget(self.showMaskOverlay, 0, Qt.AlignmentFlag.AlignRight)

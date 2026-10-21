@@ -49,26 +49,7 @@ color: #475569;</string>
       <cursorShape>PointingHandCursor</cursorShape>
      </property>
      <property name="focusPolicy">
-      <enum>Qt::FocusPolicy::NoFocus</enum>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QPushButton#run {
-    font-weight: bold;
-    background-color: #0369a1;
-    color: #ffffff;
-    padding: 0px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    border: none;
-}
-QPushButton#run:hover {
-    background-color: #075985;
-}
-QPushButton#run:disabled {
-    background-color: #e2e8f0;
-    color: #94a3b8;
-}
-</string>
+      <enum>Qt::FocusPolicy::StrongFocus</enum>
      </property>
      <property name="text">
       <string>Fill Gaps</string>

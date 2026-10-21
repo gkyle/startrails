@@ -361,7 +361,7 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="text">
         <string>Stack Images</string>
@@ -374,7 +374,7 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="toolTip">
         <string>Advanced settings</string>
@@ -446,17 +446,10 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
            <cursorShape>PointingHandCursor</cursorShape>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::FocusPolicy::NoFocus</enum>
+           <enum>Qt::FocusPolicy::StrongFocus</enum>
           </property>
           <property name="accessibleName">
            <string>Use GPU for stacking</string>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">QCheckBox#useGPU { spacing: 0px;}
-QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }
-QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
-</string>
           </property>
           <property name="text">
            <string/>
