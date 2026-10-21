@@ -1172,7 +1172,7 @@ class DenoiseView(ModeView):
 
             self._post_result(generation, on_stack_done)
 
-        self._enqueue_task("stackDenoise", "Stack Denoise", total_steps, "Stacking base frames...", work)
+        self._enqueue_task("stackDenoise", "Stack for Denoise", total_steps, "Stacking base frames...", work)
 
     def _composition_config(self, output_path):
         config = self._snapshot_config("composeHorizon")
