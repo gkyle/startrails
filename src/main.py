@@ -1,4 +1,5 @@
 import sys
+from PySide6.QtCore import QLoggingCategory
 from PySide6.QtGui import QImageReader
 from PySide6.QtWidgets import QApplication, QMessageBox
 from startrails.ui.ui_wrap import MainWindow, App
@@ -18,6 +19,7 @@ def create_main_window(app, project_path=None):
 
 
 if __name__ == "__main__":
+    QLoggingCategory.setFilterRules("qt.gui.icc.warning=false")
     qapp = QApplication(sys.argv)
     qapp.setStyle("Fusion")
     QImageReader.setAllocationLimit(0)
