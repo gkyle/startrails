@@ -1,5 +1,9 @@
 """Image formats, RGB order, precision, and owned normalization buffers."""
 
+import errno
+from pathlib import Path
+from unittest.mock import patch
+
 import numpy as np
 from PIL import Image
 
@@ -8,6 +12,41 @@ from startrails.lib.image_io import imread, imwrite, normalize_image
 
 
 class ImageIoTests(IsolatedTestCase):
+    def test_locked_tiff_destination_uses_alternate_path(self):
+        destination = self.root / "image.tif"
+        destination.write_bytes(b"existing image")
+        pixels = np.full((8, 11, 3), 32768, dtype=np.uint16)
+        original_open = Path.open
+
+        def open_with_locked_destination(path, *args, **kwargs):
+            if path == destination:
+                raise PermissionError(errno.EACCES, "File is locked", str(path))
+            return original_open(path, *args, **kwargs)
+
+        with patch.object(Path, "open", open_with_locked_destination):
+            saved = imwrite(destination, pixels)
+
+        self.assertEqual(saved, self.root / "image_1.tif")
+        self.assertEqual(destination.read_bytes(), b"existing image")
+        np.testing.assert_array_equal(imread(saved), pixels)
+
+    def test_non_lock_write_error_does_not_use_alternate_path(self):
+        destination = self.root / "image.tif"
+        pixels = np.zeros((8, 11), dtype=np.uint16)
+        original_open = Path.open
+
+        def open_with_full_disk(path, *args, **kwargs):
+            if path == destination:
+                raise OSError(errno.ENOSPC, "No space left", str(path))
+            return original_open(path, *args, **kwargs)
+
+        with patch.object(Path, "open", open_with_full_disk):
+            with self.assertRaises(OSError) as error:
+                imwrite(destination, pixels)
+
+        self.assertEqual(error.exception.errno, errno.ENOSPC)
+        self.assertFalse((self.root / "image_1.tif").exists())
+
     def test_roundtrip_encodes_requested_format_and_preserves_rgb(self):
         pixels = np.empty((8, 11, 3), dtype=np.float32)
         pixels[:] = [0.137, 0.419, 0.823]

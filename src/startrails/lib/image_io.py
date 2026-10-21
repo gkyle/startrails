@@ -137,9 +137,11 @@ def imwrite(
                 settings.update(quality=quality, optimize=optimize)
             Image.fromarray(rgb).save(target_path, **settings)
             return
-        success = cv2.imwrite(str(target_path), img, options if options else IMWRITE_OPTIONS)
+        success, encoded = cv2.imencode(suffix, img, options)
         if not success:
-            raise OSError(f"Could not write image to '{target_path}'")
+            raise ValueError(f"Could not encode image for '{target_path}'")
+        with target_path.open("wb") as output:
+            output.write(encoded)
 
     try:
         _do_write(path)
