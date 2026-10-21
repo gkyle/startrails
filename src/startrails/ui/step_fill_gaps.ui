@@ -56,10 +56,10 @@ color: #475569;</string>
     font-weight: bold;
     background-color: #0369a1;
     color: #ffffff;
-    padding: 7px 12px;
+    padding: 0px 12px;
     border-radius: 6px;
     font-size: 13px;
-    border: 2px solid transparent;
+    border: none;
 }
 QPushButton#run:hover {
     background-color: #075985;
@@ -68,7 +68,7 @@ QPushButton#run:disabled {
     background-color: #e2e8f0;
     color: #94a3b8;
 }
-QPushButton#run:focus:enabled { border-color: #ffffff; }</string>
+</string>
      </property>
      <property name="text">
       <string>Fill Gaps</string>
