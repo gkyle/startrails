@@ -75,7 +75,7 @@
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="toolTip">
         <string>Compute star alignment transforms and generate gradient mask</string>
@@ -91,7 +91,7 @@
         <cursorShape>PointingHandCursor</cursorShape>
        </property>
        <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::NoFocus</enum>
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="toolTip">
         <string>Show advanced settings</string>
@@ -170,17 +170,10 @@
            <cursorShape>PointingHandCursor</cursorShape>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::FocusPolicy::NoFocus</enum>
+           <enum>Qt::FocusPolicy::StrongFocus</enum>
           </property>
           <property name="accessibleName">
            <string>Use GPU Acceleration</string>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">QCheckBox#useGPU { spacing: 0px;}
-QCheckBox#useGPU::indicator { width: 36px; height: 20px; border-radius: 10px; }
-QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }
-QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }
-</string>
           </property>
           <property name="text">
            <string/>

@@ -1,9 +1,12 @@
 """Settings edits, validation, and fade semantics survive UI refresh."""
 
 from types import SimpleNamespace
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 from support import QtTestCase
 from startrails.lib.file import InputFile
 from startrails.ui.steps import DetectSettings, StackSettings, StepCard
+from startrails.ui.steps_denoise import DenoiseAlignSettings
 
 
 class SettingsTests(QtTestCase):
@@ -48,3 +51,28 @@ class SettingsTests(QtTestCase):
         detect.ui.confidence.lineEdit().setText("")
         self.assertIsNone(detect.values())
         self.assertTrue(detect.ui.error.text())
+
+    def test_align_controls_support_keyboard_navigation_and_activation(self):
+        align = DenoiseAlignSettings()
+        align.ui.run.setEnabled(True)
+        align.show()
+        align.activateWindow()
+        self.qt.processEvents()
+
+        align.ui.run.setFocus()
+        self.qt.processEvents()
+        self.assertTrue(align.ui.run.hasFocus())
+        clicks = []
+        align.ui.run.clicked.connect(lambda: clicks.append(True))
+        QTest.keyClick(align.ui.run, Qt.Key.Key_Space)
+        self.assertEqual(clicks, [True])
+        QTest.keyClick(align.ui.run, Qt.Key.Key_Tab)
+        self.assertTrue(align.ui.advancedToggle.hasFocus())
+        QTest.keyClick(align.ui.advancedToggle, Qt.Key.Key_Space)
+        self.assertTrue(align.ui.advancedToggle.isChecked())
+
+        QTest.keyClick(align.ui.advancedToggle, Qt.Key.Key_Tab)
+        self.assertTrue(align.ui.useGPU.hasFocus())
+        before = align.ui.useGPU.isChecked()
+        QTest.keyClick(align.ui.useGPU, Qt.Key.Key_Space)
+        self.assertNotEqual(align.ui.useGPU.isChecked(), before)

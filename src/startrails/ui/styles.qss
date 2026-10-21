@@ -72,6 +72,29 @@ QCheckBox:focus:enabled {
     border-color: #0f172a;
 }
 
+QWidget#DenoiseAlignSettings QCheckBox#useGPU {
+    spacing: 0px;
+}
+
+QWidget#DenoiseAlignSettings QCheckBox#useGPU::indicator {
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+}
+
+QWidget#DenoiseAlignSettings QCheckBox#useGPU::indicator:unchecked {
+    image: url(:/startrails/ui/switch_off.svg);
+}
+
+QWidget#DenoiseAlignSettings QCheckBox#useGPU::indicator:checked {
+    image: url(:/startrails/ui/switch_on.svg);
+}
+
+QWidget#DenoiseAlignSettings QCheckBox#useGPU:focus:enabled {
+    border-color: transparent;
+    border-bottom: 2px solid #0369a1;
+}
+
 /* Horizontal Sliders */
 QSlider::groove:horizontal {
     height: 4px;
@@ -126,6 +149,11 @@ QPushButton#run:focus:enabled {
     border: 2px solid #ffffff;
 }
 
+QWidget#DenoiseAlignSettings QPushButton#run:focus:enabled {
+    border: none;
+    background-color: #0c4a6e;
+}
+
 /* Advanced Settings Toggle Capsule Button */
 QToolButton#advancedToggle {
     background-color: #0369a1;
@@ -149,6 +177,11 @@ QToolButton#advancedToggle:hover {
 
 QToolButton#advancedToggle:focus:enabled {
     border: 2px solid #ffffff;
+}
+
+QWidget#DenoiseAlignSettings QToolButton#advancedToggle:focus:enabled {
+    border: none;
+    background-color: #0c4a6e;
 }
 
 QToolButton#advancedToggle:disabled {
