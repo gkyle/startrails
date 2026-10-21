@@ -1,10 +1,15 @@
-try {
-    Write-Host "Checking for uv..."
-    Invoke-Expression -Command "uv -V"
-}
-catch {
-    Invoke-Expression -Command  "irm https://astral.sh/uv/install.ps1 | iex"
+Write-Host "Checking for uv..."
+if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+    irm https://astral.sh/uv/install.ps1 | iex
     $env:PATH += ";$env:USERPROFILE\.local\bin"
+    if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+        throw "uv installation failed."
+    }
+} else {
+    uv self update
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Could not update uv; continuing with the installed version."
+    }
 }
 
 $torch_variant = Invoke-Expression -Command "uv run --no-sync src/setup/probeGPU.py"
