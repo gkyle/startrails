@@ -1075,6 +1075,7 @@ class DenoiseView(ModeView):
             cfg.stack_method = vals.get("stack_method", "sigma_clipped")
             cfg.sigma_clip_threshold = vals.get("sigma_clip_threshold", 1.2)
             cfg.sigma_clip_iterations = vals.get("sigma_clip_iterations", 3)
+            cfg.compress_intermediate_tiffs = vals.get("compress_intermediate_tiffs", False)
             cfg.use_gpu = vals.get("use_gpu", True)
 
             if needs_alignment:

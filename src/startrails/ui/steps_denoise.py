@@ -253,6 +253,7 @@ class DenoiseStackSettings(QWidget):
         self.ui.method.currentIndexChanged.connect(self._on_change)
         self.ui.sigmaThreshold.valueChanged.connect(self._on_change)
         self.ui.sigmaIterations.valueChanged.connect(self._on_change)
+        self.ui.compressIntermediateTiffs.toggled.connect(self._on_change)
         self.ui.useGPU.toggled.connect(self._on_change)
 
         self.reset()
@@ -271,6 +272,8 @@ class DenoiseStackSettings(QWidget):
             self.ui.sigmaThreshold.setValue(self.defaults.sigma_clip_threshold)
         with QSignalBlocker(self.ui.sigmaIterations):
             self.ui.sigmaIterations.setValue(self.defaults.sigma_clip_iterations)
+        with QSignalBlocker(self.ui.compressIntermediateTiffs):
+            self.ui.compressIntermediateTiffs.setChecked(self.defaults.compress_intermediate_tiffs)
         with QSignalBlocker(self.ui.useGPU):
             self.ui.useGPU.setChecked(True)
         self.ui.outputFileName.setText("Output: project.tif")
@@ -284,6 +287,7 @@ class DenoiseStackSettings(QWidget):
             "stack_method": self.METHOD_MAP.get(self.ui.method.currentIndex(), "sigma_clipped"),
             "sigma_clip_threshold": self.ui.sigmaThreshold.value(),
             "sigma_clip_iterations": self.ui.sigmaIterations.value(),
+            "compress_intermediate_tiffs": self.ui.compressIntermediateTiffs.isChecked(),
             "use_gpu": self.ui.useGPU.isChecked(),
         }
 
@@ -304,6 +308,8 @@ class DenoiseStackSettings(QWidget):
             self.ui.sigmaThreshold.setValue(float(getattr(proj, "sigma_clip_threshold", self.defaults.sigma_clip_threshold)))
         with QSignalBlocker(self.ui.sigmaIterations):
             self.ui.sigmaIterations.setValue(int(getattr(proj, "sigma_clip_iterations", self.defaults.sigma_clip_iterations)))
+        with QSignalBlocker(self.ui.compressIntermediateTiffs):
+            self.ui.compressIntermediateTiffs.setChecked(proj.compress_intermediate_tiffs)
         with QSignalBlocker(self.ui.useGPU):
             self.ui.useGPU.setChecked(bool(getattr(proj, "use_gpu", True)))
         stem = "project"
@@ -337,6 +343,7 @@ class DenoiseStackSettings(QWidget):
         proj.stack_method = vals["stack_method"]
         proj.sigma_clip_threshold = vals["sigma_clip_threshold"]
         proj.sigma_clip_iterations = vals["sigma_clip_iterations"]
+        proj.compress_intermediate_tiffs = vals["compress_intermediate_tiffs"]
         proj.use_gpu = vals["use_gpu"]
 
     def refresh_inputs(self, ready: bool = False) -> None:

@@ -138,6 +138,30 @@ class Ui_DenoiseStackSettings(object):
 
         self.advancedLayout.addLayout(self.useGPURow)
 
+        self.compressionRow = QHBoxLayout()
+        self.compressionRow.setObjectName(u"compressionRow")
+        self.compressionLabel = CheckboxLabel(self.advancedBody)
+        self.compressionLabel.setObjectName(u"compressionLabel")
+        self.compressionLabel.setWordWrap(True)
+
+        self.compressionRow.addWidget(self.compressionLabel)
+
+        self.compressIntermediateTiffs = QCheckBox(self.advancedBody)
+        self.compressIntermediateTiffs.setObjectName(u"compressIntermediateTiffs")
+        self.compressIntermediateTiffs.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.compressIntermediateTiffs.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.compressIntermediateTiffs.setStyleSheet(u"QCheckBox#compressIntermediateTiffs { spacing: 0px; }\n"
+"QCheckBox#compressIntermediateTiffs::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
+"QCheckBox#compressIntermediateTiffs::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
+"QCheckBox#compressIntermediateTiffs::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
+"")
+        self.compressIntermediateTiffs.setChecked(False)
+
+        self.compressionRow.addWidget(self.compressIntermediateTiffs, 0, Qt.AlignmentFlag.AlignRight)
+
+
+        self.advancedLayout.addLayout(self.compressionRow)
+
         self.iterationsRow = QHBoxLayout()
         self.iterationsRow.setObjectName(u"iterationsRow")
         self.sigmaIterationsLabel = QLabel(self.advancedBody)
@@ -167,6 +191,7 @@ class Ui_DenoiseStackSettings(object):
 
 #if QT_CONFIG(shortcut)
         self.useGPULabel.setBuddy(self.useGPU)
+        self.compressionLabel.setBuddy(self.compressIntermediateTiffs)
 #endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(DenoiseStackSettings)
@@ -199,6 +224,17 @@ class Ui_DenoiseStackSettings(object):
         self.useGPU.setAccessibleName(QCoreApplication.translate("DenoiseStackSettings", u"Use GPU Acceleration", None))
 #endif // QT_CONFIG(accessibility)
         self.useGPU.setText("")
+        self.compressionLabel.setText(QCoreApplication.translate("DenoiseStackSettings", u"Compress intermediate TIFFs", None))
+#if QT_CONFIG(tooltip)
+        self.compressionLabel.setToolTip(QCoreApplication.translate("DenoiseStackSettings", u"Smaller sky, ground, and base TIFF files. Turning this off saves faster and uses more disk space. Final TIFF exports remain compressed.", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(accessibility)
+        self.compressIntermediateTiffs.setAccessibleName(QCoreApplication.translate("DenoiseStackSettings", u"Compress intermediate TIFFs", None))
+#endif // QT_CONFIG(accessibility)
+#if QT_CONFIG(tooltip)
+        self.compressIntermediateTiffs.setToolTip(QCoreApplication.translate("DenoiseStackSettings", u"Save smaller intermediate TIFFs with lossless compression. Final TIFF exports remain compressed.", None))
+#endif // QT_CONFIG(tooltip)
+        self.compressIntermediateTiffs.setText("")
         self.sigmaIterationsLabel.setText(QCoreApplication.translate("DenoiseStackSettings", u"Iterations:", None))
         pass
     # retranslateUi

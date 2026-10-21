@@ -91,16 +91,17 @@ class StackDenoise(DenoiseOperation):
             output_path = Path(config.output_path).resolve() if config.output_path else (folder / "composite.tif")
             grad_mask_path = Path(config.gradient_mask_path).resolve() if config.gradient_mask_path else (folder / "gradient_mask.png")
             transaction = artifacts or ArtifactTransaction(self.shouldInterrupt)
+            compression = config.compress_intermediate_tiffs
             with nullcontext(transaction) if artifacts is not None else transaction:
-                imwrite(transaction.stage(sky_path), compositor.sky_stack, convertBGR=True)
-                imwrite(transaction.stage(ground_path), compositor.ground_stack, convertBGR=True)
+                imwrite(transaction.stage(sky_path), compositor.sky_stack, convertBGR=True, compression=compression)
+                imwrite(transaction.stage(ground_path), compositor.ground_stack, convertBGR=True, compression=compression)
                 staged_base = transaction.stage(base_comp_path)
-                imwrite(staged_base, compositor.base_composite, convertBGR=True)
+                imwrite(staged_base, compositor.base_composite, convertBGR=True, compression=compression)
                 if output_path != base_comp_path.resolve():
                     # Composition may overwrite the staged output in this transaction.
                     # Keep the uncorrected base independent and encode for the output suffix.
                     staged_out = transaction.stage(output_path)
-                    if output_path.suffix.lower() == base_comp_path.suffix.lower() and output_path.suffix.lower() in (".tif", ".tiff"):
+                    if compression and output_path.suffix.lower() == base_comp_path.suffix.lower() and output_path.suffix.lower() in (".tif", ".tiff"):
                         import shutil
                         shutil.copyfile(staged_base, staged_out)
                     else:

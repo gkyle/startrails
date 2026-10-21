@@ -43,6 +43,7 @@ class DenoiseSettings:
     stack_method: str = "sigma_clipped"
     sigma_clip_threshold: float = 1.2
     sigma_clip_iterations: int = 3
+    compress_intermediate_tiffs: bool = False
     use_gpu: bool = True
     max_workers: Optional[int] = None
     verbose: bool = False
