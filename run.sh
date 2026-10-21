@@ -1,12 +1,18 @@
 #!/bin/sh
 
-# Install UV if not already installed
-uv_version=`uv -V`
-if [ "$uv_version" = "" ]; then 
+# Install uv if it is missing; otherwise check for a newer version.
+if ! command -v uv >/dev/null 2>&1; then
     echo "Installing UV..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    source $HOME/.local/bin/env
-fi;
+    PATH="$HOME/.local/bin:$PATH"
+    export PATH
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "uv installation failed." >&2
+        exit 1
+    fi
+elif ! uv self update; then
+    echo "Could not update uv; continuing with the installed version." >&2
+fi
 
 # Check for compatible GPU.
 echo "Determining correct configuration for your GPU..."
