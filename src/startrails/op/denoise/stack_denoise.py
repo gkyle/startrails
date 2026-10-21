@@ -91,6 +91,10 @@ class StackDenoise(DenoiseOperation):
             base_comp_path = folder / "base_composite.tif"
             output_path = Path(config.output_path).resolve() if config.output_path else (folder / "composite.tif")
             grad_mask_path = config.artifact_path("gradient_mask")
+            destinations = [sky_path, ground_path, base_comp_path, output_path, grad_mask_path]
+            resolved_destinations = {path.resolve() for path in destinations}
+            if len(resolved_destinations) != len(destinations):
+                raise ValueError("Stack output and intermediate artifact paths must be distinct")
             transaction = artifacts or ArtifactTransaction(self.shouldInterrupt)
             compression = config.compress_intermediate_tiffs
             with nullcontext(transaction) if artifacts is not None else transaction:
@@ -98,16 +102,13 @@ class StackDenoise(DenoiseOperation):
                 imwrite(transaction.stage(ground_path), compositor.ground_stack, convertBGR=True, compression=compression)
                 staged_base = transaction.stage(base_comp_path)
                 imwrite(staged_base, compositor.base_composite, convertBGR=True, compression=compression)
-                if output_path != base_comp_path.resolve():
-                    # Composition may overwrite the staged output in this transaction.
-                    # Keep the uncorrected base independent and encode for the output suffix.
-                    staged_out = transaction.stage(output_path)
-                    if compression and output_path.suffix.lower() == base_comp_path.suffix.lower() and output_path.suffix.lower() in (".tif", ".tiff"):
-                        import shutil
-                        shutil.copyfile(staged_base, staged_out)
-                    else:
-                        imwrite(staged_out, compositor.base_composite, convertBGR=True,
-                                quality=config.jpeg_quality, optimize=config.jpeg_optimize)
+                staged_out = transaction.stage(output_path)
+                if compression and output_path.suffix.lower() == base_comp_path.suffix.lower() and output_path.suffix.lower() in (".tif", ".tiff"):
+                    import shutil
+                    shutil.copyfile(staged_base, staged_out)
+                else:
+                    imwrite(staged_out, compositor.base_composite, convertBGR=True,
+                            quality=config.jpeg_quality, optimize=config.jpeg_optimize)
                 if compositor.gradient_mask is not None:
                     MaskHandler.save_mask(compositor.gradient_mask, transaction.stage(grad_mask_path))
                 if artifacts is None:

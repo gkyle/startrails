@@ -19,6 +19,26 @@ from startrails.op.denoise.stack_denoise import StackDenoise
 
 
 class DenoisePipelineTests(IsolatedTestCase):
+    def test_colliding_project_outputs_preserve_existing_intermediates(self):
+        frame = np.full((12, 15, 3), 0.25, np.float32)
+        mask = np.ones(frame.shape[:2], np.float32)
+        for name in ("sky_stack", "ground_stack", "base_composite"):
+            with self.subTest(project=name):
+                project = DenoiseProject(str(self.root / f"{name}.proj_denoise"), use_gpu=False)
+                config = project.to_denoise_config()
+                output_dir = config.output_path.parent
+                output_dir.mkdir()
+                previous = {}
+                for artifact in ("sky_stack.tif", "ground_stack.tif", "base_composite.tif"):
+                    destination = output_dir / artifact
+                    previous[destination] = artifact.encode("ascii")
+                    destination.write_bytes(previous[destination])
+                with self.assertRaisesRegex(ValueError, "paths must be distinct"):
+                    StackDenoise().stack(config, [frame], [mask], [frame], mask)
+                for destination, contents in previous.items():
+                    self.assertEqual(destination.read_bytes(), contents)
+                self.assertFalse(list(output_dir.glob(".artifact-*")))
+
     def test_streamed_pipeline_calibrates_once_preserves_fractions_and_completes_after_publication(self):
         shape = (12, 15, 3)
         paths = [
