@@ -10,7 +10,7 @@ import numpy as np
 from startrails.lib.denoise.alignment.warper import ImageWarper
 from startrails.lib.denoise.enhancement.horizon_denoiser import HorizonDenoiser
 from startrails.lib.denoise.mask import MaskHandler
-from startrails.lib.denoise.stacking.memmap_buffer import MemmapFrameBuffer, read_frame_chunk
+from startrails.lib.denoise.stacking.disk_buffer import DiskFrameBuffer, read_frame_chunk
 from startrails.lib.gpu import (
     free_gpu_memory,
     get_array_module,
@@ -48,7 +48,7 @@ class FreezeGroundStacker:
         """Stack base sky and ground frames and assemble real-time HorizonCompositor.
 
         Supports both pre-loaded frame lists (legacy/test path) and on-demand disk-backed
-        staging via MemmapFrameBuffer when config is provided.
+        staging via DiskFrameBuffer when config is provided.
         """
         backend_label = "GPU" if use_gpu else "CPU"
 
@@ -95,8 +95,8 @@ class FreezeGroundStacker:
             cov_dtype = np.float32 if is_tapered else bool
             total_sky_cov = np.zeros((h, w), dtype=np.float32)
 
-            with MemmapFrameBuffer(buf_shape, dtype=np.float32, scratch_dir=scratch_dir, prefix="st_sky_") as sky_buf, \
-                 MemmapFrameBuffer((n_stars, h, w), dtype=cov_dtype, scratch_dir=scratch_dir, prefix="st_cov_") as cov_buf:
+            with DiskFrameBuffer(buf_shape, dtype=np.float32, scratch_dir=scratch_dir, prefix="st_sky_") as sky_buf, \
+                 DiskFrameBuffer((n_stars, h, w), dtype=cov_dtype, scratch_dir=scratch_dir, prefix="st_cov_") as cov_buf:
                 for idx, p in enumerate(star_images):
                     if should_interrupt and should_interrupt():
                         return None
@@ -176,7 +176,7 @@ class FreezeGroundStacker:
             # 2. Ground Staging & Stacking
             # A common normalized scale preserves mixed input bit depths and
             # fractional calibrated values without quantizing to the base dtype.
-            with MemmapFrameBuffer(buf_shape, dtype=np.float32, scratch_dir=scratch_dir, prefix="st_ground_") as ground_buf:
+            with DiskFrameBuffer(buf_shape, dtype=np.float32, scratch_dir=scratch_dir, prefix="st_ground_") as ground_buf:
                 for idx, p in enumerate(star_images):
                     if should_interrupt and should_interrupt():
                         return None
@@ -371,8 +371,8 @@ class FreezeGroundStacker:
     @classmethod
     def stack_frames(
         cls,
-        frames: List[np.ndarray] | np.ndarray | MemmapFrameBuffer,
-        coverages: Optional[List[np.ndarray] | np.ndarray | MemmapFrameBuffer] = None,
+        frames: List[np.ndarray] | np.ndarray | DiskFrameBuffer,
+        coverages: Optional[List[np.ndarray] | np.ndarray | DiskFrameBuffer] = None,
         chunk_rows: Optional[int] = None,
         method: str = "sigma_clipped",
         sigma_threshold: float = 1.2,
@@ -410,12 +410,12 @@ class FreezeGroundStacker:
         if n_frames == 1:
             if progress_callback is not None:
                 progress_callback(1, {"frame_idx": 1, "total_frames": 1})
-            f0 = frames.read_frame(0) if isinstance(frames, MemmapFrameBuffer) else frames[0]
+            f0 = frames.read_frame(0) if isinstance(frames, DiskFrameBuffer) else frames[0]
             if np.issubdtype(f0.dtype, np.integer):
                 return normalize_image(f0)
             return f0.copy() if f0.dtype == np.float32 else f0.astype(np.float32)
 
-        frame_shape = frames.frame_shape if isinstance(frames, MemmapFrameBuffer) else frames[0].shape
+        frame_shape = frames.frame_shape if isinstance(frames, DiskFrameBuffer) else frames[0].shape
         h, w = frame_shape[:2]
         is_rgb = len(frame_shape) == 3
         channels = frame_shape[2] if is_rgb else 1

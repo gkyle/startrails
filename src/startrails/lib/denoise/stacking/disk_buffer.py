@@ -29,11 +29,10 @@ def _cleanup_all():
 atexit.register(_cleanup_all)
 
 
-class MemmapFrameBuffer:
+class DiskFrameBuffer:
     """Disk-backed frames using bounded transfers and independent reader handles.
 
-    The historical class name is retained for callers. No file pages are mapped
-    into the process. Transfers and dtype conversions use at most window_bytes
+    Transfers and dtype conversions use at most window_bytes
     (or one image row); reads return owned arrays. Writers sync once per frame
     to bound dirty-data accumulation. Decoded images, returned chunks and the
     operating system's file cache have separate memory costs.
@@ -44,7 +43,7 @@ class MemmapFrameBuffer:
         shape: tuple[int, ...],
         dtype: np.dtype,
         scratch_dir: Optional[Path | str] = None,
-        prefix: str = "startrails_mmap_",
+        prefix: str = "startrails_frames_",
         window_bytes: int = 8 * 1024**2,
     ):
         self.filepath: Optional[Path] = None
@@ -160,7 +159,7 @@ class MemmapFrameBuffer:
         # Keep failed removals registered for a later cleanup attempt.
         logger.warning("Could not remove denoise scratch file %s", path)
 
-    def __enter__(self) -> MemmapFrameBuffer:
+    def __enter__(self) -> DiskFrameBuffer:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -176,7 +175,7 @@ def read_frame_chunk(frames, start: int, end: int, dtype=np.float32, normalize: 
     Floating-point warped pixels retain their interpolation overshoot. Normalize
     each source independently so legacy lists can also contain mixed bit depths.
     """
-    if isinstance(frames, MemmapFrameBuffer):
+    if isinstance(frames, DiskFrameBuffer):
         chunk = frames.read_rows(start, end, dtype=dtype)
         if normalize and np.issubdtype(frames.dtype, np.integer):
             chunk /= np.iinfo(frames.dtype).max

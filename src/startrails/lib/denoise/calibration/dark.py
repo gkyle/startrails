@@ -14,7 +14,7 @@ import numpy as np
 
 from startrails.lib.gpu import free_gpu_memory, get_array_module
 from startrails.lib.image_io import imread, normalize_image
-from startrails.lib.denoise.stacking.memmap_buffer import MemmapFrameBuffer, read_frame_chunk
+from startrails.lib.denoise.stacking.disk_buffer import DiskFrameBuffer, read_frame_chunk
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ class DarkCalibrator:
             cls._check_cancelled(should_interrupt)
             return normalize_image(first)
         shape = first.shape
-        with MemmapFrameBuffer((len(paths), *shape), np.float32, scratch_dir, prefix="st_dark_") as buffer:
+        with DiskFrameBuffer((len(paths), *shape), np.float32, scratch_dir, prefix="st_dark_") as buffer:
             buffer.write_frame(0, normalize_image(first))
             del first
             for index, path in enumerate(paths[1:], start=1):
@@ -114,7 +114,7 @@ class DarkCalibrator:
     @classmethod
     def compute_master_dark(
         cls,
-        darks: Sequence[np.ndarray] | np.ndarray | MemmapFrameBuffer,
+        darks: Sequence[np.ndarray] | np.ndarray | DiskFrameBuffer,
         use_gpu: bool = True,
         chunk_rows: int = 1024,
         should_interrupt: Optional[Callable[[], bool]] = None,
@@ -124,10 +124,10 @@ class DarkCalibrator:
             raise ValueError("No dark frames provided.")
         cls._check_cancelled(should_interrupt)
         if len(darks) == 1:
-            first = darks.read_frame(0) if isinstance(darks, MemmapFrameBuffer) else darks[0]
+            first = darks.read_frame(0) if isinstance(darks, DiskFrameBuffer) else darks[0]
             return normalize_image(first)
 
-        frame_shape = darks.frame_shape if isinstance(darks, MemmapFrameBuffer) else darks[0].shape
+        frame_shape = darks.frame_shape if isinstance(darks, DiskFrameBuffer) else darks[0].shape
         h, w = frame_shape[:2]
         out = np.zeros(frame_shape, dtype=np.float32)
         xp, is_gpu = get_array_module(use_gpu=use_gpu)
