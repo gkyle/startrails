@@ -36,12 +36,13 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
     path = Path(project_file).resolve()
     parent = path.parent
     name = path.name
+    lower_name = name.lower()
 
-    if name.endswith(LEGACY_STARTRAILS_EXT):
+    if lower_name.endswith(LEGACY_STARTRAILS_EXT):
         # Strips ".json", yielding '<name>.project'
         return parent / name[:-5]
 
-    if name.endswith(STARTRAILS_EXT):
+    if lower_name.endswith(STARTRAILS_EXT):
         base = name[:-len(STARTRAILS_EXT)]
         # If legacy '<base>.project' directory exists, preserve it
         legacy_dir = parent / f"{base}.project"
@@ -49,14 +50,14 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
             return legacy_dir
         return parent / base
 
-    if name.endswith(DENOISE_EXT):
+    if lower_name.endswith(DENOISE_EXT):
         base = name[:-len(DENOISE_EXT)]
         legacy_dir = parent / f"{base}.denoise.project"
         if legacy_dir.is_dir():
             return legacy_dir
         return parent / f"{base}.denoise"
 
-    if name.endswith(".json"):
+    if lower_name.endswith(".json"):
         return parent / name[:-5]
 
     return parent / path.stem

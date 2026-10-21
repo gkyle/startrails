@@ -165,6 +165,26 @@ class ProjectTests(IsolatedTestCase):
         self.assertEqual(dn_out, self.root / "desert.denoise")
         self.assertNotEqual(st_out, dn_out)
 
+        for extension, output_name in (
+            (".PROJ_DENOISE", "NightSky.denoise"),
+            (".PrOj_StArTrAiLs", "NightSky"),
+            (".PROJECT.JSON", "NightSky.PROJECT"),
+            (".JSON", "NightSky"),
+        ):
+            with self.subTest(extension=extension):
+                self.assertEqual(
+                    get_project_output_dir(self.root / f"NightSky{extension}"),
+                    self.root / output_name,
+                )
+        for extension, legacy_name in (
+            (".PROJ_DENOISE", "NightSky.denoise.project"),
+            (".PROJ_STARTRAILS", "NightSky.project"),
+        ):
+            with self.subTest(legacy=extension):
+                legacy_path = self.root / legacy_name
+                legacy_path.mkdir()
+                self.assertEqual(get_project_output_dir(self.root / f"NightSky{extension}"), legacy_path)
+
     def test_load_project_authoritative_path_and_no_overwrite_on_error(self):
         from startrails.lib.project_type import UnsupportedProjectError, InvalidProjectError
 
