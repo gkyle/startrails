@@ -1,9 +1,8 @@
-"""Temporary frame storage with bounded, short-lived memory mappings."""
+"""Temporary frame storage with bounded buffered file I/O."""
 
 from __future__ import annotations
 
 import atexit
-from contextlib import contextmanager
 import logging
 from math import prod
 import os
@@ -31,14 +30,13 @@ atexit.register(_cleanup_all)
 
 
 class MemmapFrameBuffer:
-    """Disk-backed frames without a persistent mapping of the entire stack.
+    """Disk-backed frames using bounded transfers and independent reader handles.
 
-    Each I/O operation maps at most window_bytes (or one image row), copies its
-    pixels and closes the mapping before moving on. Reads return owned arrays,
-    never views into closed mappings. Concurrent readers use independent maps.
-    Resident mappings are bounded independently of frame count; decoded images,
-    returned chunks and the operating system's file cache have separate costs.
-    Context-manager cleanup closes scratch storage on completion or cancellation.
+    The historical class name is retained for callers. No file pages are mapped
+    into the process. Transfers and dtype conversions use at most window_bytes
+    (or one image row); reads return owned arrays. Writers sync once per frame
+    to bound dirty-data accumulation. Decoded images, returned chunks and the
+    operating system's file cache have separate memory costs.
     """
 
     def __init__(
@@ -80,52 +78,68 @@ class MemmapFrameBuffer:
     def __len__(self) -> int:
         return self.shape[0]
 
-    @contextmanager
-    def _mapped_window(self, index: int, start: int, end: int, write: bool = False):
+    def _check_index(self, index: int) -> None:
         if self.filepath is None:
             raise ValueError("Frame storage is closed.")
         if not 0 <= index < len(self):
             raise IndexError("Frame index out of range.")
-        mapped = np.memmap(
-            self.filepath, dtype=self.dtype, mode="r+" if write else "r",
-            offset=index * self._frame_bytes + start * self._row_bytes,
-            shape=(end - start, *self.frame_shape[1:]),
-        )
-        try:
-            yield mapped
-            if write:
-                mapped.flush()
-        finally:
-            mapped._mmap.close()
+
+    @staticmethod
+    def _read_exact(stream, array: np.ndarray) -> None:
+        remaining = memoryview(array).cast("B")
+        while remaining:
+            count = stream.readinto(remaining)
+            if not count:
+                raise OSError("Unexpected end of frame storage.")
+            remaining = remaining[count:]
 
     def write_frame(self, index: int, frame: np.ndarray) -> None:
-        """Copy a frame into bounded mappings; no caller-owned data is retained."""
+        """Write bounded windows without retaining caller-owned data."""
+        self._check_index(index)
         if frame.shape != self.frame_shape:
             raise ValueError(f"Frame has shape {frame.shape}; expected {self.frame_shape}.")
-        for start in range(0, self.frame_shape[0], self._window_rows):
-            end = min(start + self._window_rows, self.frame_shape[0])
-            with self._mapped_window(index, start, end, write=True) as mapped:
-                mapped[:] = frame[start:end]
+        with open(self.filepath, "r+b", buffering=0) as stream:
+            stream.seek(index * self._frame_bytes)
+            for start in range(0, self.frame_shape[0], self._window_rows):
+                end = min(start + self._window_rows, self.frame_shape[0])
+                window = np.ascontiguousarray(frame[start:end], dtype=self.dtype)
+                remaining = memoryview(window).cast("B")
+                while remaining:
+                    count = stream.write(remaining)
+                    if not count:
+                        raise OSError("Could not write frame storage.")
+                    remaining = remaining[count:]
+            os.fsync(stream.fileno())
 
-    def _read_into(self, index: int, start: int, end: int, destination: np.ndarray) -> None:
+    def _read_into(self, stream, index: int, start: int, end: int, destination: np.ndarray) -> None:
+        stream.seek(index * self._frame_bytes + start * self._row_bytes)
         for row in range(start, end, self._window_rows):
             stop = min(row + self._window_rows, end)
-            with self._mapped_window(index, row, stop) as mapped:
-                destination[row - start:stop - start] = mapped
+            target = destination[row - start:stop - start]
+            if target.dtype == self.dtype:
+                self._read_exact(stream, target)
+            else:
+                window = np.empty(target.shape, dtype=self.dtype)
+                self._read_exact(stream, window)
+                target[:] = window
 
     def read_frame(self, index: int) -> np.ndarray:
         """Return an owned copy of one frame."""
+        self._check_index(index)
         result = np.empty(self.frame_shape, dtype=self.dtype)
-        self._read_into(index, 0, self.frame_shape[0], result)
+        with open(self.filepath, "rb", buffering=0) as stream:
+            self._read_into(stream, index, 0, self.frame_shape[0], result)
         return result
 
     def read_rows(self, start: int, end: int, dtype=None) -> np.ndarray:
         """Return an owned, contiguous (N, rows, W[, C]) chunk."""
         if not 0 <= start < end <= self.frame_shape[0]:
             raise ValueError("Invalid frame row range.")
+        self._check_index(0)
         result = np.empty((len(self), end - start, *self.frame_shape[1:]), dtype=dtype or self.dtype)
-        for index in range(len(self)):
-            self._read_into(index, start, end, result[index])
+        with open(self.filepath, "rb", buffering=0) as stream:
+            for index in range(len(self)):
+                self._read_into(stream, index, start, end, result[index])
         return result
 
     def close(self) -> None:
