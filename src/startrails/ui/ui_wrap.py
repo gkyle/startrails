@@ -520,8 +520,10 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
 
                 desc = getattr(progressUpdater, "desc", "")
                 n = getattr(progressUpdater, "n", count)
+                indeterminate = isinstance(data, dict) and bool(data.get("indeterminate"))
                 self.progressOverlay.update_progress(
-                    n, total, elapsed=elapsed, remaining=remaining, desc=desc
+                    n, 0 if indeterminate else total, elapsed=elapsed,
+                    remaining=None if indeterminate else remaining, desc=desc
                 )
         if data is not None:
             if isinstance(data, np.ndarray):

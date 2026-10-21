@@ -172,14 +172,15 @@ class ProgressOverlay(QFrame):
             self._target_finish_time = None
 
         if self._last_total > 0:
+            self.progressBar.setRange(0, 100)
             pct = min(100, max(0, int(self._last_n / self._last_total * 100)))
             self.progressBar.setValue(pct)
             self.label_progressPercent.setText(f"{pct}%")
             subtitle = f"Processing frame {n} of {total}" if not desc or desc.endswith(":") else f"{desc} {n} of {total}"
             self.label_progressBar.setText(subtitle)
         else:
-            self.progressBar.setValue(0)
-            self.label_progressPercent.setText("0%")
+            self.progressBar.setRange(0, 0)
+            self.label_progressPercent.setText("Working")
             if desc:
                 self.label_progressBar.setText(desc)
 

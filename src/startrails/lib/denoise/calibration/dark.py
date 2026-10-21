@@ -32,19 +32,26 @@ class DarkCalibrator:
         scratch_dir: Optional[Path | str] = None,
         should_interrupt: Optional[Callable[[], bool]] = None,
         cache_dir: Optional[Path | str] = None,
+        progress_callback: Optional[Callable[[str], None]] = None,
     ) -> np.ndarray:
         """Reuse a persistent master or integrate one decoded dark at a time.
 
         The uncompressed cache preserves normalized float32 values exactly. It
         holds only one master per project and is atomically replaced after a
         successful calculation. Cache failures never prevent calibration.
+        progress_callback receives status messages before cache/file I/O and
+        completion percentages as median chunks finish.
         """
         if not paths:
             raise ValueError("No dark frames provided.")
-        cls._check_cancelled(should_interrupt)
+        cls._report_progress(progress_callback, should_interrupt, "Preparing master dark...")
         cache_path = Path(cache_dir) / "master_dark.npz" if cache_dir is not None else None
+        if cache_path is not None:
+            cls._report_progress(progress_callback, should_interrupt, "Checking master dark cache...")
         signature = cls._cache_signature(paths) if cache_path is not None else None
         if cache_path is not None:
+            cached_master = None
+            cls._report_progress(progress_callback, should_interrupt, "Loading cached master dark...")
             try:
                 with np.load(cache_path, allow_pickle=False) as cached:
                     if cached["signature"].item() == signature:
@@ -52,16 +59,20 @@ class DarkCalibrator:
                         if master.dtype == np.float32 and master.ndim in (2, 3) and all(master.shape):
                             cls._check_cancelled(should_interrupt)
                             logger.info("Reusing master dark: %s", cache_path)
-                            return master
+                            cached_master = master
             except FileNotFoundError:
                 pass
             except (OSError, ValueError, TypeError, KeyError, EOFError, BadZipFile):
                 logger.warning("Cannot read master dark cache %s; rebuilding", cache_path)
+            if cached_master is not None:
+                cls._report_progress(progress_callback, should_interrupt, "Master dark ready (cached).")
+                return cached_master
 
-        master = cls._integrate_paths(paths, use_gpu, scratch_dir, should_interrupt)
+        master = cls._integrate_paths(paths, use_gpu, scratch_dir, should_interrupt, progress_callback)
         cls._check_cancelled(should_interrupt)
         if cache_path is not None and cls._cache_signature(paths) == signature:
             temporary = None
+            cls._report_progress(progress_callback, should_interrupt, "Saving master dark cache...")
             try:
                 cache_path.parent.mkdir(parents=True, exist_ok=True)
                 with tempfile.NamedTemporaryFile(dir=cache_path.parent, prefix="master_dark_", suffix=".tmp", delete=False) as stream:
@@ -76,6 +87,7 @@ class DarkCalibrator:
             finally:
                 if temporary is not None:
                     temporary.unlink(missing_ok=True)
+        cls._report_progress(progress_callback, should_interrupt, "Master dark ready.")
         return master
 
     @staticmethod
@@ -90,7 +102,10 @@ class DarkCalibrator:
         return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
     @classmethod
-    def _integrate_paths(cls, paths, use_gpu, scratch_dir, should_interrupt):
+    def _integrate_paths(cls, paths, use_gpu, scratch_dir, should_interrupt, progress_callback):
+        cls._report_progress(
+            progress_callback, should_interrupt, f"Reading dark frame 1/{len(paths)}: {Path(paths[0]).name}"
+        )
         first = imread(paths[0], to_rgb=True, as_float=False)
         if len(paths) == 1:
             cls._check_cancelled(should_interrupt)
@@ -100,13 +115,26 @@ class DarkCalibrator:
             buffer.write_frame(0, normalize_image(first))
             del first
             for index, path in enumerate(paths[1:], start=1):
-                cls._check_cancelled(should_interrupt)
+                cls._report_progress(
+                    progress_callback, should_interrupt,
+                    f"Reading dark frame {index + 1}/{len(paths)}: {Path(path).name}"
+                )
                 frame = imread(path, to_rgb=True, as_float=False)
                 if frame.shape != shape:
                     raise ValueError(f"Dark frame {path} has shape {frame.shape}; expected {shape}.")
                 buffer.write_frame(index, normalize_image(frame))
                 del frame
-            return cls.compute_master_dark(buffer, use_gpu=use_gpu, should_interrupt=should_interrupt)
+            return cls.compute_master_dark(
+                buffer, use_gpu=use_gpu, should_interrupt=should_interrupt, progress_callback=progress_callback
+            )
+
+    @classmethod
+    def _report_progress(cls, progress_callback, should_interrupt, message):
+        cls._check_cancelled(should_interrupt)
+        if progress_callback is not None:
+            progress_callback(message)
+        # An observer can request cancellation in response to a status update.
+        cls._check_cancelled(should_interrupt)
 
     @staticmethod
     def _check_cancelled(should_interrupt):
@@ -120,14 +148,17 @@ class DarkCalibrator:
         use_gpu: bool,
         chunk_rows: int = 1024,
         should_interrupt: Optional[Callable[[], bool]] = None,
+        progress_callback: Optional[Callable[[str], None]] = None,
     ) -> np.ndarray:
-        """Compute a normalized float32 median, preserving fractional dark values."""
+        """Compute a normalized float32 median and report completed-chunk percentages."""
         if len(darks) == 0:
             raise ValueError("No dark frames provided.")
-        cls._check_cancelled(should_interrupt)
+        cls._report_progress(progress_callback, should_interrupt, "Combining dark frames: 0%")
         if len(darks) == 1:
             first = darks.read_frame(0) if isinstance(darks, DiskFrameBuffer) else darks[0]
-            return normalize_image(first)
+            result = normalize_image(first)
+            cls._report_progress(progress_callback, should_interrupt, "Combining dark frames: 100%")
+            return result
 
         frame_shape = darks.frame_shape if isinstance(darks, DiskFrameBuffer) else darks[0].shape
         h, w = frame_shape[:2]
@@ -153,6 +184,9 @@ class DarkCalibrator:
                     res_gpu = xp.median(chunk_gpu, axis=0)
                     out[y:y_end] = xp.asnumpy(res_gpu)
                     del chunk_gpu, res_gpu
+                    cls._report_progress(
+                        progress_callback, should_interrupt, f"Combining dark frames: {y_end * 100 // h}%"
+                    )
                 cls._check_cancelled(should_interrupt)
                 return out
             finally:
@@ -165,6 +199,7 @@ class DarkCalibrator:
             chunk = read_chunk(start, end)
             out[start:end] = np.median(chunk, axis=0, overwrite_input=True)
             del chunk
+            cls._report_progress(progress_callback, should_interrupt, f"Combining dark frames: {end * 100 // h}%")
 
         cls._check_cancelled(should_interrupt)
         return out

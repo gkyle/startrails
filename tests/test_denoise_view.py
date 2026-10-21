@@ -1,6 +1,7 @@
 """Project ownership of queued results, errors, and real background publication."""
 
 from types import SimpleNamespace
+from io import StringIO
 
 import jsonpickle
 import numpy as np
@@ -10,12 +11,14 @@ from shiboken6 import isValid
 
 from support import QtTestCase
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
-from startrails.lib.image_io import imread
+from startrails.lib.image_io import imread, imwrite
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.ui_wrap import MainWindow
 from startrails.ui.views.denoise import DenoiseView
 from startrails.ui.workers_denoise import FinalCompositeSaveWorker
+from startrails.ui.progress import ProgressBarUpdater
+from startrails.op.denoise.align_stars import AlignStars
 
 WORKER_TIMEOUT_MS = 5000
 
@@ -41,6 +44,63 @@ class DenoiseViewTests(QtTestCase):
         if isValid(worker):
             worker.cancel()
             self.assertTrue(worker.wait(WORKER_TIMEOUT_MS), "Background save did not stop within its deadline")
+
+    def test_alignment_displays_preparation_and_cached_dark_work_before_frame_progress(self):
+        shape = (8, 10, 3)
+        light = imwrite(self.root / "light.tif", np.full(shape, 5000, np.uint16))
+        darks = [
+            imwrite(self.root / f"dark{i}.tif", np.full(shape, value, np.uint16))
+            for i, value in enumerate((1000, 1001))
+        ]
+        config = DenoiseProject(
+            str(self.root / "align.proj_denoise"),
+            star_images=[light],
+            noise_images=darks,
+            use_gpu=False,
+            taper_mask_edges=False,
+        )
+        window = MainWindow(self.make_app(config))
+        ui = window.ui
+        # A running task keeps the overlay visible until its worker finishes.
+        ui.current_running_task = "alignStars"
+        self.addCleanup(setattr, ui, "current_running_task", None)
+        for cached in (False, True):
+            with self.subTest(cached=cached):
+                updater = ProgressBarUpdater(ui.progressBar, ui.label_progressBar, total=1, file=StringIO())
+                self.addCleanup(updater.close)
+                visible = []
+
+                def observe(total, increment, count, done, data):
+                    ui.slotIncrementProgressBar(updater, total, increment, count, done, data)
+                    if data:
+                        visible.append(
+                            (
+                                count,
+                                ui.progressOverlay.label_progressBar.text(),
+                                ui.progressBar.maximum(),
+                                ui.progressOverlay.label_progressPercent.text(),
+                            )
+                        )
+
+                aligner = AlignStars()
+                aligner.addObserver(observe)
+                result = aligner.align(config, warp_frames=False)
+                preparing = [event for event in visible if event[0] == 0]
+                self.assertTrue(preparing)
+                self.assertTrue(all(maximum == 0 and percent == "Working" for _, _, maximum, percent in preparing))
+                if cached:
+                    self.assertTrue(
+                        any("Loading cached master dark" in description for _, description, _, _ in preparing)
+                    )
+                else:
+                    self.assertTrue(any("Reading dark frame 2/2" in description for _, description, _, _ in preparing))
+                    self.assertTrue(
+                        any("Combining dark frames: 100%" in description for _, description, _, _ in preparing)
+                    )
+                self.assertTrue(any("Reading reference frame" in description for _, description, _, _ in preparing))
+                self.assertEqual(visible[-1][0], 1)
+                self.assertEqual(visible[-1][2:], (100, "100%"))
+                np.testing.assert_allclose(result.base_calibrated, (5000 - 1000.5) / 65535, atol=1e-7, rtol=0)
 
     def test_queued_result_cannot_publish_after_project_switch(self):
         published = []

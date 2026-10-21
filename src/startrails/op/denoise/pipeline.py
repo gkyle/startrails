@@ -157,7 +157,10 @@ class DenoisePipeline(DenoiseOperation):
             raise ValueError("No star images provided in configuration.")
 
         _report(0.02, "Initializing stacking pipeline...")
-        calibrate_fn = AlignStars.prepare_calibrator(self.config, should_interrupt=self.shouldInterrupt)
+        calibrate_fn = AlignStars.prepare_calibrator(
+            self.config, should_interrupt=self.shouldInterrupt,
+            progress_callback=lambda message: _report(0.02, message)
+        )
 
         with profiler.measure("1 & 2. Frame Loading & Mask Preparation"):
             base_calibrated, sky_mask, (h, w) = self._load_base_and_mask(
@@ -172,7 +175,8 @@ class DenoisePipeline(DenoiseOperation):
             def _align_cb(total, inc, count, done, data):
                 prog = 0.25 + 0.45 * (count / max(1, total))
                 name = data["frame"].name if data and "frame" in data else ""
-                _report(prog, f"Aligned frame {count}/{total}: {name}")
+                message = data["desc"] if data and "desc" in data else f"Aligned frame {count}/{total}: {name}"
+                _report(prog, message)
             align_op.addObserver(_align_cb)
 
         with profiler.measure("3. Frame Alignment"):

@@ -1,6 +1,8 @@
 """Geometric correspondence and failure coverage on real tiny images."""
 
 from itertools import permutations
+from concurrent.futures import CancelledError
+from threading import Event
 from unittest.mock import patch
 
 import cv2
@@ -14,9 +16,31 @@ from startrails.lib.denoise.alignment.warper import ImageWarper
 from startrails.lib.image_io import imwrite
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.op.denoise.align_stars import AlignStars
+from startrails.lib.denoise.calibration.dark import DarkCalibrator
 
 
 class AlignmentTests(IsolatedTestCase):
+    def test_cancelling_during_dark_preparation_cleans_scratch_without_combining(self):
+        paths = [
+            imwrite(self.root / f"dark{i}.tif", np.full((8, 10), value, np.uint16))
+            for i, value in enumerate((1000, 1001))
+        ]
+        cancel = Event()
+        descriptions = []
+
+        def report(message):
+            descriptions.append(message)
+            if "Reading dark frame 2/2" in message:
+                cancel.set()
+
+        with self.assertRaises(CancelledError):
+            DarkCalibrator.compute_master_dark_from_paths(
+                paths, use_gpu=False, scratch_dir=self.root, should_interrupt=cancel.is_set, progress_callback=report
+            )
+        self.assertFalse(any("Combining" in message for message in descriptions))
+        self.assertFalse(list(self.root.glob("*.raw")))
+        self.assertTrue(all(path.is_file() for path in paths))
+
     def test_triangle_matching_is_independent_of_detection_order(self):
         points = np.array([[10, 10], [53, 13], [21, 79]], dtype=np.float32)
         reference = [Star(*point, 1.0) for point in points]

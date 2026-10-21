@@ -42,6 +42,7 @@ class AlignStars(DenoiseOperation):
         config: DenoiseProject,
         should_interrupt: Optional[Callable[[], bool]] = None,
         scratch_dir: Optional[Path | str] = None,
+        progress_callback: Optional[Callable[[str], None]] = None,
     ) -> Callable[[np.ndarray], np.ndarray]:
         """Prepare dark master calibration frame if configured."""
         master_dark: Optional[np.ndarray] = None
@@ -53,6 +54,7 @@ class AlignStars(DenoiseOperation):
                 config.noise_images, use_gpu=config.use_gpu,
                 scratch_dir=scratch_dir, should_interrupt=should_interrupt,
                 cache_dir=config.get_output_dir() / "cache",
+                progress_callback=progress_callback,
             )
 
         def calibrate(img: np.ndarray) -> np.ndarray:
@@ -100,16 +102,24 @@ class AlignStars(DenoiseOperation):
         if self.shouldInterrupt():
             return None
 
+        def report_step(message: str) -> None:
+            self.updateJob(0, {"desc": message, "indeterminate": self.job.count == 0})
+
         if calibrate_fn is None:
-            calibrate_fn = self.prepare_calibrator(config, should_interrupt=self.shouldInterrupt)
+            calibrate_fn = self.prepare_calibrator(
+                config, should_interrupt=self.shouldInterrupt, progress_callback=report_step
+            )
         base_path = self.get_base_image_path(config)
 
         if base_calibrated is None:
+            report_step(f"Reading reference frame: {base_path.name}")
             base_raw = imread(base_path, to_rgb=True, as_float=False)
+            report_step(f"Calibrating reference frame: {base_path.name}")
             base_calibrated = calibrate_fn(base_raw)
         h, w = base_calibrated.shape[:2]
 
         if sky_mask is None:
+            report_step("Preparing sky mask...")
             sky_mask = MaskHandler.create_mask(
                 shape=(h, w),
                 mask_path=config.mask_path,
@@ -130,10 +140,13 @@ class AlignStars(DenoiseOperation):
             p_path = Path(p)
             p_resolved = p_path.resolve()
 
+            frame_label = f"{i + 1}/{n_stars}: {p_path.name}"
+
             # Calibration and load
             if p_resolved == base_path:
                 frame_cal = base_calibrated
             else:
+                report_step(f"Calibrating frame {frame_label}")
                 frame_raw = imread(p_path, to_rgb=True, as_float=False)
                 frame_cal = calibrate_fn(frame_raw)
 
@@ -147,12 +160,15 @@ class AlignStars(DenoiseOperation):
                     config.homographies[p_resolved] = matrix
                 else:
                     if ref_stars is None:
+                        report_step(f"Detecting reference stars: {base_path.name}")
                         eroded_sky_mask = StarDetector.prepare_sky_mask(sky_mask)
                         ref_stars = StarDetector.detect_stars(base_calibrated, eroded_sky_mask)
                         logger.info(f"Detected {len(ref_stars)} stars in reference frame: {base_path.name}")
+                    report_step(f"Detecting stars in frame {frame_label}")
                     target_stars = StarDetector.detect_stars(frame_cal, eroded_sky_mask)
                     pts_ref, pts_target = StarMatcher.match_stars(ref_stars, target_stars)
                     if len(pts_target) >= 3:
+                        report_step(f"Estimating alignment for frame {frame_label}")
                         matrix = TransformModel.estimate(pts_target, pts_ref)
                     if matrix is not None:
                         config.homographies[p_resolved] = matrix
@@ -165,6 +181,7 @@ class AlignStars(DenoiseOperation):
                     warped = frame_cal.copy()
                     coverage = np.zeros((h, w), dtype=bool)
                 else:
+                    report_step(f"Warping frame {frame_label}")
                     warped, in_bounds = ImageWarper.warp(frame_cal, matrix, (h, w))
                     if sky_mask is not None:
                         warped_mask = ImageWarper.warp_mask(
