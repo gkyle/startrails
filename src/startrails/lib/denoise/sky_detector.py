@@ -182,7 +182,7 @@ class AutoSkyDetector:
             small_rgb = rgb
             sw, sh = w, h
 
-        inputs = processor(images=small_rgb, return_tensors="pt")
+        inputs = processor(images=small_rgb, return_tensors="pt", do_resize=False)
         try:
             pixel_values = inputs["pixel_values"].to(dev)
             with torch.no_grad():
