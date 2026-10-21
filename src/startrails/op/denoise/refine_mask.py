@@ -87,6 +87,8 @@ class RefineMask(DenoiseOperation):
 
         if export_path is not None:
             self.updateJob(0, {"desc": "Saving refined sky mask..."})
+            if self.shouldInterrupt():
+                return None
             MaskHandler.save_mask(refined, export_path)
 
         if self.shouldInterrupt():

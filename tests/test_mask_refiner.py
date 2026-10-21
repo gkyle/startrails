@@ -81,6 +81,19 @@ class MaskRefinerTests(IsolatedTestCase):
         self.assertFalse(path.exists())
         self.assertFalse(any(done_events))
 
+    def test_cancellation_during_save_notification_preserves_existing_mask(self):
+        operation = RefineMask()
+        path = self.root / "mask.png"
+        path.write_bytes(b"existing mask")
+
+        def notify(total, increment, count, done, data):
+            if data and data.get("desc") == "Saving refined sky mask...":
+                operation.requestInterrupt()
+
+        operation.addObserver(notify)
+        self.assertIsNone(self.refine(operation, path))
+        self.assertEqual(path.read_bytes(), b"existing mask")
+
     def test_region_failure_propagates_without_export(self):
         path = self.root / "mask.png"
         with (
