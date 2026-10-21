@@ -15,6 +15,7 @@ from startrails.ui.steps_denoise import (
     DenoiseTuneSettings,
 )
 from startrails.ui.ui_sidebar_denoise import Ui_SidebarDenoise
+from startrails.ui.theme import system_theme
 
 
 class SidebarDenoise(QWidget):
@@ -69,6 +70,7 @@ class SidebarDenoise(QWidget):
         self.sync_expanded_step()
 
         self.update_operations_progress(app)
+        system_theme().register(self)
 
     def sync_expanded_step(self) -> None:
         """Apply accordion behavior to a step that is already expanded."""
