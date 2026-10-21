@@ -112,7 +112,6 @@ QCheckBox#showMaskOverlay:focus:enabled,
 QCheckBox#enableCorrections:focus:enabled,
 QCheckBox#showGradientMask:focus:enabled {
     border-color: transparent;
-    border-bottom: 2px solid #0369a1;
 }
 
 /* Horizontal Sliders */
