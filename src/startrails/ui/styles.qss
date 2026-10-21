@@ -10,8 +10,10 @@ QLabel {
 QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit {
     background-color: #ffffff;
     border: 1px solid #64748b;
-    border-radius: 2px;
-    padding: 2px 5px;
+    border-top-left-radius: 2px;
+    border-bottom-left-radius: 2px;
+    padding-top: 2px;
+    padding-bottom: 2px;
     font-size: 12px;
     color: #0f172a;
     height: 16px;
@@ -29,13 +31,19 @@ QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled, QLineEdit:disabl
 
 QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
     subcontrol-origin: border;
-    subcontrol-position: top right;
     width: 16px;
-    height: 12px; 
+    height: 11px;
 }
+
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-position: top right;
+    top: 1px;
+}
+
 
 QSpinBox::down-button, QDoubleSpinBox::down-button {
     subcontrol-position: bottom right;
+    margin-bottom: 1px;
 }
 
 QSpinBox::up-arrow, QDoubleSpinBox::up-arrow, QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {

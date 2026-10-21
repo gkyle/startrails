@@ -537,7 +537,7 @@ class FileSection(QFrame):
             self.ui.toggle.toggle()
             event.accept()
             return
-        super(QWidget, self.ui.headerWidget).mousePressEvent(event)
+        QWidget.mousePressEvent(self.ui.headerWidget, event)
 
     def setExpanded(self, expanded):
         with QSignalBlocker(self.ui.toggle):
