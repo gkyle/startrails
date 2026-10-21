@@ -115,7 +115,6 @@ class Ui_DenoiseSkySettings(object):
         self.searchRadius.setStyleSheet(u"")
         self.searchRadius.setMinimum(0)
         self.searchRadius.setMaximum(100)
-        self.searchRadius.setValue(0)
 
         self.refineParamLayout.addWidget(self.searchRadius)
 
@@ -130,7 +129,6 @@ class Ui_DenoiseSkySettings(object):
         self.erosionPixels.setStyleSheet(u"")
         self.erosionPixels.setMinimum(0)
         self.erosionPixels.setMaximum(50)
-        self.erosionPixels.setValue(5)
 
         self.refineParamLayout.addWidget(self.erosionPixels)
 
@@ -174,7 +172,6 @@ class Ui_DenoiseSkySettings(object):
         self.brushSlider.setObjectName(u"brushSlider")
         self.brushSlider.setMinimum(2)
         self.brushSlider.setMaximum(200)
-        self.brushSlider.setValue(25)
         self.brushSlider.setOrientation(Qt.Orientation.Horizontal)
 
         self.brushLayout.addWidget(self.brushSlider)
@@ -184,7 +181,6 @@ class Ui_DenoiseSkySettings(object):
         self.brushRadius.setStyleSheet(u"")
         self.brushRadius.setMinimum(2)
         self.brushRadius.setMaximum(200)
-        self.brushRadius.setValue(25)
 
         self.brushLayout.addWidget(self.brushRadius)
 

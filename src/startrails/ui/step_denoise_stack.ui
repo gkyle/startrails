@@ -86,9 +86,6 @@
        <property name="singleStep">
         <double>0.100000000000000</double>
        </property>
-       <property name="value">
-        <double>1.200000000000000</double>
-       </property>
       </widget>
      </item>
     </layout>
@@ -227,9 +224,6 @@ QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg);
           <property name="text">
            <string/>
           </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
          </widget>
         </item>
        </layout>
@@ -258,7 +252,6 @@ QCheckBox#compressIntermediateTiffs::indicator:checked { image: url(:/startrails
 </string>
           </property>
           <property name="text"><string/></property>
-          <property name="checked"><bool>false</bool></property>
          </widget>
         </item>
        </layout>
@@ -279,9 +272,6 @@ QCheckBox#compressIntermediateTiffs::indicator:checked { image: url(:/startrails
           </property>
           <property name="maximum">
            <number>10</number>
-          </property>
-          <property name="value">
-           <number>3</number>
           </property>
          </widget>
         </item>

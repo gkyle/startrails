@@ -167,9 +167,6 @@ QPushButton#refineMask:disabled {
        <property name="maximum">
         <number>100</number>
        </property>
-       <property name="value">
-        <number>0</number>
-       </property>
       </widget>
      </item>
      <item>
@@ -204,9 +201,6 @@ QPushButton#refineMask:disabled {
        </property>
        <property name="maximum">
         <number>50</number>
-       </property>
-       <property name="value">
-        <number>5</number>
        </property>
       </widget>
      </item>
@@ -285,9 +279,6 @@ QCheckBox#showMaskOverlay::indicator:checked { image: url(:/startrails/ui/switch
        <property name="maximum">
         <number>200</number>
        </property>
-       <property name="value">
-        <number>25</number>
-       </property>
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>
        </property>
@@ -306,9 +297,6 @@ QCheckBox#showMaskOverlay::indicator:checked { image: url(:/startrails/ui/switch
        </property>
        <property name="maximum">
         <number>200</number>
-       </property>
-       <property name="value">
-        <number>25</number>
        </property>
       </widget>
      </item>

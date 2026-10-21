@@ -49,7 +49,6 @@ class Ui_DenoiseTuneSettings(object):
 "QCheckBox#enableCorrections::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
 "QCheckBox#enableCorrections::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
 "")
-        self.enableCorrections.setChecked(True)
 
         self.enableCorrectionsRow.addWidget(self.enableCorrections, 0, Qt.AlignmentFlag.AlignRight)
 
@@ -96,7 +95,6 @@ class Ui_DenoiseTuneSettings(object):
         self.colorDenoiseSlider.setMinimumSize(QSize(60, 0))
         self.colorDenoiseSlider.setMinimum(0)
         self.colorDenoiseSlider.setMaximum(200)
-        self.colorDenoiseSlider.setValue(100)
         self.colorDenoiseSlider.setOrientation(Qt.Orientation.Horizontal)
 
         self.colorDenoiseRow.addWidget(self.colorDenoiseSlider)
@@ -108,7 +106,6 @@ class Ui_DenoiseTuneSettings(object):
         self.colorStrength.setMinimum(0.000000000000000)
         self.colorStrength.setMaximum(2.000000000000000)
         self.colorStrength.setSingleStep(0.050000000000000)
-        self.colorStrength.setValue(1.000000000000000)
 
         self.colorDenoiseRow.addWidget(self.colorStrength)
 
@@ -130,7 +127,6 @@ class Ui_DenoiseTuneSettings(object):
         self.valueDenoiseSlider.setMinimumSize(QSize(60, 0))
         self.valueDenoiseSlider.setMinimum(0)
         self.valueDenoiseSlider.setMaximum(200)
-        self.valueDenoiseSlider.setValue(20)
         self.valueDenoiseSlider.setOrientation(Qt.Orientation.Horizontal)
 
         self.valueDenoiseRow.addWidget(self.valueDenoiseSlider)
@@ -142,7 +138,6 @@ class Ui_DenoiseTuneSettings(object):
         self.valueStrength.setMinimum(0.000000000000000)
         self.valueStrength.setMaximum(2.000000000000000)
         self.valueStrength.setSingleStep(0.050000000000000)
-        self.valueStrength.setValue(0.200000000000000)
 
         self.valueDenoiseRow.addWidget(self.valueStrength)
 
@@ -164,7 +159,6 @@ class Ui_DenoiseTuneSettings(object):
         self.blendSlider.setMinimumSize(QSize(60, 0))
         self.blendSlider.setMinimum(0)
         self.blendSlider.setMaximum(100)
-        self.blendSlider.setValue(60)
         self.blendSlider.setOrientation(Qt.Orientation.Horizontal)
 
         self.blendRow.addWidget(self.blendSlider)
@@ -177,7 +171,6 @@ class Ui_DenoiseTuneSettings(object):
         self.blendPercent.setMinimum(0.000000000000000)
         self.blendPercent.setMaximum(100.000000000000000)
         self.blendPercent.setSingleStep(5.000000000000000)
-        self.blendPercent.setValue(60.000000000000000)
 
         self.blendRow.addWidget(self.blendPercent)
 
@@ -199,7 +192,6 @@ class Ui_DenoiseTuneSettings(object):
         self.blurSlider.setMinimumSize(QSize(60, 0))
         self.blurSlider.setMinimum(0)
         self.blurSlider.setMaximum(50)
-        self.blurSlider.setValue(2)
         self.blurSlider.setOrientation(Qt.Orientation.Horizontal)
 
         self.blurRow.addWidget(self.blurSlider)
@@ -212,7 +204,6 @@ class Ui_DenoiseTuneSettings(object):
         self.blurRadius.setMinimum(0.000000000000000)
         self.blurRadius.setMaximum(50.000000000000000)
         self.blurRadius.setSingleStep(0.500000000000000)
-        self.blurRadius.setValue(2.000000000000000)
 
         self.blurRow.addWidget(self.blurRadius)
 

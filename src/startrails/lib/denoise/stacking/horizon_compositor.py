@@ -8,7 +8,11 @@ from inspect import signature
 import cv2
 import numpy as np
 
+from startrails.lib.denoise.defaults import DEFAULT_HORIZON_FEATHER_RADIUS, DENOISE_DEFAULTS
 from startrails.lib.denoise.enhancement.horizon_denoiser import HorizonDenoiser
+from startrails.lib.image_io import rgb_luminance
+
+_DENSE_PREVIEW_AREA_FRACTION = 0.6
 
 
 def synchronized_composition(method):
@@ -36,10 +40,10 @@ class HorizonCompositor:
         sky_stack: np.ndarray,
         ground_stack: np.ndarray,
         gradient_mask: np.ndarray,
-        sky_mask: np.ndarray,
-        feather_radius: float = 3.0,
-        denoise_radius: int = 5,
-        denoise_eps: float = 1e-3,
+        sky_mask: Optional[np.ndarray],
+        feather_radius: float = DEFAULT_HORIZON_FEATHER_RADIUS,
+        denoise_radius: int = DENOISE_DEFAULTS.horizon_denoise_radius,
+        denoise_eps: float = DENOISE_DEFAULTS.horizon_denoise_eps,
     ):
         self._composition_lock = RLock()
         self.sky_stack = sky_stack.astype(np.float32, copy=False)
@@ -104,11 +108,7 @@ class HorizonCompositor:
 
         # Precompute edge-preserving guided filter strictly for the active horizon ROI
         if self.roi_sky_stack.ndim == 3:
-            guide_roi = (
-                0.299 * self.roi_sky_stack[:, :, 0]
-                + 0.587 * self.roi_sky_stack[:, :, 1]
-                + 0.114 * self.roi_sky_stack[:, :, 2]
-            ).astype(np.float32)
+            guide_roi = rgb_luminance(self.roi_sky_stack).astype(np.float32)
         else:
             guide_roi = self.roi_sky_stack.astype(np.float32)
 
@@ -119,16 +119,8 @@ class HorizonCompositor:
 
         # Precompute luminance and chrominance decompositions for independent color/value tuning
         if self.roi_sky_stack.ndim == 3 and self.roi_denoised_sky is not None:
-            self.roi_Y_sky = (
-                0.299 * self.roi_sky_stack[:, :, 0]
-                + 0.587 * self.roi_sky_stack[:, :, 1]
-                + 0.114 * self.roi_sky_stack[:, :, 2]
-            )[..., None]
-            self.roi_Y_den = (
-                0.299 * self.roi_denoised_sky[:, :, 0]
-                + 0.587 * self.roi_denoised_sky[:, :, 1]
-                + 0.114 * self.roi_denoised_sky[:, :, 2]
-            )[..., None]
+            self.roi_Y_sky = rgb_luminance(self.roi_sky_stack)[..., None]
+            self.roi_Y_den = rgb_luminance(self.roi_denoised_sky)[..., None]
             self.roi_C_sky = self.roi_sky_stack - self.roi_Y_sky
             self.roi_C_den = self.roi_denoised_sky - self.roi_Y_den
         else:
@@ -159,7 +151,7 @@ class HorizonCompositor:
                     x1 = min(rx + rw, x + int(columns.max()) + 2)
                     y1 = min(ry + rh, y + int(rows.max()) + 2)
                     rectangles.append((x0, y0, x1 - x0, y1 - y0))
-        if sum(w * h for _, _, w, h in rectangles) > rw * rh * 0.6:
+        if sum(w * h for _, _, w, h in rectangles) > rw * rh * _DENSE_PREVIEW_AREA_FRACTION:
             # Dense masks gain little from hundreds of separately displayed patches.
             return [roi_rect]
         return rectangles
@@ -181,7 +173,7 @@ class HorizonCompositor:
         if key == self._cached_patch_key:
             return self._cached_patches
         patches = []
-        if kwargs.get("enable_corrections", True):
+        if parameters.arguments["enable_corrections"]:
             for rect in self.preview_rects:
                 if cancel_check and cancel_check():
                     return None
@@ -214,11 +206,11 @@ class HorizonCompositor:
     def _composite_region(
         self,
         rect,
-        horizon_blend_percent: float = 60.0,
-        horizon_denoise_strength: float = 0.2,
-        denoise_enabled: bool = True,
-        horizon_blur_radius: float = 2.0,
-        enable_corrections: bool = True,
+        horizon_blend_percent: float,
+        horizon_denoise_strength: float,
+        denoise_enabled: bool,
+        horizon_blur_radius: float,
+        enable_corrections: bool,
         horizon_color_denoise_strength: Optional[float] = None,
         horizon_value_denoise_strength: Optional[float] = None,
         cancel_check: Optional[Callable[[], bool]] = None,
@@ -226,11 +218,11 @@ class HorizonCompositor:
         """Evaluate composite strictly on the gradient mask region overlay.
 
         Args:
-            horizon_blend_percent: 0.0 to 100.0% unwarped ground blend into sky (default: 60.0).
-            horizon_denoise_strength: 0.0 to 2.0 multiplier for guided filter smoothing (default: 0.2).
+            horizon_blend_percent: 0.0 to 100.0% unwarped ground blend into sky.
+            horizon_denoise_strength: 0.0 to 2.0 multiplier for guided filter smoothing.
             denoise_enabled: whether horizon band denoising is activated.
-            horizon_blur_radius: Gaussian blur radius in pixels applied to foreground sky input (default: 2.0).
-            enable_corrections: whether all horizon gradient adjustments are enabled (default: True).
+            horizon_blur_radius: Gaussian blur radius in pixels applied to foreground sky input.
+            enable_corrections: whether all horizon gradient adjustments are enabled.
             horizon_color_denoise_strength: optional multiplier for chrominance denoising (defaults to horizon_denoise_strength).
             horizon_value_denoise_strength: optional multiplier for luminance denoising (defaults to horizon_denoise_strength).
             cancel_check: optional callback returning True if calculation should abort early.
@@ -312,11 +304,11 @@ class HorizonCompositor:
     @synchronized_composition
     def composite(
         self,
-        horizon_blend_percent: float = 60.0,
-        horizon_denoise_strength: float = 0.2,
-        denoise_enabled: bool = True,
-        horizon_blur_radius: float = 2.0,
-        enable_corrections: bool = True,
+        horizon_blend_percent: float = DENOISE_DEFAULTS.horizon_blend_percent,
+        horizon_denoise_strength: float = DENOISE_DEFAULTS.horizon_denoise_strength,
+        denoise_enabled: bool = DENOISE_DEFAULTS.denoise_horizon_band,
+        horizon_blur_radius: float = DENOISE_DEFAULTS.horizon_blur_radius,
+        enable_corrections: bool = DENOISE_DEFAULTS.enable_horizon_corrections,
         horizon_color_denoise_strength: Optional[float] = None,
         horizon_value_denoise_strength: Optional[float] = None,
         cancel_check: Optional[Callable[[], bool]] = None,

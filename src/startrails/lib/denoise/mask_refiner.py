@@ -8,7 +8,12 @@ from typing import Callable, Optional
 import cv2
 import numpy as np
 
+from startrails.lib.denoise.defaults import DENOISE_DEFAULTS
+from startrails.lib.image_io import rgb_luminance
+
 logger = logging.getLogger(__name__)
+
+_DENSE_REFINEMENT_READ_FRACTION = 0.6
 
 
 class MaskRefiner:
@@ -55,7 +60,7 @@ class MaskRefiner:
                     run_start = None
 
         # Dense masks are cheaper as one region, using the same filter code.
-        if read_pixels >= h * w * 0.6:
+        if read_pixels >= h * w * _DENSE_REFINEMENT_READ_FRACTION:
             return [(0, 0, w, h)]
         return regions
 
@@ -108,16 +113,15 @@ class MaskRefiner:
         cls,
         image: np.ndarray,
         rough_mask: np.ndarray,
-        search_radius: Optional[int] = None,
+        search_radius: Optional[int] = DENOISE_DEFAULTS.mask_search_radius,
         blur_window: Optional[int] = None,
         edge_alignment: bool = True,
         smooth_radius: float = 2.0,
-        erosion_pixels: int = 0,
-        foliage_protection: bool = True,
+        erosion_pixels: int = DENOISE_DEFAULTS.mask_erosion_pixels,
+        foliage_protection: bool = DENOISE_DEFAULTS.mask_foliage_protection,
         as_bool: bool = False,
         progress_callback: Optional[Callable[[int, int], None]] = None,
         should_interrupt: Optional[Callable[[], bool]] = None,
-        **kwargs,
     ) -> Optional[np.ndarray]:
         """Refine a rough sky mask to match true physical image boundaries.
 
@@ -126,8 +130,8 @@ class MaskRefiner:
             rough_mask: 2D array (H, W) where ~1.0 is Sky and ~0.0 is Ground
             search_radius: pixel radius of the uncertain boundary ribbon (default: adaptive based on image size)
             blur_window: neighborhood window for local color propagation (default: max(31, radius * 4 + 1))
-            edge_alignment: whether to lock boundary to physical image gradients via guided filter (default: True)
-            smooth_radius: subpixel anti-aliasing feather radius (default: 2.0)
+            edge_alignment: whether to lock boundary to physical image gradients via guided filter
+            smooth_radius: subpixel anti-aliasing feather radius
             progress_callback: receives (completed, total) regions on the calling thread,
                 initially with completed=0 after global preparation.
             should_interrupt: optional cancellation check on the calling thread.
@@ -223,9 +227,7 @@ class MaskRefiner:
                 rows = slice(row, row + 128)
                 predicted = pred_rgb[rows]
                 diff_rgb[rows] = np.linalg.norm(rgb[rows] - predicted, axis=-1)
-                pred_lum[rows] = (
-                    0.299 * predicted[..., 0] + 0.587 * predicted[..., 1] + 0.114 * predicted[..., 2]
-                )
+                pred_lum[rows] = rgb_luminance(predicted)
             del predicted, pred_rgb, pred_c, X, X_full
             lum_ratio = lum / np.maximum(pred_lum, 1e-4)
 

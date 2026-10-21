@@ -3,6 +3,7 @@
 from __future__ import annotations
 import logging
 from contextlib import nullcontext
+from startrails.lib.denoise.defaults import DEFAULT_HORIZON_FEATHER_RADIUS
 from startrails.lib.artifacts import ArtifactTransaction
 from pathlib import Path
 from typing import Callable, List, Optional
@@ -39,7 +40,7 @@ class StackDenoise(DenoiseOperation):
         Returns:
             HorizonCompositor or None if interrupted.
         """
-        n_stars = len(getattr(config, "star_images", []))
+        n_stars = len(config.star_images)
         if aligned_sky_frames is not None and len(aligned_sky_frames) > 0:
             n_sky = len(aligned_sky_frames)
             n_ground = len(raw_ground_frames or [])
@@ -59,12 +60,12 @@ class StackDenoise(DenoiseOperation):
             sky_coverages=sky_coverages,
             raw_ground_frames=raw_ground_frames,
             sky_mask=sky_mask,
-            feather_radius=3.0,
+            feather_radius=DEFAULT_HORIZON_FEATHER_RADIUS,
             horizon_denoise_radius=config.horizon_denoise_radius,
             horizon_denoise_eps=config.horizon_denoise_eps,
-            stack_method=getattr(config, "stack_method", "sigma_clipped"),
-            sigma_clip_threshold=getattr(config, "sigma_clip_threshold", 1.2),
-            sigma_clip_iterations=getattr(config, "sigma_clip_iterations", 3),
+            stack_method=config.stack_method,
+            sigma_clip_threshold=config.sigma_clip_threshold,
+            sigma_clip_iterations=config.sigma_clip_iterations,
             use_gpu=config.use_gpu,
             max_workers=config.max_workers,
             progress_callback=_on_frame_progress,
@@ -85,11 +86,11 @@ class StackDenoise(DenoiseOperation):
                 if config.output_path
                 else (Path(config.sky_stack_path).resolve().parent if config.sky_stack_path else Path.cwd())
             )
-            sky_path = Path(config.sky_stack_path).resolve() if config.sky_stack_path else (folder / "sky_stack.tif")
-            ground_path = Path(config.ground_stack_path).resolve() if config.ground_stack_path else (folder / "ground_stack.tif")
+            sky_path = config.artifact_path("sky_stack")
+            ground_path = config.artifact_path("ground_stack")
             base_comp_path = folder / "base_composite.tif"
             output_path = Path(config.output_path).resolve() if config.output_path else (folder / "composite.tif")
-            grad_mask_path = Path(config.gradient_mask_path).resolve() if config.gradient_mask_path else (folder / "gradient_mask.png")
+            grad_mask_path = config.artifact_path("gradient_mask")
             transaction = artifacts or ArtifactTransaction(self.shouldInterrupt)
             compression = config.compress_intermediate_tiffs
             with nullcontext(transaction) if artifacts is not None else transaction:

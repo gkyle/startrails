@@ -44,14 +44,14 @@ class MaskHandler:
     @classmethod
     def load_mask(cls, path: str | Path, shape: Optional[Tuple[int, int]] = None) -> np.ndarray:
         """Load a 2D mask image as float32 array in [0.0, 1.0]."""
-        return cls.load_brush_mask(shape=shape, mask_path=path)
+        return cls.load_brush_mask(shape=shape, mask_path=path, feather_radius=0)
 
     @classmethod
     def load_brush_mask(
         cls,
-        shape: Optional[Tuple[int, int]] = None,
-        mask_path: str | Path = "",
-        feather_radius: int = 0,
+        shape: Optional[Tuple[int, int]],
+        mask_path: str | Path,
+        feather_radius: int,
     ) -> np.ndarray:
         """Load an irregular mask image (mask.png) and optionally resize to match target shape."""
         with Image.open(mask_path) as img:
@@ -104,7 +104,26 @@ class MaskHandler:
         for cov in coverages:
             counts += cov.astype(np.float32)
 
-        warped_fraction = counts / n_frames
+        return cls.compute_gradient_mask_from_counts(
+            counts,
+            n_frames=n_frames,
+            sky_mask=sky_mask,
+            foreground_mask=foreground_mask,
+        )
+
+    @classmethod
+    def compute_gradient_mask_from_counts(
+        cls,
+        counts: np.ndarray,
+        *,
+        n_frames: float,
+        sky_mask: Optional[np.ndarray] = None,
+        foreground_mask: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Compute a gradient mask from accumulated per-pixel frame coverage."""
+        if n_frames <= 0:
+            raise ValueError("n_frames must be positive.")
+        warped_fraction = counts.astype(np.float32, copy=False) / n_frames
 
         if sky_mask is not None:
             sky = sky_mask.astype(np.float32)

@@ -63,7 +63,6 @@ class Ui_DenoiseStackSettings(object):
         self.sigmaThreshold.setMinimum(0.500000000000000)
         self.sigmaThreshold.setMaximum(5.000000000000000)
         self.sigmaThreshold.setSingleStep(0.100000000000000)
-        self.sigmaThreshold.setValue(1.200000000000000)
 
         self.thresholdRow.addWidget(self.sigmaThreshold)
 
@@ -131,7 +130,6 @@ class Ui_DenoiseStackSettings(object):
 "QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
 "QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
 "")
-        self.useGPU.setChecked(True)
 
         self.useGPURow.addWidget(self.useGPU, 0, Qt.AlignmentFlag.AlignRight)
 
@@ -155,7 +153,6 @@ class Ui_DenoiseStackSettings(object):
 "QCheckBox#compressIntermediateTiffs::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
 "QCheckBox#compressIntermediateTiffs::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
 "")
-        self.compressIntermediateTiffs.setChecked(False)
 
         self.compressionRow.addWidget(self.compressIntermediateTiffs, 0, Qt.AlignmentFlag.AlignRight)
 
@@ -173,7 +170,6 @@ class Ui_DenoiseStackSettings(object):
         self.sigmaIterations.setObjectName(u"sigmaIterations")
         self.sigmaIterations.setMinimum(1)
         self.sigmaIterations.setMaximum(10)
-        self.sigmaIterations.setValue(3)
 
         self.iterationsRow.addWidget(self.sigmaIterations)
 

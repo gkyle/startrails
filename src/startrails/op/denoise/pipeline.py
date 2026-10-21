@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable, Optional, Tuple, List
 import numpy as np
 
+from startrails.lib.denoise.defaults import DEFAULT_SKY_DETECTION_DEVICE, DEFAULT_SKY_DETECTION_INPUT_SIZE
 from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.util import imread
 from startrails.op.denoise.base import DenoiseOperation
@@ -44,12 +45,7 @@ class DenoisePipeline(DenoiseOperation):
     def _resolve_refined_mask_export_path(self) -> Optional[Path]:
         if self.config is None or not (self.config.export_refined_mask and self.config.output_path):
             return None
-        out_p = Path(self.config.output_path).resolve()
-        return (
-            Path(self.config.refined_mask_path).resolve()
-            if self.config.refined_mask_path
-            else out_p.parent / f"{out_p.stem}.refined_mask.png"
-        )
+        return self.config.artifact_path("refined_mask")
 
     def _load_base_and_mask(
         self,
@@ -86,7 +82,7 @@ class DenoisePipeline(DenoiseOperation):
             )
 
         if self.config.auto_mask:
-            model_name = self.config.auto_mask_model or "nightstack"
+            model_name = self.config.auto_mask_model
             report(0.18, f"Running auto sky detection ({model_name})...")
             with profiler.measure("2a. Automatic Sky Detection"):
                 detect_op = DetectSky(self.cancel_event, self.cancel_check)
@@ -94,7 +90,8 @@ class DenoisePipeline(DenoiseOperation):
                     base_calibrated,
                     model_type=model_name,
                     model_path=self.config.auto_mask_path,
-                    device="auto" if self.config.use_gpu else "cpu",
+                    device=DEFAULT_SKY_DETECTION_DEVICE if self.config.use_gpu else "cpu",
+                    input_size=DEFAULT_SKY_DETECTION_INPUT_SIZE,
                 )
             if coarse_sky is None or self.shouldInterrupt():
                 raise CancelledError()
@@ -246,7 +243,7 @@ class DenoisePipeline(DenoiseOperation):
         with ArtifactTransaction(self.shouldInterrupt) as transaction:
             self._artifacts = transaction
             try:
-                compositor, sky_coverages = self.stack_base_frames(
+                compositor, _ = self.stack_base_frames(
                     progress_callback=_report,
                     profiler=profiler,
                 )
@@ -261,7 +258,6 @@ class DenoisePipeline(DenoiseOperation):
                     result = compose_op.compose(
                         compositor,
                         self.config,
-                        sky_coverages=sky_coverages,
                         write_output=True,
                         artifacts=self._artifacts,
                     )
@@ -283,6 +279,3 @@ class DenoisePipeline(DenoiseOperation):
             print(summary)
 
         return written_path
-
-
-Pipeline = DenoisePipeline

@@ -4,11 +4,11 @@ from __future__ import annotations
 import os
 from contextlib import contextmanager
 from threading import Event
-from startrails.op.denoise.base import DenoiseOperation
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 
+from startrails.op.denoise.base import DenoiseOperation
 from startrails.lib.file import DenoiseInputFile, OutputFile
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
@@ -23,6 +23,8 @@ from startrails.workflow.base import Workflow
 if TYPE_CHECKING:
     from startrails.app import App
     from startrails.lib.project_denoise import DenoiseProject
+
+ProgressObserver = Callable[[int, int, int, bool, Optional[dict[str, Any]]], None]
 
 
 class DenoiseWorkflow(Workflow):
@@ -86,8 +88,6 @@ class DenoiseWorkflow(Workflow):
     def get_star_files(self) -> List[DenoiseInputFile]:
         return self.project.star_files
 
-    getStarFiles = get_star_files
-
     def add_star_files(self, paths: List[str], clear: bool = False) -> None:
         previous_reference = self.project.get_reference_file()
         if clear:
@@ -99,8 +99,6 @@ class DenoiseWorkflow(Workflow):
         reference_changed = previous_reference is not None and self.project.get_reference_file() is not previous_reference
         self.invalidate_results(reference_changed=clear or reference_changed)
 
-    addStarFiles = add_star_files
-
     def remove_star_file(self, file: DenoiseInputFile) -> None:
         if file in self.project.star_files:
             previous_reference = self.project.get_reference_file()
@@ -110,12 +108,8 @@ class DenoiseWorkflow(Workflow):
             reference_changed = self.project.get_reference_file() is not previous_reference
             self.invalidate_results(reference_changed=reference_changed)
 
-    removeStarFile = remove_star_file
-
     def get_noise_files(self) -> List[DenoiseInputFile]:
         return self.project.noise_files
-
-    getNoiseFiles = get_noise_files
 
     def add_noise_files(self, paths: List[str], clear: bool = False) -> None:
         if clear:
@@ -126,20 +120,13 @@ class DenoiseWorkflow(Workflow):
             )
         self.invalidate_results()
 
-    addNoiseFiles = add_noise_files
-
     def remove_noise_file(self, file: DenoiseInputFile) -> None:
         if file in self.project.noise_files:
             self.project.noise_files.remove(file)
             self.invalidate_results()
 
-    removeNoiseFile = remove_noise_file
-
-
     def get_reference_file(self) -> Optional[DenoiseInputFile]:
         return self.project.get_reference_file()
-
-    getReferenceFile = get_reference_file
 
     def set_reference_file(self, file: DenoiseInputFile) -> None:
         if file is not self.project.get_reference_file():
@@ -163,11 +150,12 @@ class DenoiseWorkflow(Workflow):
     def do_detect_sky(
         self,
         image: np.ndarray,
-        progress_bar: Optional[Any] = None,
-        model_type: str = "nightstack",
-        model_path: Optional[str] = None,
-        device: str = "auto",
-        input_size: int = 1024,
+        progress_bar: Optional[ProgressObserver] = None,
+        *,
+        model_type: str,
+        model_path: Optional[str],
+        device: str,
+        input_size: int,
     ) -> Optional[np.ndarray]:
         """Run autonomous neural sky detection."""
         detector = self._new_operation(DetectSky)
@@ -193,10 +181,11 @@ class DenoiseWorkflow(Workflow):
         self,
         image: np.ndarray,
         coarse_mask: np.ndarray,
-        progress_bar: Optional[Any] = None,
-        search_radius: Optional[int] = None,
-        erosion_pixels: int = 5,
-        foliage_protection: bool = True,
+        progress_bar: Optional[ProgressObserver] = None,
+        *,
+        search_radius: Optional[int],
+        erosion_pixels: int,
+        foliage_protection: bool,
     ) -> Optional[np.ndarray]:
         """Refine celestial sky mask along high-frequency terrain boundaries."""
         refiner = self._new_operation(RefineMask)
@@ -232,7 +221,7 @@ class DenoiseWorkflow(Workflow):
         config: Optional[DenoiseProject] = None,
         warp_frames: bool = False,
         sky_mask: Optional[np.ndarray] = None,
-        progress_bar: Optional[Any] = None,
+        progress_bar: Optional[ProgressObserver] = None,
     ) -> Optional[AlignResult]:
         """Detect and align stars via projective homography estimation."""
         cfg = config or self.get_config()
@@ -299,12 +288,12 @@ class DenoiseWorkflow(Workflow):
         candidates = [
             (final_comp, "Final Composite"),
             (Path(self.project.output_path).resolve() if getattr(self.project, "output_path", None) else (out_dir / f"{stem}.tif").resolve(), "Composite"),
-            (Path(self.project.sky_stack_path).resolve() if getattr(self.project, "sky_stack_path", None) else (out_dir / "sky_stack.tif").resolve(), "Sky Stack"),
-            (Path(self.project.ground_stack_path).resolve() if getattr(self.project, "ground_stack_path", None) else (out_dir / "ground_stack.tif").resolve(), "Ground Stack"),
+            (self.project.artifact_path("sky_stack"), "Sky Stack"),
+            (self.project.artifact_path("ground_stack"), "Ground Stack"),
             ((out_dir / "base_composite.tif").resolve(), "Base Stack"),
-            (Path(self.project.gradient_mask_path).resolve() if getattr(self.project, "gradient_mask_path", None) else (out_dir / "gradient_mask.png").resolve(), "Gradient Mask"),
-            (Path(self.project.refined_mask_path).resolve() if getattr(self.project, "refined_mask_path", None) else (out_dir / "refined_mask.png").resolve(), "Refined Mask"),
-            (Path(self.project.mask_path).resolve() if getattr(self.project, "mask_path", None) else (out_dir / "mask.png").resolve(), "Sky Mask"),
+            (self.project.artifact_path("gradient_mask"), "Gradient Mask"),
+            (self.project.artifact_path("refined_mask"), "Refined Mask"),
+            (self.project.artifact_path("mask"), "Sky Mask"),
         ]
 
         for cand_path, role in candidates:
@@ -352,7 +341,7 @@ class DenoiseWorkflow(Workflow):
         self,
         config: Optional[DenoiseProject] = None,
         sky_mask: Optional[np.ndarray] = None,
-        progress_bar: Optional[Any] = None,
+        progress_bar: Optional[ProgressObserver] = None,
         aligned_sky_frames: Optional[List[np.ndarray]] = None,
         sky_coverages: Optional[List[np.ndarray]] = None,
         raw_ground_frames: Optional[List[np.ndarray]] = None,
@@ -362,11 +351,11 @@ class DenoiseWorkflow(Workflow):
             out_dir = self.project.get_output_dir()
             out_dir.mkdir(parents=True, exist_ok=True)
             if not cfg.sky_stack_path:
-                cfg.sky_stack_path = out_dir / "sky_stack.tif"
+                cfg.sky_stack_path = cfg.artifact_path("sky_stack")
             if not cfg.ground_stack_path:
-                cfg.ground_stack_path = out_dir / "ground_stack.tif"
+                cfg.ground_stack_path = cfg.artifact_path("ground_stack")
             if not cfg.gradient_mask_path:
-                cfg.gradient_mask_path = out_dir / "gradient_mask.png"
+                cfg.gradient_mask_path = cfg.artifact_path("gradient_mask")
             if not cfg.output_path:
                 stem = self._get_project_stem()
                 cfg.output_path = out_dir / f"{stem}.tif"
@@ -406,8 +395,7 @@ class DenoiseWorkflow(Workflow):
         self,
         compositor: HorizonCompositor,
         config: Optional[DenoiseProject] = None,
-        progress_bar: Optional[Any] = None,
-        sky_coverages: Optional[List[np.ndarray]] = None,
+        progress_bar: Optional[ProgressObserver] = None,
         write_output: bool = True,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
         """Blend sky and ground stacks with seamless horizon band smoothing."""
@@ -419,7 +407,7 @@ class DenoiseWorkflow(Workflow):
                 stem = self._get_project_stem()
                 cfg.output_path = out_dir / f"{stem}_final.tif"
             if not cfg.gradient_mask_path:
-                cfg.gradient_mask_path = out_dir / "gradient_mask.png"
+                cfg.gradient_mask_path = cfg.artifact_path("gradient_mask")
 
         composer = self._new_operation(ComposeHorizon)
         if progress_bar is not None:
@@ -429,7 +417,6 @@ class DenoiseWorkflow(Workflow):
             result = composer.compose(
                 compositor=compositor,
                 config=cfg,
-                sky_coverages=sky_coverages,
                 write_output=write_output,
             )
             if result and result[1] and hasattr(self.project, "get_output_dir"):
@@ -446,7 +433,7 @@ class DenoiseWorkflow(Workflow):
     def do_pipeline(
         self,
         config: Optional[DenoiseProject] = None,
-        progress_bar: Optional[Any] = None,
+        progress_bar: Optional[ProgressObserver] = None,
         progress_callback: Optional[Callable[[float, str], None]] = None,
     ) -> Path:
         cfg = config or self.get_config()

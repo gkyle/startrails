@@ -21,9 +21,9 @@ class RefineMask(DenoiseOperation):
         self,
         image_or_path: Union[np.ndarray, str, Path],
         rough_mask: np.ndarray,
-        search_radius: Optional[int] = None,
-        erosion_pixels: int = 5,
-        foliage_protection: bool = True,
+        search_radius: Optional[int],
+        erosion_pixels: int,
+        foliage_protection: bool,
         export_path: Optional[Union[str, Path]] = None,
     ) -> Optional[np.ndarray]:
         """Refine sky mask against base image.

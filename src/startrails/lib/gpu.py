@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 # Lazy global detection for CuPy
 _CUPY_AVAILABLE: Optional[bool] = None
 _CUPY_MODULE: Any = None
+_GPU_MEMORY_TARGET_FRACTION = 0.35
+_GPU_CHUNK_ROW_MIN = 128
+_GPU_CHUNK_ROW_MAX = 512
+_DEFAULT_CPU_CHUNK_ROWS = 256
+_BYTES_PER_GIB = 1024**3
 
 
 def is_cupy_available() -> bool:
@@ -63,7 +68,7 @@ def free_gpu_memory() -> None:
 
 def to_gb(bytes_val: float | int) -> float:
     """Convert bytes to gigabytes."""
-    return bytes_val / (1024 * 1024 * 1024)
+    return bytes_val / _BYTES_PER_GIB
 
 
 # Backwards compatibility alias for module-level function
@@ -199,8 +204,8 @@ class GPUInfo:
             "name": device_name,
             "total_bytes": total_bytes,
             "free_bytes": free_bytes,
-            "total_gb": total_bytes / (1024**3),
-            "free_gb": free_bytes / (1024**3),
+            "total_gb": total_bytes / _BYTES_PER_GIB,
+            "free_gb": free_bytes / _BYTES_PER_GIB,
         }
 
     @staticmethod
@@ -226,7 +231,7 @@ def get_optimal_chunk_rows(
     num_frames: int,
     channels: int = 3,
     use_gpu: bool = True,
-    default_cpu_rows: int = 256,
+    default_cpu_rows: int = _DEFAULT_CPU_CHUNK_ROWS,
 ) -> int:
     """Calculate the optimal vertical chunk slice size based on available VRAM or RAM."""
     if not use_gpu or not is_cupy_available():
@@ -240,7 +245,7 @@ def get_optimal_chunk_rows(
     if bytes_per_row <= 0:
         return min(height, default_cpu_rows)
 
-    target_vram = info["free_bytes"] * 0.35
+    target_vram = info["free_bytes"] * _GPU_MEMORY_TARGET_FRACTION
     chunk_rows = int(target_vram // bytes_per_row)
-    chunk_rows = max(128, min(height, 512, chunk_rows))
+    chunk_rows = max(_GPU_CHUNK_ROW_MIN, min(height, _GPU_CHUNK_ROW_MAX, chunk_rows))
     return chunk_rows

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import copy
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 import hashlib
 import json
 import os
@@ -11,42 +11,24 @@ from typing import Any, Dict, List, Optional
 import jsonpickle
 import numpy as np
 
+from startrails.lib.denoise.defaults import DENOISE_DEFAULTS, DenoiseSettings
 from startrails.lib.file import DenoiseInputFile, Unpickle
 from startrails.lib.project_type import get_project_output_dir, DENOISE_EXT
 
-
-@dataclass
-class DenoiseSettings:
-    """Authoritative defaults for persisted and runtime denoise settings."""
-    jpeg_quality: int = 95
-    jpeg_optimize: bool = True
-    mask_search_radius: Optional[int] = None
-    mask_erosion_pixels: int = 5
-    mask_foliage_protection: bool = True
-    refine_sky_mask: bool = False
-    auto_mask: bool = False
-    auto_mask_model: str = "nightstack"
-    auto_mask_path: Optional[str] = None
-    export_refined_mask: bool = True
-    export_gradient_mask: bool = True
-    taper_mask_edges: bool = True
-    mask_taper_pixels: int = 5
-    enable_horizon_corrections: bool = True
-    denoise_horizon_band: bool = True
-    horizon_denoise_radius: int = 5
-    horizon_denoise_eps: float = 1e-3
-    horizon_denoise_strength: float = 0.2
-    horizon_color_denoise_strength: float = 1.0
-    horizon_value_denoise_strength: float = 0.2
-    horizon_blend_percent: float = 60.0
-    horizon_blur_radius: float = 2.0
-    stack_method: str = "sigma_clipped"
-    sigma_clip_threshold: float = 1.2
-    sigma_clip_iterations: int = 3
-    compress_intermediate_tiffs: bool = False
-    use_gpu: bool = True
-    max_workers: Optional[int] = None
-    verbose: bool = False
+_ARTIFACT_FILENAMES = {
+    "mask": "mask.png",
+    "refined_mask": "refined_mask.png",
+    "gradient_mask": "gradient_mask.png",
+    "sky_stack": "sky_stack.tif",
+    "ground_stack": "ground_stack.tif",
+}
+_ARTIFACT_PATH_FIELDS = {
+    "mask": "mask_path",
+    "refined_mask": "refined_mask_path",
+    "gradient_mask": "gradient_mask_path",
+    "sky_stack": "sky_stack_path",
+    "ground_stack": "ground_stack_path",
+}
 
 
 class DenoiseProject(Unpickle):
@@ -122,7 +104,7 @@ class DenoiseProject(Unpickle):
         self.homographies: Dict[Any, Any] = dict(homographies) if homographies is not None else {}
 
         # Settings
-        default_settings = asdict(DenoiseSettings())
+        default_settings = asdict(DENOISE_DEFAULTS)
         for name, default_val in default_settings.items():
             setattr(self, name, kwargs.pop(name, default_val))
 
@@ -259,6 +241,20 @@ class DenoiseProject(Unpickle):
         """Resolve the authoritative output directory for this project."""
         return get_project_output_dir(self.project_file)
 
+    def artifact_path(self, artifact: str) -> Path:
+        """Resolve a named denoise artifact using the project output directory."""
+        if artifact not in _ARTIFACT_FILENAMES:
+            raise ValueError(f"Unknown denoise artifact: {artifact}")
+        field = _ARTIFACT_PATH_FIELDS[artifact]
+        value = getattr(self, field, None)
+        if artifact == "mask" and getattr(self, "mask_invalidated", False):
+            value = None
+        return (
+            Path(value).resolve()
+            if value
+            else (self.get_output_dir() / _ARTIFACT_FILENAMES[artifact]).resolve()
+        )
+
     def relocate(self, project_file: str) -> None:
         """Rebase owned artifacts; imported masks and external exports remain references."""
         previous_dir = self.get_output_dir()
@@ -338,13 +334,13 @@ class DenoiseProject(Unpickle):
         out_dir = self.get_output_dir()
         stem = self.get_project_stem()
         mask_p = Path(self.mask_path) if self.mask_path and not self.mask_invalidated else None
-        if mask_p is None and not self.mask_invalidated and (out_dir / "mask.png").exists():
-            mask_p = out_dir / "mask.png"
+        if mask_p is None and not self.mask_invalidated and self.artifact_path("mask").exists():
+            mask_p = self.artifact_path("mask")
 
-        sky_stack_p = out_dir / "sky_stack.tif"
-        ground_stack_p = out_dir / "ground_stack.tif"
-        refined_mask_p = out_dir / "refined_mask.png"
-        gradient_mask_p = out_dir / "gradient_mask.png"
+        sky_stack_p = self.artifact_path("sky_stack")
+        ground_stack_p = self.artifact_path("ground_stack")
+        refined_mask_p = self.artifact_path("refined_mask")
+        gradient_mask_p = self.artifact_path("gradient_mask")
         output_p = out_dir / f"{stem}.tif"
 
         snapshot = copy.copy(self)
@@ -364,16 +360,19 @@ class DenoiseProject(Unpickle):
         return snapshot
 
     @classmethod
-    def ensure_default_project(cls, path: str = "projects/default.proj_denoise") -> DenoiseProject:
+    def ensure_default_project(cls, path: str = f"projects/default{DENOISE_EXT}") -> DenoiseProject:
         """Create and persist the default starter denoise project file if absent."""
         if os.path.exists(path):
             try:
                 with open(path, "r") as f:
-                    proj = jsonpickle.decode(f.read())
-                    if isinstance(proj, DenoiseProject):
-                        return proj
-            except Exception:
-                pass
+                    raw_project = f.read()
+                json.loads(raw_project)
+                proj = jsonpickle.decode(raw_project)
+            except (OSError, ValueError, TypeError) as error:
+                raise ValueError(f"Could not load denoise project {path}: {error}") from error
+            if isinstance(proj, DenoiseProject):
+                return proj
+            raise ValueError(f"File {path} is not a denoise project.")
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         default_proj = cls(project_file=path)
         with open(path, "w+") as f:

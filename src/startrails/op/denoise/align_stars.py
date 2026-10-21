@@ -75,7 +75,7 @@ class AlignStars(DenoiseOperation):
     def align(
         self,
         config: DenoiseProject,
-        warp_frames: bool = False,
+        warp_frames: bool,
         sky_mask: Optional[np.ndarray] = None,
         base_calibrated: Optional[np.ndarray] = None,
         calibrate_fn: Optional[Callable[[np.ndarray], np.ndarray]] = None,

@@ -5,6 +5,8 @@ from typing import Tuple
 import cv2
 import numpy as np
 
+from startrails.lib.denoise.defaults import DENOISE_DEFAULTS
+
 
 class ImageWarper:
     """Applies affine or perspective transformations with subpixel precision."""
@@ -113,7 +115,7 @@ class ImageWarper:
     def compute_tapered_mask(
         cls,
         binary_mask: np.ndarray,
-        taper_radius: float = 5.0,
+        taper_radius: float = DENOISE_DEFAULTS.mask_taper_pixels,
     ) -> np.ndarray:
         """Compute soft-tapered coverage weights from a binary coverage mask."""
         mask_u8 = (binary_mask > 0).astype(np.uint8)

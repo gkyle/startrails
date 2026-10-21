@@ -6,7 +6,20 @@ import cv2
 import numpy
 
 
-IMWRITE_OPTIONS = [cv2.IMWRITE_JPEG_QUALITY, 100]
+DEFAULT_IMAGE_WRITE_JPEG_QUALITY = 100
+IMWRITE_OPTIONS = [cv2.IMWRITE_JPEG_QUALITY, DEFAULT_IMAGE_WRITE_JPEG_QUALITY]
+_BT601_RED_WEIGHT = 0.299
+_BT601_GREEN_WEIGHT = 0.587
+_BT601_BLUE_WEIGHT = 0.114
+
+
+def rgb_luminance(image: numpy.ndarray) -> numpy.ndarray:
+    """Return BT.601 luma for an RGB array."""
+    return (
+        _BT601_RED_WEIGHT * image[..., 0]
+        + _BT601_GREEN_WEIGHT * image[..., 1]
+        + _BT601_BLUE_WEIGHT * image[..., 2]
+    )
 
 
 def normalize_image(img):
@@ -58,7 +71,7 @@ def imwrite(
     outfile: Union[str, Path],
     img: numpy.ndarray,
     convertBGR: bool = False,
-    quality: int = 100,
+    quality: int = DEFAULT_IMAGE_WRITE_JPEG_QUALITY,
     compression: bool = True,
     optimize: bool = False,
     tiff_uint8_as_uint16: bool = False,
@@ -76,12 +89,9 @@ def imwrite(
     Returns:
         Path to the saved image file.
     """
-    try:
-        if not isinstance(img, numpy.ndarray):  # convert cupy array to numpy
-            import cupy as cp
-            img = cp.asnumpy(img)
-    except:
-        pass
+    if not isinstance(img, numpy.ndarray):  # convert cupy array to numpy
+        import cupy as cp
+        img = cp.asnumpy(img)
 
     path = Path(outfile).resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -150,4 +160,3 @@ def imwrite(
             _do_write(alt_path)
             return alt_path
         raise
-

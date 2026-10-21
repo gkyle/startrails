@@ -12,9 +12,11 @@ from typing import Callable, Optional, Sequence
 from zipfile import BadZipFile
 import numpy as np
 
+from startrails.lib.denoise.defaults import DENOISE_DEFAULTS
 from startrails.lib.gpu import free_gpu_memory, get_array_module
 from startrails.lib.image_io import imread, normalize_image
 from startrails.lib.denoise.stacking.disk_buffer import DiskFrameBuffer, read_frame_chunk
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +28,7 @@ class DarkCalibrator:
     def compute_master_dark_from_paths(
         cls,
         paths: Sequence[Path | str],
-        use_gpu: bool = True,
+        use_gpu: bool = DENOISE_DEFAULTS.use_gpu,
         scratch_dir: Optional[Path | str] = None,
         should_interrupt: Optional[Callable[[], bool]] = None,
         cache_dir: Optional[Path | str] = None,
@@ -115,7 +117,7 @@ class DarkCalibrator:
     def compute_master_dark(
         cls,
         darks: Sequence[np.ndarray] | np.ndarray | DiskFrameBuffer,
-        use_gpu: bool = True,
+        use_gpu: bool,
         chunk_rows: int = 1024,
         should_interrupt: Optional[Callable[[], bool]] = None,
     ) -> np.ndarray:

@@ -8,6 +8,7 @@ from PySide6.QtGui import (QPainter, QPaintEvent, QWheelEvent, QMouseEvent,
                            QImageReader, QCursor, qRgba)
 from PySide6.QtWidgets import QLabel, QWidget
 
+from startrails.lib.denoise.defaults import DEFAULT_MASK_BRUSH_RADIUS
 from startrails.lib.file import File, InputFile, OutputFile
 from startrails.ui.signals import Signals, getSignals
 from startrails.ui.theme import themed_color
@@ -50,7 +51,7 @@ class CanvasLabel(QLabel):
 
         # Denoise mask brush editing state
         self.maskEditMode: bool = False
-        self.brushRadius: int = 25
+        self.brushRadius: int = DEFAULT_MASK_BRUSH_RADIUS
         self.brushMode: str = "paint"
         self._mask_array: Optional[np.ndarray] = None  # uint8 (H, W) in [0, 255]
         self._mask_qimage: Optional[QImage] = None

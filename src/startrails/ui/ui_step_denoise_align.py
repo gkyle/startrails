@@ -112,7 +112,6 @@ class Ui_DenoiseAlignSettings(object):
 "QCheckBox#useGPU::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
 "QCheckBox#useGPU::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
 "")
-        self.useGPU.setChecked(True)
 
         self.useGPURow.addWidget(self.useGPU, 0, Qt.AlignmentFlag.AlignRight)
 

@@ -5,7 +5,7 @@ import logging
 from contextlib import nullcontext
 from startrails.lib.artifacts import ArtifactTransaction
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple
 import numpy as np
 
 from startrails.lib.util import imwrite
@@ -28,8 +28,8 @@ class ComposeHorizon(DenoiseOperation):
         self,
         compositor: HorizonCompositor,
         config: DenoiseProject,
-        sky_coverages: Optional[List[np.ndarray]] = None,
-        write_output: bool = True,
+        *,
+        write_output: bool,
         artifacts: Optional[ArtifactTransaction] = None,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
         """Evaluate horizon composite and optionally write final output to disk.
@@ -71,9 +71,7 @@ class ComposeHorizon(DenoiseOperation):
 
                 if config.export_gradient_mask and compositor.gradient_mask is not None:
                     grad_mask_out = (
-                        Path(config.gradient_mask_path).resolve()
-                        if config.gradient_mask_path
-                        else output_path.parent / f"{output_path.stem}.gradient_mask.png"
+                        config.artifact_path("gradient_mask")
                     )
                     gradient_mask = compositor.gradient_mask
                     MaskHandler.save_mask(gradient_mask, transaction.stage(grad_mask_out))

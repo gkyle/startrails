@@ -10,6 +10,12 @@ from typing import Any, Optional, Tuple
 import cv2
 import numpy as np
 
+from startrails.lib.denoise.defaults import (
+    DEFAULT_SKY_DETECTION_DEVICE,
+    DEFAULT_SKY_DETECTION_INPUT_SIZE,
+    DENOISE_DEFAULTS,
+)
+
 logger = logging.getLogger(__name__)
 
 # Global cache for loaded model weights
@@ -38,10 +44,10 @@ class AutoSkyDetector:
     def detect(
         cls,
         image: np.ndarray,
-        model_type: str = "nightstack",
+        model_type: str = DENOISE_DEFAULTS.auto_mask_model,
         model_path: Optional[str] = None,
-        device: str = "auto",
-        input_size: int = 1024,
+        device: str = DEFAULT_SKY_DETECTION_DEVICE,
+        input_size: int = DEFAULT_SKY_DETECTION_INPUT_SIZE,
     ) -> np.ndarray:
         """Segment celestial sky in the input image.
 
@@ -50,7 +56,7 @@ class AutoSkyDetector:
             model_type: "nightstack" (default) or "segformer"
             model_path: Optional custom path or HF model id
             device: "auto", "cuda", or "cpu"
-            input_size: Maximum dimension to downsample image during neural inference (default: 1024)
+            input_size: Maximum dimension to downsample image during neural inference
 
         Returns:
             sky_confidence: 2D float32 array (H, W) in [0.0, 1.0]
@@ -117,14 +123,14 @@ class AutoSkyDetector:
     @classmethod
     def _get_segformer_model(
         cls,
-        model_path: Optional[str] = None,
-        device_str: str = "auto",
+        model_path: str,
+        device_str: str,
     ) -> Tuple[Any, Any, str, int]:
         """Load and cache SegFormer model and processor."""
         import torch
         from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 
-        target_path = model_path or cls.DEFAULT_NIGHT_MODEL
+        target_path = model_path
         target_p = Path(target_path)
         if target_p.is_file():
             target_path = str(target_p.parent)
@@ -158,9 +164,9 @@ class AutoSkyDetector:
     def _detect_segformer(
         cls,
         rgb: np.ndarray,
-        model_path: Optional[str] = None,
-        device: str = "auto",
-        input_size: int = 1024,
+        model_path: str,
+        device: str,
+        input_size: int,
     ) -> np.ndarray:
         """Inference with SegFormer."""
         import torch
@@ -184,21 +190,8 @@ class AutoSkyDetector:
                 logits = outputs.logits
                 probs_feat = torch.softmax(logits, dim=1)[0, sky_idx].float().cpu().numpy()
                 probs = cv2.resize(probs_feat, (w, h), interpolation=cv2.INTER_LINEAR)
+        finally:
             if dev == "cuda" and torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        except Exception as err:
-            if dev == "cuda":
-                logger.warning(
-                    f"CUDA neural inference failed ({err}). Clearing CUDA cache and retrying on CPU to guarantee neural mask precision..."
-                )
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                return cls._detect_segformer(
-                    rgb,
-                    model_path=model_path,
-                    device="cpu",
-                    input_size=input_size,
-                )
-            raise
 
         return np.clip(probs, 0.0, 1.0).astype(np.float32)

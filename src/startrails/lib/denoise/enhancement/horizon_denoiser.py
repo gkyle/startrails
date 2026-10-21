@@ -5,6 +5,8 @@ from typing import Optional
 import cv2
 import numpy as np
 
+from startrails.lib.denoise.defaults import DENOISE_DEFAULTS
+
 
 class HorizonDenoiser:
     """Adaptive edge-preserving noise reduction for under-sampled sky horizon transition bands."""
@@ -14,8 +16,8 @@ class HorizonDenoiser:
         cls,
         guide: np.ndarray,
         src: np.ndarray,
-        radius: int = 5,
-        eps: float = 1e-3,
+        radius: int = DENOISE_DEFAULTS.horizon_denoise_radius,
+        eps: float = DENOISE_DEFAULTS.horizon_denoise_eps,
         prefilter_guide: bool = True,
         guide_bilateral_d: int = 5,
         guide_bilateral_sigma_color: float = 0.08,

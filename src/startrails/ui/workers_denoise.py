@@ -41,13 +41,13 @@ class HorizonOverlayWorker(QThread):
             return
         try:
             patches = self.compositor.composite_patches(
-                horizon_blend_percent=self.params.get("blend", 60.0),
-                horizon_denoise_strength=self.params.get("denoise_strength", 0.2),
-                denoise_enabled=self.params.get("denoise_enabled", True),
-                horizon_blur_radius=self.params.get("blur_radius", 2.0),
-                enable_corrections=self.params.get("enable_corrections", True),
-                horizon_color_denoise_strength=self.params.get("color_denoise"),
-                horizon_value_denoise_strength=self.params.get("value_denoise"),
+                horizon_blend_percent=self.params["blend"],
+                horizon_denoise_strength=self.params["denoise_strength"],
+                denoise_enabled=self.params["denoise_enabled"],
+                horizon_blur_radius=self.params["blur_radius"],
+                enable_corrections=self.params["enable_corrections"],
+                horizon_color_denoise_strength=self.params["color_denoise"],
+                horizon_value_denoise_strength=self.params["value_denoise"],
                 cancel_check=self.is_cancelled,
             )
             if self._is_cancelled or patches is None:
@@ -92,13 +92,13 @@ class FinalCompositeSaveWorker(QThread):
             return
         try:
             full_img = self.compositor.composite(
-                horizon_blend_percent=self.params.get("blend", 60.0),
-                horizon_denoise_strength=self.params.get("denoise_strength", 0.2),
-                denoise_enabled=self.params.get("denoise_enabled", True),
-                horizon_blur_radius=self.params.get("blur_radius", 2.0),
-                enable_corrections=self.params.get("enable_corrections", True),
-                horizon_color_denoise_strength=self.params.get("color_denoise"),
-                horizon_value_denoise_strength=self.params.get("value_denoise"),
+                horizon_blend_percent=self.params["blend"],
+                horizon_denoise_strength=self.params["denoise_strength"],
+                denoise_enabled=self.params["denoise_enabled"],
+                horizon_blur_radius=self.params["blur_radius"],
+                enable_corrections=self.params["enable_corrections"],
+                horizon_color_denoise_strength=self.params["color_denoise"],
+                horizon_value_denoise_strength=self.params["value_denoise"],
                 cancel_check=self.is_cancelled,
             )
             if self._is_cancelled or full_img is None:

@@ -16,6 +16,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from startrails.lib.denoise.defaults import (
+    DEFAULT_HORIZON_FEATHER_RADIUS,
+    DEFAULT_SKY_DETECTION_DEVICE,
+    DEFAULT_SKY_DETECTION_INPUT_SIZE,
+)
 from startrails.lib.file import File, DenoiseInputFile, OutputFile
 from startrails.ui.file_manager import FileSection
 from startrails.ui.progress import ProgressBarUpdater
@@ -524,15 +529,15 @@ class DenoiseView(ModeView):
         )
 
     def _horizon_params(self) -> dict:
-        vals = self.tune_settings.values() if self.tune_settings else {}
+        vals = self.tune_settings.values() if self.tune_settings else vars(self._project)
         return {
-            "blend": vals.get("horizon_blend_percent", 60.0),
-            "blur_radius": vals.get("horizon_blur_radius", 2.0),
-            "denoise_strength": vals.get("horizon_denoise_strength", 0.2),
-            "denoise_enabled": vals.get("denoise_horizon_band", True),
-            "enable_corrections": vals.get("enable_horizon_corrections", True),
-            "color_denoise": vals.get("horizon_color_denoise_strength", 1.0),
-            "value_denoise": vals.get("horizon_value_denoise_strength", 0.2),
+            "blend": vals["horizon_blend_percent"],
+            "blur_radius": vals["horizon_blur_radius"],
+            "denoise_strength": vals["horizon_denoise_strength"],
+            "denoise_enabled": vals["denoise_horizon_band"],
+            "enable_corrections": vals["enable_horizon_corrections"],
+            "color_denoise": vals["horizon_color_denoise_strength"],
+            "value_denoise": vals["horizon_value_denoise_strength"],
         }
 
     def _schedule_horizon_tuning(self, save: bool = True) -> None:
@@ -681,7 +686,7 @@ class DenoiseView(ModeView):
             return None
         path = project.mask_path
         if path is None:
-            candidate = project.get_output_dir() / "mask.png"
+            candidate = project.artifact_path("mask")
             path = str(candidate) if candidate.is_file() else None
         if path is None or not Path(path).is_file():
             return None
@@ -697,8 +702,8 @@ class DenoiseView(ModeView):
             return None
         proj = getattr(self.app.workflow, "project", None)
         out_dir = proj.get_output_dir()
-        sky_p = Path(proj.sky_stack_path) if getattr(proj, "sky_stack_path", None) else (out_dir / "sky_stack.tif")
-        ground_p = Path(proj.ground_stack_path) if getattr(proj, "ground_stack_path", None) else (out_dir / "ground_stack.tif")
+        sky_p = proj.artifact_path("sky_stack")
+        ground_p = proj.artifact_path("ground_stack")
         try:
             from startrails.lib.util import imread
             from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
@@ -710,7 +715,7 @@ class DenoiseView(ModeView):
             if mask is None:
                 mask = np.ones((h, w), dtype=np.float32)
 
-            grad_p = Path(proj.gradient_mask_path) if getattr(proj, "gradient_mask_path", None) else (out_dir / "gradient_mask.png")
+            grad_p = proj.artifact_path("gradient_mask")
             if grad_p.exists():
                 from startrails.lib.denoise.mask import MaskHandler
                 gradient_mask = MaskHandler.load_mask(grad_p)
@@ -744,9 +749,9 @@ class DenoiseView(ModeView):
                 ground_stack=ground_stack,
                 gradient_mask=gradient_mask,
                 sky_mask=mask,
-                feather_radius=3.0,
-                denoise_radius=getattr(cfg, "horizon_denoise_radius", 5),
-                denoise_eps=getattr(cfg, "horizon_denoise_eps", 1e-3),
+                feather_radius=DEFAULT_HORIZON_FEATHER_RADIUS,
+                denoise_radius=cfg.horizon_denoise_radius,
+                denoise_eps=cfg.horizon_denoise_eps,
             )
         except Exception as e:
             print(f"Could not construct compositor from disk stacks: {e}")
@@ -757,7 +762,7 @@ class DenoiseView(ModeView):
         if proj and hasattr(proj, "get_output_dir"):
             out_dir = proj.get_output_dir()
             out_dir.mkdir(parents=True, exist_ok=True)
-            return out_dir / "mask.png"
+            return proj.artifact_path("mask")
         ref = self.app.workflow.get_reference_file()
         if ref and getattr(ref, "path", None):
             p = Path(ref.path)
@@ -854,12 +859,12 @@ class DenoiseView(ModeView):
         # 1. Immediately ensure the canvas is showing the reference image
         self.show_file(ref)
 
-        vals = self.sky_settings.values() if self.sky_settings else {}
-        search_radius = vals.get("mask_search_radius")
-        erosion_pixels = vals.get("mask_erosion_pixels", 5)
+        vals = self.sky_settings.values() if self.sky_settings else vars(self._project)
+        search_radius = vals["mask_search_radius"]
+        erosion_pixels = vals["mask_erosion_pixels"]
         foliage_protection = self._project.mask_foliage_protection
         model_path = self._project.auto_mask_path
-        device = "auto" if self._project.use_gpu else "cpu"
+        device = DEFAULT_SKY_DETECTION_DEVICE if self._project.use_gpu else "cpu"
 
         generation = self._generation
 
@@ -888,9 +893,10 @@ class DenoiseView(ModeView):
                 coarse_mask = self.app.workflow.do_detect_sky(
                     ref.path,
                     progress_bar=on_detect_tick,
-                    model_type=vals.get("auto_mask_model", "nightstack"),
+                    model_type=vals["auto_mask_model"],
                     model_path=model_path,
                     device=device,
+                    input_size=DEFAULT_SKY_DETECTION_INPUT_SIZE,
                 )
                 if coarse_mask is None:
                     return
@@ -924,12 +930,10 @@ class DenoiseView(ModeView):
         ref = self.app.workflow.get_reference_file()
         if ref is None:
             return
-        vals = self.sky_settings.values() if self.sky_settings else {}
-        search_radius = vals.get("mask_search_radius")
-        erosion_pixels = vals.get("mask_erosion_pixels", 5)
+        vals = self.sky_settings.values() if self.sky_settings else vars(self._project)
+        search_radius = vals["mask_search_radius"]
+        erosion_pixels = vals["mask_erosion_pixels"]
         foliage_protection = self._project.mask_foliage_protection
-        model_path = self._project.auto_mask_path
-        device = "auto" if self._project.use_gpu else "cpu"
 
         self.show_file(ref)
 
@@ -1018,7 +1022,7 @@ class DenoiseView(ModeView):
         if config_snapshot is None:
             return
 
-        vals = self.align_settings.values() if self.align_settings else {}
+        vals = self.align_settings.values() if self.align_settings else vars(config_snapshot)
 
         generation = self._generation
 
@@ -1032,7 +1036,7 @@ class DenoiseView(ModeView):
                 result_guard=self._result_guard(generation),
             )
             cfg = config_snapshot
-            cfg.use_gpu = vals.get("use_gpu", True)
+            cfg.use_gpu = vals["use_gpu"]
 
             result = self.app.workflow.do_align_stars(
                 config=cfg,
@@ -1060,7 +1064,7 @@ class DenoiseView(ModeView):
         if config_snapshot is None:
             return
 
-        vals = self.stack_settings.values() if self.stack_settings else {}
+        vals = self.stack_settings.values() if self.stack_settings else vars(config_snapshot)
         has_alignment = self.app.workflow.has_cached_alignment(config_snapshot)
         needs_alignment = not has_alignment
         n_stars = len(stars)
@@ -1072,11 +1076,11 @@ class DenoiseView(ModeView):
 
         def work():
             cfg = config_snapshot
-            cfg.stack_method = vals.get("stack_method", "sigma_clipped")
-            cfg.sigma_clip_threshold = vals.get("sigma_clip_threshold", 1.2)
-            cfg.sigma_clip_iterations = vals.get("sigma_clip_iterations", 3)
-            cfg.compress_intermediate_tiffs = vals.get("compress_intermediate_tiffs", False)
-            cfg.use_gpu = vals.get("use_gpu", True)
+            cfg.stack_method = vals["stack_method"]
+            cfg.sigma_clip_threshold = vals["sigma_clip_threshold"]
+            cfg.sigma_clip_iterations = vals["sigma_clip_iterations"]
+            cfg.compress_intermediate_tiffs = vals["compress_intermediate_tiffs"]
+            cfg.use_gpu = vals["use_gpu"]
 
             if needs_alignment:
                 align_updater = ProgressBarUpdater(
@@ -1189,7 +1193,6 @@ class DenoiseView(ModeView):
             return
         workflow = self.app.workflow
         compositor = self.last_compositor
-        coverages = self.last_align_result.sky_coverages if self.last_align_result else None
         generation = self._generation
         self._cancel_background_jobs()
 
@@ -1201,7 +1204,7 @@ class DenoiseView(ModeView):
                 result_guard=self._result_guard(generation),
             )
             result = workflow.do_compose_horizon(
-                compositor, config=config, progress_bar=updater.tick, sky_coverages=coverages,
+                compositor, config=config, progress_bar=updater.tick,
             )
             if result is None:
                 return
