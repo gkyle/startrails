@@ -5,6 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtTest import QTest
 from support import QtTestCase
 from startrails.lib.file import InputFile
+from startrails.lib.project_denoise import DenoiseProject
 from startrails.ui.steps import DetectSettings, FillSettings, StackSettings, StepCard
 from startrails.ui.steps_denoise import (
     DenoiseAlignSettings,
@@ -57,9 +58,38 @@ class SettingsTests(QtTestCase):
         self.assertIsNone(detect.values())
         self.assertTrue(detect.ui.error.text())
 
+    def test_gpu_controls_follow_device_availability(self):
+        self.files.append(InputFile("image", "image"))
+        self.app.gpuInfo = SimpleNamespace(get_gpu_present=lambda: False)
+        project = DenoiseProject(str(self.root / "gpu.proj_denoise"), use_gpu=True)
+        denoise_app = self.make_app(project)
+        settings = (
+            DetectSettings(self.app),
+            StackSettings(self.app),
+            DenoiseAlignSettings(denoise_app),
+            DenoiseStackSettings(denoise_app),
+        )
+        for setting in settings:
+            with self.subTest(setting=type(setting).__name__):
+                checkbox = setting.ui.useGPU
+                self.assertFalse(checkbox.isEnabled())
+                self.assertFalse(checkbox.isChecked())
+                checkbox.click()
+                self.assertFalse(checkbox.isChecked())
+
+        self.app.gpuInfo = SimpleNamespace(get_gpu_present=lambda: True)
+        denoise_app.gpuInfo = self.app.gpuInfo
+        for setting in settings:
+            if isinstance(setting, (DenoiseAlignSettings, DenoiseStackSettings)):
+                setting.refresh_inputs(ready=True)
+            else:
+                setting.refresh_inputs()
+            self.assertTrue(setting.ui.useGPU.isEnabled())
+
     def test_align_controls_support_keyboard_navigation_and_activation(self):
         align = DenoiseAlignSettings()
         align.ui.run.setEnabled(True)
+        align.ui.useGPU.setEnabled(True)
         align.show()
         align.activateWindow()
         self.qt.processEvents()

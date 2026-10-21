@@ -4,6 +4,15 @@ from PySide6.QtCore import Qt, QSignalBlocker, QObject, Signal, Property
 from PySide6.QtWidgets import QFrame, QWidget, QButtonGroup
 
 
+def update_gpu_checkbox(checkbox, app, enabled=True):
+    gpu_info = getattr(app, "gpuInfo", None)
+    gpu_available = bool(gpu_info and gpu_info.get_gpu_present())
+    if not gpu_available:
+        with QSignalBlocker(checkbox):
+            checkbox.setChecked(False)
+    checkbox.setEnabled(enabled and gpu_available)
+
+
 def toggle_advanced_settings(widget: QWidget, checked: bool) -> None:
     body = getattr(widget.ui, "advancedBody", None)
     if body is not None:
@@ -259,7 +268,7 @@ class DetectSettings(QWidget):
         files = self.app.getInputFileList() if (self.app and hasattr(self.app, "getInputFileList")) else []
         first = files[0] if files else None
         self.ui.run.setEnabled(bool(files))
-        self.ui.useGPU.setEnabled(bool(files))
+        update_gpu_checkbox(self.ui.useGPU, self.app, enabled=bool(files))
         if first is not self._first_file:
             self._first_file = first
             self.suggest_device(True)
@@ -272,7 +281,7 @@ class DetectSettings(QWidget):
         except (OSError, ValueError):
             available = False
         with QSignalBlocker(self.ui.useGPU):
-            self.ui.useGPU.setChecked(bool(available))
+            self.ui.useGPU.setChecked(bool(available) and self.ui.useGPU.isEnabled())
 
     def values(self):
         for field in (self.ui.confidence, self.ui.mergeThreshold):
@@ -383,7 +392,7 @@ class StackSettings(QWidget):
         files = self.app.getInputFileList() if (self.app and hasattr(self.app, "getInputFileList")) else []
         first = files[0] if files else None
         self.ui.run.setEnabled(bool(files))
-        self.ui.useGPU.setEnabled(bool(files))
+        update_gpu_checkbox(self.ui.useGPU, self.app, enabled=bool(files))
         if first is not self._first_file:
             self._first_file = first
             self.suggest_batch(True)
@@ -403,7 +412,7 @@ class StackSettings(QWidget):
             device = "GPU" if available else "CPU"
             self.ui.memory.setText(f"Suggested batch: {size} · {memory / 1024**3:.2f} GB {device}")
         with QSignalBlocker(self.ui.useGPU):
-            self.ui.useGPU.setChecked(bool(available))
+            self.ui.useGPU.setChecked(bool(available) and self.ui.useGPU.isEnabled())
 
     def values(self):
         for field in (self.ui.batchSize, self.ui.fadeAmount):

@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, QSignalBlocker, Signal
 from PySide6.QtWidgets import QWidget
 
 from startrails.lib.denoise.defaults import DENOISE_DEFAULTS, DEFAULT_MASK_BRUSH_RADIUS
-from .steps import toggle_advanced_settings
+from .steps import toggle_advanced_settings, update_gpu_checkbox
 from .ui_step_denoise_sky import Ui_DenoiseSkySettings
 from .ui_step_denoise_align import Ui_DenoiseAlignSettings
 from .ui_step_denoise_stack import Ui_DenoiseStackSettings
@@ -176,6 +176,7 @@ class DenoiseAlignSettings(QWidget):
         self.ui.error.clear()
         self.ui.error.hide()
         self.set_from_project()
+        update_gpu_checkbox(self.ui.useGPU, self.app)
 
     def set_reference_file(self, file: Optional[DenoiseInputFile]) -> None:
         text = file.basename if file is not None and file.basename else ("Reference Frame" if file else "None")
@@ -192,6 +193,7 @@ class DenoiseAlignSettings(QWidget):
         proj = self.app.project
         with QSignalBlocker(self.ui.useGPU):
             self.ui.useGPU.setChecked(bool(proj.use_gpu))
+        update_gpu_checkbox(self.ui.useGPU, self.app)
         ref = proj.get_reference_file() if hasattr(proj, "get_reference_file") else None
         self.set_reference_file(ref)
         aligned_count = len(getattr(proj, "homographies", {}))
@@ -210,6 +212,7 @@ class DenoiseAlignSettings(QWidget):
         proj.use_gpu = self.ui.useGPU.isChecked()
 
     def refresh_inputs(self, ready: bool = False) -> None:
+        update_gpu_checkbox(self.ui.useGPU, self.app)
         has_stars = False
         if self.app and hasattr(self.app, "workflow") and hasattr(self.app.workflow, "get_star_files"):
             has_stars = bool(self.app.workflow.get_star_files())
@@ -274,6 +277,7 @@ class DenoiseStackSettings(QWidget):
         self.ui.error.clear()
         self.ui.error.hide()
         self.set_from_project()
+        update_gpu_checkbox(self.ui.useGPU, self.app)
 
     def values(self) -> Dict[str, Any]:
         return {
@@ -303,6 +307,7 @@ class DenoiseStackSettings(QWidget):
             self.ui.compressIntermediateTiffs.setChecked(proj.compress_intermediate_tiffs)
         with QSignalBlocker(self.ui.useGPU):
             self.ui.useGPU.setChecked(bool(proj.use_gpu))
+        update_gpu_checkbox(self.ui.useGPU, self.app)
         stem = "project"
         if hasattr(proj, "get_project_stem"):
             stem = proj.get_project_stem()
@@ -336,6 +341,7 @@ class DenoiseStackSettings(QWidget):
         proj.use_gpu = vals["use_gpu"]
 
     def refresh_inputs(self, ready: bool = False) -> None:
+        update_gpu_checkbox(self.ui.useGPU, self.app)
         self.ui.run.setEnabled(ready)
         if ready:
             self.ui.stackStatus.setText("Ready to stack (alignment runs automatically if needed)")
