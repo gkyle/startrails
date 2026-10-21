@@ -72,25 +72,25 @@ QCheckBox:focus:enabled {
     border-color: #0f172a;
 }
 
-QWidget#DenoiseAlignSettings QCheckBox#useGPU {
+QCheckBox#useGPU {
     spacing: 0px;
 }
 
-QWidget#DenoiseAlignSettings QCheckBox#useGPU::indicator {
+QCheckBox#useGPU::indicator {
     width: 36px;
     height: 20px;
     border-radius: 10px;
 }
 
-QWidget#DenoiseAlignSettings QCheckBox#useGPU::indicator:unchecked {
+QCheckBox#useGPU::indicator:unchecked {
     image: url(:/startrails/ui/switch_off.svg);
 }
 
-QWidget#DenoiseAlignSettings QCheckBox#useGPU::indicator:checked {
+QCheckBox#useGPU::indicator:checked {
     image: url(:/startrails/ui/switch_on.svg);
 }
 
-QWidget#DenoiseAlignSettings QCheckBox#useGPU:focus:enabled {
+QCheckBox#useGPU:focus:enabled {
     border-color: transparent;
     border-bottom: 2px solid #0369a1;
 }
@@ -149,6 +149,7 @@ QPushButton#run:focus:enabled {
     border: 2px solid #ffffff;
 }
 
+QWidget#alignSettings QPushButton#run:focus:enabled,
 QWidget#DenoiseAlignSettings QPushButton#run:focus:enabled {
     border: none;
     background-color: #0c4a6e;
@@ -179,6 +180,7 @@ QToolButton#advancedToggle:focus:enabled {
     border: 2px solid #ffffff;
 }
 
+QWidget#alignSettings QToolButton#advancedToggle:focus:enabled,
 QWidget#DenoiseAlignSettings QToolButton#advancedToggle:focus:enabled {
     border: none;
     background-color: #0c4a6e;
