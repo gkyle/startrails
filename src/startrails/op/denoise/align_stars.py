@@ -52,6 +52,7 @@ class AlignStars(DenoiseOperation):
             master_dark = DarkCalibrator.compute_master_dark_from_paths(
                 config.noise_images, use_gpu=config.use_gpu,
                 scratch_dir=scratch_dir, should_interrupt=should_interrupt,
+                cache_dir=config.get_output_dir() / "cache",
             )
 
         def calibrate(img: np.ndarray) -> np.ndarray:

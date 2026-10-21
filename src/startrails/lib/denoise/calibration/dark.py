@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 from concurrent.futures import CancelledError
+import hashlib
+import json
+import logging
+import os
 from pathlib import Path
+import tempfile
 from typing import Callable, Optional, Sequence
+from zipfile import BadZipFile
 import numpy as np
 
 from startrails.lib.gpu import free_gpu_memory, get_array_module
 from startrails.lib.image_io import imread, normalize_image
 from startrails.lib.denoise.stacking.memmap_buffer import MemmapFrameBuffer, read_frame_chunk
+
+logger = logging.getLogger(__name__)
 
 
 class DarkCalibrator:
@@ -21,11 +29,66 @@ class DarkCalibrator:
         use_gpu: bool = True,
         scratch_dir: Optional[Path | str] = None,
         should_interrupt: Optional[Callable[[], bool]] = None,
+        cache_dir: Optional[Path | str] = None,
     ) -> np.ndarray:
-        """Stage one decoded dark at a time and integrate disk-backed chunks."""
+        """Reuse a persistent master or integrate one decoded dark at a time.
+
+        The uncompressed cache preserves normalized float32 values exactly. It
+        holds only one master per project and is atomically replaced after a
+        successful calculation. Cache failures never prevent calibration.
+        """
         if not paths:
             raise ValueError("No dark frames provided.")
         cls._check_cancelled(should_interrupt)
+        cache_path = Path(cache_dir) / "master_dark.npz" if cache_dir is not None else None
+        signature = cls._cache_signature(paths) if cache_path is not None else None
+        if cache_path is not None:
+            try:
+                with np.load(cache_path, allow_pickle=False) as cached:
+                    if cached["signature"].item() == signature:
+                        master = cached["master"]
+                        if master.dtype == np.float32 and master.ndim in (2, 3) and all(master.shape):
+                            cls._check_cancelled(should_interrupt)
+                            logger.info("Reusing master dark: %s", cache_path)
+                            return master
+            except FileNotFoundError:
+                pass
+            except (OSError, ValueError, TypeError, KeyError, EOFError, BadZipFile):
+                logger.warning("Cannot read master dark cache %s; rebuilding", cache_path)
+
+        master = cls._integrate_paths(paths, use_gpu, scratch_dir, should_interrupt)
+        cls._check_cancelled(should_interrupt)
+        if cache_path is not None and cls._cache_signature(paths) == signature:
+            temporary = None
+            try:
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+                with tempfile.NamedTemporaryFile(dir=cache_path.parent, prefix="master_dark_", suffix=".tmp", delete=False) as stream:
+                    temporary = Path(stream.name)
+                    np.savez(stream, signature=signature, master=master)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                cls._check_cancelled(should_interrupt)
+                temporary.replace(cache_path)
+            except OSError:
+                logger.warning("Cannot save master dark cache %s", cache_path, exc_info=True)
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
+        return master
+
+    @staticmethod
+    def _cache_signature(paths: Sequence[Path | str]) -> str:
+        # Bump the version when decoding, normalization, or integration changes.
+        sources = []
+        for path in paths:
+            resolved = Path(path).resolve()
+            stat = resolved.stat()
+            sources.append((str(resolved), stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))
+        payload = {"version": 1, "sources": sorted(sources)}
+        return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+    @classmethod
+    def _integrate_paths(cls, paths, use_gpu, scratch_dir, should_interrupt):
         first = imread(paths[0], to_rgb=True, as_float=False)
         if len(paths) == 1:
             cls._check_cancelled(should_interrupt)
