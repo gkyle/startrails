@@ -9,14 +9,14 @@ QLabel {
 /* Input Fields (SpinBoxes, DoubleSpinBoxes, ComboBoxes, LineEdits) */
 QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit {
     background-color: #ffffff;
-    border: 1px solid #64748b;
+    border: 1px solid #a4b4cb;
     border-top-left-radius: 2px;
     border-bottom-left-radius: 2px;
     padding-top: 2px;
     padding-bottom: 2px;
     font-size: 12px;
     color: #0f172a;
-    height: 16px;
+    height: 15px;
 }
 
 QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QLineEdit:focus {
@@ -32,7 +32,8 @@ QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled, QLineEdit:disabl
 QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
     subcontrol-origin: border;
     width: 16px;
-    height: 11px;
+    height: 10px;
+    right: 1px;
 }
 
 QSpinBox::up-button, QDoubleSpinBox::up-button {
@@ -43,7 +44,7 @@ QSpinBox::up-button, QDoubleSpinBox::up-button {
 
 QSpinBox::down-button, QDoubleSpinBox::down-button {
     subcontrol-position: bottom right;
-    margin-bottom: 1px;
+    bottom: 1px;
 }
 
 QSpinBox::up-arrow, QDoubleSpinBox::up-arrow, QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
