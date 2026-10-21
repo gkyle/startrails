@@ -281,7 +281,8 @@ class DenoiseView(ModeView):
         self._project = self.app.project
         self.last_align_result = alignment_result
         self.last_compositor = None
-        self._output_saved = False
+        final_output = getattr(self._project, "final_output_path", None)
+        self._output_saved = bool(final_output and Path(final_output).is_file())
         self._pending_horizon_params = None
         self._pending_final_save = None
         self._horizon_request_id += 1
@@ -1123,6 +1124,7 @@ class DenoiseView(ModeView):
                 return
             def on_stack_done():
                 self.last_compositor = compositor
+                self._output_saved = False
                 if compositor is not None:
                     out_files = (
                         self.app.workflow.get_output_file_list()
@@ -1169,6 +1171,7 @@ class DenoiseView(ModeView):
                 self.update_ready_states()
                 if self.tune_card is not None:
                     self.tune_card.setExpanded(True)
+                self._schedule_horizon_tuning(save=True)
 
             self._post_result(generation, on_stack_done)
 
@@ -1270,23 +1273,24 @@ class DenoiseView(ModeView):
             )
             out_path = self.app.workflow.do_pipeline(config=config_snapshot, progress_bar=progress_updater.tick)
             def on_pipeline_done():
-                if out_path and Path(out_path).exists():
-                    self.last_compositor = self.app.workflow.last_compositor
-                    self.last_align_result = None
-                    out_files = (
-                        self.app.workflow.get_output_file_list()
-                        if hasattr(self.app.workflow, "get_output_file_list")
-                        else []
-                    )
-                    if self.output_files is not None:
-                        self.output_files.set_files(out_files)
-                    comp_file = OutputFile(basename=Path(out_path).name, path=str(out_path), operation="Composite")
-                    self.show_file(comp_file)
-                    if self.output_files is not None:
-                        self.output_files.setCurrentFile(comp_file)
-                    if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-                        self.shell.canvas_main.clear_horizon_overlay()
-                        self.shell.canvas_main.set_mask_edit_mode(False)
+                if not out_path or not Path(out_path).is_file():
+                    return
+                self.last_compositor = self.app.workflow.last_compositor
+                self.last_align_result = None
+                out_files = (
+                    self.app.workflow.get_output_file_list()
+                    if hasattr(self.app.workflow, "get_output_file_list")
+                    else []
+                )
+                if self.output_files is not None:
+                    self.output_files.set_files(out_files)
+                comp_file = OutputFile(basename=Path(out_path).name, path=str(out_path), operation="Composite")
+                self.show_file(comp_file)
+                if self.output_files is not None:
+                    self.output_files.setCurrentFile(comp_file)
+                if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
+                    self.shell.canvas_main.clear_horizon_overlay()
+                    self.shell.canvas_main.set_mask_edit_mode(False)
                 if self.sky_card is not None:
                     self.sky_card.setStatus("done")
                 if self.align_card is not None:

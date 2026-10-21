@@ -375,6 +375,7 @@ class DenoiseWorkflow(Workflow):
             if compositor is not None and not stacker.shouldInterrupt() and hasattr(self.project, "get_output_dir"):
                 out_dir = self.project.get_output_dir()
                 out_dir.mkdir(parents=True, exist_ok=True)
+                self.project.final_output_path = None
                 if cfg.sky_stack_path:
                     self.project.sky_stack_path = str(cfg.sky_stack_path)
                 if cfg.ground_stack_path:
@@ -456,6 +457,7 @@ class DenoiseWorkflow(Workflow):
                 self.project.ground_stack_path = str(cfg.ground_stack_path) if cfg.ground_stack_path else None
                 self.project.gradient_mask_path = str(cfg.gradient_mask_path) if cfg.gradient_mask_path else None
                 self.project.output_path = str(out_path)
+                self.project.final_output_path = str(out_path)
                 self.project.record_stacks()
             return out_path
         finally:

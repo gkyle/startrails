@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 from io import StringIO
+from unittest.mock import patch
 
 import jsonpickle
 import numpy as np
@@ -11,9 +12,11 @@ from shiboken6 import isValid
 
 from support import QtTestCase
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
+from startrails.lib.file import DenoiseInputFile
 from startrails.lib.image_io import imread, imwrite
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.ui.canvasLabel import CanvasLabel
+from startrails.ui.sidebar_denoise import SidebarDenoise
 from startrails.ui.ui_wrap import MainWindow
 from startrails.ui.views.denoise import DenoiseView
 from startrails.ui.workers_denoise import FinalCompositeSaveWorker
@@ -150,6 +153,11 @@ class DenoiseViewTests(QtTestCase):
         pixels = np.full((16, 20, 3), [0.2, 0.4, 0.6], np.float32)
         mask = np.ones(pixels.shape[:2], np.float32)
         self.view.last_compositor = HorizonCompositor(pixels, pixels, mask, mask)
+        sidebar = SidebarDenoise(app=self.app)
+        self.addCleanup(sidebar.deleteLater)
+        self.view.sidebar = sidebar
+        self.view.update_ready_states()
+        self.assertEqual(sidebar.tuneCard._status, "ready")
         self.view._dispatch_async_save_final_composite()
         worker = self.view._final_save_worker
         self.addCleanup(self.finish_worker, worker)
@@ -165,10 +173,45 @@ class DenoiseViewTests(QtTestCase):
         self.qt.processEvents()
         self.assertFalse(worker.isRunning() if isValid(worker) else False)
         self.assertIsNotNone(self.project.final_output_path)
+        self.assertEqual(sidebar.tuneCard._status, "done")
         np.testing.assert_allclose(
             imread(self.project.final_output_path, to_rgb=True, as_float=True), pixels, atol=0.5 / 65535 + 1e-7, rtol=0
         )
         self.assertFalse(list(self.project.get_output_dir().glob("tmp*")))
+
+    def test_stack_success_schedules_default_tune_autosave(self):
+        self.project.star_files = [DenoiseInputFile("star.tif", str(self.root / "star.tif"))]
+        config = SimpleNamespace(
+            stack_method="mean", sigma_clip_threshold=2.0, sigma_clip_iterations=2,
+            compress_intermediate_tiffs=False, use_gpu=False, output_path=None,
+        )
+        pixels = np.zeros((4, 4, 3), np.float32)
+        mask = np.ones((4, 4), np.float32)
+        compositor = HorizonCompositor(pixels, pixels, mask, mask)
+        self.view._output_saved = True
+        self.shell.canvas_main = None
+        with (
+            patch.object(self.view, "_snapshot_config", return_value=config),
+            patch.object(self.view, "_enqueue_task", side_effect=lambda *args: args[-1]()),
+            patch.object(self.view, "_post_result", side_effect=lambda _, callback: callback()),
+            patch.object(self.view, "_schedule_horizon_tuning") as schedule_save,
+            patch.object(self.app.workflow, "has_cached_alignment", return_value=True),
+            patch.object(self.app.workflow, "do_stack_denoise", return_value=compositor),
+        ):
+            self.view.do_stack_action()
+        self.assertIs(self.view.last_compositor, compositor)
+        self.assertFalse(self.view._output_saved)
+        schedule_save.assert_called_once_with(save=True)
+
+    def test_saved_output_state_restores_only_while_file_exists(self):
+        final_output = self.root / "saved_final.tif"
+        final_output.write_bytes(b"saved")
+        self.project.final_output_path = str(final_output)
+        self.view.reset_project_view()
+        self.assertTrue(self.view._output_saved)
+        final_output.unlink()
+        self.view.reset_project_view()
+        self.assertFalse(self.view._output_saved)
 
     def test_window_switches_modes_and_back_without_reusing_old_project(self):
         window = MainWindow(self.make_app())
