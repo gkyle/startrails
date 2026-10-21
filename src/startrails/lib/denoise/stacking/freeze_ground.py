@@ -393,7 +393,7 @@ class FreezeGroundStacker:
             sigma_threshold: standard deviation multiplier for outlier rejection (default: 1.2)
             iterations: sigma-clipping iterations (default: 3)
             use_gpu: whether to use CuPy GPU acceleration if available (default: True)
-            max_workers: thread count for CPU fallback (default: min(16, cpu_count))
+            max_workers: CPU threads (default: up to 4), bounded by the scratch budget
             progress_callback: optional callback receiving (increment, data_dict) per frame
             should_interrupt: optional callable returning True if cancelled
             memory_budget_bytes: estimated scratch budget across active workers;
@@ -424,8 +424,7 @@ class FreezeGroundStacker:
         stacked = np.zeros(out_shape, dtype=np.float32)
 
         xp, is_gpu = get_array_module(use_gpu=use_gpu)
-        workers = max_workers or min(16, max(1, (os.cpu_count() or 1)))
-        max_in_flight = 1 if is_gpu else min(workers, 2)
+        workers = max_workers or min(4, max(1, (os.cpu_count() or 1)))
         if memory_budget_bytes <= 0:
             raise ValueError("memory_budget_bytes must be positive.")
 
@@ -439,11 +438,16 @@ class FreezeGroundStacker:
                 use_gpu=is_gpu,
                 default_cpu_rows=256,
             )
+            if not is_gpu:
+                # Small input tiles keep sigma-clipping workspaces cache-friendly.
+                tile_rows = max(1, (4 * 1024**2) // (n_frames * w * channels * 4))
+                chunk_rows = min(chunk_rows, tile_rows)
         if n_frames > 1 and chunk_rows > max(1, h // n_frames):
             chunk_rows = max(1, h // n_frames)
-        # Include float64 sigma intermediates, masks and repeated RGB weights.
+        # CPU sigma clipping reuses its float64 differences and broadcasts weights.
         # Bound scratch across workers even when callers request large chunks.
-        bytes_per_row = n_frames * w * channels * 96
+        bytes_per_row = n_frames * w * channels * (96 if is_gpu else 48)
+        max_in_flight = 1 if is_gpu else max(1, min(workers, memory_budget_bytes // bytes_per_row))
         budget_rows = max(1, memory_budget_bytes // (max_in_flight * bytes_per_row))
         chunk_rows = max(1, min(chunk_rows, budget_rows))
 
@@ -552,13 +556,13 @@ class FreezeGroundStacker:
                     if is_soft_weights:
                         weights = read_frame_chunk(coverages, y_s, y_e)
                         if is_rgb:
-                            weights = np.repeat(weights[..., None], channels, axis=-1)
+                            weights = weights[..., None]
                         mask = weights > 1e-4
                     else:
                         weights = None
                         mask = read_frame_chunk(coverages, y_s, y_e, dtype=bool)
                         if is_rgb:
-                            mask = np.repeat(mask[..., None], channels, axis=-1)
+                            mask = mask[..., None]
                 else:
                     weights = None
                     mask = np.ones_like(data, dtype=bool)
@@ -638,27 +642,50 @@ class FreezeGroundStacker:
     ) -> Any:
         """Perform iterative sigma-clipping outlier rejection and accumulation on chunk data."""
         n_frames = data.shape[0]
-        if n_frames < 3:
+        if n_frames < 3 or (xp is np and not np.any(valid_mask)):
+            # Empty coverage cannot reject any samples; retain the average's
+            # handling of nonfinite values without running a clipping iteration.
             return FreezeGroundStacker._average_chunk(data, valid_mask, weights=weights, xp=xp)
 
-        curr_mask = valid_mask.copy()
+        curr_mask = np.broadcast_to(valid_mask, data.shape).copy() if xp is np else valid_mask.copy()
         for _ in range(max(1, iterations)):
-            counts = xp.maximum(xp.sum(curr_mask, axis=0), 1)
             if weights is not None:
                 w = xp.where(curr_mask, weights, 0.0)
                 w_sum = xp.maximum(xp.sum(w, axis=0), 1e-8)
                 mean = xp.sum(w * data, axis=0) / w_sum
-                diff = xp.where(curr_mask, data - mean[None, ...], 0.0)
-                var = xp.sum(w * diff * diff, axis=0) / w_sum
             else:
+                counts = xp.maximum(xp.sum(curr_mask, axis=0), 1)
                 sum_d = xp.sum(xp.where(curr_mask, data, 0.0), axis=0)
                 mean = sum_d / counts
+
+            if xp is np:
+                diff = np.where(curr_mask, data - mean[None, ...], 0.0)
+                if weights is not None:
+                    # Preserve the original (w * diff) * diff evaluation order.
+                    # w is no longer needed after its sum and mean were computed.
+                    work = w if w.dtype == diff.dtype else np.empty_like(diff)
+                    np.multiply(w, diff, out=work)
+                    np.multiply(work, diff, out=work)
+                    var = np.sum(work, axis=0) / w_sum
+                    del work
+                else:
+                    np.square(diff, out=diff)
+                    var = np.sum(diff, axis=0) / counts
+            else:
                 diff = xp.where(curr_mask, data - mean[None, ...], 0.0)
-                var = xp.sum(diff * diff, axis=0) / counts
+                if weights is not None:
+                    var = xp.sum(w * diff * diff, axis=0) / w_sum
+                else:
+                    var = xp.sum(diff * diff, axis=0) / counts
 
             std = xp.maximum(xp.sqrt(xp.maximum(var, 0.0)), 1e-6)
-            abs_diff = xp.abs(data - mean[None, ...])
-            is_outlier = abs_diff > (sigma_threshold * std[None, ...])
+            if xp is np:
+                np.subtract(data, mean[None, ...], out=diff)
+                np.abs(diff, out=diff)
+                is_outlier = diff > (sigma_threshold * std[None, ...])
+            else:
+                abs_diff = xp.abs(data - mean[None, ...])
+                is_outlier = abs_diff > (sigma_threshold * std[None, ...])
 
             # Safety fallback: preserve at least 2 valid frames at every coordinate
             remaining_counts = xp.sum(curr_mask & ~is_outlier, axis=0)
@@ -667,7 +694,7 @@ class FreezeGroundStacker:
             if not bool(xp.any(safe_outlier)):
                 break
 
-            curr_mask = curr_mask & ~safe_outlier
+            curr_mask &= ~safe_outlier
 
         # Final average on surviving frames
         if weights is not None:

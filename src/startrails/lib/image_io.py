@@ -10,17 +10,13 @@ IMWRITE_OPTIONS = [cv2.IMWRITE_JPEG_QUALITY, 100]
 
 
 def normalize_image(img):
-    """Normalize integer or float pixels to clipped float32 without changing scale."""
-    if img.dtype == numpy.uint8:
-        img = (img.astype(numpy.float32) / 255.0).clip(0.0, 1.0)
-    elif img.dtype == numpy.uint16:
-        img = (img.astype(numpy.float32) / 65535.0).clip(0.0, 1.0)
-    elif img.dtype in (numpy.float32, numpy.float64):
-        img = img.astype(numpy.float32).clip(0.0, 1.0)
-    else:
-        max_v = float(numpy.iinfo(img.dtype).max)
-        img = (img.astype(numpy.float32) / max_v).clip(0.0, 1.0)
-    return img
+    """Normalize into one owned float32 buffer without modifying the input."""
+    scale = None if img.dtype in (numpy.float32, numpy.float64) else float(numpy.iinfo(img.dtype).max)
+    result = img.astype(numpy.float32)
+    if scale is not None:
+        result /= scale
+    numpy.clip(result, 0.0, 1.0, out=result)
+    return result
 
 
 def imread(
