@@ -399,16 +399,7 @@ class StarTrailsView(ModeView):
 
     def selectInputFiles(self, *, clear=True):
         QApplication.processEvents()
-        existing_files = self.app.getInputFileList()
-        if existing_files and clear:
-            reply = QMessageBox.question(
-                None,
-                "Clear existing files?",
-                f"There are {len(existing_files)} files already loaded.\n\nDo you want to clear existing files before adding new ones?",
-                QMessageBox.StandardButton.Yes,
-                QMessageBox.StandardButton.No,
-            )
-            clear = reply == QMessageBox.StandardButton.Yes
+        clear = clear and self.confirm_clear_files(len(self.app.getInputFileList()))
 
         fileNames, _ = QFileDialog.getOpenFileNames(filter="Image Files (*.jpg *.jpeg *.tif *.tiff)")
         if fileNames:

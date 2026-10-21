@@ -16,9 +16,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QFrame, QHBoxLayout,
-    QHeaderView, QLabel, QPushButton, QSizePolicy,
-    QSpacerItem, QToolButton, QTreeView, QVBoxLayout,
-    QWidget)
+    QHeaderView, QLabel, QSizePolicy, QSpacerItem,
+    QToolButton, QTreeView, QVBoxLayout, QWidget)
 from . import resources_rc
 
 class Ui_fileSection(object):
@@ -31,12 +30,12 @@ class Ui_fileSection(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(fileSection.sizePolicy().hasHeightForWidth())
         fileSection.setSizePolicy(sizePolicy)
-        fileSection.setStyleSheet(u"QFrame#fileSection {\n"
+        fileSection.setStyleSheet(u"QFrame#fileSection, FileSection {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
 "    border-radius: 8px;\n"
 "}\n"
-"QFrame#fileSection:hover {\n"
+"QFrame#fileSection:hover, FileSection:hover {\n"
 "    border-color: #cbd5e1;\n"
 "}\n"
 "QScrollBar:vertical {\n"
@@ -69,8 +68,8 @@ class Ui_fileSection(object):
 "    image: url(:/startrails/ui/chevron_right.svg);\n"
 "}\n"
 "QLabel#chevron[expanded=\"true\"] {\n"
-"    image: url(:/startrails/ui/chevron_down.sv"
-                        "g);\n"
+"    image: url"
+                        "(:/startrails/ui/chevron_down.svg);\n"
 "}\n"
 "QToolButton#toggle {\n"
 "    border: 2px solid transparent;\n"
@@ -89,39 +88,28 @@ class Ui_fileSection(object):
 "    border-radius: 9px;\n"
 "    min-width: 14px;\n"
 "}\n"
-"QPushButton#add {\n"
+"QToolButton#add, QToolButton#sort {\n"
 "    border: 2px solid transparent;\n"
 "    border-radius: 3px;\n"
-"    font-weight: bold;\n"
-"    font-size: 13px;\n"
-"    color: #475569;\n"
 "    background: transparent;\n"
 "    min-width: 20px;\n"
 "    max-width: 20px;\n"
 "    min-height: 20px;\n"
 "    max-height: 20px;\n"
-"}\n"
-"QPushButton#add:hover {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #0f172a;\n"
-"}\n"
-"QToolButton#sort {\n"
-"    border: 2px solid transparent;\n"
-"    border-radius: 3px;\n"
-"    background: transparent;\n"
-"    min-width: 20px;\n"
-"    max-width: 20px;\n"
-"    min-height: 20px;\n"
-""
-                        "    max-height: 20px;\n"
 "    padding: 0px;\n"
-"    qproperty-icon: url(:/startrails/ui/sort.svg);\n"
 "    qproperty-iconSize: 14px 14px;\n"
 "}\n"
-"QToolButton#sort:hover {\n"
+"QToolButton#add {\n"
+"    qproperty-icon: url(:/startrails/ui/add.svg);\n"
+"}\n"
+"QToolButton#sort {\n"
+"    qproperty-icon: url(:/startrails/ui/sort.svg);\n"
+"}\n"
+"QToolButton#add:hover, QToolButton#sort:hover {\n"
 "    background-color: #e2e8f0;\n"
 "}\n"
-"QToolButton#sort::menu-indicator {\n"
+""
+                        "QToolButton#sort::menu-indicator {\n"
 "    image: none;\n"
 "}\n"
 "QTreeView#files {\n"
@@ -155,8 +143,7 @@ class Ui_fileSection(object):
 "    padding: 12px;\n"
 "}\n"
 "QMenu {\n"
-"    background-color: #"
-                        "ffffff;\n"
+"    background-color: #ffffff;\n"
 "    border: 1px solid #cbd5e1;\n"
 "    border-radius: 6px;\n"
 "    padding: 4px;\n"
@@ -165,7 +152,8 @@ class Ui_fileSection(object):
 "    padding: 6px 20px 6px 12px;\n"
 "    border-radius: 4px;\n"
 "    font-size: 12px;\n"
-"    color: #0f172a;\n"
+"    colo"
+                        "r: #0f172a;\n"
 "}\n"
 "QMenu::item:selected {\n"
 "    background-color: #f1f5f9;\n"
@@ -177,7 +165,7 @@ class Ui_fileSection(object):
 "    margin: 4px 6px;\n"
 "}\n"
 "QToolButton#toggle:focus:enabled { border-color: #0f172a; }\n"
-"QPushButton#add:focus:enabled { border-color: #0f172a; }\n"
+"QToolButton#add:focus:enabled { border-color: #0f172a; }\n"
 "QToolButton#sort:focus:enabled { border-color: #0f172a; }")
         self.layout = QVBoxLayout(fileSection)
         self.layout.setSpacing(2)
@@ -246,9 +234,14 @@ class Ui_fileSection(object):
 
         self.header.addWidget(self.sort)
 
-        self.add = QPushButton(self.headerWidget)
+        self.add = QToolButton(self.headerWidget)
         self.add.setObjectName(u"add")
         self.add.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.add.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        icon2 = QIcon()
+        icon2.addFile(u":/startrails/ui/add.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.add.setIcon(icon2)
+        self.add.setIconSize(QSize(14, 14))
 
         self.header.addWidget(self.add)
 
@@ -385,7 +378,10 @@ class Ui_fileSection(object):
 #if QT_CONFIG(tooltip)
         self.add.setToolTip(QCoreApplication.translate("fileSection", u"Add files\u2026", None))
 #endif // QT_CONFIG(tooltip)
-        self.add.setText(QCoreApplication.translate("fileSection", u"+", None))
+        self.add.setText("")
+#if QT_CONFIG(accessibility)
+        self.add.setAccessibleName(QCoreApplication.translate("fileSection", u"Add files", None))
+#endif // QT_CONFIG(accessibility)
         self.empty.setText(QCoreApplication.translate("fileSection", u"No files yet.", None))
         self.legendAuto.setText(QCoreApplication.translate("fileSection", u"Auto", None))
         self.legendManual.setText(QCoreApplication.translate("fileSection", u"Manual", None))

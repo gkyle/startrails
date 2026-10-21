@@ -25,12 +25,13 @@ from startrails.ui.steps_denoise import (DenoiseAlignSettings, DenoiseSkySetting
 from . import resources_rc
 
 class Ui_SidebarDenoise(object):
-    def setupUi(self, sidebar):
-        if not sidebar.objectName():
-            sidebar.setObjectName(u"sidebar")
-        sidebar.setMinimumSize(QSize(0, 0))
-        sidebar.setMaximumSize(QSize(16777215, 16777215))
-        sidebar.setStyleSheet(u"QWidget#sidebar {\n"
+    def setupUi(self, SidebarDenoise):
+        if not SidebarDenoise.objectName():
+            SidebarDenoise.setObjectName(u"SidebarDenoise")
+        SidebarDenoise.resize(213, 305)
+        SidebarDenoise.setMinimumSize(QSize(0, 0))
+        SidebarDenoise.setMaximumSize(QSize(16777215, 16777215))
+        SidebarDenoise.setStyleSheet(u"QWidget#SidebarDenoise {\n"
 "    background-color: #f8fafc;\n"
 "}\n"
 "QScrollArea#scroll {\n"
@@ -64,31 +65,22 @@ class Ui_SidebarDenoise(object):
 "QScrollBar:horizontal {\n"
 "    height: 0px;\n"
 "}")
-        self.layout = QVBoxLayout(sidebar)
+        self.layout = QVBoxLayout(SidebarDenoise)
         self.layout.setSpacing(0)
         self.layout.setObjectName(u"layout")
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.scroll = QScrollArea(sidebar)
+        self.scroll = QScrollArea(SidebarDenoise)
         self.scroll.setObjectName(u"scroll")
-        self.scroll.setFrameShape(QFrame.NoFrame)
-        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll.setWidgetResizable(True)
         self.content = QWidget()
         self.content.setObjectName(u"content")
+        self.content.setGeometry(QRect(0, 0, 213, 320))
         self.contentLayout = QVBoxLayout(self.content)
         self.contentLayout.setSpacing(8)
         self.contentLayout.setObjectName(u"contentLayout")
         self.contentLayout.setContentsMargins(8, 8, 8, 8)
-        self.projectTitle = QLabel(self.content)
-        self.projectTitle.setObjectName(u"projectTitle")
-        self.projectTitle.setStyleSheet(u"QLabel#projectTitle {\n"
-"    font-size: 15px;\n"
-"    font-weight: bold;\n"
-"    color: #0f172a;\n"
-"}")
-
-        self.contentLayout.addWidget(self.projectTitle)
-
         self.projectActions = QHBoxLayout()
         self.projectActions.setSpacing(6)
         self.projectActions.setObjectName(u"projectActions")
@@ -145,6 +137,16 @@ class Ui_SidebarDenoise(object):
 
         self.contentLayout.addLayout(self.projectActions)
 
+        self.projectTitle = QLabel(self.content)
+        self.projectTitle.setObjectName(u"projectTitle")
+        self.projectTitle.setStyleSheet(u"QLabel#projectTitle {\n"
+"    font-size: 15px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
+
+        self.contentLayout.addWidget(self.projectTitle)
+
         self.starFilesLayout = QVBoxLayout()
         self.starFilesLayout.setObjectName(u"starFilesLayout")
         self.starFiles = FileSection(self.content)
@@ -200,6 +202,9 @@ class Ui_SidebarDenoise(object):
 
         self.operationsHeaderLayout.addWidget(self.operationsTitle)
 
+        self.verticalLayout = QVBoxLayout()
+        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.verticalLayout.setContentsMargins(10, 6, 10, 6)
         self.operationsProgressLabel = QLabel(self.operationsHeaderWidget)
         self.operationsProgressLabel.setObjectName(u"operationsProgressLabel")
         self.operationsProgressLabel.setStyleSheet(u"QLabel#operationsProgressLabel {\n"
@@ -208,7 +213,7 @@ class Ui_SidebarDenoise(object):
 "    font-weight: 500;\n"
 "}")
 
-        self.operationsHeaderLayout.addWidget(self.operationsProgressLabel)
+        self.verticalLayout.addWidget(self.operationsProgressLabel)
 
         self.operationsProgress = QProgressBar(self.operationsHeaderWidget)
         self.operationsProgress.setObjectName(u"operationsProgress")
@@ -227,7 +232,10 @@ class Ui_SidebarDenoise(object):
         self.operationsProgress.setValue(0)
         self.operationsProgress.setTextVisible(False)
 
-        self.operationsHeaderLayout.addWidget(self.operationsProgress)
+        self.verticalLayout.addWidget(self.operationsProgress)
+
+
+        self.operationsHeaderLayout.addLayout(self.verticalLayout)
 
 
         self.contentLayout.addWidget(self.operationsHeaderWidget)
@@ -240,6 +248,7 @@ class Ui_SidebarDenoise(object):
         self.skyCard.setProperty(u"is_expanded", True)
         self.skySettings = DenoiseSkySettings(self.skyCard)
         self.skySettings.setObjectName(u"skySettings")
+        self.skySettings.setGeometry(QRect(0, 0, 100, 30))
         self.skyCard.add_body(self.skySettings)
 
         self.skyLayout.addWidget(self.skyCard)
@@ -255,6 +264,7 @@ class Ui_SidebarDenoise(object):
         self.alignCard.setProperty(u"is_expanded", False)
         self.alignSettings = DenoiseAlignSettings(self.alignCard)
         self.alignSettings.setObjectName(u"alignSettings")
+        self.alignSettings.setGeometry(QRect(0, 0, 100, 30))
         self.alignCard.add_body(self.alignSettings)
 
         self.alignLayout.addWidget(self.alignCard)
@@ -270,6 +280,7 @@ class Ui_SidebarDenoise(object):
         self.stackCard.setProperty(u"is_expanded", False)
         self.stackSettings = DenoiseStackSettings(self.stackCard)
         self.stackSettings.setObjectName(u"stackSettings")
+        self.stackSettings.setGeometry(QRect(0, 0, 100, 30))
         self.stackCard.add_body(self.stackSettings)
 
         self.stackLayout.addWidget(self.stackCard)
@@ -285,6 +296,7 @@ class Ui_SidebarDenoise(object):
         self.tuneCard.setProperty(u"is_expanded", False)
         self.tuneSettings = DenoiseTuneSettings(self.tuneCard)
         self.tuneSettings.setObjectName(u"tuneSettings")
+        self.tuneSettings.setGeometry(QRect(0, 0, 100, 30))
         self.tuneCard.add_body(self.tuneSettings)
 
         self.tuneLayout.addWidget(self.tuneCard)
@@ -349,13 +361,12 @@ class Ui_SidebarDenoise(object):
         self.layout.addWidget(self.scroll)
 
 
-        self.retranslateUi(sidebar)
+        self.retranslateUi(SidebarDenoise)
 
-        QMetaObject.connectSlotsByName(sidebar)
+        QMetaObject.connectSlotsByName(SidebarDenoise)
     # setupUi
 
-    def retranslateUi(self, sidebar):
-        self.projectTitle.setText(QCoreApplication.translate("SidebarDenoise", u"Project Images", None))
+    def retranslateUi(self, SidebarDenoise):
 #if QT_CONFIG(tooltip)
         self.newProject.setToolTip(QCoreApplication.translate("SidebarDenoise", u"Create a new project", None))
 #endif // QT_CONFIG(tooltip)
@@ -364,6 +375,7 @@ class Ui_SidebarDenoise(object):
         self.openProject.setToolTip(QCoreApplication.translate("SidebarDenoise", u"Open an existing project", None))
 #endif // QT_CONFIG(tooltip)
         self.openProject.setText(QCoreApplication.translate("SidebarDenoise", u"Open Project", None))
+        self.projectTitle.setText(QCoreApplication.translate("SidebarDenoise", u"Project Images", None))
         self.starFiles.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Star Images", None))
         self.noiseFiles.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Dark Frames", None))
         self.outputFiles.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Output Files", None))

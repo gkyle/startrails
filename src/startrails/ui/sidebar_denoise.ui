@@ -1,7 +1,15 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>SidebarDenoise</class>
- <widget class="QWidget" name="sidebar">
+ <widget class="QWidget" name="SidebarDenoise">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>213</width>
+    <height>305</height>
+   </rect>
+  </property>
   <property name="minimumSize">
    <size>
     <width>0</width>
@@ -15,7 +23,7 @@
    </size>
   </property>
   <property name="styleSheet">
-   <string notr="true">QWidget#sidebar {
+   <string notr="true">QWidget#SidebarDenoise {
     background-color: #f8fafc;
 }
 QScrollArea#scroll {
@@ -69,15 +77,23 @@ QScrollBar:horizontal {
    <item>
     <widget class="QScrollArea" name="scroll">
      <property name="frameShape">
-      <enum>QFrame::NoFrame</enum>
+      <enum>QFrame::Shape::NoFrame</enum>
      </property>
      <property name="horizontalScrollBarPolicy">
-      <enum>Qt::ScrollBarAlwaysOff</enum>
+      <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
      </property>
      <property name="widgetResizable">
       <bool>true</bool>
      </property>
      <widget class="QWidget" name="content">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>213</width>
+        <height>320</height>
+       </rect>
+      </property>
       <layout class="QVBoxLayout" name="contentLayout">
        <property name="spacing">
         <number>8</number>
@@ -94,20 +110,6 @@ QScrollBar:horizontal {
        <property name="bottomMargin">
         <number>8</number>
        </property>
-       <item>
-        <widget class="QLabel" name="projectTitle">
-         <property name="styleSheet">
-          <string notr="true">QLabel#projectTitle {
-    font-size: 15px;
-    font-weight: bold;
-    color: #0f172a;
-}</string>
-         </property>
-         <property name="text">
-          <string>Project Images</string>
-         </property>
-        </widget>
-       </item>
        <item>
         <layout class="QHBoxLayout" name="projectActions">
          <property name="spacing">
@@ -182,6 +184,20 @@ QPushButton#openProject:focus:enabled {
           </widget>
          </item>
         </layout>
+       </item>
+       <item>
+        <widget class="QLabel" name="projectTitle">
+         <property name="styleSheet">
+          <string notr="true">QLabel#projectTitle {
+    font-size: 15px;
+    font-weight: bold;
+    color: #0f172a;
+}</string>
+         </property>
+         <property name="text">
+          <string>Project Images</string>
+         </property>
+        </widget>
        </item>
        <item>
         <layout class="QVBoxLayout" name="starFilesLayout">
@@ -276,23 +292,37 @@ QPushButton#openProject:focus:enabled {
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="operationsProgressLabel">
-            <property name="styleSheet">
-             <string notr="true">QLabel#operationsProgressLabel {
+           <layout class="QVBoxLayout" name="verticalLayout">
+            <property name="leftMargin">
+             <number>10</number>
+            </property>
+            <property name="topMargin">
+             <number>6</number>
+            </property>
+            <property name="rightMargin">
+             <number>10</number>
+            </property>
+            <property name="bottomMargin">
+             <number>6</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="operationsProgressLabel">
+              <property name="styleSheet">
+               <string notr="true">QLabel#operationsProgressLabel {
     font-size: 11px;
     color: #64748b;
     font-weight: 500;
 }</string>
-            </property>
-            <property name="text">
-             <string>0 of 4 steps complete</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QProgressBar" name="operationsProgress">
-            <property name="styleSheet">
-             <string notr="true">QProgressBar#operationsProgress {
+              </property>
+              <property name="text">
+               <string>0 of 4 steps complete</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QProgressBar" name="operationsProgress">
+              <property name="styleSheet">
+               <string notr="true">QProgressBar#operationsProgress {
     background-color: #e2e8f0;
     border-radius: 3px;
     max-height: 6px;
@@ -303,17 +333,19 @@ QProgressBar#operationsProgress::chunk {
     background-color: #16a34a;
     border-radius: 3px;
 }</string>
-            </property>
-            <property name="maximum">
-             <number>4</number>
-            </property>
-            <property name="value">
-             <number>0</number>
-            </property>
-            <property name="textVisible">
-             <bool>false</bool>
-            </property>
-           </widget>
+              </property>
+              <property name="maximum">
+               <number>4</number>
+              </property>
+              <property name="value">
+               <number>0</number>
+              </property>
+              <property name="textVisible">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
          </layout>
         </widget>
@@ -334,7 +366,16 @@ QProgressBar#operationsProgress::chunk {
            <property name="is_expanded" stdset="0">
             <bool>true</bool>
            </property>
-           <widget class="DenoiseSkySettings" name="skySettings" />
+           <widget class="DenoiseSkySettings" name="skySettings" native="true">
+            <property name="geometry">
+             <rect>
+              <x>0</x>
+              <y>0</y>
+              <width>100</width>
+              <height>30</height>
+             </rect>
+            </property>
+           </widget>
           </widget>
          </item>
         </layout>
@@ -355,7 +396,16 @@ QProgressBar#operationsProgress::chunk {
            <property name="is_expanded" stdset="0">
             <bool>false</bool>
            </property>
-           <widget class="DenoiseAlignSettings" name="alignSettings" />
+           <widget class="DenoiseAlignSettings" name="alignSettings" native="true">
+            <property name="geometry">
+             <rect>
+              <x>0</x>
+              <y>0</y>
+              <width>100</width>
+              <height>30</height>
+             </rect>
+            </property>
+           </widget>
           </widget>
          </item>
         </layout>
@@ -376,7 +426,16 @@ QProgressBar#operationsProgress::chunk {
            <property name="is_expanded" stdset="0">
             <bool>false</bool>
            </property>
-           <widget class="DenoiseStackSettings" name="stackSettings" />
+           <widget class="DenoiseStackSettings" name="stackSettings" native="true">
+            <property name="geometry">
+             <rect>
+              <x>0</x>
+              <y>0</y>
+              <width>100</width>
+              <height>30</height>
+             </rect>
+            </property>
+           </widget>
           </widget>
          </item>
         </layout>
@@ -397,7 +456,16 @@ QProgressBar#operationsProgress::chunk {
            <property name="is_expanded" stdset="0">
             <bool>false</bool>
            </property>
-           <widget class="DenoiseTuneSettings" name="tuneSettings" />
+           <widget class="DenoiseTuneSettings" name="tuneSettings" native="true">
+            <property name="geometry">
+             <rect>
+              <x>0</x>
+              <y>0</y>
+              <width>100</width>
+              <height>30</height>
+             </rect>
+            </property>
+           </widget>
           </widget>
          </item>
         </layout>
@@ -483,15 +551,12 @@ QPushButton#runPipeline:disabled {
    </item>
   </layout>
  </widget>
- <resources>
-  <include location="resources.qrc" />
- </resources>
- <connections />
  <customwidgets>
   <customwidget>
    <class>FileSection</class>
    <extends>QFrame</extends>
    <header>startrails.ui.file_manager</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>StepCard</class>
@@ -521,4 +586,8 @@ QPushButton#runPipeline:disabled {
    <header>startrails.ui.steps_denoise</header>
   </customwidget>
  </customwidgets>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
 </ui>

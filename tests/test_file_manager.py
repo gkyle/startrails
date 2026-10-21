@@ -1,11 +1,18 @@
-"""File identity, selection, preview signals, and timestamp sorting."""
+"""File imports, identity, selection, and preview signals."""
 
+from unittest.mock import patch
+
+import numpy as np
 from PySide6.QtCore import Qt
 from PySide6.QtTest import QSignalSpy
+from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from support import QtTestCase
 from startrails.lib.file import InputFile, OutputFile
+from startrails.lib.image_io import imwrite
+from startrails.lib.project_denoise import DenoiseProject
 from startrails.ui.file_manager import FileModel, FileSection
+from startrails.ui.ui_wrap import MainWindow
 
 
 class FileModelTests(QtTestCase):
@@ -76,3 +83,54 @@ class FileModelTests(QtTestCase):
         self.assertIs(previews.at(1)[0], f1)
 
         section.close()
+
+
+class FileImportTests(QtTestCase):
+    def make_import_window(self, target, existing):
+        project = None if target == "inputs" else DenoiseProject(str(self.root / "test.proj_denoise"))
+        app = self.make_app(project)
+        if target == "inputs":
+            lists = {"inputs": app.getInputFileList}
+            if existing:
+                app.addInputFiles([str(self.root / "star.tif")])
+        else:
+            lists = {"stars": app.workflow.get_star_files, "darks": app.workflow.get_noise_files}
+            if existing:
+                app.workflow.add_star_files([str(self.root / "star.tif")])
+                app.workflow.add_noise_files([str(self.root / "dark.tif")])
+        window = MainWindow(app)
+        self.addCleanup(window.close)
+        sidebar = window.ui.active_view.sidebar
+        sections = (
+            {"inputs": sidebar.inputs}
+            if target == "inputs"
+            else {
+                "stars": sidebar.starFiles,
+                "darks": sidebar.noiseFiles,
+            }
+        )
+        return window, sections[target], lists
+
+    def test_add_controls_replace_append_and_preserve_files_on_cancel(self):
+        for name in ("star", "dark", "new"):
+            imwrite(self.root / f"{name}.tif", np.zeros((4, 4, 3), np.uint16))
+        new_path = str(self.root / "new.tif")
+        yes, no = QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No
+        cases = ((True, yes, [new_path]), (True, no, [new_path]), (True, yes, []), (False, no, [new_path]))
+        for target in ("inputs", "stars", "darks"):
+            for existing, reply, selected in cases:
+                with self.subTest(target=target, existing=existing, reply=reply, selected=selected):
+                    window, section, lists = self.make_import_window(target, existing)
+                    before = {name: [str(file.path) for file in get_files()] for name, get_files in lists.items()}
+                    with (
+                        patch.object(QMessageBox, "question", return_value=reply) as question,
+                        patch.object(QFileDialog, "getOpenFileNames", return_value=(selected, "")),
+                    ):
+                        section.ui.add.click()
+                    self.assertEqual(question.call_count, int(existing))
+                    expected = selected if reply == yes and selected else before[target] + selected
+                    self.assertCountEqual([str(file.path) for file in lists[target]()], expected)
+                    for name, get_files in lists.items():
+                        if name != target:
+                            self.assertEqual([str(file.path) for file in get_files()], before[name])
+                    window.close()

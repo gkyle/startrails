@@ -48,6 +48,20 @@ class DenoiseViewTests(QtTestCase):
             worker.cancel()
             self.assertTrue(worker.wait(WORKER_TIMEOUT_MS), "Background save did not stop within its deadline")
 
+    def test_sidebar_controls_follow_step_expansion(self):
+        sidebar = SidebarDenoise(app=self.app)
+        self.addCleanup(sidebar.deleteLater)
+        sidebar.show()
+        for step in ("sky", "align", "stack", "tune"):
+            card = getattr(sidebar, step + "Card")
+            settings = getattr(sidebar, step + "Settings")
+            card.setStatus("ready")
+            for expanded in (True, False):
+                with self.subTest(step=step, expanded=expanded):
+                    card.setExpanded(expanded)
+                    self.qt.processEvents()
+                    self.assertEqual(settings.isVisible(), expanded)
+
     def test_alignment_displays_preparation_and_cached_dark_work_before_frame_progress(self):
         shape = (8, 10, 3)
         light = imwrite(self.root / "light.tif", np.full(shape, 5000, np.uint16))

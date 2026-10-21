@@ -3,7 +3,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
 from PySide6.QtCore import QObject
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QMessageBox, QWidget
 
 from startrails.lib.file import File
 
@@ -45,6 +45,19 @@ class ModeView(QObject):
         """Helper to track connected signals for clean teardown."""
         signal.connect(slot)
         self._signal_connections.append((signal, slot))
+
+    def confirm_clear_files(self, existing_count: int) -> bool:
+        """Ask whether an import should replace the selected list's existing files."""
+        if not existing_count:
+            return False
+        reply = QMessageBox.question(
+            self.sidebar_widget,
+            "Clear existing files?",
+            f"There are {existing_count} files already loaded.\n\nDo you want to clear existing files before adding new ones?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        return reply == QMessageBox.StandardButton.Yes
 
     def resetProjectView(self) -> None:  # noqa: N802 - shared legacy view interface
         """Reset the sidebar view state when a new or opened project is active."""

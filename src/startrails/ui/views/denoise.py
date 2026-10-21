@@ -233,13 +233,14 @@ class DenoiseView(ModeView):
     # -------------------------------------------------------------------------
 
     def select_star_files(self) -> None:
+        clear = self.confirm_clear_files(len(self.app.workflow.get_star_files()))
         file_names, _ = QFileDialog.getOpenFileNames(
             None,
             "Select Star Images",
             filter="Image Files (*.jpg *.jpeg *.tif *.tiff)",
         )
         if file_names and hasattr(self.app.workflow, "add_star_files"):
-            self.app.workflow.add_star_files(file_names)
+            self.app.workflow.add_star_files(file_names, clear=clear)
             self.reset_project_view()
 
     def remove_star_file(self, file: File) -> None:
@@ -255,13 +256,14 @@ class DenoiseView(ModeView):
             self.reset_project_view()
 
     def select_noise_files(self) -> None:
+        clear = self.confirm_clear_files(len(self.app.workflow.get_noise_files()))
         file_names, _ = QFileDialog.getOpenFileNames(
             None,
             "Select Dark/Noise Frames",
             filter="Image Files (*.jpg *.jpeg *.tif *.tiff)",
         )
         if file_names and hasattr(self.app.workflow, "add_noise_files"):
-            self.app.workflow.add_noise_files(file_names)
+            self.app.workflow.add_noise_files(file_names, clear=clear)
             self.reset_project_view()
 
     def remove_noise_file(self, file: File) -> None:

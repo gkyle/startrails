@@ -20,12 +20,13 @@ from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
     QSpacerItem, QVBoxLayout, QWidget)
 
 class Ui_Sidebar(object):
-    def setupUi(self, sidebar):
-        if not sidebar.objectName():
-            sidebar.setObjectName(u"sidebar")
-        sidebar.setMinimumSize(QSize(200, 0))
-        sidebar.setMaximumSize(QSize(200, 16777215))
-        sidebar.setStyleSheet(u"QWidget#sidebar {\n"
+    def setupUi(self, Sidebar):
+        if not Sidebar.objectName():
+            Sidebar.setObjectName(u"Sidebar")
+        Sidebar.resize(200, 215)
+        Sidebar.setMinimumSize(QSize(200, 0))
+        Sidebar.setMaximumSize(QSize(200, 16777215))
+        Sidebar.setStyleSheet(u"QWidget#Sidebar {\n"
 "    background-color: #f8fafc;\n"
 "}\n"
 "QScrollArea#scroll {\n"
@@ -59,31 +60,22 @@ class Ui_Sidebar(object):
 "QScrollBar:horizontal {\n"
 "    height: 0px;\n"
 "}")
-        self.layout = QVBoxLayout(sidebar)
+        self.layout = QVBoxLayout(Sidebar)
         self.layout.setSpacing(0)
         self.layout.setObjectName(u"layout")
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.scroll = QScrollArea(sidebar)
+        self.scroll = QScrollArea(Sidebar)
         self.scroll.setObjectName(u"scroll")
-        self.scroll.setFrameShape(QFrame.NoFrame)
-        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.scroll.setWidgetResizable(True)
         self.content = QWidget()
         self.content.setObjectName(u"content")
+        self.content.setGeometry(QRect(0, 0, 213, 230))
         self.contentLayout = QVBoxLayout(self.content)
         self.contentLayout.setSpacing(8)
         self.contentLayout.setObjectName(u"contentLayout")
         self.contentLayout.setContentsMargins(8, 8, 8, 8)
-        self.projectTitle = QLabel(self.content)
-        self.projectTitle.setObjectName(u"projectTitle")
-        self.projectTitle.setStyleSheet(u"QLabel#projectTitle {\n"
-"    font-size: 15px;\n"
-"    font-weight: bold;\n"
-"    color: #0f172a;\n"
-"}")
-
-        self.contentLayout.addWidget(self.projectTitle)
-
         self.projectActions = QHBoxLayout()
         self.projectActions.setSpacing(6)
         self.projectActions.setObjectName(u"projectActions")
@@ -140,6 +132,16 @@ class Ui_Sidebar(object):
 
         self.contentLayout.addLayout(self.projectActions)
 
+        self.projectTitle = QLabel(self.content)
+        self.projectTitle.setObjectName(u"projectTitle")
+        self.projectTitle.setStyleSheet(u"QLabel#projectTitle {\n"
+"    font-size: 15px;\n"
+"    font-weight: bold;\n"
+"    color: #0f172a;\n"
+"}")
+
+        self.contentLayout.addWidget(self.projectTitle)
+
         self.inputLayout = QVBoxLayout()
         self.inputLayout.setObjectName(u"inputLayout")
 
@@ -166,6 +168,9 @@ class Ui_Sidebar(object):
 
         self.operationsHeaderLayout.addWidget(self.operationsTitle)
 
+        self.verticalLayout = QVBoxLayout()
+        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.verticalLayout.setContentsMargins(10, 6, 10, 6)
         self.operationsProgressLabel = QLabel(self.operationsHeaderWidget)
         self.operationsProgressLabel.setObjectName(u"operationsProgressLabel")
         self.operationsProgressLabel.setStyleSheet(u"QLabel#operationsProgressLabel {\n"
@@ -174,7 +179,7 @@ class Ui_Sidebar(object):
 "    font-weight: 500;\n"
 "}")
 
-        self.operationsHeaderLayout.addWidget(self.operationsProgressLabel)
+        self.verticalLayout.addWidget(self.operationsProgressLabel)
 
         self.operationsProgress = QProgressBar(self.operationsHeaderWidget)
         self.operationsProgress.setObjectName(u"operationsProgress")
@@ -193,7 +198,10 @@ class Ui_Sidebar(object):
         self.operationsProgress.setValue(0)
         self.operationsProgress.setTextVisible(False)
 
-        self.operationsHeaderLayout.addWidget(self.operationsProgress)
+        self.verticalLayout.addWidget(self.operationsProgress)
+
+
+        self.operationsHeaderLayout.addLayout(self.verticalLayout)
 
 
         self.contentLayout.addWidget(self.operationsHeaderWidget)
@@ -232,15 +240,15 @@ class Ui_Sidebar(object):
         self.layout.addWidget(self.scroll)
 
 
-        self.retranslateUi(sidebar)
+        self.retranslateUi(Sidebar)
 
-        QMetaObject.connectSlotsByName(sidebar)
+        QMetaObject.connectSlotsByName(Sidebar)
     # setupUi
 
-    def retranslateUi(self, sidebar):
-        self.projectTitle.setText(QCoreApplication.translate("Sidebar", u"Project Images", None))
+    def retranslateUi(self, Sidebar):
         self.newProject.setText(QCoreApplication.translate("Sidebar", u"New Project", None))
         self.openProject.setText(QCoreApplication.translate("Sidebar", u"Open Project", None))
+        self.projectTitle.setText(QCoreApplication.translate("Sidebar", u"Project Images", None))
         self.operationsTitle.setText(QCoreApplication.translate("Sidebar", u"Operations", None))
         self.operationsProgressLabel.setText(QCoreApplication.translate("Sidebar", u"0 of 4 steps complete", None))
         pass

@@ -28,12 +28,12 @@ class Ui_StepCard(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(StepCard.sizePolicy().hasHeightForWidth())
         StepCard.setSizePolicy(sizePolicy)
-        StepCard.setStyleSheet(u"QFrame#stepCard {\n"
+        StepCard.setStyleSheet(u"QFrame#StepCard, StepCard {\n"
 "    background-color: #ffffff;\n"
 "    border: 1px solid #e2e8f0;\n"
 "    border-radius: 8px;\n"
 "}\n"
-"QFrame#stepCard:hover {\n"
+"QFrame#StepCard:hover, StepCard:hover {\n"
 "    border-color: #cbd5e1;\n"
 "}\n"
 "QPushButton#toggle {\n"
