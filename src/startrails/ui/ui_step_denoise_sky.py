@@ -294,7 +294,7 @@ class Ui_DenoiseSkySettings(object):
         self.fullFrameMask.setToolTip(QCoreApplication.translate("DenoiseSkySettings", u"Set entire image frame as sky (100% sky for deep sky scenes)", None))
 #endif // QT_CONFIG(tooltip)
         self.fullFrameMask.setText(QCoreApplication.translate("DenoiseSkySettings", u"Full Frame", None))
-        self.brushHint.setText(QCoreApplication.translate("DenoiseSkySettings", u"Brush: Left-click paint sky, Right-click erase ground.\n"
+        self.brushHint.setText(QCoreApplication.translate("DenoiseSkySettings", u"Brush: Left-click paint sky, Right-click erase.\n"
 "Hotkeys: [ / ] or Ctrl+Wheel to resize.", None))
         pass
     # retranslateUi

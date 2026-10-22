@@ -13,6 +13,7 @@ from startrails.ui.steps_denoise import (
     DenoiseAlignSettings,
     DenoiseStackSettings,
     DenoiseTuneSettings,
+    DenoiseExportSettings,
 )
 from startrails.ui.ui_sidebar_denoise import Ui_SidebarDenoise
 from startrails.ui.theme import system_theme
@@ -40,7 +41,7 @@ class SidebarDenoise(QWidget):
         self.noiseFiles = self.ui.noiseFiles
         self.outputFiles = self.ui.outputFiles
         self.outputs = self.outputFiles
-        for name in ("sky", "align", "stack", "tune"):
+        for name in ("sky", "align", "stack", "tune", "export"):
             settings = getattr(self.ui, name + "Settings")
             settings.app = app
             settings.set_from_project()
@@ -62,7 +63,7 @@ class SidebarDenoise(QWidget):
         self.btn_compose = getattr(self.tuneSettings.ui, "run", None)
 
         # Step card accordion behavior
-        self._step_cards = (self.skyCard, self.alignCard, self.stackCard, self.tuneCard)
+        self._step_cards = (self.skyCard, self.alignCard, self.stackCard, self.tuneCard, self.exportCard)
         for card in self._step_cards:
             card.expanded.connect(lambda c=card: self._collapse_other_steps(c))
         self.skyCard.expansion_changed.connect(self.skySettings.ui.showMaskOverlay.setChecked)
@@ -89,7 +90,7 @@ class SidebarDenoise(QWidget):
 
     def init_app(self, app) -> None:
         self.app = app
-        for settings in (self.skySettings, self.alignSettings, self.stackSettings, self.tuneSettings):
+        for settings in (self.skySettings, self.alignSettings, self.stackSettings, self.tuneSettings, self.exportSettings):
             if hasattr(settings, "init_app"):
                 settings.init_app(app)
             elif hasattr(settings, "app"):
@@ -101,7 +102,10 @@ class SidebarDenoise(QWidget):
         self.alignSettings.reset()
         self.stackSettings.reset()
         self.tuneSettings.reset()
+        self.exportSettings.reset()
         self.skySettings.ui.showMaskOverlay.setChecked(self.skyCard.is_expanded)
+        if hasattr(self, "exportCard") and self.exportCard is not None:
+            self.exportCard.set_alert(False)
 
     def refresh_inputs(self) -> None:
         self.update_operations_progress()
@@ -128,7 +132,11 @@ class SidebarDenoise(QWidget):
         output_saved = self._output_saved
         can_process = has_stars and has_mask
 
-        self.skySettings.refresh_inputs()
+        has_manual = bool(getattr(proj, "has_manual_sky_corrections", False))
+        self.skySettings.refresh_inputs(has_manual_corrections=has_manual)
+        self.exportSettings.refresh_inputs(has_manual_corrections=has_manual)
+        if hasattr(self, "exportCard") and self.exportCard is not None:
+            self.exportCard.set_alert(has_manual)
         self.alignSettings.refresh_inputs(ready=can_process)
         self.stackSettings.refresh_inputs(ready=can_process)
         self.tuneSettings.refresh_inputs(ready=has_compositor)

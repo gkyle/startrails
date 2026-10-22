@@ -11,6 +11,7 @@ from shiboken6 import isValid
 from PySide6.QtWidgets import (
     QFileDialog,
     QLabel,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QWidget,
@@ -55,6 +56,7 @@ class DenoiseView(ModeView):
         self._disposed = False
         self._background_workers = set()
         self._sidebar: Optional[SidebarDenoise] = None
+        self.has_manual_sky_corrections: bool = False
         self.star_files = None
         self.noise_files = None
         self.output_files = None
@@ -63,11 +65,13 @@ class DenoiseView(ModeView):
         self.align_settings = None
         self.stack_settings = None
         self.tune_settings = None
+        self.export_settings = None
 
         self.sky_card = None
         self.align_card = None
         self.stack_card = None
         self.tune_card = None
+        self.export_card = None
 
         self.new_project_button = None
         self.open_project_button = None
@@ -146,10 +150,12 @@ class DenoiseView(ModeView):
         self.align_settings = sb.alignSettings
         self.stack_settings = sb.stackSettings
         self.tune_settings = sb.tuneSettings
+        self.export_settings = getattr(sb, "exportSettings", None)
         self.sky_card = sb.skyCard
         self.align_card = sb.alignCard
         self.stack_card = sb.stackCard
         self.tune_card = sb.tuneCard
+        self.export_card = getattr(sb, "exportCard", None)
         self.new_project_button = sb.pushButton_newProject
         self.open_project_button = sb.pushButton_openProject
         self.btn_detect_sky = sb.btn_detect_sky
@@ -205,6 +211,11 @@ class DenoiseView(ModeView):
             self.connect_signal(self.sky_settings.full_frame_requested, self.do_full_frame_mask_action)
             self.connect_signal(self.sky_settings.mask_edit_toggled, self._on_mask_edit_toggled)
             self.connect_signal(self.sky_settings.brush_radius_changed, self._on_brush_radius_changed)
+            self.connect_signal(self.sky_settings.export_training_requested, self.do_export_training_sky)
+            self.connect_signal(self.sky_settings.contribute_requested, self.do_contribute_training_sky)
+        if self.export_settings is not None:
+            self.connect_signal(self.export_settings.export_training_requested, self.do_export_training_sky)
+            self.connect_signal(self.export_settings.contribute_requested, self.do_contribute_training_sky)
         if self.btn_align_stars is not None:
             self.connect_signal(self.btn_align_stars.clicked, self.do_align_stars_action)
         if self.align_settings is not None:
@@ -222,6 +233,7 @@ class DenoiseView(ModeView):
             self.connect_signal(self.tune_card.expanded, lambda: self._schedule_horizon_tuning(save=False))
         if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
             self.connect_signal(self.shell.canvas_main.mask_changed, self._on_canvas_mask_changed)
+            self.connect_signal(self.shell.canvas_main.mask_brush_edited, self._on_canvas_mask_brush_edited)
             self.connect_signal(self.shell.canvas_main.brush_radius_changed, self._on_canvas_brush_radius_changed)
         if self.btn_save_output is not None:
             self.connect_signal(self.btn_save_output.clicked, self.do_save_output_action)
@@ -315,6 +327,8 @@ class DenoiseView(ModeView):
         if self.output_files is not None:
             self.output_files.set_files(self.app.getOutputFileList())
 
+        self.has_manual_sky_corrections = bool(getattr(self._project, "has_manual_sky_corrections", False))
+
         if self.sky_settings is not None:
             self.sky_settings.set_from_project()
         if self.align_settings is not None:
@@ -389,6 +403,11 @@ class DenoiseView(ModeView):
         return self.shell.enqueue_task(task_id, title, total, desc, run)
 
     def _show_task_error(self, task_id: str, message: str) -> None:
+        if task_id == "exportSkyTraining":
+            if message != "Cancelled":
+                parent = self.shell if isinstance(self.shell, QWidget) else None
+                QMessageBox.warning(parent, "Sky Training Export Failed", message)
+            return
         settings = {
             "detectSky": self.sky_settings, "refineMask": self.sky_settings,
             "alignStars": self.align_settings, "stackDenoise": self.stack_settings,
@@ -449,6 +468,13 @@ class DenoiseView(ModeView):
             self.btn_pipeline.setEnabled(has_stars)
         if self.btn_save_output is not None:
             self.btn_save_output.setEnabled(has_compositor)
+
+        if self.sky_settings is not None:
+            self.sky_settings.set_corrections_enabled(self.has_manual_sky_corrections)
+        if self.export_settings is not None:
+            self.export_settings.set_corrections_enabled(self.has_manual_sky_corrections)
+        if self.export_card is not None:
+            self.export_card.set_alert(self.has_manual_sky_corrections)
 
         if self.sidebar is not None:
             self.sidebar.set_has_compositor(has_compositor)
@@ -829,7 +855,16 @@ class DenoiseView(ModeView):
                 self.sky_settings.ui.showMaskOverlay.setChecked(True)
         self._save_mask_to_project(mask)
 
+    def _on_canvas_mask_brush_edited(self) -> None:
+        self.has_manual_sky_corrections = True
+        if hasattr(self.app.workflow, "project") and self.app.workflow.project is not None:
+            self.app.workflow.project.has_manual_sky_corrections = True
+        self.update_ready_states()
+
     def _on_detection_finished(self, mask: np.ndarray) -> None:
+        self.has_manual_sky_corrections = False
+        if hasattr(self.app.workflow, "project") and self.app.workflow.project is not None:
+            self.app.workflow.project.has_manual_sky_corrections = False
         self._apply_mask_to_canvas_and_project(mask)
         if self.sky_card is not None:
             self.sky_card.setStatus("done")
@@ -1016,6 +1051,150 @@ class DenoiseView(ModeView):
             mask = np.ones((h, w), dtype=np.float32)
             self._save_mask_to_project(mask)
         self.update_ready_states()
+
+    def do_export_training_sky(self) -> None:
+        ref = self.app.workflow.get_reference_file()
+        if ref is None:
+            return
+
+        reply = QMessageBox.question(
+            None,
+            "Export Sky Training Data",
+            "This process will downscale the reference image and your manual sky mask by half "
+            "into 8-bit training data ('image.jpg' and 'mask.png') to protect privacy and reduce file size. "
+            "You can share these samples with the project or use them to train your own models.\n\nContinue?",
+            QMessageBox.StandardButton.Yes,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        folder = QFileDialog.getExistingDirectory(caption="Choose folder to save sky training data")
+        if not folder:
+            return
+
+        if any((Path(folder) / name).exists() for name in ("image.jpg", "mask.png")):
+            parent = self.shell if isinstance(self.shell, QWidget) else None
+            replace = QMessageBox.question(
+                parent,
+                "Replace Sky Training Files?",
+                "This folder already contains sky training files. Replace image.jpg and mask.png?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if replace != QMessageBox.StandardButton.Yes:
+                return
+
+        current_mask = None
+        if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
+            current_mask = self.shell.canvas_main.get_denoise_mask()
+        if current_mask is None:
+            current_mask = self._find_existing_mask()
+        if current_mask is None:
+            return
+
+        mask_to_export = current_mask.copy()
+
+        def work():
+            progress_updater = ProgressBarUpdater(
+                getattr(self.shell, "progressBar", None),
+                getattr(self.shell, "label_progressBar", None),
+                total=2,
+                desc="Exporting Sky Training Data:",
+            )
+            self.app.workflow.doExportTrainingSky(folder, progress_updater.tick, mask=mask_to_export)
+
+        self._enqueue_task(
+            "exportSkyTraining",
+            "Export Sky Training Data",
+            2,
+            "Exporting sky training image and mask...",
+            work,
+        )
+
+    def do_contribute_training_sky(self) -> None:
+        ref = self.app.workflow.get_reference_file()
+        if ref is None:
+            return
+
+        current_mask = None
+        if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
+            current_mask = self.shell.canvas_main.get_denoise_mask()
+        if current_mask is None:
+            current_mask = self._find_existing_mask()
+        if current_mask is None:
+            return
+
+        from startrails.ui.contribute_dialog import ContributeCorrectionsDialog
+
+        parent = self.shell if isinstance(self.shell, QWidget) else None
+        info_text = (
+            "Contribute your sky mask corrections to help improve sky detection models. "
+            "What will be shared?\n"
+            "* A downscaled version of the reference image. (50%, 8-bit)\n"
+            "* Your corrected sky mask.\n\n"
+            "Submissions are uploaded and reviewed by a human for inclusion in the next training dataset."
+        )
+        dialog = ContributeCorrectionsDialog(
+            title="Contribute Sky Mask Corrections",
+            info_text=info_text,
+            parent=parent,
+        )
+        if dialog.exec() != ContributeCorrectionsDialog.DialogCode.Accepted:
+            return
+
+        email, comments = dialog.values()
+        mask_to_export = current_mask.copy()
+        generation = self._generation
+
+        def work():
+            progress_updater = ProgressBarUpdater(
+                getattr(self.shell, "progressBar", None),
+                getattr(self.shell, "label_progressBar", None),
+                total=2,
+                desc="Contributing Sky Mask Corrections:",
+            )
+            try:
+                receipt = self.app.workflow.doContributeTrainingSky(
+                    progress_updater.tick,
+                    user_email=email,
+                    user_comments=comments,
+                    mask=mask_to_export,
+                )
+                self._post_result(generation, lambda result=receipt: self._notify_contribution_result(result, None))
+            except Exception as err:
+                self._post_result(generation, lambda error=err: self._notify_contribution_result(None, error))
+
+        self._enqueue_task(
+            "contributeSkyTraining",
+            "Contribute Sky Training Data",
+            2,
+            "Submitting sky training data...",
+            work,
+        )
+
+    def _notify_contribution_result(self, receipt: dict | None, error: Exception | None):
+        shell = self.shell if isinstance(self.shell, QWidget) else None
+        if error is not None:
+            QMessageBox.warning(
+                shell,
+                "Contribution Failed",
+                f"Could not submit corrections:\n\n{error}",
+            )
+        elif receipt is not None:
+            receipt_dict = receipt if isinstance(receipt, dict) else {}
+            QMessageBox.information(
+                shell,
+                "Contribution Accepted",
+                f"Thank you for contributing to StarTrails!\n\n"
+                f"Your submission has been accepted into quarantine for review.\n\n"
+                f"Submission ID: {receipt_dict.get('submission_id', 'N/A')}\n"
+                f"Files: {receipt_dict.get('file_count', 0)}\n"
+                f"Size: {receipt_dict.get('size_bytes', 0):,} bytes",
+            )
+
+    doExportTrainingSky = do_export_training_sky
+    doContributeTrainingSky = do_contribute_training_sky
 
     def do_align_stars_action(self) -> None:
         stars = self.app.workflow.get_star_files()
@@ -1330,3 +1509,7 @@ DenoiseView.stackCard = property(lambda self: self.stack_card, lambda self, valu
 DenoiseView.tuneCard = property(lambda self: self.tune_card, lambda self, value: setattr(self, "tune_card", value))
 DenoiseView.pushButton_newProject = property(lambda self: self.new_project_button, lambda self, value: setattr(self, "new_project_button", value))
 DenoiseView.pushButton_openProject = property(lambda self: self.open_project_button, lambda self, value: setattr(self, "open_project_button", value))
+DenoiseView.exportSettings = property(lambda self: self.export_settings, lambda self, value: setattr(self, "export_settings", value))
+DenoiseView.exportCard = property(lambda self: self.export_card, lambda self, value: setattr(self, "export_card", value))
+DenoiseView.pushButton_contribute = property(lambda self: getattr(self.export_settings.ui, "contribute", None) if self.export_settings is not None and hasattr(self.export_settings, "ui") else None)
+DenoiseView.pushButton_exportTraining = property(lambda self: getattr(self.export_settings.ui, "training", None) if self.export_settings is not None and hasattr(self.export_settings, "ui") else None)

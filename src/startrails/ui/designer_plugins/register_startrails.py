@@ -104,6 +104,7 @@ from startrails.ui.steps_denoise import (
     DenoiseAlignSettings,
     DenoiseStackSettings,
     DenoiseTuneSettings,
+    DenoiseExportSettings,
 )
 
 # 1. Sidebar (composite container)
@@ -288,3 +289,16 @@ QPyDesignerCustomWidgetCollection.registerCustomWidget(
     </widget>
 </ui>""",
 )
+
+# 13. DenoiseExportSettings
+QPyDesignerCustomWidgetCollection.registerCustomWidget(
+    DenoiseExportSettings,
+    module="startrails.ui.steps_denoise",
+    group="Startrails",
+    tool_tip="Denoise Contribute and Export Settings",
+    xml="""<ui language='c++'>
+    <widget class='DenoiseExportSettings' name='denoiseExportSettings'>
+    </widget>
+</ui>""",
+)
+

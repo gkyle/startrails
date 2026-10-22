@@ -37,7 +37,7 @@ class Ui_StepCard(object):
 "    border-color: #cbd5e1;\n"
 "}\n"
 "QPushButton#toggle {\n"
-"    border: 2px solid transparent;\n"
+"    border: none;\n"
 "    background: transparent;\n"
 "    text-align: left;\n"
 "    padding: 0px;\n"
@@ -61,7 +61,7 @@ class Ui_StepCard(object):
 "    border-top: 1px solid #f1f5f9;\n"
 "    background: transparent;\n"
 "}\n"
-"QPushButton#toggle:focus:enabled { border-color: #0f172a; }")
+"")
         self.cardLayout = QVBoxLayout(StepCard)
         self.cardLayout.setSpacing(0)
         self.cardLayout.setObjectName(u"cardLayout")
@@ -88,7 +88,7 @@ class Ui_StepCard(object):
 "           border: none;\n"
 "           border-radius: 15px;\n"
 "           font-weight: bold;\n"
-"           font-size: 13px;\n"
+"           font-size: 16px;\n"
 "       }\n"
 "       QLabel#number[stepStatus=\"ready\"] { background-color: #0369a1; }\n"
 "       QLabel#number[stepStatus=\"done\"] { background-color: #1e293b; }\n"

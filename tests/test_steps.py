@@ -6,12 +6,13 @@ from PySide6.QtTest import QTest
 from support import QtTestCase
 from startrails.lib.file import InputFile
 from startrails.lib.project_denoise import DenoiseProject
-from startrails.ui.steps import DetectSettings, FillSettings, StackSettings, StepCard
+from startrails.ui.steps import DetectSettings, FillSettings, StackSettings, StepCard, AdditionalToolsSettings
 from startrails.ui.steps_denoise import (
     DenoiseAlignSettings,
     DenoiseSkySettings,
     DenoiseStackSettings,
     DenoiseTuneSettings,
+    DenoiseExportSettings,
 )
 
 
@@ -120,6 +121,8 @@ class SettingsTests(QtTestCase):
             (DenoiseSkySettings(), ("showMaskOverlay",)),
             (DenoiseStackSettings(), ("run", "advancedToggle", "useGPU", "compressIntermediateTiffs")),
             (DenoiseTuneSettings(), ("enableCorrections", "showGradientMask")),
+            (AdditionalToolsSettings(), ("masks", "contribute", "training")),
+            (DenoiseExportSettings(), ("contribute", "training")),
         )
         for form, names in forms:
             if hasattr(form.ui, "advancedToggle"):
@@ -144,3 +147,31 @@ class SettingsTests(QtTestCase):
         card.ui.toggle.setFocus()
         self.qt.processEvents()
         self.assertTrue(card.ui.toggle.hasFocus())
+
+    def test_step_card_alert_for_unnumbered_card(self):
+        card = StepCard("Contribute and Export", FillSettings())
+        self.assertFalse(card.has_number)
+        self.assertFalse(card.alert)
+        self.assertEqual(card.ui.number.text(), "")
+        self.assertEqual(card.ui.number.property("stepStatus"), "neutral")
+        self.assertFalse(card.ui.statusBadge.isVisible())
+        self.assertEqual(card.step_number, 0)
+
+        card.set_alert(True)
+        self.assertTrue(card.alert)
+        self.assertEqual(card.ui.number.text(), "!")
+        self.assertEqual(card.ui.number.property("stepStatus"), "ready")
+        self.assertFalse(card.ui.statusBadge.isVisible())
+        self.assertEqual(card.step_number, 0)
+
+        card.set_alert(False)
+        self.assertFalse(card.alert)
+        self.assertEqual(card.ui.number.text(), "")
+        self.assertEqual(card.ui.number.property("stepStatus"), "neutral")
+        self.assertFalse(card.ui.statusBadge.isVisible())
+        self.assertEqual(card.step_number, 0)
+
+        card.alert = True
+        self.assertTrue(card.alert)
+        self.assertEqual(card.ui.number.text(), "!")
+        self.assertEqual(card.ui.number.property("stepStatus"), "ready")

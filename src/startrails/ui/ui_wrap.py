@@ -325,6 +325,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             self.pushButton_removeStreaks = getattr(self.active_view, "pushButton_removeStreaks", None)
             self.pushButton_exportMasks = getattr(self.active_view, "pushButton_exportMasks", None)
             self.pushButton_exportTraining = getattr(self.active_view, "pushButton_exportTraining", None)
+            self.pushButton_contribute = getattr(self.active_view, "pushButton_contribute", None)
             self.checkBox_showDeletedMasks = getattr(self.active_view, "checkBox_showDeletedMasks", None)
             self.pushButton_findBrightest = getattr(self.active_view, "pushButton_findBrightest", None)
             self.pushButton_fillGaps = getattr(self.active_view, "pushButton_fillGaps", None)
@@ -935,6 +936,18 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     def doExportTrainingStreaks(self, *args, **kwargs):
         if self.active_view is not None and hasattr(self.active_view, "doExportTrainingStreaks"):
             return self.active_view.doExportTrainingStreaks(*args, **kwargs)
+
+    def doContributeTrainingStreaks(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doContributeTrainingStreaks"):
+            return self.active_view.doContributeTrainingStreaks(*args, **kwargs)
+
+    def doExportTrainingSky(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doExportTrainingSky"):
+            return self.active_view.doExportTrainingSky(*args, **kwargs)
+
+    def doContributeTrainingSky(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doContributeTrainingSky"):
+            return self.active_view.doContributeTrainingSky(*args, **kwargs)
 
     def doDetectStreaks(self, *args, **kwargs):
         if self.active_view is not None and hasattr(self.active_view, "doDetectStreaks"):

@@ -117,6 +117,7 @@ class DenoiseProject(Unpickle):
         self.stack_signature = None
         self.stack_artifacts = {}
         self.mask_invalidated = False
+        self.has_manual_sky_corrections = bool(getattr(self, "has_manual_sky_corrections", False))
         self.bind_files()
 
     @property

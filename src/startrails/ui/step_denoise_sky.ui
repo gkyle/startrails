@@ -364,7 +364,7 @@ QPushButton#fullFrameMask:hover {
       <string notr="true">color: #64748b; font-size: 11px;</string>
      </property>
      <property name="text">
-      <string>Brush: Left-click paint sky, Right-click erase ground.
+      <string>Brush: Left-click paint sky, Right-click erase.
 Hotkeys: [ / ] or Ctrl+Wheel to resize.</string>
      </property>
      <property name="wordWrap">

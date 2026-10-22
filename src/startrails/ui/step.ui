@@ -26,7 +26,7 @@ QFrame#StepCard:hover, StepCard:hover {
     border-color: #cbd5e1;
 }
 QPushButton#toggle {
-    border: 2px solid transparent;
+    border: none;
     background: transparent;
     text-align: left;
     padding: 0px;
@@ -50,7 +50,7 @@ QWidget#body {
     border-top: 1px solid #f1f5f9;
     background: transparent;
 }
-QPushButton#toggle:focus:enabled { border-color: #0f172a; }</string>
+</string>
   </property>
   <layout class="QVBoxLayout" name="cardLayout">
    <property name="spacing">
@@ -116,7 +116,7 @@ QPushButton#toggle:focus:enabled { border-color: #0f172a; }</string>
            border: none;
            border-radius: 15px;
            font-weight: bold;
-           font-size: 13px;
+           font-size: 16px;
        }
        QLabel#number[stepStatus=&quot;ready&quot;] { background-color: #0369a1; }
        QLabel#number[stepStatus=&quot;done&quot;] { background-color: #1e293b; }

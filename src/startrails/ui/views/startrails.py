@@ -5,7 +5,7 @@ from functools import partial
 import os
 from typing import TYPE_CHECKING, Any, Optional
 import numpy as np
-from PySide6.QtCore import Slot, QSignalBlocker
+from PySide6.QtCore import Slot, QSignalBlocker, QTimer
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
 
 from startrails.lib.file import File, InputFile, OutputFile
@@ -37,6 +37,7 @@ class StarTrailsView(ModeView):
         self._pushButton_removeStreaks = None
         self._pushButton_exportMasks = None
         self._pushButton_exportTraining = None
+        self._pushButton_contribute = None
         self._checkBox_showDeletedMasks = None
         self._pushButton_findBrightest = None
         self._pushButton_fillGaps = None
@@ -144,6 +145,16 @@ class StarTrailsView(ModeView):
         self._pushButton_exportTraining = value
 
     @property
+    def pushButton_contribute(self):
+        if self._pushButton_contribute is not None:
+            return self._pushButton_contribute
+        return self._from_shell("pushButton_contribute")
+
+    @pushButton_contribute.setter
+    def pushButton_contribute(self, value):
+        self._pushButton_contribute = value
+
+    @property
     def checkBox_showDeletedMasks(self):
         if self._checkBox_showDeletedMasks is not None:
             return self._checkBox_showDeletedMasks
@@ -203,7 +214,8 @@ class StarTrailsView(ModeView):
         self.pushButton_stackImages = sb.stack.ui.run
         self.pushButton_removeStreaks = sb.detect.ui.run
         self.pushButton_exportMasks = sb.tools.ui.masks
-        self.pushButton_exportTraining = sb.review.ui.training
+        self.pushButton_exportTraining = getattr(sb.tools.ui, "training", getattr(sb.review.ui, "training", None))
+        self.pushButton_contribute = getattr(sb.tools.ui, "contribute", getattr(sb.review.ui, "contribute", None))
         self.checkBox_showDeletedMasks = sb.review.ui.showDeletedMasks
         self.pushButton_findBrightest = getattr(sb.review.ui, "findBrightest", None)
         self.pushButton_fillGaps = sb.fill.ui.run
@@ -224,6 +236,8 @@ class StarTrailsView(ModeView):
         self.connect_signal(self.pushButton_removeStreaks.clicked, self.doDetectStreaks)
         self.connect_signal(self.pushButton_exportMasks.clicked, self.doExportMasks)
         self.connect_signal(self.pushButton_exportTraining.clicked, self.doExportTrainingStreaks)
+        if self.pushButton_contribute is not None:
+            self.connect_signal(self.pushButton_contribute.clicked, self.doContributeTrainingStreaks)
         self.connect_signal(self.pushButton_fillGaps.clicked, self.doFillGaps)
         self.connect_signal(self.checkBox_showDeletedMasks.stateChanged, self.onShowDeletedMasksChanged)
 
@@ -272,6 +286,10 @@ class StarTrailsView(ModeView):
         self.pushButton_removeStreaks.setEnabled(self.readyInputImages)
         self.pushButton_exportMasks.setEnabled(self.readyStreaksRemoved)
         self.pushButton_exportTraining.setEnabled(self.readyManualStreaksRemoved)
+        if self.pushButton_contribute is not None:
+            self.pushButton_contribute.setEnabled(self.readyManualStreaksRemoved)
+        if hasattr(self.sidebar, "toolsCard") and self.sidebar.toolsCard is not None:
+            self.sidebar.toolsCard.set_alert(self.readyManualStreaksRemoved)
         self.sidebar.stack.set_has_masks(self.readyStreaksRemoved)
         self.sidebar.detectCard.setSubtitle(
             "Ready to detect streaks" if self.readyInputImages else "Add input files to begin"
@@ -580,7 +598,7 @@ class StarTrailsView(ModeView):
         reply = QMessageBox.question(
             None,
             "Export training data",
-            "This process will export manually labeled streaks, deleted streaks, and random negative examples as training data as 512x512px cropped training images and labels. You can share these samples with the project or use them to train your own models.\n\nContinue?",
+            "This process will export manually labeled streaks, deleted streaks, and random negative examples as training data as 512x512px cropped training images and labels.\n\nContinue?",
             QMessageBox.StandardButton.Yes,
             QMessageBox.StandardButton.No,
         )
@@ -609,6 +627,74 @@ class StarTrailsView(ModeView):
             f"Exporting sample 1 of {total}",
             partial(f, folderName),
         )
+
+    def doContributeTrainingStreaks(self):
+        from startrails.ui.contribute_dialog import ContributeCorrectionsDialog
+
+        parent = self.shell if isinstance(self.shell, QWidget) else None
+        info_text = (
+            "Contribute your manual streak additions, deletions, and negative samples. "
+            "What will be shared?\n"
+            "* 512x512 cropped training sample images for each correction\n"
+            "* Text annotations defining each streak\n\n"
+            "Submissions are uploaded and reviewed by a human for inclusion in the next training dataset."
+        )
+        dialog = ContributeCorrectionsDialog(
+            title="Contribute Streak Corrections",
+            info_text=info_text,
+            parent=parent,
+        )
+        if dialog.exec() != ContributeCorrectionsDialog.DialogCode.Accepted:
+            return
+
+        email, comments = dialog.values()
+        files = self.app.getInputFileList()
+        total = len(list(files))
+
+        def f(email, comments):
+            progressUpdater = ProgressBarUpdater(
+                getattr(self.shell, "progressBar", None),
+                getattr(self.shell, "label_progressBar", None),
+                total=total,
+                desc="Contributing Streak Corrections:",
+            )
+            try:
+                receipt = self.app.doContributeTrainingStreaks(
+                    progressUpdater.tick,
+                    user_email=email,
+                    user_comments=comments,
+                )
+                QTimer.singleShot(0, self.shell, lambda result=receipt: self._notify_contribution_result(result, None))
+            except Exception as err:
+                QTimer.singleShot(0, self.shell, lambda error=err: self._notify_contribution_result(None, error))
+
+        self.shell.enqueue_task(
+            "contributeTraining",
+            "Contribute Training Data",
+            total,
+            f"Exporting sample 1 of {total}",
+            partial(f, email, comments),
+        )
+
+    def _notify_contribution_result(self, receipt: dict | None, error: Exception | None):
+        shell = self.shell if isinstance(self.shell, QWidget) else None
+        if error is not None:
+            QMessageBox.warning(
+                shell,
+                "Contribution Failed",
+                f"Could not submit corrections:\n\n{error}",
+            )
+        elif receipt is not None:
+            receipt_dict = receipt if isinstance(receipt, dict) else {}
+            QMessageBox.information(
+                shell,
+                "Contribution Accepted",
+                f"Thank you for contributing to StarTrails!\n\n"
+                f"Your submission has been accepted into quarantine for review.\n\n"
+                f"Submission ID: {receipt_dict.get('submission_id', 'N/A')}\n"
+                f"Files: {receipt_dict.get('file_count', 0)}\n"
+                f"Size: {receipt_dict.get('size_bytes', 0):,} bytes",
+            )
 
     def doDetectStreaks(self):
         if self.sidebar is None:

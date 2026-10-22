@@ -3,7 +3,7 @@
 from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import CancelledError, ThreadPoolExecutor
 
 from deferred_import import deferred_import
 dsm = deferred_import("startrails.op.detectStreaks")
@@ -225,6 +225,41 @@ class StarTrailsWorkflow(Workflow):
             exportStreaksTraining.removeObserver(progressBar)
 
     do_export_training_streaks = doExportTrainingStreaks
+
+    def doContributeTrainingStreaks(
+        self,
+        progressBar,
+        user_email: str | None = None,
+        user_comments: str | None = None,
+        client=None,
+    ) -> dict:
+        import tempfile
+        from startrails.lib.contrib import ContributionClient, package_training_directory
+
+        if client is None:
+            client = ContributionClient()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            exportStreaksTraining = ExportStreaksDetectTraining()
+            exportStreaksTraining.addObserver(progressBar)
+            self.app.activeOperation = exportStreaksTraining
+            try:
+                exportStreaksTraining.cropAndLabelFiles(self.getInputFileList(), temp_dir)
+                if exportStreaksTraining.shouldInterrupt():
+                    raise CancelledError("Streak training export cancelled")
+                zip_bytes, _ = package_training_directory(temp_dir)
+                return client.submit_bundle(
+                    zip_bytes=zip_bytes,
+                    user_email=user_email,
+                    user_comments=user_comments,
+                    app_version=getattr(self.app, "__version__", "0.1.1"),
+                    is_cancelled=exportStreaksTraining.shouldInterrupt,
+                )
+            finally:
+                self.app.activeOperation = None
+                exportStreaksTraining.removeObserver(progressBar)
+
+    do_contribute_training_streaks = doContributeTrainingStreaks
 
     def doExportMaskedImages(self, outDir: str, progressBar) -> None:
         exportMaskedImages = ExportMaskedImages()

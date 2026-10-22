@@ -22,6 +22,7 @@ class CanvasLabel(QLabel):
     NUB_SIZE_TOLERANT = 15
     findBrightestModeChanged = Signal(bool)
     mask_changed = Signal()
+    mask_brush_edited = Signal()
     brush_radius_changed = Signal(int)
 
     def __init__(self, text: Optional[str] = None, pixmap: Optional[QPixmap] = None, parent: Optional[QWidget] = None):
@@ -684,6 +685,7 @@ class CanvasLabel(QLabel):
         if self._is_brush_painting:
             self._is_brush_painting = False
             self._last_brush_pos = None
+            self.mask_brush_edited.emit()
             self.mask_changed.emit()
             return
 

@@ -120,9 +120,9 @@ Use **Save Image** to export the result as TIFF or JPEG.
 
 ## Contributing and training
 
-Image contributions can greatly help improve model quality. After correcting streak detections, use **Export Training** under **Review and Correct** to export 512x512 crops and labels.
+After correcting streaks in **Startrails** mode or painting the sky mask in **Denoise** mode, open **Contribute and Export** in the sidebar.
+Choose **Contribute Corrections** to upload training data for review, or **Export to Disk** to save it locally. Contact email is optional when contributing.
 
-* Zip up the contents of the folder into a `.zip` file.
-* Create a new issue with a title like "Training data". Describe the samples and attach the `.zip` file. The maximum attachment size is 10 MB. If the file is larger, please create the issue without an attachment, and we can coordinate how to send your data.
+Streak data contains 512×512 image crops and labels. Sky data contains a half-size, 8-bit reference image and corrected mask (`image.jpg` and `mask.png`).
 
 The [training dataset](https://github.com/gkyle/startrails/releases/tag/training) and [training notebooks](training/) for streak detection are available.
