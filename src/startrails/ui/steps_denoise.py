@@ -12,6 +12,7 @@ from .ui_step_denoise_sky import Ui_DenoiseSkySettings
 from .ui_step_denoise_align import Ui_DenoiseAlignSettings
 from .ui_step_denoise_stack import Ui_DenoiseStackSettings
 from .ui_step_denoise_tune import Ui_DenoiseTuneSettings
+from .ui_step_denoise_export import Ui_DenoiseExportSettings
 
 if TYPE_CHECKING:
     from startrails.app import App
@@ -58,8 +59,6 @@ class DenoiseSkySettings(QWidget):
         self.ui.fullFrameMask.clicked.connect(self.full_frame_requested.emit)
         self.ui.refineMask.clicked.connect(self.refine_mask_requested.emit)
         self.ui.showMaskOverlay.toggled.connect(self.mask_edit_toggled.emit)
-        self.ui.training.clicked.connect(self.export_training_requested.emit)
-        self.ui.contribute.clicked.connect(self.contribute_requested.emit)
 
         # Connect change signals
         self.ui.modelType.currentIndexChanged.connect(self._on_change)
@@ -97,25 +96,14 @@ class DenoiseSkySettings(QWidget):
             self.ui.brushRadius.setValue(DEFAULT_MASK_BRUSH_RADIUS)
         self.ui.error.clear()
         self.ui.error.hide()
-        self.set_corrections_enabled(False)
         self.set_from_project()
 
     def set_corrections_enabled(self, enabled: bool) -> None:
-        """Enable or disable sky training contribution/export buttons."""
-        self.ui.contribute.setEnabled(enabled)
-        self.ui.training.setEnabled(enabled)
-        export_tip = (
-            "Export manual sky mask corrections to disk"
-            if enabled
-            else "Requires manual sky mask brush corrections."
-        )
-        contrib_tip = (
-            "Contribute manual sky mask corrections to help improve sky models"
-            if enabled
-            else "Requires manual sky mask brush corrections."
-        )
-        self.ui.training.setToolTip(export_tip)
-        self.ui.contribute.setToolTip(contrib_tip)
+        """Backward compatibility no-op; corrections buttons moved to DenoiseExportSettings."""
+        if hasattr(self.ui, "contribute"):
+            self.ui.contribute.setEnabled(enabled)
+        if hasattr(self.ui, "training"):
+            self.ui.training.setEnabled(enabled)
 
     def values(self) -> Dict[str, Any]:
         return {
@@ -137,7 +125,6 @@ class DenoiseSkySettings(QWidget):
         if model in self.REV_MODEL_MAP:
             with QSignalBlocker(self.ui.modelType):
                 self.ui.modelType.setCurrentIndex(self.REV_MODEL_MAP[model])
-        self.set_corrections_enabled(getattr(proj, "has_manual_sky_corrections", False))
 
     def sync_to_project(self) -> None:
         if not self.app or not hasattr(self.app, "project"):
@@ -153,7 +140,6 @@ class DenoiseSkySettings(QWidget):
             has_stars = bool(self.app.workflow.get_star_files())
         self.ui.detect.setEnabled(has_stars)
         self.ui.refineMask.setEnabled(has_stars)
-        self.set_corrections_enabled(has_manual_corrections)
 
 
 class DenoiseAlignSettings(QWidget):
@@ -549,4 +535,56 @@ class DenoiseTuneSettings(QWidget):
             self.ui.tuneStatus.setText("Stacks ready for composite tuning")
         else:
             self.ui.tuneStatus.setText("Requires stacked sky and ground frames")
+
+
+class DenoiseExportSettings(QWidget):
+    """Contribute and Export settings widget for Denoise mode."""
+
+    export_training_requested = Signal()
+    contribute_requested = Signal()
+
+    def __init__(self, app: Optional[App] = None, parent: Optional[QWidget] = None, ui: Any = None):
+        if isinstance(app, QWidget) and parent is None:
+            app, parent = None, app
+        if not isinstance(parent, QWidget) and parent is not None:
+            app, parent = parent, app
+        super().__init__(parent if isinstance(parent, QWidget) else None)
+        self.app = app
+
+        self.ui = Ui_DenoiseExportSettings()
+        self.ui.setupUi(self)
+
+        self.ui.training.clicked.connect(self.export_training_requested.emit)
+        self.ui.contribute.clicked.connect(self.contribute_requested.emit)
+        self.reset()
+
+    def reset(self) -> None:
+        self.set_corrections_enabled(False)
+        self.set_from_project()
+
+    def set_corrections_enabled(self, enabled: bool) -> None:
+        """Enable or disable sky training contribution/export buttons."""
+        self.ui.contribute.setEnabled(enabled)
+        self.ui.training.setEnabled(enabled)
+        export_tip = (
+            "Export manual sky mask corrections to disk"
+            if enabled
+            else "Requires manual sky mask brush corrections."
+        )
+        contrib_tip = (
+            "Contribute manual sky mask corrections to help improve sky models"
+            if enabled
+            else "Requires manual sky mask brush corrections."
+        )
+        self.ui.training.setToolTip(export_tip)
+        self.ui.contribute.setToolTip(contrib_tip)
+
+    def set_from_project(self) -> None:
+        if not self.app or not hasattr(self.app, "project"):
+            return
+        proj = self.app.project
+        self.set_corrections_enabled(getattr(proj, "has_manual_sky_corrections", False))
+
+    def refresh_inputs(self, has_manual_corrections: bool = False) -> None:
+        self.set_corrections_enabled(has_manual_corrections)
 

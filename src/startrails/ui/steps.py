@@ -470,6 +470,10 @@ class ReviewSettings(QWidget):
         else:
             self.ui = Ui_ReviewSettings()
             self.ui.setupUi(self)
+            if not hasattr(self.ui, "training"):
+                self.ui.training = None
+            if not hasattr(self.ui, "contribute"):
+                self.ui.contribute = None
 
     def set_counts(self, auto: int, manual: int, deleted: int):
         if getattr(self.ui, "statAutoNum", None) is not None:
@@ -490,7 +494,12 @@ class AdditionalToolsSettings(QWidget):
     def __init__(self, parent=None, ui=None):
         super().__init__(parent)
         if ui is not None:
-            self.ui = SimpleNamespace(masks=ui.exportMasks)
+            self.ui = SimpleNamespace(
+                masks=getattr(ui, "exportMasks", getattr(ui, "masks", None)),
+                contribute=getattr(ui, "contribute", getattr(ui, "contributeTraining", getattr(ui, "pushButton_contribute", None))),
+                training=getattr(ui, "training", getattr(ui, "exportTraining", getattr(ui, "pushButton_exportTraining", None))),
+                showDeletedMasks=getattr(ui, "exportShowDeletedMasks", getattr(ui, "showDeletedMasks", None)),
+            )
         else:
             self.ui = Ui_ToolsSettings()
             self.ui.setupUi(self)

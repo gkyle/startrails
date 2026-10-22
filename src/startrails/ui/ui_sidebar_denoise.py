@@ -21,7 +21,8 @@ from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
 
 from startrails.ui.file_manager import FileSection
 from startrails.ui.steps import StepCard
-from startrails.ui.steps_denoise import (DenoiseAlignSettings, DenoiseSkySettings, DenoiseStackSettings, DenoiseTuneSettings)
+from startrails.ui.steps_denoise import (DenoiseAlignSettings, DenoiseExportSettings, DenoiseSkySettings, DenoiseStackSettings,
+    DenoiseTuneSettings)
 from . import resources_rc
 
 class Ui_SidebarDenoise(object):
@@ -304,6 +305,21 @@ class Ui_SidebarDenoise(object):
 
         self.contentLayout.addLayout(self.tuneLayout)
 
+        self.exportLayout = QVBoxLayout()
+        self.exportLayout.setObjectName(u"exportLayout")
+        self.exportCard = StepCard(self.content)
+        self.exportCard.setObjectName(u"exportCard")
+        self.exportCard.setProperty(u"is_expanded", False)
+        self.exportSettings = DenoiseExportSettings(self.exportCard)
+        self.exportSettings.setObjectName(u"exportSettings")
+        self.exportSettings.setGeometry(QRect(0, 0, 100, 30))
+        self.exportCard.add_body(self.exportSettings)
+
+        self.exportLayout.addWidget(self.exportCard)
+
+
+        self.contentLayout.addLayout(self.exportLayout)
+
         self.saveOutput = QPushButton(self.content)
         self.saveOutput.setObjectName(u"saveOutput")
         self.saveOutput.setEnabled(False)
@@ -389,6 +405,8 @@ class Ui_SidebarDenoise(object):
         self.stackCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Requires aligned stars", None))
         self.tuneCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Tune Horizon", None))
         self.tuneCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Requires base stacks", None))
+        self.exportCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Contribute and Export", None))
+        self.exportCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Optional utilities", None))
         self.saveOutput.setText(QCoreApplication.translate("SidebarDenoise", u"Save Image", None))
         self.runPipeline.setText(QCoreApplication.translate("SidebarDenoise", u"\u25b6 Run Full Denoise Pipeline", None))
         pass

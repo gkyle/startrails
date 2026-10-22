@@ -239,78 +239,6 @@ class Ui_DenoiseSkySettings(object):
 
         self.layout.addWidget(self.error)
 
-        self.contributeHeading = QLabel(DenoiseSkySettings)
-        self.contributeHeading.setObjectName(u"contributeHeading")
-        self.contributeHeading.setStyleSheet(u"font-size: 11px;\n"
-"font-weight: 600;\n"
-"color: #475569;\n"
-"text-transform: uppercase;\n"
-"letter-spacing: 0.5px;\n"
-"margin-top: 4px;")
-
-        self.layout.addWidget(self.contributeHeading)
-
-        self.contributeHint = QLabel(DenoiseSkySettings)
-        self.contributeHint.setObjectName(u"contributeHint")
-        self.contributeHint.setStyleSheet(u"font-size: 11px;\n"
-"color: #64748b;\n"
-"line-height: 1.3;")
-        self.contributeHint.setWordWrap(True)
-
-        self.layout.addWidget(self.contributeHint)
-
-        self.contribute = QPushButton(DenoiseSkySettings)
-        self.contribute.setObjectName(u"contribute")
-        self.contribute.setEnabled(False)
-        self.contribute.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.contribute.setStyleSheet(u"QPushButton#contribute {\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    border: 2px solid #0369a1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#contribute:hover {\n"
-"    background-color: #075985;\n"
-"    border-color: #075985;\n"
-"}\n"
-"QPushButton#contribute:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
-"QPushButton#contribute:focus:enabled { border-color: #0f172a; }")
-
-        self.layout.addWidget(self.contribute)
-
-        self.training = QPushButton(DenoiseSkySettings)
-        self.training.setObjectName(u"training")
-        self.training.setEnabled(False)
-        self.training.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.training.setStyleSheet(u"QPushButton#training {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 2px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#training:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#training:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
-"QPushButton#training:focus:enabled { border-color: #0f172a; }")
-
-        self.layout.addWidget(self.training)
-
 #if QT_CONFIG(shortcut)
         self.showMaskOverlayLabel.setBuddy(self.showMaskOverlay)
 #endif // QT_CONFIG(shortcut)
@@ -368,16 +296,6 @@ class Ui_DenoiseSkySettings(object):
         self.fullFrameMask.setText(QCoreApplication.translate("DenoiseSkySettings", u"Full Frame", None))
         self.brushHint.setText(QCoreApplication.translate("DenoiseSkySettings", u"Brush: Left-click paint sky, Right-click erase.\n"
 "Hotkeys: [ / ] or Ctrl+Wheel to resize.", None))
-        self.contributeHeading.setText(QCoreApplication.translate("DenoiseSkySettings", u"Optional: Contribute Corrections", None))
-        self.contributeHint.setText(QCoreApplication.translate("DenoiseSkySettings", u"Export manual sky mask corrections to help improve future celestial sky detection models.", None))
-#if QT_CONFIG(tooltip)
-        self.contribute.setToolTip(QCoreApplication.translate("DenoiseSkySettings", u"Requires manual sky mask brush corrections.", None))
-#endif // QT_CONFIG(tooltip)
-        self.contribute.setText(QCoreApplication.translate("DenoiseSkySettings", u"Contribute Corrections", None))
-#if QT_CONFIG(tooltip)
-        self.training.setToolTip(QCoreApplication.translate("DenoiseSkySettings", u"Requires manual sky mask brush corrections.", None))
-#endif // QT_CONFIG(tooltip)
-        self.training.setText(QCoreApplication.translate("DenoiseSkySettings", u"Export to Disk", None))
         pass
     # retranslateUi
 

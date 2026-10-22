@@ -65,11 +65,13 @@ class DenoiseView(ModeView):
         self.align_settings = None
         self.stack_settings = None
         self.tune_settings = None
+        self.export_settings = None
 
         self.sky_card = None
         self.align_card = None
         self.stack_card = None
         self.tune_card = None
+        self.export_card = None
 
         self.new_project_button = None
         self.open_project_button = None
@@ -148,10 +150,12 @@ class DenoiseView(ModeView):
         self.align_settings = sb.alignSettings
         self.stack_settings = sb.stackSettings
         self.tune_settings = sb.tuneSettings
+        self.export_settings = getattr(sb, "exportSettings", None)
         self.sky_card = sb.skyCard
         self.align_card = sb.alignCard
         self.stack_card = sb.stackCard
         self.tune_card = sb.tuneCard
+        self.export_card = getattr(sb, "exportCard", None)
         self.new_project_button = sb.pushButton_newProject
         self.open_project_button = sb.pushButton_openProject
         self.btn_detect_sky = sb.btn_detect_sky
@@ -209,6 +213,9 @@ class DenoiseView(ModeView):
             self.connect_signal(self.sky_settings.brush_radius_changed, self._on_brush_radius_changed)
             self.connect_signal(self.sky_settings.export_training_requested, self.do_export_training_sky)
             self.connect_signal(self.sky_settings.contribute_requested, self.do_contribute_training_sky)
+        if self.export_settings is not None:
+            self.connect_signal(self.export_settings.export_training_requested, self.do_export_training_sky)
+            self.connect_signal(self.export_settings.contribute_requested, self.do_contribute_training_sky)
         if self.btn_align_stars is not None:
             self.connect_signal(self.btn_align_stars.clicked, self.do_align_stars_action)
         if self.align_settings is not None:
@@ -459,6 +466,8 @@ class DenoiseView(ModeView):
 
         if self.sky_settings is not None:
             self.sky_settings.set_corrections_enabled(self.has_manual_sky_corrections)
+        if self.export_settings is not None:
+            self.export_settings.set_corrections_enabled(self.has_manual_sky_corrections)
 
         if self.sidebar is not None:
             self.sidebar.set_has_compositor(has_compositor)
@@ -1101,10 +1110,10 @@ class DenoiseView(ModeView):
 
         parent = self.shell if isinstance(self.shell, QWidget) else None
         info_text = (
-            "Contribute your manual sky mask corrections to help improve future celestial "
-            "sky detection models.\n\n"
-            "Images and masks are downscaled by half and to 8-bit format ('image.jpg' and 'mask.png') "
-            "before transferring.\n\n"
+            "Contribute your sky mask corrections to help improve sky detection models. "
+            "What will be shared?\n"
+            "* A downscaled version of the reference image. (50%, 8-bit)\n"
+            "* Your corrected sky mask.\n\n"
             "Submissions are uploaded and reviewed by a human for inclusion in the next training dataset."
         )
         dialog = ContributeCorrectionsDialog(
@@ -1480,3 +1489,7 @@ DenoiseView.stackCard = property(lambda self: self.stack_card, lambda self, valu
 DenoiseView.tuneCard = property(lambda self: self.tune_card, lambda self, value: setattr(self, "tune_card", value))
 DenoiseView.pushButton_newProject = property(lambda self: self.new_project_button, lambda self, value: setattr(self, "new_project_button", value))
 DenoiseView.pushButton_openProject = property(lambda self: self.open_project_button, lambda self, value: setattr(self, "open_project_button", value))
+DenoiseView.exportSettings = property(lambda self: self.export_settings, lambda self, value: setattr(self, "export_settings", value))
+DenoiseView.exportCard = property(lambda self: self.export_card, lambda self, value: setattr(self, "export_card", value))
+DenoiseView.pushButton_contribute = property(lambda self: getattr(self.export_settings.ui, "contribute", None) if self.export_settings is not None and hasattr(self.export_settings, "ui") else None)
+DenoiseView.pushButton_exportTraining = property(lambda self: getattr(self.export_settings.ui, "training", None) if self.export_settings is not None and hasattr(self.export_settings, "ui") else None)

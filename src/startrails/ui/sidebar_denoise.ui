@@ -471,6 +471,33 @@ QProgressBar#operationsProgress::chunk {
         </layout>
        </item>
        <item>
+        <layout class="QVBoxLayout" name="exportLayout">
+         <item>
+          <widget class="StepCard" name="exportCard">
+           <property name="title" stdset="0">
+            <string>Contribute and Export</string>
+           </property>
+           <property name="subtitle" stdset="0">
+            <string>Optional utilities</string>
+           </property>
+           <property name="is_expanded" stdset="0">
+            <bool>false</bool>
+           </property>
+           <widget class="DenoiseExportSettings" name="exportSettings" native="true">
+            <property name="geometry">
+             <rect>
+              <x>0</x>
+              <y>0</y>
+              <width>100</width>
+              <height>30</height>
+             </rect>
+            </property>
+           </widget>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
         <widget class="QPushButton" name="saveOutput">
          <property name="enabled">
           <bool>false</bool>
@@ -582,6 +609,11 @@ QPushButton#runPipeline:disabled {
   </customwidget>
   <customwidget>
    <class>DenoiseTuneSettings</class>
+   <extends>QWidget</extends>
+   <header>startrails.ui.steps_denoise</header>
+  </customwidget>
+  <customwidget>
+   <class>DenoiseExportSettings</class>
    <extends>QWidget</extends>
    <header>startrails.ui.steps_denoise</header>
   </customwidget>

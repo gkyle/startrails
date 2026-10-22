@@ -26,13 +26,15 @@ class Sidebar(QWidget):
             self.stack = StackSettings(app, ui=ui)
             self.fill = FillSettings(ui=ui)
             self.tools = AdditionalToolsSettings(ui=ui)
-            self.exports = self.review
+            if hasattr(self.tools, "ui"):
+                self.tools.ui.showDeletedMasks = getattr(self.review.ui, "showDeletedMasks", None)
+            self.exports = self.tools
             self.detectCard = StepCard("Detect Streaks", self.detect, 1, expanded=True, ui=ui, prefix="stepDetect")
             self.stackCard = StepCard("Stack Images", self.stack, 2, ui=ui, prefix="stepStack")
             self.reviewCard = StepCard("Review and Correct", self.review, 3, ui=ui, prefix="stepReview")
             self.fillCard = StepCard("Fill Gaps", self.fill, 4, ui=ui, prefix="stepFill")
-            self.toolsCard = StepCard("Additional Tools", self.tools, ui=ui, prefix="additionalTools")
-            self.exportCard = self.reviewCard
+            self.toolsCard = StepCard("Contribute and Export", self.tools, ui=ui, prefix="additionalTools")
+            self.exportCard = self.toolsCard
             self.update_operations_progress(app)
         else:
             from .ui_sidebar import Ui_Sidebar
@@ -48,14 +50,16 @@ class Sidebar(QWidget):
             self.stack = StackSettings(app)
             self.fill = FillSettings()
             self.tools = AdditionalToolsSettings()
-            self.exports = self.review
+            if hasattr(self.tools, "ui"):
+                self.tools.ui.showDeletedMasks = getattr(self.review.ui, "showDeletedMasks", None)
+            self.exports = self.tools
             self.detectCard = StepCard("Detect Streaks", self.detect, 1, expanded=True)
             self.stackCard = StepCard("Stack Images", self.stack, 2)
             self.reviewCard = StepCard("Review and Correct", self.review, 3)
             self.fillCard = StepCard("Fill Gaps", self.fill, 4)
-            self.toolsCard = StepCard("Additional Tools", self.tools)
+            self.toolsCard = StepCard("Contribute and Export", self.tools)
             self.toolsCard.setSubtitle("Optional utilities")
-            self.exportCard = self.reviewCard
+            self.exportCard = self.toolsCard
             self.ui.detectLayout.addWidget(self.detectCard)
             self.ui.stackLayout.addWidget(self.stackCard)
             self.ui.reviewLayout.addWidget(self.reviewCard)

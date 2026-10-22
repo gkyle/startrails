@@ -6,12 +6,13 @@ from PySide6.QtTest import QTest
 from support import QtTestCase
 from startrails.lib.file import InputFile
 from startrails.lib.project_denoise import DenoiseProject
-from startrails.ui.steps import DetectSettings, FillSettings, StackSettings, StepCard
+from startrails.ui.steps import DetectSettings, FillSettings, StackSettings, StepCard, AdditionalToolsSettings
 from startrails.ui.steps_denoise import (
     DenoiseAlignSettings,
     DenoiseSkySettings,
     DenoiseStackSettings,
     DenoiseTuneSettings,
+    DenoiseExportSettings,
 )
 
 
@@ -120,6 +121,8 @@ class SettingsTests(QtTestCase):
             (DenoiseSkySettings(), ("showMaskOverlay",)),
             (DenoiseStackSettings(), ("run", "advancedToggle", "useGPU", "compressIntermediateTiffs")),
             (DenoiseTuneSettings(), ("enableCorrections", "showGradientMask")),
+            (AdditionalToolsSettings(), ("masks", "contribute", "training")),
+            (DenoiseExportSettings(), ("contribute", "training")),
         )
         for form, names in forms:
             if hasattr(form.ui, "advancedToggle"):

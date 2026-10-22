@@ -150,20 +150,22 @@ class DenoiseViewTrainingUITests(QtTestCase):
 
     def test_corrections_buttons_enable_only_after_manual_brush_edits(self):
         """Verify buttons are disabled until user paints with brush, and disabled again on auto-detect."""
-        sky_ui = self.sidebar.skySettings.ui
+        export_ui = self.sidebar.exportSettings.ui
+        self.assertEqual(self.view.pushButton_contribute, export_ui.contribute)
+        self.assertEqual(self.view.pushButton_exportTraining, export_ui.training)
 
         # Initially disabled
         self.assertFalse(self.view.has_manual_sky_corrections)
-        self.assertFalse(sky_ui.contribute.isEnabled())
-        self.assertFalse(sky_ui.training.isEnabled())
+        self.assertFalse(export_ui.contribute.isEnabled())
+        self.assertFalse(export_ui.training.isEnabled())
 
         # Emitting canvas mask_brush_edited enables buttons
         self.shell.canvas_main.mask_brush_edited.emit()
         qt_app().processEvents()
 
         self.assertTrue(self.view.has_manual_sky_corrections)
-        self.assertTrue(sky_ui.contribute.isEnabled())
-        self.assertTrue(sky_ui.training.isEnabled())
+        self.assertTrue(export_ui.contribute.isEnabled())
+        self.assertTrue(export_ui.training.isEnabled())
 
         # Running auto-detect resets manual corrections to False
         dummy_mask = np.ones((100, 100), dtype=np.float32)
@@ -171,8 +173,8 @@ class DenoiseViewTrainingUITests(QtTestCase):
         qt_app().processEvents()
 
         self.assertFalse(self.view.has_manual_sky_corrections)
-        self.assertFalse(sky_ui.contribute.isEnabled())
-        self.assertFalse(sky_ui.training.isEnabled())
+        self.assertFalse(export_ui.contribute.isEnabled())
+        self.assertFalse(export_ui.training.isEnabled())
 
     def test_do_export_training_sky_triggers_workflow(self):
         """Verify do_export_training_sky enqueues task and invokes doExportTrainingSky."""
@@ -217,3 +219,42 @@ class DenoiseViewTrainingUITests(QtTestCase):
                         receipt, err = mock_notify.call_args[0]
                         self.assertIsNone(err)
                         self.assertEqual(receipt["submission_id"], "sub-123")
+
+    def test_denoise_sidebar_contribute_and_export_step_structure(self):
+        """Verify the new Contribute and Export step card styling, title, and separation from Detect Sky."""
+        self.assertEqual(self.sidebar.exportCard.title, "Contribute and Export")
+        self.assertEqual(self.sidebar.exportCard.subtitle, "Optional utilities")
+        self.assertFalse(self.sidebar.exportCard.has_number)
+        # Verify Detect Sky settings form no longer contains contribute or training buttons
+        self.assertFalse(hasattr(self.sidebar.skySettings.ui, "contribute"))
+        self.assertFalse(hasattr(self.sidebar.skySettings.ui, "training"))
+        # Verify Export settings form contains them
+        self.assertTrue(hasattr(self.sidebar.exportSettings.ui, "contribute"))
+        self.assertTrue(hasattr(self.sidebar.exportSettings.ui, "training"))
+
+    def test_button_clicks_emit_signals_and_connect_to_view(self):
+        """Verify buttons emit signals and bind() connects them to view action handlers."""
+        signals_received = []
+        self.sidebar.exportSettings.export_training_requested.connect(lambda: signals_received.append("export"))
+        self.sidebar.exportSettings.contribute_requested.connect(lambda: signals_received.append("contribute"))
+
+        self.sidebar.exportSettings.set_corrections_enabled(True)
+        self.sidebar.exportSettings.ui.training.click()
+        self.sidebar.exportSettings.ui.contribute.click()
+        self.assertEqual(signals_received, ["export", "contribute"])
+
+        # Verify view.bind() connects them
+        fresh_view = DenoiseView(self.app, self.shell)
+        fresh_sidebar = SidebarDenoise(app=self.app)
+        self.addCleanup(fresh_sidebar.deleteLater)
+        with patch.object(fresh_view, "do_export_training_sky") as mock_export, \
+             patch.object(fresh_view, "do_contribute_training_sky") as mock_contrib:
+            fresh_view.sidebar = fresh_sidebar
+            fresh_view.bind()
+            fresh_sidebar.exportSettings.set_corrections_enabled(True)
+            fresh_sidebar.exportSettings.ui.training.click()
+            fresh_sidebar.exportSettings.ui.contribute.click()
+            mock_export.assert_called_once()
+            mock_contrib.assert_called_once()
+        fresh_view.teardown()
+

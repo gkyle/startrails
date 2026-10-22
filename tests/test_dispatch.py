@@ -40,6 +40,13 @@ class DispatchTests(QtTestCase):
     def test_readiness_does_not_require_detection(self):
         file = InputFile("input.jpg", "input.jpg")
         ui = self.make_ui([])
+        self.assertEqual(ui.sidebar.toolsCard.title, "Contribute and Export")
+        self.assertEqual(ui.sidebar.toolsCard.subtitle, "Optional utilities")
+        self.assertFalse(ui.sidebar.toolsCard.has_number)
+        self.assertIsNone(getattr(ui.sidebar.review.ui, "training", None))
+        self.assertIsNone(getattr(ui.sidebar.review.ui, "contribute", None))
+        self.assertIsNotNone(getattr(ui.sidebar.tools.ui, "training", None))
+        self.assertIsNotNone(getattr(ui.sidebar.tools.ui, "contribute", None))
         ui.updateReadyStates()
         self.assertFalse(ui.pushButton_stackImages.isEnabled())
         ui.app.getInputFileList = lambda: [file]

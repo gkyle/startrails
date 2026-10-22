@@ -20,7 +20,7 @@ class StepPrerequisiteTests(QtTestCase):
             app = SimpleNamespace(project=project, workflow=workflow)
             sidebar = SidebarDenoise(app=app)
             try:
-                for card in sidebar._step_cards:
+                for card in (c for c in sidebar._step_cards if c.has_number):
                     card.setExpanded(True)
                     self.assertFalse(card.is_expanded)
                 project.star_files = [DenoiseInputFile("star.tif", str(Path(folder) / "star.tif"))]

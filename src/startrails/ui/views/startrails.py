@@ -214,8 +214,8 @@ class StarTrailsView(ModeView):
         self.pushButton_stackImages = sb.stack.ui.run
         self.pushButton_removeStreaks = sb.detect.ui.run
         self.pushButton_exportMasks = sb.tools.ui.masks
-        self.pushButton_exportTraining = sb.review.ui.training
-        self.pushButton_contribute = getattr(sb.review.ui, "contribute", None)
+        self.pushButton_exportTraining = getattr(sb.tools.ui, "training", getattr(sb.review.ui, "training", None))
+        self.pushButton_contribute = getattr(sb.tools.ui, "contribute", getattr(sb.review.ui, "contribute", None))
         self.checkBox_showDeletedMasks = sb.review.ui.showDeletedMasks
         self.pushButton_findBrightest = getattr(sb.review.ui, "findBrightest", None)
         self.pushButton_fillGaps = sb.fill.ui.run
@@ -596,7 +596,7 @@ class StarTrailsView(ModeView):
         reply = QMessageBox.question(
             None,
             "Export training data",
-            "This process will export manually labeled streaks, deleted streaks, and random negative examples as training data as 512x512px cropped training images and labels. You can share these samples with the project or use them to train your own models.\n\nContinue?",
+            "This process will export manually labeled streaks, deleted streaks, and random negative examples as training data as 512x512px cropped training images and labels.\n\nContinue?",
             QMessageBox.StandardButton.Yes,
             QMessageBox.StandardButton.No,
         )
@@ -631,9 +631,10 @@ class StarTrailsView(ModeView):
 
         parent = self.shell if isinstance(self.shell, QWidget) else None
         info_text = (
-            "Contribute your manual streak additions, deletions, and negative samples "
-            "as 512x512px cropped training images and annotations to help improve "
-            "future streak detection models.\n\n"
+            "Contribute your manual streak additions, deletions, and negative samples. "
+            "What will be shared?\n"
+            "* 512x512 cropped training sample images for each correction\n"
+            "* Text annotations defining each streak\n\n"
             "Submissions are uploaded and reviewed by a human for inclusion in the next training dataset."
         )
         dialog = ContributeCorrectionsDialog(
