@@ -941,6 +941,14 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         if self.active_view is not None and hasattr(self.active_view, "doContributeTrainingStreaks"):
             return self.active_view.doContributeTrainingStreaks(*args, **kwargs)
 
+    def doExportTrainingSky(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doExportTrainingSky"):
+            return self.active_view.doExportTrainingSky(*args, **kwargs)
+
+    def doContributeTrainingSky(self, *args, **kwargs):
+        if self.active_view is not None and hasattr(self.active_view, "doContributeTrainingSky"):
+            return self.active_view.doContributeTrainingSky(*args, **kwargs)
+
     def doDetectStreaks(self, *args, **kwargs):
         if self.active_view is not None and hasattr(self.active_view, "doDetectStreaks"):
             return self.active_view.doDetectStreaks(*args, **kwargs)

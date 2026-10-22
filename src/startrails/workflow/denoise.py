@@ -465,3 +465,69 @@ class DenoiseWorkflow(Workflow):
             if progress_bar is not None:
                 pipeline.removeObserver(progress_bar)
             self.save_project()
+
+    def doExportTrainingSky(
+        self,
+        outDir: str,
+        progressBar: Optional[ProgressObserver] = None,
+        mask: Optional[np.ndarray] = None,
+    ) -> Tuple[Path, Path]:
+        from startrails.op.denoise.export_sky_training import ExportSkyTraining
+
+        ref = self.get_reference_file()
+        if ref is None:
+            raise ValueError("No reference image available to export.")
+
+        if mask is None:
+            from startrails.lib.denoise.mask import MaskHandler
+            mask_path = getattr(self.project, "mask_path", None)
+            if mask_path and Path(mask_path).exists():
+                mask = MaskHandler.load_mask(mask_path)
+            else:
+                candidate = self.project.artifact_path("mask")
+                if candidate.exists():
+                    mask = MaskHandler.load_mask(candidate)
+
+        if mask is None:
+            raise ValueError("No sky mask available to export.")
+
+        op = ExportSkyTraining()
+        if progressBar is not None:
+            op.addObserver(progressBar)
+        self.app.activeOperation = op
+        try:
+            return op.export(ref.path, mask, outDir)
+        finally:
+            self.app.activeOperation = self._session_operation
+            if progressBar is not None:
+                op.removeObserver(progressBar)
+
+    do_export_training_sky = doExportTrainingSky
+
+    def doContributeTrainingSky(
+        self,
+        progressBar: Optional[ProgressObserver] = None,
+        user_email: str | None = None,
+        user_comments: str | None = None,
+        client=None,
+        mask: Optional[np.ndarray] = None,
+    ) -> dict:
+        import tempfile
+        from startrails.lib.contrib import ContributionClient, package_training_directory
+
+        if client is None:
+            client = ContributionClient()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.doExportTrainingSky(temp_dir, progressBar=progressBar, mask=mask)
+            zip_bytes, _ = package_training_directory(temp_dir)
+            receipt = client.submit_bundle(
+                zip_bytes=zip_bytes,
+                training_set="sky_segmentation",
+                user_email=user_email,
+                user_comments=user_comments,
+                app_version=getattr(self.app, "__version__", "0.1.1"),
+            )
+            return receipt
+
+    do_contribute_training_sky = doContributeTrainingSky

@@ -28,6 +28,8 @@ class DenoiseSkySettings(QWidget):
     full_frame_requested = Signal()
     refine_mask_requested = Signal()
     mask_edit_toggled = Signal(bool)
+    export_training_requested = Signal()
+    contribute_requested = Signal()
 
     MODEL_MAP = {
         0: "nightstack",
@@ -56,6 +58,8 @@ class DenoiseSkySettings(QWidget):
         self.ui.fullFrameMask.clicked.connect(self.full_frame_requested.emit)
         self.ui.refineMask.clicked.connect(self.refine_mask_requested.emit)
         self.ui.showMaskOverlay.toggled.connect(self.mask_edit_toggled.emit)
+        self.ui.training.clicked.connect(self.export_training_requested.emit)
+        self.ui.contribute.clicked.connect(self.contribute_requested.emit)
 
         # Connect change signals
         self.ui.modelType.currentIndexChanged.connect(self._on_change)
@@ -93,7 +97,25 @@ class DenoiseSkySettings(QWidget):
             self.ui.brushRadius.setValue(DEFAULT_MASK_BRUSH_RADIUS)
         self.ui.error.clear()
         self.ui.error.hide()
+        self.set_corrections_enabled(False)
         self.set_from_project()
+
+    def set_corrections_enabled(self, enabled: bool) -> None:
+        """Enable or disable sky training contribution/export buttons."""
+        self.ui.contribute.setEnabled(enabled)
+        self.ui.training.setEnabled(enabled)
+        export_tip = (
+            "Export manual sky mask corrections to disk"
+            if enabled
+            else "Requires manual sky mask brush corrections."
+        )
+        contrib_tip = (
+            "Contribute manual sky mask corrections to help improve sky models"
+            if enabled
+            else "Requires manual sky mask brush corrections."
+        )
+        self.ui.training.setToolTip(export_tip)
+        self.ui.contribute.setToolTip(contrib_tip)
 
     def values(self) -> Dict[str, Any]:
         return {
@@ -115,6 +137,7 @@ class DenoiseSkySettings(QWidget):
         if model in self.REV_MODEL_MAP:
             with QSignalBlocker(self.ui.modelType):
                 self.ui.modelType.setCurrentIndex(self.REV_MODEL_MAP[model])
+        self.set_corrections_enabled(getattr(proj, "has_manual_sky_corrections", False))
 
     def sync_to_project(self) -> None:
         if not self.app or not hasattr(self.app, "project"):
@@ -124,12 +147,13 @@ class DenoiseSkySettings(QWidget):
         for k, v in vals.items():
             setattr(proj, k, v)
 
-    def refresh_inputs(self) -> None:
+    def refresh_inputs(self, has_manual_corrections: bool = False) -> None:
         has_stars = False
         if self.app and hasattr(self.app, "workflow") and hasattr(self.app.workflow, "get_star_files"):
             has_stars = bool(self.app.workflow.get_star_files())
         self.ui.detect.setEnabled(has_stars)
         self.ui.refineMask.setEnabled(has_stars)
+        self.set_corrections_enabled(has_manual_corrections)
 
 
 class DenoiseAlignSettings(QWidget):

@@ -364,7 +364,7 @@ QPushButton#fullFrameMask:hover {
       <string notr="true">color: #64748b; font-size: 11px;</string>
      </property>
      <property name="text">
-      <string>Brush: Left-click paint sky, Right-click erase ground.
+      <string>Brush: Left-click paint sky, Right-click erase.
 Hotkeys: [ / ] or Ctrl+Wheel to resize.</string>
      </property>
      <property name="wordWrap">
@@ -376,6 +376,110 @@ Hotkeys: [ / ] or Ctrl+Wheel to resize.</string>
     <widget class="QLabel" name="error">
      <property name="wordWrap">
       <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="contributeHeading">
+     <property name="styleSheet">
+      <string notr="true">font-size: 11px;
+font-weight: 600;
+color: #475569;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+margin-top: 4px;</string>
+     </property>
+     <property name="text">
+      <string>Optional: Contribute Corrections</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="contributeHint">
+     <property name="styleSheet">
+      <string notr="true">font-size: 11px;
+color: #64748b;
+line-height: 1.3;</string>
+     </property>
+     <property name="text">
+      <string>Export manual sky mask corrections to help improve future celestial sky detection models.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="contribute">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="toolTip">
+      <string>Requires manual sky mask brush corrections.</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton#contribute {
+    background-color: #0369a1;
+    color: #ffffff;
+    border: 2px solid #0369a1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#contribute:hover {
+    background-color: #075985;
+    border-color: #075985;
+}
+QPushButton#contribute:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+QPushButton#contribute:focus:enabled { border-color: #0f172a; }</string>
+     </property>
+     <property name="text">
+      <string>Contribute Corrections</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="training">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="cursor">
+      <cursorShape>PointingHandCursor</cursorShape>
+     </property>
+     <property name="toolTip">
+      <string>Requires manual sky mask brush corrections.</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton#training {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+QPushButton#training:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+QPushButton#training:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+QPushButton#training:focus:enabled { border-color: #0f172a; }</string>
+     </property>
+     <property name="text">
+      <string>Export to Disk</string>
      </property>
     </widget>
    </item>

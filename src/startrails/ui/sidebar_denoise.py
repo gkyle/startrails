@@ -128,7 +128,8 @@ class SidebarDenoise(QWidget):
         output_saved = self._output_saved
         can_process = has_stars and has_mask
 
-        self.skySettings.refresh_inputs()
+        has_manual = bool(getattr(proj, "has_manual_sky_corrections", False))
+        self.skySettings.refresh_inputs(has_manual_corrections=has_manual)
         self.alignSettings.refresh_inputs(ready=can_process)
         self.stackSettings.refresh_inputs(ready=can_process)
         self.tuneSettings.refresh_inputs(ready=has_compositor)

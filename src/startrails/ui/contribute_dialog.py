@@ -18,22 +18,21 @@ from startrails.lib.contrib import EMAIL_PATTERN
 class ContributeCorrectionsDialog(QDialog):
     """Dialog prompting for optional contact email and comments prior to upload."""
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(
+        self,
+        title: str,
+        info_text: str,
+        parent: QWidget | None = None,
+    ):
         super().__init__(parent)
-        self.setWindowTitle("Contribute Streak Corrections")
+        self.setWindowTitle(title)
         self.setMinimumWidth(440)
         self.setModal(True)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
 
-        info_label = QLabel(
-            "Contribute your manual streak additions, deletions, and negative samples "
-            "as 512x512px cropped training images and annotations to help improve "
-            "future streak detection models.\n\n"
-            "Submissions are uploaded to the StarTrails contribution service and "
-            "held in quarantine for maintainer review."
-        )
+        info_label = QLabel(info_text)
         info_label.setWordWrap(True)
         info_label.setStyleSheet("color: #334155; font-size: 12px; line-height: 1.4;")
         layout.addWidget(info_label)

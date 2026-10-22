@@ -630,7 +630,17 @@ class StarTrailsView(ModeView):
         from startrails.ui.contribute_dialog import ContributeCorrectionsDialog
 
         parent = self.shell if isinstance(self.shell, QWidget) else None
-        dialog = ContributeCorrectionsDialog(parent=parent)
+        info_text = (
+            "Contribute your manual streak additions, deletions, and negative samples "
+            "as 512x512px cropped training images and annotations to help improve "
+            "future streak detection models.\n\n"
+            "Submissions are uploaded and reviewed by a human for inclusion in the next training dataset."
+        )
+        dialog = ContributeCorrectionsDialog(
+            title="Contribute Streak Corrections",
+            info_text=info_text,
+            parent=parent,
+        )
         if dialog.exec() != ContributeCorrectionsDialog.DialogCode.Accepted:
             return
 

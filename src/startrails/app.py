@@ -164,6 +164,12 @@ class App:
     def doContributeTrainingStreaks(self, *args, **kwargs):
         return self.workflow.doContributeTrainingStreaks(*args, **kwargs)
 
+    def doExportTrainingSky(self, *args, **kwargs):
+        return self.workflow.doExportTrainingSky(*args, **kwargs)
+
+    def doContributeTrainingSky(self, *args, **kwargs):
+        return self.workflow.doContributeTrainingSky(*args, **kwargs)
+
     def doExportMaskedImages(self, *args, **kwargs):
         return self.workflow.doExportMaskedImages(*args, **kwargs)
 
