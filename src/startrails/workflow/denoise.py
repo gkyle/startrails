@@ -71,6 +71,7 @@ class DenoiseWorkflow(Workflow):
         self.project.invalidate_results(alignment=alignment)
         if reference_changed:
             self.project.mask_invalidated = True
+            self.project.has_manual_sky_corrections = False
         self.save_project()
 
     @property
@@ -480,13 +481,14 @@ class DenoiseWorkflow(Workflow):
 
         if mask is None:
             from startrails.lib.denoise.mask import MaskHandler
-            mask_path = getattr(self.project, "mask_path", None)
-            if mask_path and Path(mask_path).exists():
-                mask = MaskHandler.load_mask(mask_path)
-            else:
-                candidate = self.project.artifact_path("mask")
-                if candidate.exists():
-                    mask = MaskHandler.load_mask(candidate)
+            if not self.project.mask_invalidated:
+                mask_path = getattr(self.project, "mask_path", None)
+                if mask_path and Path(mask_path).exists():
+                    mask = MaskHandler.load_mask(mask_path)
+                else:
+                    candidate = self.project.artifact_path("mask")
+                    if candidate.exists():
+                        mask = MaskHandler.load_mask(candidate)
 
         if mask is None:
             raise ValueError("No sky mask available to export.")

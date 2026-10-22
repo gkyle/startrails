@@ -249,9 +249,11 @@ class ProjectTests(IsolatedTestCase):
         self.assertIsNone(self.project.reference_file)
         self.assertEqual([f.is_reference for f in self.project.star_files], [False, False, True, False])
         self.project.mask_invalidated = False
+        self.project.has_manual_sky_corrections = True
         workflow.add_star_files(paths[4:7])
         self.assertIs(workflow.get_reference_file(), self.project.star_files[3])
         self.assertTrue(self.project.mask_invalidated)
+        self.assertFalse(self.project.has_manual_sky_corrections)
         selected = self.project.star_files[0]
         workflow.set_reference_file(selected)
         self.project.mask_invalidated = False

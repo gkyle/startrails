@@ -135,6 +135,12 @@ class ExportSkyTrainingTests(QtTestCase):
         self.assertTrue(img_out.exists())
         self.assertTrue(mask_out.exists())
 
+        project.mask_path = str(mask_out)
+        project.mask_invalidated = True
+        with self.assertRaisesRegex(ValueError, "No sky mask available"):
+            app.workflow.doExportTrainingSky(str(self.dir_path / "stale_export"))
+        project.mask_invalidated = False
+
         # Test contribute
         mock_client = MagicMock()
         mock_client.submit_bundle.return_value = {
