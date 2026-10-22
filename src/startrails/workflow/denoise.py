@@ -529,6 +529,7 @@ class DenoiseWorkflow(Workflow):
                 user_email=user_email,
                 user_comments=user_comments,
                 app_version=getattr(self.app, "__version__", "0.1.1"),
+                is_cancelled=self._session_operation.shouldInterrupt if self._session_operation is not None else None,
             )
             return receipt
 

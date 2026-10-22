@@ -150,12 +150,17 @@ class ExportSkyTrainingTests(QtTestCase):
             "size_bytes": 1024,
         }
 
-        receipt = app.workflow.doContributeTrainingSky(
-            user_email="sky@example.com",
-            user_comments="Mountain horizon correction",
-            client=mock_client,
-            mask=mask,
-        )
+        with app.workflow.operation_session():
+            receipt = app.workflow.doContributeTrainingSky(
+                user_email="sky@example.com",
+                user_comments="Mountain horizon correction",
+                client=mock_client,
+                mask=mask,
+            )
+            cancellation_check = mock_client.submit_bundle.call_args.kwargs["is_cancelled"]
+            self.assertFalse(cancellation_check())
+            app.activeOperation.requestInterrupt()
+            self.assertTrue(cancellation_check())
         self.assertEqual(receipt["submission_id"], "test-sky-id-123")
         mock_client.submit_bundle.assert_called_once()
         _, kwargs = mock_client.submit_bundle.call_args

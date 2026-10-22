@@ -313,4 +313,7 @@ class ContributionClient:
 
         solution = solve_pow(token, bits, is_cancelled=is_cancelled)
 
+        if is_cancelled is not None and is_cancelled():
+            raise ContributionError("Operation cancelled.")
+
         return self.upload_contribution(body_bytes, content_type, token, solution)

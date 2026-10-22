@@ -5,6 +5,8 @@ import json
 import os
 import tempfile
 import urllib.error
+from concurrent.futures import CancelledError
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 import zipfile
@@ -19,6 +21,7 @@ from startrails.lib.contrib import (
     package_training_directory,
     solve_pow,
 )
+from startrails.workflow.startrails import StarTrailsWorkflow
 
 
 class ContribTests(TestCase):
@@ -180,3 +183,32 @@ class ContribTests(TestCase):
         client = ContributionClient(base_url="https://test.contrib.local")
         with self.assertRaises(ContributionError):
             client.submit_bundle(zip_bytes=b"bytes", user_email="not-an-email")
+
+    def test_cancel_after_pow_skips_upload(self):
+        client = ContributionClient(base_url="https://test.contrib.local")
+        cancelled = False
+
+        def finish_pow(*args, **kwargs):
+            nonlocal cancelled
+            cancelled = True
+            return 42
+
+        with patch.object(client, "get_challenge", return_value={"challenge": "token", "difficulty_bits": 16}), \
+             patch("startrails.lib.contrib.solve_pow", side_effect=finish_pow), \
+             patch.object(client, "upload_contribution") as upload:
+            with self.assertRaisesRegex(ContributionError, "cancelled"):
+                client.submit_bundle(b"archive", is_cancelled=lambda: cancelled)
+            upload.assert_not_called()
+
+    def test_cancelled_streak_export_does_not_submit(self):
+        app = SimpleNamespace(project=SimpleNamespace(rawInputFiles=[]), activeOperation=None)
+        workflow = StarTrailsWorkflow(app)
+        client = MagicMock()
+
+        def cancel_export(total, increment, count, done, data):
+            app.activeOperation.requestInterrupt()
+
+        with self.assertRaises(CancelledError):
+            workflow.doContributeTrainingStreaks(cancel_export, client=client)
+        client.submit_bundle.assert_not_called()
+        self.assertIsNone(app.activeOperation)

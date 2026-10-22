@@ -3,7 +3,7 @@
 from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import CancelledError, ThreadPoolExecutor
 
 from deferred_import import deferred_import
 dsm = deferred_import("startrails.op.detectStreaks")
@@ -245,18 +245,19 @@ class StarTrailsWorkflow(Workflow):
             self.app.activeOperation = exportStreaksTraining
             try:
                 exportStreaksTraining.cropAndLabelFiles(self.getInputFileList(), temp_dir)
+                if exportStreaksTraining.shouldInterrupt():
+                    raise CancelledError("Streak training export cancelled")
+                zip_bytes, _ = package_training_directory(temp_dir)
+                return client.submit_bundle(
+                    zip_bytes=zip_bytes,
+                    user_email=user_email,
+                    user_comments=user_comments,
+                    app_version=getattr(self.app, "__version__", "0.1.1"),
+                    is_cancelled=exportStreaksTraining.shouldInterrupt,
+                )
             finally:
                 self.app.activeOperation = None
                 exportStreaksTraining.removeObserver(progressBar)
-
-            zip_bytes, _ = package_training_directory(temp_dir)
-            receipt = client.submit_bundle(
-                zip_bytes=zip_bytes,
-                user_email=user_email,
-                user_comments=user_comments,
-                app_version=getattr(self.app, "__version__", "0.1.1"),
-            )
-            return receipt
 
     do_contribute_training_streaks = doContributeTrainingStreaks
 
