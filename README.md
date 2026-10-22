@@ -1,103 +1,128 @@
 # StarTrails AI
 
-## Overview
+StarTrails AI is an open-source desktop app for stacking nightscape photographs. It offers two workflows:
 
-StarTrails AI is an opensource tool for creating star trail images that automates the laborious process using Machine Learning.
+| Mode | Use it for | Main capabilities |
+| :---: | --- | --- |
+| ![Startrails](src/startrails/ui/icons/project_startrails.png)<br>**Startrails** | Long star trails that show the sky's motion | Detect and remove satellite and airplane streaks, create star trail stacks, and fill gaps in the trails. |
+| ![Denoise](src/startrails/ui/icons/project_denoise.png)<br>**Denoise** | A cleaner nightscape with point-like stars | Create tight sky masks with sky detection, refinement, and painting tools, align and stack the sky separately from the ground, and tune noise. |
 
-These days, it's hard to take an image of the night sky without capturing airplane and satellite streaks. These are lines that appear in night sky images as a result of light emitting from or reflecting off airplanes, satellites or space debris. These streaks leave a visible path in the captured image during long-exposure photography.
+## Get started
 
-[View Walkthrough on YouTube](https://www.youtube.com/watch?v=Jjt-_TK-OC0)
+Clone this repository or [download the ZIP](https://github.com/gkyle/startrails/archive/refs/heads/main.zip), then launch from the repository folder:
 
-## Examples
+- **Windows:** run `run.bat`.
+- **Linux or macOS:** run `./run.sh`.
 
-Stacked Star Trail Image             |  Satellite Streaks Removed
-:-------------------------:|:-------------------------:
-<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/example_stack_with_streaks.jpg" alt="A stacked star trail image based on 250 long exposure photos" width="100%"/>  |  <img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/example_stack_with%20streaks_removed_and%20gaps_filled.jpg" alt="A stacked star trail image with satellite streaks removed" width="100%"/>
+The launch scripts use **uv** to create an isolated Python environment, install dependencies, and identify a CPU or supported GPU configuration. Initial setup requires an internet connection. A compatible GPU can speed up supported processing steps.
 
-It can be difficult and tedious to remove streaks from star trail images. If we try to remove streaks from a stacked image, photo editing software does a poor job preserving the natural arc of star trails. If we try to remove them from the inidividual frames that are used in the stack, the process is tedious because stacks are often composed of 100s of images so there may be 1000s of instances of streaks.
+On the welcome screen, choose **Star Trails** or **Denoise** and create or open a project.
 
-## Features and Workflow
+## Startrails workflow
 
-#### Detect Streaks
+*The [Startrails video walkthrough on YouTube](https://www.youtube.com/watch?v=Jjt-_TK-OC0) demonstrates the workflow. The video is based on an earlier user interface.*
 
-The model will automatically flag streaks, indicated with green boxes.
+A key feature of Startrails mode is **automatic satellite and airplane streak removal**. These unwanted streaks accumulate when hundreds of exposures are stacked, leaving bright lines across the sky. StarTrails AI finds them in the individual frames and masks those regions before stacking, preserving the natural paths of the stars.
 
-<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_auto_detect_streaks.png" alt="Auto-detect streaks" width="100%"/>
+| Streaks retained | Detected streaks removed |
+| :---: | :---: |
+| [![The 517-frame startrails sequence stacked with satellite and airplane streaks retained.](docs/images/startrails_with_streaks.jpg)](docs/images/startrails_with_streaks.jpg) | [![The same sequence stacked with detected satellite and airplane streaks masked out.](docs/images/startrails_streaks_removed.jpg)](docs/images/startrails_streaks_removed.jpg) |
 
-#### Stack images
+In this example, both images use the same 517-frame sequence.
 
-Produce a composite image by taking the lightest pixels from each input image.
+To begin, create a Startrails project and add your sequence to **Input Files**.
 
-<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_stack.png" alt="Auto-detect streaks" width="100%"/>
+### Step 1: Detect Streaks
 
-#### Manually correct any issues
+Run **Detect Streaks** to scan the input images. The model marks suspected satellite and airplane streaks with green outlines. You can select individual frames to inspect the detections.
 
-The streak detection model isn't perfect. You may need to manually flag additional streaks or make other corrections.
+![Detect Streaks showing 30 automatic streak masks on one input frame.](docs/images/startrails_detect.png)
 
-#### Manually flagging undetected streaks
+Next, use **Stack Images** with **Streaks** set to **Remove** to build the cleaned stack.
 
-Right click on the image to start drawing a polygon around the streak. Right-click to add more points. Left-click to complete the polygon. You can edit any polygon by dragging the points.
+### Step 3: Review and Correct
 
-#### Remove false postives
+The model may miss some streaks. After stacking, inspect the result for unwanted lines that remain. If some streaks are still present:
 
-To remove a bad detection, shift-click on the polygon.
+1. Select the stacked image in **Output Files** and zoom in on a streak.
+2. In **Review and Correct**, enable **Locate Source Frame**, then click the streak on the image (or use the shortcut: **Shift-click** on the streak). The app uses the stack's saved source map to open a contributing input frame at the **same position and zoom**.
+3. Add a mask around a missed streak or adjust an existing mask as needed.
+4. Use **Back to Stack** to resume reviewing the result. When your corrections are ready, run **Stack Images** again to apply them.
 
-#### Finding images with undetected streaks
+On an input frame, **right-click** to add polygon points and **left-click** to finish the mask. Drag vertices to adjust its boundary. Manual masks appear in cyan. **Shift-click** a false detection to remove it.
 
-When viewing a stacked image, click **Locate Source**, then click a streak (or
-Shift-click directly). StarTrails uses a saved source map to open a contributing
-input image at the same position. Use **Next Candidate** to cycle through
-other contributors near the click and **Back to Stack** to return.
+![Locate Source Frame opening a contributing input at the selected position, with source navigation and a manual mask correction.](docs/images/startrails_review.png)
 
-<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_manually_flag_streaks.png" width="100%"/>
+A cyan outline shows an edited mask. Edited masks survive automatic re-execution of Detect Streaks.
 
-When all of the remaining streaks have been flagged, create a new stack.
+### Step 4: Fill Gaps
 
-#### Fill Gaps
+Masking a streak also removes the star pixels underneath it in that frame. When other frames cannot cover that missing part of a trail, a short gap remains. Pauses between exposures and missing frames can leave gaps too.
 
-Finally, we may notice some gaps in the star trails. These may be due to removing streaks, missing frames, or obstructions.
+Select the cleaned stack in **Output Files**, then run **Fill Gaps**. This step attempts to reconnect interrupted star trails and saves a separate filled image, keeping the original stack available for comparison.
 
-Gaps             |  Gaps Filled
-:-------------------------:|:-------------------------:
-<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_fillgaps_A.png" width="100%"/>  |  <img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_fillgaps_B.png" alt="A stacked star trail image with satellite streaks removed" width="100%"/>
+| Before gap filling | After gap filling |
+| :---: | :---: |
+| [![Close-up of the cleaned stack showing breaks in several star trails.](docs/images/startrails_gaps_before.png)](docs/images/startrails_gaps_before.png) | [![The same close-up after Fill Gaps reconnects the interrupted trails.](docs/images/startrails_gaps_after.png)](docs/images/startrails_gaps_after.png) |
 
-#### Complete
+These close-ups show the same region before and after processing. See the [full finished image](docs/images/startrails_complete.png).
 
-<img src="https://raw.githubusercontent.com/gkyle/startrails/refs/heads/main/docs/images/workflow_complete.png" width="100%"/>
+## Denoise workflow
 
-## Usage
+Denoise mode combines a sequence of nightscape exposures while keeping the stars aligned. Two features are especially important to the result: **a tight sky mask** that separates the moving sky from the stationary ground, and **horizon tuning** that helps match noisier areas to the rest of the sky.
 
-Clone this repository or [download the zip](https://github.com/gkyle/startrails/archive/refs/heads/main.zip) and uncompress on your system.
+| Single reference frame | Final denoise composite |
+| :---: | :---: |
+| [![Close-up of the reference exposure showing noise in the sky and foreground.](docs/images/denoise_reference.png)](docs/images/denoise_reference.png) | [![The same region in the final 15-frame denoise composite, with horizon tuning enabled at 30% blend.](docs/images/denoise_horizon_enabled.png)](docs/images/denoise_horizon_enabled.png) |
 
-Navigate to the download location run the appropriate command for your operating system.
+This closeup comparison shows the reference frame from a sequence of input images and the final result from stacking **15 frames**. Click either image to inspect it at full size.
 
-On Linux and macOS:
+Create a Denoise project and add your exposures to **Star Images**. Optionally add matching dark exposures to **Dark Frames** for calibration. To choose the alignment reference, right-click a star image and select **Set as Reference Frame**.
 
-`run.sh`
+### Step 1: Define Sky Region
 
-On Windows:
+An accurate sky/ground boundary is critical. The mask determines which pixels belong to the sky that will be aligned and which belong to the ground. Inspect detailed edges, including trees, rock formations, and small openings in the foreground.
 
-`run.bat`
+1. **Detect Sky** creates an automatic starting mask.
+2. **Refine Mask** adjusts the boundary to follow the horizon more closely. It searches for local contrast at the edges of the mask to better separate sky from ground. It can be run multiple times and combined with manual painting to improve results.
+3. Zoom in and use the **painting tools** to make local corrections. With **Show Mask Overlay** enabled, left-drag paints sky and right-drag erases it. Adjust the brush size for broad areas or fine details.
 
-Setup will create a sandboxed virtual Python environment and download required packages. It will attempt to determine if a CUDA-compatible GPU is available on your system. At this time, Nvidia GPUs are supported. The [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) must be installed. If drivers or CUDA toolkit installation change after install, changes will be detected the next time the command is run.
+The green overlay shows the selected sky region. Automated detection, refinement, and manual painting work together so you can get a tight mask before stacking.
 
-Note: Removing streaks is not a fast operation. It can take a few seconds per image, so removing streaks from a stack of hundreds of images will take several minutes. Running with a GPU greatly improves performance.
+![Define Sky Region showing the sky mask over the denoise example's reference frame.](docs/images/denoise_sky_mask.png)
 
-## How does it work?
+With the mask ready, **Align Stars** finds the transforms needed to align the sky in each frame to the reference frame. **Stack Sky and Ground** then creates separate base stacks. The **Sigma Clipped Mean** method is effective for removing satellite and airplane streaks.
 
-Star trail images are created by "stacking" a series of night sky images taken over a few minutes or hours ([See Wikipedia](https://en.wikipedia.org/wiki/Star_trail)). From the camera's point of view, the sky appears to rotate around the axis of the earth, so the stars appear to move. We create a composite that represents the movement of the stars by taking the brightest pixels from a stack of 100s of images taken over time.
+### Step 4: Tune Horizon
 
-If an input image contains an unwanted region (eg. a satellite crosses a portion of the sky, leaving a bright streak), the region can be "blacked out" by drawing a black rectangle over it. When we stack the images, some other images in the stack will have brighter pixels in that region that will be included in the final "stacked" image. This is a process that can be done manually before stacking with other star trail stacking tools.
+As the sky moves between exposures, the aligned sky regions do not overlap everywhere. Near the horizon and the leading edge of the aligned sky, **fewer frames contribute** than in the main sky region. Those areas receive less noise averaging and can look noticeably noisier than the rest of the stack.
 
-StarTrails AI uses an object detection model to automatically identify streaks in the input images, then blacks out those streaks before composing the stack.
+Turn on **Show gradient mask (red overlay)** to see where coverage drops. Stronger red indicates a larger shortfall in contributing frames.
 
-## Can I train my own model? Can I contribute?
+![Tune Horizon with the full image fitted to the canvas and the red gradient mask showing areas with fewer contributing frames.](docs/images/denoise_gradient_mask.png)
 
-Yes and yes. I've included the [dataset](https://github.com/gkyle/startrails/releases/tag/training) that I used for training and notebooks for [working with labels and training here](https://github.com/gkyle/startrails/tree/main/training). Please feel free to make your own models.
+Enable **horizon corrections**, zoom in on a noisy boundary, and adjust the controls while watching the live preview:
 
-I would like to improve the diversity of the dataset in this repo and welcome contributions. Only the 512x512 crops are needed. You can export your manually added, deleted, and corrected streaks directly from the app:
-* After you have made corrections to all files in the project, click Export Training
-* Choose a folder to store the files
-* Zip up the contents of the folder in .zip file.
-* Create a new Issue with a title like "Training data". Describe the samples. Attach the .zip file. Max file size is 10MB. If the file is larger, please file the bug without the attachment and we can coordinate how to send your data.
-* Your data will be included in the next model update.
+- **Color Denoise** reduces colored noise in the affected sky region.
+- **Value Denoise** smooths brightness noise in that region.
+- **Blend** adjusts how much of the ground-stack image contributes to the transition.
+- **Blur** softens the ground-stack contribution used for blending.
+
+The aim is to bring the noise and appearance of the transition area into balance with the surrounding sky. Toggle **Enable horizon corrections** off and on to judge the effect, and inspect both the boundary and nearby stars as you tune.
+
+| Horizon tuning disabled | Horizon tuning enabled |
+| :---: | :---: |
+| [![Zoomed horizon region with corrections disabled, showing the noise near the sky/ground boundary.](docs/images/denoise_horizon_disabled.png)](docs/images/denoise_horizon_disabled.png) | [![The same horizon region with corrections enabled to denoise and blend the transition.](docs/images/denoise_horizon_enabled.png)](docs/images/denoise_horizon_enabled.png) |
+
+This example compares the stack without horizon corrections to the same stack with the default horizon tuning settings.
+
+Use **Save Image** to export the result as TIFF or JPEG.
+
+## Contributing and training
+
+Image contributions can greatly help improve model quality. After correcting streak detections, use **Export Training** under **Review and Correct** to export 512x512 crops and labels.
+
+* Zip up the contents of the folder into a `.zip` file.
+* Create a new issue with a title like "Training data". Describe the samples and attach the `.zip` file. The maximum attachment size is 10 MB. If the file is larger, please create the issue without an attachment, and we can coordinate how to send your data.
+
+The [training dataset](https://github.com/gkyle/startrails/releases/tag/training) and [training notebooks](training/) for streak detection are available.
