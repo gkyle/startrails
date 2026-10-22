@@ -1,6 +1,7 @@
 """User settings are validated and captured when work is submitted."""
 
 from types import SimpleNamespace
+from threading import Thread
 from unittest.mock import patch
 
 from support import QtTestCase
@@ -142,10 +143,12 @@ class DispatchTests(QtTestCase):
         self.assertEqual(len(ui.op_queue.workers), 1)
         with patch.object(ui_wrap, "ProgressBarUpdater", return_value=SimpleNamespace(tick=lambda: None)), \
              patch.object(StarTrailsView, "_notify_contribution_result") as mock_notify:
-            ui.op_queue.workers[0].work()
+            worker_thread = Thread(target=ui.op_queue.workers[0].work)
+            worker_thread.start()
+            worker_thread.join()
             qt_app().processEvents()
 
         self.assertEqual(len(contribute_calls), 1)
         self.assertEqual(contribute_calls[0]["user_email"], "user@example.com")
         self.assertEqual(contribute_calls[0]["user_comments"], "My test notes")
-        self.assertEqual(mock_notify.call_count, 1)
+        mock_notify.assert_called_once()

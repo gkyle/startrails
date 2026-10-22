@@ -664,9 +664,9 @@ class StarTrailsView(ModeView):
                     user_email=email,
                     user_comments=comments,
                 )
-                QTimer.singleShot(0, lambda: self._notify_contribution_result(receipt, None))
+                QTimer.singleShot(0, self.shell, lambda result=receipt: self._notify_contribution_result(result, None))
             except Exception as err:
-                QTimer.singleShot(0, lambda: self._notify_contribution_result(None, err))
+                QTimer.singleShot(0, self.shell, lambda error=err: self._notify_contribution_result(None, error))
 
         self.shell.enqueue_task(
             "contributeTraining",

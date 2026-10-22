@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import tempfile
+from threading import Thread
 from unittest.mock import MagicMock, patch
 
 import cv2
@@ -214,12 +215,18 @@ class DenoiseViewTrainingUITests(QtTestCase):
         self.shell.canvas_main._mask_array = np.full((h, w), 255, dtype=np.uint8)
 
         from startrails.ui.contribute_dialog import ContributeCorrectionsDialog
+        queued_work = []
+        self.shell.enqueue_task = lambda task_id, title, total, desc, run: queued_work.append(run)
 
         with patch.object(ContributeCorrectionsDialog, "exec", return_value=ContributeCorrectionsDialog.DialogCode.Accepted):
             with patch.object(ContributeCorrectionsDialog, "values", return_value=("sky@test.com", "Test sky notes")):
                 with patch.object(self.app.workflow, "doContributeTrainingSky", return_value={"submission_id": "sub-123", "file_count": 2, "size_bytes": 500}):
                     with patch.object(self.view, "_notify_contribution_result") as mock_notify:
                         self.view.do_contribute_training_sky()
+                        self.assertEqual(len(queued_work), 1)
+                        worker_thread = Thread(target=queued_work[0])
+                        worker_thread.start()
+                        worker_thread.join()
                         qt_app().processEvents()
                         mock_notify.assert_called_once()
                         receipt, err = mock_notify.call_args[0]

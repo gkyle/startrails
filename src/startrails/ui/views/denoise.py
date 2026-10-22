@@ -1128,6 +1128,7 @@ class DenoiseView(ModeView):
 
         email, comments = dialog.values()
         mask_to_export = current_mask.copy()
+        generation = self._generation
 
         def work():
             progress_updater = ProgressBarUpdater(
@@ -1143,9 +1144,9 @@ class DenoiseView(ModeView):
                     user_comments=comments,
                     mask=mask_to_export,
                 )
-                QTimer.singleShot(0, lambda: self._notify_contribution_result(receipt, None))
+                self._post_result(generation, lambda result=receipt: self._notify_contribution_result(result, None))
             except Exception as err:
-                QTimer.singleShot(0, lambda: self._notify_contribution_result(None, err))
+                self._post_result(generation, lambda error=err: self._notify_contribution_result(None, error))
 
         self._enqueue_task(
             "contributeSkyTraining",
