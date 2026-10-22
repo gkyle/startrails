@@ -403,6 +403,11 @@ class DenoiseView(ModeView):
         return self.shell.enqueue_task(task_id, title, total, desc, run)
 
     def _show_task_error(self, task_id: str, message: str) -> None:
+        if task_id == "exportSkyTraining":
+            if message != "Cancelled":
+                parent = self.shell if isinstance(self.shell, QWidget) else None
+                QMessageBox.warning(parent, "Sky Training Export Failed", message)
+            return
         settings = {
             "detectSky": self.sky_settings, "refineMask": self.sky_settings,
             "alignStars": self.align_settings, "stackDenoise": self.stack_settings,

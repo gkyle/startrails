@@ -253,6 +253,13 @@ class DenoiseViewTrainingUITests(QtTestCase):
                     mock_export.assert_called_once()
                     self.assertEqual(mock_export.call_args[0][0], export_dir)
 
+                    mock_export.side_effect = OSError("disk full")
+                    with patch.object(QMessageBox, "warning") as warning:
+                        self.view.do_export_training_sky()
+                        qt_app().processEvents()
+                    warning.assert_called_once()
+                    self.assertIn("disk full", warning.call_args.args[2])
+
     def test_do_contribute_training_sky_triggers_submission(self):
         """Verify do_contribute_training_sky collects user input and dispatches submission."""
         h, w = 100, 100
