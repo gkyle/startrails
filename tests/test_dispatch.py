@@ -31,6 +31,7 @@ class DispatchTests(QtTestCase):
         ui.pushButton_removeStreaks = ui.sidebar.detect.ui.run
         ui.pushButton_exportMasks = ui.sidebar.tools.ui.masks
         ui.pushButton_exportTraining = ui.sidebar.exports.ui.training
+        ui.pushButton_contribute = getattr(ui.sidebar.exports.ui, "contribute", None)
         ui.checkBox_showDeletedMasks = ui.sidebar.exports.ui.showDeletedMasks
         ui.pushButton_fillGaps = ui.sidebar.fill.ui.run
         self.addCleanup(ui.deleteLater)
@@ -47,11 +48,16 @@ class DispatchTests(QtTestCase):
         self.assertTrue(ui.pushButton_stackImages.isEnabled())
         self.assertTrue(ui.pushButton_removeStreaks.isEnabled())
         self.assertFalse(ui.pushButton_exportMasks.isEnabled())
+        self.assertFalse(ui.pushButton_exportTraining.isEnabled())
+        if ui.pushButton_contribute is not None:
+            self.assertFalse(ui.pushButton_contribute.isEnabled())
         file.streaksManualMasks.append([[0, 0], [1, 1]])
         ui.inputFiles.model.update_file(file)
         ui.updateReadyStates()
         self.assertTrue(ui.pushButton_exportMasks.isEnabled())
         self.assertTrue(ui.pushButton_exportTraining.isEnabled())
+        if ui.pushButton_contribute is not None:
+            self.assertTrue(ui.pushButton_contribute.isEnabled())
 
     def test_settings_are_captured_per_submission(self):
         file = InputFile("input.jpg", "input.jpg")
@@ -98,3 +104,35 @@ class DispatchTests(QtTestCase):
         ui.sidebar.stack.ui.batchSize.lineEdit().setText("")
         ui.doStack()
         self.assertEqual(ui.op_queue.workers, [])
+
+    def test_contribute_training_dispatch(self):
+        from support import qt_app
+        from startrails.ui.views.startrails import StarTrailsView
+
+        file = InputFile("input.jpg", "input.jpg")
+        ui = self.make_ui([file])
+        ui.op_queue = RecordingQueue()
+        ui.progressBar = ui.label_progressBar = None
+        ui.signals = SimpleNamespace(
+            start_task_progress=SimpleNamespace(emit=lambda *args: None),
+            finish_task_progress=SimpleNamespace(emit=lambda *args: None),
+        )
+        contribute_calls = []
+        ui.app.doContributeTrainingStreaks = lambda tick, **kwargs: (
+            contribute_calls.append(kwargs) or {"status": "accepted", "submission_id": "sub-123", "file_count": 2, "size_bytes": 500}
+        )
+
+        with patch("startrails.ui.contribute_dialog.ContributeCorrectionsDialog.exec", return_value=1), \
+             patch("startrails.ui.contribute_dialog.ContributeCorrectionsDialog.values", return_value=("user@example.com", "My test notes")):
+            ui.doContributeTrainingStreaks()
+
+        self.assertEqual(len(ui.op_queue.workers), 1)
+        with patch.object(ui_wrap, "ProgressBarUpdater", return_value=SimpleNamespace(tick=lambda: None)), \
+             patch.object(StarTrailsView, "_notify_contribution_result") as mock_notify:
+            ui.op_queue.workers[0].work()
+            qt_app().processEvents()
+
+        self.assertEqual(len(contribute_calls), 1)
+        self.assertEqual(contribute_calls[0]["user_email"], "user@example.com")
+        self.assertEqual(contribute_calls[0]["user_comments"], "My test notes")
+        self.assertEqual(mock_notify.call_count, 1)

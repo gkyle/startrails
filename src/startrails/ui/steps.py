@@ -465,6 +465,7 @@ class ReviewSettings(QWidget):
                 backToStack=ui.backToStack,
                 sourceLookupStatus=ui.sourceLookupStatus,
                 training=getattr(ui, "exportTraining", getattr(ui, "training", None)),
+                contribute=getattr(ui, "contribute", getattr(ui, "contributeTraining", None)),
             )
         else:
             self.ui = Ui_ReviewSettings()

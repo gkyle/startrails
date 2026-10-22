@@ -301,6 +301,32 @@ class Ui_reviewSettings(object):
 
         self.layout.addWidget(self.contributeHint)
 
+        self.contribute = QPushButton(reviewSettings)
+        self.contribute.setObjectName(u"contribute")
+        self.contribute.setEnabled(False)
+        self.contribute.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.contribute.setStyleSheet(u"QPushButton#contribute {\n"
+"    background-color: #0369a1;\n"
+"    color: #ffffff;\n"
+"    border: 2px solid #0369a1;\n"
+"    border-radius: 6px;\n"
+"    padding: 6px 12px;\n"
+"    font-weight: 500;\n"
+"    font-size: 12px;\n"
+"}\n"
+"QPushButton#contribute:hover {\n"
+"    background-color: #075985;\n"
+"    border-color: #075985;\n"
+"}\n"
+"QPushButton#contribute:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}\n"
+"QPushButton#contribute:focus:enabled { border-color: #0f172a; }")
+
+        self.layout.addWidget(self.contribute)
+
         self.training = QPushButton(reviewSettings)
         self.training.setObjectName(u"training")
         self.training.setEnabled(False)
@@ -360,9 +386,13 @@ class Ui_reviewSettings(object):
         self.contributeHeading.setText(QCoreApplication.translate("reviewSettings", u"Optional: Contribute Corrections", None))
         self.contributeHint.setText(QCoreApplication.translate("reviewSettings", u"Export manual additions and deletions to help improve future streak detection models.", None))
 #if QT_CONFIG(tooltip)
+        self.contribute.setToolTip(QCoreApplication.translate("reviewSettings", u"Requires manually added or deleted streak masks.", None))
+#endif // QT_CONFIG(tooltip)
+        self.contribute.setText(QCoreApplication.translate("reviewSettings", u"Contribute Corrections", None))
+#if QT_CONFIG(tooltip)
         self.training.setToolTip(QCoreApplication.translate("reviewSettings", u"Requires manually added or deleted streak masks.", None))
 #endif // QT_CONFIG(tooltip)
-        self.training.setText(QCoreApplication.translate("reviewSettings", u"Export Training", None))
+        self.training.setText(QCoreApplication.translate("reviewSettings", u"Export to Disk", None))
         pass
     # retranslateUi
 
