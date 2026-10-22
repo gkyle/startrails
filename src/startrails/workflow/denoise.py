@@ -467,7 +467,7 @@ class DenoiseWorkflow(Workflow):
                 pipeline.removeObserver(progress_bar)
             self.save_project()
 
-    def doExportTrainingSky(
+    def do_export_training_sky(
         self,
         outDir: str,
         progressBar: Optional[ProgressObserver] = None,
@@ -504,9 +504,9 @@ class DenoiseWorkflow(Workflow):
             if progressBar is not None:
                 op.removeObserver(progressBar)
 
-    do_export_training_sky = doExportTrainingSky
+    doExportTrainingSky = do_export_training_sky
 
-    def doContributeTrainingSky(
+    def do_contribute_training_sky(
         self,
         progressBar: Optional[ProgressObserver] = None,
         user_email: str | None = None,
@@ -533,4 +533,4 @@ class DenoiseWorkflow(Workflow):
             )
             return receipt
 
-    do_contribute_training_sky = doContributeTrainingSky
+    doContributeTrainingSky = do_contribute_training_sky
