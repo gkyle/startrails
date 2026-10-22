@@ -1073,6 +1073,18 @@ class DenoiseView(ModeView):
         if not folder:
             return
 
+        if any((Path(folder) / name).exists() for name in ("image.jpg", "mask.png")):
+            parent = self.shell if isinstance(self.shell, QWidget) else None
+            replace = QMessageBox.question(
+                parent,
+                "Replace Sky Training Files?",
+                "This folder already contains sky training files. Replace image.jpg and mask.png?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if replace != QMessageBox.StandardButton.Yes:
+                return
+
         current_mask = None
         if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
             current_mask = self.shell.canvas_main.get_denoise_mask()

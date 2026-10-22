@@ -260,6 +260,24 @@ class DenoiseViewTrainingUITests(QtTestCase):
                     warning.assert_called_once()
                     self.assertIn("disk full", warning.call_args.args[2])
 
+    def test_export_does_not_replace_files_without_confirmation(self):
+        ref_path = self.root / "reference.jpg"
+        cv2.imwrite(str(ref_path), np.full((16, 16, 3), 100, dtype=np.uint8))
+        ref_file = DenoiseInputFile(basename=ref_path.name, path=str(ref_path))
+        self.project.reference_file = ref_file
+        self.project.star_files = [ref_file]
+
+        export_dir = self.root / "existing_export"
+        export_dir.mkdir()
+        (export_dir / "image.jpg").write_bytes(b"existing data")
+        with patch.object(QMessageBox, "question", side_effect=[QMessageBox.StandardButton.Yes, QMessageBox.StandardButton.No]), \
+             patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory", return_value=str(export_dir)), \
+             patch.object(self.app.workflow, "doExportTrainingSky") as export:
+            self.view.do_export_training_sky()
+
+        export.assert_not_called()
+        self.assertEqual((export_dir / "image.jpg").read_bytes(), b"existing data")
+
     def test_do_contribute_training_sky_triggers_submission(self):
         """Verify do_contribute_training_sky collects user input and dispatches submission."""
         h, w = 100, 100
