@@ -1,7 +1,9 @@
 """Operation for exporting downscaled 8-bit sky training images and masks."""
 
 from __future__ import annotations
+from concurrent.futures import CancelledError
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Optional, Tuple, Union
 import cv2
 import numpy as np
@@ -60,11 +62,6 @@ class ExportSkyTraining(Observable):
         # 3. Downscale image by half with INTER_AREA
         small_img = cv2.resize(img_u8, (target_w, target_h), interpolation=cv2.INTER_AREA)
         image_out = out_path / "image.jpg"
-        cv2.imwrite(str(image_out), small_img, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        self.updateJob(1, {"desc": "Exported training image"})
-
-        if self.shouldInterrupt():
-            return image_out, out_path / "mask.png"
 
         # 4. Prepare mask
         if isinstance(mask, (str, Path)):
@@ -87,7 +84,23 @@ class ExportSkyTraining(Observable):
         # 5. Downscale mask by half with INTER_NEAREST
         small_mask = cv2.resize(mask_u8, (target_w, target_h), interpolation=cv2.INTER_NEAREST)
         mask_out = out_path / "mask.png"
-        cv2.imwrite(str(mask_out), small_mask)
-        self.updateJob(1, {"desc": "Exported training mask"})
+
+        with TemporaryDirectory(dir=out_path) as staging_dir:
+            staged_image = Path(staging_dir) / image_out.name
+            staged_mask = Path(staging_dir) / mask_out.name
+            if self.shouldInterrupt():
+                raise CancelledError("Sky training export cancelled")
+            if not cv2.imwrite(str(staged_image), small_img, [cv2.IMWRITE_JPEG_QUALITY, 95]):
+                raise OSError(f"Could not write training image: {image_out}")
+            self.updateJob(1, {"desc": "Exported training image"})
+            if self.shouldInterrupt():
+                raise CancelledError("Sky training export cancelled")
+            if not cv2.imwrite(str(staged_mask), small_mask):
+                raise OSError(f"Could not write training mask: {mask_out}")
+            self.updateJob(1, {"desc": "Exported training mask"})
+            if self.shouldInterrupt():
+                raise CancelledError("Sky training export cancelled")
+            staged_image.replace(image_out)
+            staged_mask.replace(mask_out)
 
         return image_out, mask_out

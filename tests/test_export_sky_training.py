@@ -1,5 +1,6 @@
 """Tests for sky mask training data export, downscaling, and contribution pipeline."""
 
+from concurrent.futures import CancelledError
 from pathlib import Path
 import tempfile
 from threading import Thread
@@ -86,6 +87,30 @@ class ExportSkyTrainingTests(QtTestCase):
         self.assertEqual(exported_img.shape[:2], expected_shape)
         self.assertEqual(exported_mask.shape, expected_shape)
 
+    def test_cancelled_export_preserves_existing_files(self):
+        image_path = self.dir_path / "reference.jpg"
+        cv2.imwrite(str(image_path), np.full((16, 16, 3), 100, dtype=np.uint8))
+        out_dir = self.dir_path / "existing_export"
+        out_dir.mkdir()
+        old_image = out_dir / "image.jpg"
+        old_mask = out_dir / "mask.png"
+        old_image.write_bytes(b"previous image")
+        old_mask.write_bytes(b"previous mask")
+
+        exporter = ExportSkyTraining()
+
+        def cancel_after_image(total, increment, count, done, data):
+            if count == 1:
+                exporter.requestInterrupt()
+
+        exporter.addObserver(cancel_after_image)
+        with self.assertRaises(CancelledError):
+            exporter.export(image_path, np.ones((16, 16), dtype=np.float32), out_dir)
+
+        self.assertEqual(old_image.read_bytes(), b"previous image")
+        self.assertEqual(old_mask.read_bytes(), b"previous mask")
+        self.assertEqual(sorted(path.name for path in out_dir.iterdir()), ["image.jpg", "mask.png"])
+
     def test_workflow_do_export_and_contribute_training_sky(self):
         """Verify DenoiseWorkflow export and contribution packaging with sky_segmentation."""
         h, w = 200, 200
@@ -131,6 +156,20 @@ class ExportSkyTrainingTests(QtTestCase):
         self.assertEqual(kwargs["training_set"], "sky_segmentation")
         self.assertEqual(kwargs["user_email"], "sky@example.com")
         self.assertEqual(kwargs["user_comments"], "Mountain horizon correction")
+
+        mock_client.reset_mock()
+
+        def cancel_after_image(total, increment, count, done, data):
+            if count == 1:
+                app.activeOperation.requestInterrupt()
+
+        with self.assertRaises(CancelledError):
+            app.workflow.doContributeTrainingSky(
+                progressBar=cancel_after_image,
+                client=mock_client,
+                mask=mask,
+            )
+        mock_client.submit_bundle.assert_not_called()
 
 
 class DenoiseViewTrainingUITests(QtTestCase):
