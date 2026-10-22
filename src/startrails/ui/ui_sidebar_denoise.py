@@ -406,7 +406,7 @@ class Ui_SidebarDenoise(object):
         self.tuneCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Tune Horizon", None))
         self.tuneCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Requires base stacks", None))
         self.exportCard.setProperty(u"title", QCoreApplication.translate("SidebarDenoise", u"Contribute and Export", None))
-        self.exportCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Optional utilities", None))
+        self.exportCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarDenoise", u"Export artifacts", None))
         self.saveOutput.setText(QCoreApplication.translate("SidebarDenoise", u"Save Image", None))
         self.runPipeline.setText(QCoreApplication.translate("SidebarDenoise", u"\u25b6 Run Full Denoise Pipeline", None))
         pass

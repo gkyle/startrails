@@ -41,7 +41,7 @@ class DispatchTests(QtTestCase):
         file = InputFile("input.jpg", "input.jpg")
         ui = self.make_ui([])
         self.assertEqual(ui.sidebar.toolsCard.title, "Contribute and Export")
-        self.assertEqual(ui.sidebar.toolsCard.subtitle, "Optional utilities")
+        self.assertEqual(ui.sidebar.toolsCard.subtitle, "Export artifacts")
         self.assertFalse(ui.sidebar.toolsCard.has_number)
         self.assertIsNone(getattr(ui.sidebar.review.ui, "training", None))
         self.assertIsNone(getattr(ui.sidebar.review.ui, "contribute", None))
@@ -49,6 +49,8 @@ class DispatchTests(QtTestCase):
         self.assertIsNotNone(getattr(ui.sidebar.tools.ui, "contribute", None))
         ui.updateReadyStates()
         self.assertFalse(ui.pushButton_stackImages.isEnabled())
+        self.assertEqual(ui.sidebar.toolsCard.ui.number.text(), "")
+        self.assertEqual(ui.sidebar.toolsCard.ui.number.property("stepStatus"), "neutral")
         ui.app.getInputFileList = lambda: [file]
         ui.inputFiles.set_files([file])
         ui.updateReadyStates()
@@ -58,6 +60,8 @@ class DispatchTests(QtTestCase):
         self.assertFalse(ui.pushButton_exportTraining.isEnabled())
         if ui.pushButton_contribute is not None:
             self.assertFalse(ui.pushButton_contribute.isEnabled())
+        self.assertEqual(ui.sidebar.toolsCard.ui.number.text(), "")
+        self.assertEqual(ui.sidebar.toolsCard.ui.number.property("stepStatus"), "neutral")
         file.streaksManualMasks.append([[0, 0], [1, 1]])
         ui.inputFiles.model.update_file(file)
         ui.updateReadyStates()
@@ -65,6 +69,8 @@ class DispatchTests(QtTestCase):
         self.assertTrue(ui.pushButton_exportTraining.isEnabled())
         if ui.pushButton_contribute is not None:
             self.assertTrue(ui.pushButton_contribute.isEnabled())
+        self.assertEqual(ui.sidebar.toolsCard.ui.number.text(), "!")
+        self.assertEqual(ui.sidebar.toolsCard.ui.number.property("stepStatus"), "ready")
 
     def test_settings_are_captured_per_submission(self):
         file = InputFile("input.jpg", "input.jpg")

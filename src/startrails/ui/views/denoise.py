@@ -468,6 +468,8 @@ class DenoiseView(ModeView):
             self.sky_settings.set_corrections_enabled(self.has_manual_sky_corrections)
         if self.export_settings is not None:
             self.export_settings.set_corrections_enabled(self.has_manual_sky_corrections)
+        if self.export_card is not None:
+            self.export_card.set_alert(self.has_manual_sky_corrections)
 
         if self.sidebar is not None:
             self.sidebar.set_has_compositor(has_compositor)

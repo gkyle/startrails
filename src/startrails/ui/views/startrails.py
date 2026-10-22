@@ -288,6 +288,8 @@ class StarTrailsView(ModeView):
         self.pushButton_exportTraining.setEnabled(self.readyManualStreaksRemoved)
         if self.pushButton_contribute is not None:
             self.pushButton_contribute.setEnabled(self.readyManualStreaksRemoved)
+        if hasattr(self.sidebar, "toolsCard") and self.sidebar.toolsCard is not None:
+            self.sidebar.toolsCard.set_alert(self.readyManualStreaksRemoved)
         self.sidebar.stack.set_has_masks(self.readyStreaksRemoved)
         self.sidebar.detectCard.setSubtitle(
             "Ready to detect streaks" if self.readyInputImages else "Add input files to begin"

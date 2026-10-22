@@ -478,7 +478,7 @@ QProgressBar#operationsProgress::chunk {
             <string>Contribute and Export</string>
            </property>
            <property name="subtitle" stdset="0">
-            <string>Optional utilities</string>
+            <string>Export artifacts</string>
            </property>
            <property name="is_expanded" stdset="0">
             <bool>false</bool>

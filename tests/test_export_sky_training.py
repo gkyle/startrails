@@ -158,6 +158,8 @@ class DenoiseViewTrainingUITests(QtTestCase):
         self.assertFalse(self.view.has_manual_sky_corrections)
         self.assertFalse(export_ui.contribute.isEnabled())
         self.assertFalse(export_ui.training.isEnabled())
+        self.assertEqual(self.sidebar.exportCard.ui.number.text(), "")
+        self.assertEqual(self.sidebar.exportCard.ui.number.property("stepStatus"), "neutral")
 
         # Emitting canvas mask_brush_edited enables buttons
         self.shell.canvas_main.mask_brush_edited.emit()
@@ -166,6 +168,8 @@ class DenoiseViewTrainingUITests(QtTestCase):
         self.assertTrue(self.view.has_manual_sky_corrections)
         self.assertTrue(export_ui.contribute.isEnabled())
         self.assertTrue(export_ui.training.isEnabled())
+        self.assertEqual(self.sidebar.exportCard.ui.number.text(), "!")
+        self.assertEqual(self.sidebar.exportCard.ui.number.property("stepStatus"), "ready")
 
         # Running auto-detect resets manual corrections to False
         dummy_mask = np.ones((100, 100), dtype=np.float32)
@@ -175,6 +179,8 @@ class DenoiseViewTrainingUITests(QtTestCase):
         self.assertFalse(self.view.has_manual_sky_corrections)
         self.assertFalse(export_ui.contribute.isEnabled())
         self.assertFalse(export_ui.training.isEnabled())
+        self.assertEqual(self.sidebar.exportCard.ui.number.text(), "")
+        self.assertEqual(self.sidebar.exportCard.ui.number.property("stepStatus"), "neutral")
 
     def test_do_export_training_sky_triggers_workflow(self):
         """Verify do_export_training_sky enqueues task and invokes doExportTrainingSky."""
@@ -223,7 +229,7 @@ class DenoiseViewTrainingUITests(QtTestCase):
     def test_denoise_sidebar_contribute_and_export_step_structure(self):
         """Verify the new Contribute and Export step card styling, title, and separation from Detect Sky."""
         self.assertEqual(self.sidebar.exportCard.title, "Contribute and Export")
-        self.assertEqual(self.sidebar.exportCard.subtitle, "Optional utilities")
+        self.assertEqual(self.sidebar.exportCard.subtitle, "Export artifacts")
         self.assertFalse(self.sidebar.exportCard.has_number)
         # Verify Detect Sky settings form no longer contains contribute or training buttons
         self.assertFalse(hasattr(self.sidebar.skySettings.ui, "contribute"))

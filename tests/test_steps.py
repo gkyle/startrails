@@ -147,3 +147,31 @@ class SettingsTests(QtTestCase):
         card.ui.toggle.setFocus()
         self.qt.processEvents()
         self.assertTrue(card.ui.toggle.hasFocus())
+
+    def test_step_card_alert_for_unnumbered_card(self):
+        card = StepCard("Contribute and Export", FillSettings())
+        self.assertFalse(card.has_number)
+        self.assertFalse(card.alert)
+        self.assertEqual(card.ui.number.text(), "")
+        self.assertEqual(card.ui.number.property("stepStatus"), "neutral")
+        self.assertFalse(card.ui.statusBadge.isVisible())
+        self.assertEqual(card.step_number, 0)
+
+        card.set_alert(True)
+        self.assertTrue(card.alert)
+        self.assertEqual(card.ui.number.text(), "!")
+        self.assertEqual(card.ui.number.property("stepStatus"), "ready")
+        self.assertFalse(card.ui.statusBadge.isVisible())
+        self.assertEqual(card.step_number, 0)
+
+        card.set_alert(False)
+        self.assertFalse(card.alert)
+        self.assertEqual(card.ui.number.text(), "")
+        self.assertEqual(card.ui.number.property("stepStatus"), "neutral")
+        self.assertFalse(card.ui.statusBadge.isVisible())
+        self.assertEqual(card.step_number, 0)
+
+        card.alert = True
+        self.assertTrue(card.alert)
+        self.assertEqual(card.ui.number.text(), "!")
+        self.assertEqual(card.ui.number.property("stepStatus"), "ready")

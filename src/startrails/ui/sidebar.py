@@ -58,7 +58,7 @@ class Sidebar(QWidget):
             self.reviewCard = StepCard("Review and Correct", self.review, 3)
             self.fillCard = StepCard("Fill Gaps", self.fill, 4)
             self.toolsCard = StepCard("Contribute and Export", self.tools)
-            self.toolsCard.setSubtitle("Optional utilities")
+            self.toolsCard.setSubtitle("Export artifacts")
             self.exportCard = self.toolsCard
             self.ui.detectLayout.addWidget(self.detectCard)
             self.ui.stackLayout.addWidget(self.stackCard)
@@ -111,6 +111,8 @@ class Sidebar(QWidget):
         self.detect.reset()
         self.review.reset()
         self.stack.reset()
+        if hasattr(self, "toolsCard") and self.toolsCard is not None:
+            self.toolsCard.set_alert(False)
 
     def update_operations_progress(self, app=None, current_file=None):
         """Update progress bar, status labels, and step status badges."""
@@ -126,6 +128,9 @@ class Sidebar(QWidget):
         auto_count, manual_count, deleted_count = self.refresh_review_counts()
         total_detections = auto_count + manual_count
         has_detections = (auto_count + manual_count + deleted_count) > 0
+        has_manual = (manual_count + deleted_count) > 0
+        if hasattr(self, "toolsCard") and self.toolsCard is not None:
+            self.toolsCard.set_alert(has_manual)
 
         if not has_inputs:
             self.detectCard.setStatus("locked", "Add input files to begin")

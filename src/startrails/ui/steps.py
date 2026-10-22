@@ -93,15 +93,18 @@ class StepCard(QFrame):
         self.ui.toggle.setAccessibleName(value)
 
     def _set_step_number(self, value):
-        self.has_number = value > 0
-        self.ui.number.setText(str(value) if value else "")
-        self.ui.statusBadge.setVisible(self.has_number)
+        self.has_number = bool(value and value > 0)
+        if self.ui.number is not None:
+            self.ui.number.setText(str(value) if self.has_number else ("!" if getattr(self, "_alert", False) else ""))
+        if self.ui.statusBadge is not None:
+            self.ui.statusBadge.setVisible(self.has_number)
         self._update_status_appearance()
 
     title = Property(str, lambda self: self.ui.toggle.text(), _set_title)
-    step_number = Property(int, lambda self: int(self.ui.number.text() or 0), _set_step_number)
+    step_number = Property(int, lambda self: int(self.ui.number.text()) if self.ui.number is not None and self.ui.number.text().isdigit() else 0, _set_step_number)
     is_expanded = Property(bool, lambda self: self.ui.toggle.isChecked(), lambda self, value: self.setExpanded(value))
     subtitle = Property(str, lambda self: self.ui.subtitle.text(), lambda self, value: self.setSubtitle(value))
+    alert = Property(bool, lambda self: getattr(self, "_alert", False), lambda self, value: self.set_alert(value))
 
     def __init__(self, title="Step", body=None, number=None, expanded=False, parent=None, ui=None, prefix=None):
         if isinstance(title, QWidget) and parent is None:
@@ -110,6 +113,7 @@ class StepCard(QFrame):
         super().__init__(parent)
         self.has_number = number is not None
         self._status = "ready"
+        self._alert = False
         if ui is not None and prefix is not None:
             self.frame = getattr(ui, prefix)
             self.ui = SimpleNamespace(
@@ -133,7 +137,7 @@ class StepCard(QFrame):
         self.ui.toggle.setAccessibleName(title)
         if self.ui.number is not None:
             self.ui.number.setVisible(True)
-            self.ui.number.setText(str(number or ""))
+            self.ui.number.setText(str(number) if number is not None else "")
         if not self.has_number and self.ui.statusBadge is not None:
             self.ui.statusBadge.setVisible(False)
         self.ui.toggle.toggled.connect(self.setExpanded)
@@ -188,9 +192,24 @@ class StepCard(QFrame):
             target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
             target.updateGeometry()
 
+    def set_alert(self, alert: bool = True) -> None:
+        alert = bool(alert)
+        if getattr(self, "_alert", False) == alert:
+            return
+        self._alert = alert
+        self._update_status_appearance()
+
+    setAlert = set_alert
+
     def _update_status_appearance(self):
         # Appearance lives in the forms; only the current state changes here.
-        status = self._status if self.has_number else "neutral"
+        if self.has_number:
+            status = self._status
+        else:
+            status = "ready" if getattr(self, "_alert", False) else "neutral"
+            if self.ui.number is not None:
+                self.ui.number.setText("!" if getattr(self, "_alert", False) else "")
+
         for widget in (self.ui.number, self.ui.statusBadge):
             if widget is not None and widget.property("stepStatus") != status:
                 widget.setProperty("stepStatus", status)

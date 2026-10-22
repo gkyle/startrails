@@ -104,6 +104,8 @@ class SidebarDenoise(QWidget):
         self.tuneSettings.reset()
         self.exportSettings.reset()
         self.skySettings.ui.showMaskOverlay.setChecked(self.skyCard.is_expanded)
+        if hasattr(self, "exportCard") and self.exportCard is not None:
+            self.exportCard.set_alert(False)
 
     def refresh_inputs(self) -> None:
         self.update_operations_progress()
@@ -133,6 +135,8 @@ class SidebarDenoise(QWidget):
         has_manual = bool(getattr(proj, "has_manual_sky_corrections", False))
         self.skySettings.refresh_inputs(has_manual_corrections=has_manual)
         self.exportSettings.refresh_inputs(has_manual_corrections=has_manual)
+        if hasattr(self, "exportCard") and self.exportCard is not None:
+            self.exportCard.set_alert(has_manual)
         self.alignSettings.refresh_inputs(ready=can_process)
         self.stackSettings.refresh_inputs(ready=can_process)
         self.tuneSettings.refresh_inputs(ready=has_compositor)

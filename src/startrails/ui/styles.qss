@@ -139,6 +139,10 @@ QSlider::handle:horizontal:hover {
     background: #0284c7;
 }
 
+QWidget:focus:enabled {
+    border: none;
+}
+
 /* Primary Capsule Action Button (Detect Streaks, Align Stars, Stack, Composite) */
 QPushButton#run {
     font-weight: bold;
