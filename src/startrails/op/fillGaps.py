@@ -38,11 +38,13 @@ class FillGaps(Observable):
         full_image = np.zeros_like(input_full_image)
         full_mask = np.zeros_like(input_full_image)  # np.zeros((height, width))
 
-        self.startJob((height // self.stride) * (width // self.stride))
+        patch_rows = range(0, height, self.stride)
+        patch_columns = range(0, width, self.stride)
+        self.startJob(len(patch_rows) * len(patch_columns))
 
         # Patch-wise inference
-        for y in range(0, height, self.stride):
-            for x in range(0, width, self.stride):
+        for y in patch_rows:
+            for x in patch_columns:
 
                 # Extract the patch from the large image
                 patch = input_full_image[y:y + self.patch_size[0], x:x + self.patch_size[1]]
@@ -71,7 +73,7 @@ class FillGaps(Observable):
 
             imwrite(fileFillGaps.path, full_image)
             imwrite(fileFillGapsMask.path, full_mask)
-            self.updateJob((width // self.stride), fileFillGaps)
+            self.updateJob(len(patch_columns), fileFillGaps)
 
             if self.shouldInterrupt():
                 break
