@@ -10,7 +10,7 @@ def main():
     parser.add_argument("--variant", required=True)
     parser.add_argument("--notice-file", type=Path, help="Write prerequisite guidance for the installer to display.")
     args = parser.parse_args()
-    # These imports exercise the native DLL dependencies on a clean Windows install.
+    # These imports exercise native dependencies before a packaged install is ready.
     import cv2
     import openvino
     from PySide6 import QtWidgets
@@ -35,6 +35,12 @@ def main():
                 "CPU stacking remains available."
             )
             print(f"{notice} Details: {error}", file=sys.stderr)
+    elif args.variant == "mps":
+        if torch.backends.mps.is_available():
+            torch.ones(1, device="mps").sum().item()
+        else:
+            notice = "Apple GPU acceleration is unavailable. CPU processing remains available."
+            print(notice, file=sys.stderr)
     if args.notice_file is not None:
         args.notice_file.write_text(notice, encoding="utf-8")
 

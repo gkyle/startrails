@@ -8,24 +8,20 @@ from pathlib import Path
 import re
 import runpy
 import shutil
+import sys
 import tomllib
 from urllib.parse import urlparse
 from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE_SUFFIXES = {".py", ".ps1", ".ui", ".qrc", ".qss", ".svg", ".png"}
-RELEASE_HASH_PREFIX_LENGTH = 12
-
-
-def sha256(path: Path) -> str:
-    with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+sys.path.insert(0, str(ROOT / "build"))
+from release import RELEASE_HASH_PREFIX_LENGTH, copy_source_tree, create_models_archive, sha256  # noqa: E402
 
 
 def prepare(output: Path, uv_executable: Path, model_base_url: str | None) -> dict:
     with (ROOT / "pyproject.toml").open("rb") as stream:
         project = tomllib.load(stream)["project"]
-    toolchain = json.loads((ROOT / "build/windows/toolchain.json").read_text(encoding="utf-8"))
+    toolchain = json.loads((ROOT / "build/toolchain.json").read_text(encoding="utf-8"))
     version = project["version"]
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
         raise ValueError("Windows installer versions must have three numeric components.")
@@ -46,11 +42,7 @@ def prepare(output: Path, uv_executable: Path, model_base_url: str | None) -> di
     stage.mkdir()
     for name in ("README.md", "LICENSE", "pyproject.toml", "uv.lock"):
         shutil.copy2(ROOT / name, stage / name)
-    for source in sorted((ROOT / "src").rglob("*")):
-        if source.is_file() and source.suffix in SOURCE_SUFFIXES and "__pycache__" not in source.parts:
-            destination = stage / source.relative_to(ROOT)
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, destination)
+    copy_source_tree(stage)
     shutil.copy2(ROOT / "build/windows/run.bat", stage / "run.bat")
     (stage / "tools").mkdir()
     shutil.copy2(uv_executable, stage / "tools/uv.exe")
@@ -63,12 +55,7 @@ def prepare(output: Path, uv_executable: Path, model_base_url: str | None) -> di
     shutil.copy2(ROOT / "src/startrails/ui/icons/startrails_windows.ico", stage / "resources/startrails.ico")
 
     model_archive = output / f"StarTrailsAI-{version}-models.zip"
-    models = sorted(path for path in (ROOT / "models").rglob("*") if path.is_file())
-    if not models or not any(path.suffix == ".safetensors" for path in models):
-        raise ValueError("The checked-in models, including sky detection, are required to build a release.")
-    with ZipFile(model_archive, "w", compression=ZIP_DEFLATED) as archive:
-        for model in models:
-            archive.write(model, model.relative_to(ROOT).as_posix())
+    models = create_models_archive(model_archive)
     model_hash = sha256(model_archive)
     payload_hash = hashlib.sha256()
     for path in sorted(path for path in stage.rglob("*") if path.is_file()):

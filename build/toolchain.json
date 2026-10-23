@@ -1,0 +1,7 @@
+{
+  "uv_version": "0.13.5",
+  "python_version": "3.12.15",
+  "macos_min_version": "14.0",
+  "windows_x64_uv_archive_sha256": "a38b8d1902b7cfbc76b423ba1bb456f623f42064cdc72628b6075b89afd1019a",
+  "macos_arm64_uv_archive_sha256": "743f85035a1996ecb350659e01cd9faea9709829be09b1b4b03c73eaf3c9cd73"
+}
