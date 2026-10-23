@@ -8,9 +8,10 @@ import cv2
 from startrails.lib.util import imwrite, Observable
 from startrails.models.fillGaps.model import UNet
 from startrails.lib.file import OutputFile, InputFile
+from startrails.paths import APPLICATION_DIR
 
 ROI_SIZE = 128
-MODEL_PATH = "models/fillGaps/gapfill.pt"
+MODEL_PATH = str(APPLICATION_DIR / "models/fillGaps/gapfill.pt")
 
 
 class FillGaps(Observable):

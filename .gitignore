@@ -17,7 +17,11 @@ venv.bak/
 *.egg-info
 AGENTS.md
 
+# Build
+/out/
+
 # Startrails
 data/
 projects/
 app.json
+startrails.log*
