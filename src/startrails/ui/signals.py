@@ -29,6 +29,7 @@ class Signals(QObject):
     finishProgress: Signal = Signal()
     start_task_progress = Signal(object, object, object, object)
     finish_task_progress = Signal(object)
+    task_failed = Signal(object, str, str)
 
     showFile: Signal = Signal(File)
     updateGPUStats: Signal = Signal()

@@ -1,5 +1,6 @@
 from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
-import traceback
+import logging
+import time
 from typing import List
 import cv2
 import numpy as np
@@ -23,6 +24,7 @@ from startrails.lib.file import InputFile
 from startrails.paths import APPLICATION_DIR
 
 USE_GPU_IF_AVAILABLE = True
+logger = logging.getLogger(__name__)
 
 PATCH_OVERLAP = 0.2
 STREAKS_MODEL_PATH = str(APPLICATION_DIR / "models/detectStreaks/streaks.pt")
@@ -61,9 +63,11 @@ class DetectStreaks(Observable):
 
         # Prefer openvino/fp16 model variant if device is cpu
         if self.device == 'cpu':
-            self.model = YOLO(STREAKS_MODEL_OPENVINO_PATH, task="obb")
+            model_path = STREAKS_MODEL_OPENVINO_PATH
         else:
-            self.model = YOLO(STREAKS_MODEL_PATH, task="obb")
+            model_path = STREAKS_MODEL_PATH
+        logger.info("Loading streak detector on %s from %s", self.device, model_path)
+        self.model = YOLO(model_path, task="obb")
 
     def detectStreaks(self, srcFiles: List[InputFile], confThreshold, mergeMethod, mergeThreshold):
 
@@ -122,9 +126,11 @@ class DetectStreaks(Observable):
     # - Does not build / use expensive masks when not needed
 
     def detectStreaksInImage(self, file: InputFile, confThreshold: float, postProcessMethod: str, mergeThreshold: float) -> InputFile:
+        started = time.monotonic()
         try:
             if self.shouldInterrupt():
                 raise CancelledError()
+            logger.info("Detecting streaks in %s", file.path)
             img = cv2.imread(file.path)
             BORDER = ROI_SIZE // 4
             img = cv2.copyMakeBorder(img, BORDER, BORDER, BORDER, BORDER, cv2.BORDER_CONSTANT, value=[0, 0, 0])
@@ -172,11 +178,16 @@ class DetectStreaks(Observable):
             if self.shouldInterrupt():
                 raise CancelledError()
             file.streaksMasks = processResults(processedObjectPredictions, BORDER)
+            logger.info(
+                "Detected %d streaks in %s (%.2f s)",
+                len(file.streaksMasks), file.path, time.monotonic() - started,
+            )
 
         except CancelledError:
             raise
-        except Exception as e:
-            traceback.print_exc()
+        except Exception:
+            logger.exception("Streak detection failed for %s", file.path)
+            raise
 
         return file
 
