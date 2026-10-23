@@ -18,6 +18,7 @@
   <file alias="sort_dark.svg">icons/sort_dark.svg</file>
   <file alias="add.svg">icons/add.svg</file>
   <file alias="add_dark.svg">icons/add_dark.svg</file>
+  <file alias="startrails_desktop.png">icons/startrails_desktop.png</file>
   <file alias="project_startrails.png">icons/project_startrails.png</file>
   <file alias="project_denoise.png">icons/project_denoise.png</file>
   <file alias="styles.qss">styles.qss</file>

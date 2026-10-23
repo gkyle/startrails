@@ -15,6 +15,7 @@ from startrails.lib.denoise.defaults import (
     DEFAULT_SKY_DETECTION_INPUT_SIZE,
     DENOISE_DEFAULTS,
 )
+from startrails.paths import APPLICATION_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -22,22 +23,10 @@ logger = logging.getLogger(__name__)
 _MODEL_CACHE: dict[str, Tuple[Any, Any, str, int]] = {}
 
 
-def _get_local_nightstack_dir() -> Path:
-    """Find local nightstack weights directory in repository or current working directory."""
-    root = Path(__file__).resolve()
-    while root.parent != root:
-        candidate = root / "models" / "detectSky" / "nightstack"
-        if candidate.is_dir() and ((candidate / "model.safetensors").exists() or (candidate / "config.json").exists()):
-            return candidate.resolve()
-        root = root.parent
-    candidate = Path("models/detectSky/nightstack").resolve()
-    return candidate
-
-
 class AutoSkyDetector:
     """Detect celestial sky region autonomously without requiring manual user brush masks."""
 
-    DEFAULT_NIGHT_MODEL = str(_get_local_nightstack_dir())
+    DEFAULT_NIGHT_MODEL = str(APPLICATION_DIR / "models/detectSky/nightstack")
     DEFAULT_SEGFORMER_MODEL = "nvidia/segformer-b0-finetuned-ade-512-512"
 
     @classmethod
