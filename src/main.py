@@ -1,7 +1,7 @@
 import logging
 from logging.handlers import RotatingFileHandler
 import sys
-from PySide6.QtCore import QLoggingCategory
+from PySide6.QtCore import QLoggingCategory, QTimer
 from PySide6.QtGui import QIcon, QImageReader
 from PySide6.QtWidgets import QApplication, QMessageBox
 from startrails.paths import configure_work_directory
@@ -61,6 +61,17 @@ def main():
         logging.exception("Application startup failed")
         QMessageBox.critical(None, "StarTrails AI", f"Could not start StarTrails AI:\n{error}")
         return 1
+
+    try:
+        from startrails.ui.updates import UpdateChecker
+
+        window.update_checker = UpdateChecker(window)
+        window.update_checker.status_changed.connect(window.project_overlay.set_update_status)
+        window.update_checker.release_found.connect(window.project_overlay.set_update_release)
+        QTimer.singleShot(0, window.update_checker.check)
+    except Exception:
+        logging.exception("Could not start update check")
+        window.project_overlay.set_update_status("Could not check for updates.")
 
     return qapp.exec()
 
