@@ -6,11 +6,13 @@ repository_dir=$(cd "$script_dir/../.." && pwd -P)
 python=python3
 stage_only=false
 model_base_url=
+models_archive=
 uv_archive_override=
 while (($#)); do
     case "$1" in
         --python) python=$2; shift ;;
         --model-base-url) model_base_url=$2; shift ;;
+        --models-archive) models_archive=$2; shift ;;
         --uv-archive) uv_archive_override=$2; shift ;;
         --stage-only) stage_only=true ;;
         *) printf 'Unknown build option: %s\n' "$1" >&2; exit 2 ;;
@@ -21,6 +23,11 @@ if [[ $(uname -s) != Darwin || $(uname -m) != arm64 ]]; then
     printf 'Build the macOS installer on an Apple Silicon Mac.\n' >&2
     exit 1
 fi
+if [[ -z $models_archive || ! -f $models_archive ]]; then
+    printf 'Pass --models-archive with the ZIP created by build/models.py.\n' >&2
+    exit 2
+fi
+models_archive=$(cd "$(dirname "$models_archive")" && pwd -P)/$(basename "$models_archive")
 
 read -r uv_version uv_hash <<<"$("$python" "$script_dir/prepare.py" --toolchain)"
 downloads_dir="$repository_dir/out/macos/downloads"
@@ -56,7 +63,7 @@ cd "$repository_dir"
 UV_CACHE_DIR="$downloads_dir/cache" "$uv" lock --check --offline
 
 output=$(mktemp -d "$repository_dir/out/macos/build.XXXXXX")
-prepare_args=(--output "$output" --uv-executable "$uv")
+prepare_args=(--output "$output" --uv-executable "$uv" --models-archive "$models_archive")
 if [[ -n $model_base_url ]]; then prepare_args+=(--model-base-url "$model_base_url"); fi
 "$python" "$script_dir/prepare.py" "${prepare_args[@]}"
 if ! $stage_only; then

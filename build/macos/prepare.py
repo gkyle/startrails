@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "build"))
-from release import RELEASE_HASH_PREFIX_LENGTH, copy_source_tree, create_models_archive, sha256  # noqa: E402
+from release import RELEASE_HASH_PREFIX_LENGTH, copy_source_tree, sha256, stage_models_archive  # noqa: E402
 
 BUNDLE_ID = "org.startrails.ai"
 
@@ -56,7 +56,7 @@ def build_app(stage: Path, version: str, min_macos_version: str) -> None:
     copy_file(ROOT / "src/startrails/ui/icons/startrails_macos.icns", contents / "Resources/startrails.icns")
 
 
-def prepare(output: Path, uv_executable: Path, model_base_url: str | None) -> dict:
+def prepare(output: Path, uv_executable: Path, models_archive: Path, model_base_url: str | None) -> dict:
     with (ROOT / "pyproject.toml").open("rb") as stream:
         project = tomllib.load(stream)["project"]
     toolchain = json.loads((ROOT / "build/toolchain.json").read_text(encoding="utf-8"))
@@ -90,9 +90,7 @@ def prepare(output: Path, uv_executable: Path, model_base_url: str | None) -> di
     build_app(payload, version, toolchain["macos_min_version"])
     copy_file(ROOT / "build/macos/common.sh", payload / "common.sh")
 
-    model_archive = output / f"StarTrailsAI-{version}-models.zip"
-    create_models_archive(model_archive)
-    model_hash = sha256(model_archive)
+    model_archive, model_hash, _ = stage_models_archive(models_archive, output, version)
     payload_hash = hashlib.sha256()
     for path in sorted(path for path in payload.rglob("*") if path.is_file()):
         payload_hash.update(path.relative_to(payload).as_posix().encode("utf-8"))
@@ -130,6 +128,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--uv-executable", type=Path)
+    parser.add_argument("--models-archive", type=Path)
     parser.add_argument("--model-base-url")
     parser.add_argument("--toolchain", action="store_true")
     args = parser.parse_args()
@@ -137,9 +136,18 @@ def main() -> None:
         toolchain = json.loads((ROOT / "build/toolchain.json").read_text(encoding="utf-8"))
         print(toolchain["uv_version"], toolchain["macos_arm64_uv_archive_sha256"])
         return
-    if args.output is None or args.uv_executable is None:
-        parser.error("--output and --uv-executable are required to prepare a release")
-    print(json.dumps(prepare(args.output.resolve(), args.uv_executable.resolve(), args.model_base_url)))
+    if args.output is None or args.uv_executable is None or args.models_archive is None:
+        parser.error("--output, --uv-executable, and --models-archive are required to prepare a release")
+    print(
+        json.dumps(
+            prepare(
+                args.output.resolve(),
+                args.uv_executable.resolve(),
+                args.models_archive.resolve(),
+                args.model_base_url,
+            )
+        )
+    )
 
 
 if __name__ == "__main__":
