@@ -105,17 +105,10 @@ class ProjectWelcomeOverlay(QWidget):
         card_layout.setSpacing(16)
 
         # -------------------------------------------------------------
-        # Header (Logo, Title, Subtitle, Close Button)
+        # Header (Title, Subtitle, Close Button)
         # -------------------------------------------------------------
         header_layout = QHBoxLayout()
         header_layout.setSpacing(14)
-
-        # Logo badge
-        lbl_logo = QLabel("ST", self.card)
-        lbl_logo.setObjectName("OverlayLogoBadge")
-        lbl_logo.setFixedSize(40, 40)
-        lbl_logo.setAlignment(Qt.AlignCenter)
-        header_layout.addWidget(lbl_logo)
 
         # Title text block
         title_box = QVBoxLayout()
@@ -325,13 +318,6 @@ class ProjectWelcomeOverlay(QWidget):
                 background-color: #ffffff;
                 border: 1px solid #cbd5e1;
                 border-radius: 14px;
-            }
-            QLabel#OverlayLogoBadge {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0284c7, stop:1 #0369a1);
-                color: #ffffff;
-                font-size: 16px;
-                font-weight: 800;
-                border-radius: 8px;
             }
             QLabel#OverlayTitle {
                 color: #0f172a;
