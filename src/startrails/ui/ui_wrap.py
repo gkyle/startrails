@@ -1,4 +1,5 @@
 from functools import partial
+from concurrent.futures import CancelledError
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
@@ -268,6 +269,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         self.signals.finishProgress.connect(self.slotFinishProgress)
         self.signals.start_task_progress.connect(self._start_task_progress)
         self.signals.finish_task_progress.connect(self._finish_task_progress)
+        self.signals.task_failed.connect(self._show_task_error)
         self.signals.updateFile.connect(self.slotUpdateFile)
         self.signals.showFile.connect(self.showFile)
         self.signals.updateGPUStats.connect(self.slotUpdateGPUStats)
@@ -406,8 +408,16 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
                     pass
             self.current_running_task = task_id
             try:
+                logger.info("Starting %s (%d frames)", title, total)
                 with progress_scope(task_token):
                     work_func()
+            except CancelledError:
+                logger.info("Cancelled %s", title)
+            except Exception as error:
+                logger.exception("%s failed", title)
+                self.signals.task_failed.emit(task_token, title, str(error))
+            else:
+                logger.info("Completed %s", title)
             finally:
                 if self.current_running_task == task_id:
                     self.current_running_task = None
@@ -427,6 +437,15 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         if task_token is self._visible_task_token and task_token[0] is self.current_project_token:
             self._visible_task_token = None
             self.slotFinishProgress()
+
+    @Slot(object, str, str)
+    def _show_task_error(self, task_token, title, message):
+        if task_token[0] is self.current_project_token:
+            QMessageBox.warning(
+                self.mainWindow,
+                title,
+                f"{title} failed:\n\n{message}\n\nDetails were written to the application log.",
+            )
 
     @Slot(object, object, object)
     def slotStartProgress(self, *args, **kwargs):

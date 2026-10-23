@@ -5,10 +5,12 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import numpy as np
+import cv2
 import torch
 
 from support import IsolatedTestCase
 from startrails.op.detectStreaks import DetectStreaks, StreaksPredictor
+from startrails.lib.file import InputFile
 
 
 class PredictionBatchTests(IsolatedTestCase):
@@ -20,6 +22,18 @@ class PredictionBatchTests(IsolatedTestCase):
         detector = self.make_detector()
         self.assertEqual(detector.predict([], conf=0.25, batchSize=16, imgsz=512), [])
         detector.model.assert_not_called()
+
+    def test_inference_failure_is_reported_instead_of_completing_frame(self):
+        detector = self.make_detector()
+        path = self.root / "input.png"
+        self.assertTrue(cv2.imwrite(str(path), np.zeros((32, 32, 3), np.uint8)))
+        frame = InputFile(path.name, str(path))
+        with patch.object(detector, "predict", side_effect=RuntimeError("Inference failed")):
+            with self.assertLogs("startrails.op.detectStreaks", level="ERROR") as records:
+                with self.assertRaisesRegex(RuntimeError, "Inference failed"):
+                    detector.detectStreaks([frame], 0.3, "NMS", 0.2)
+        self.assertIn(str(path), "\n".join(records.output))
+        self.assertEqual(detector.job.count, 0)
 
     def test_interrupt_stops_before_next_batch(self):
         detector = self.make_detector()

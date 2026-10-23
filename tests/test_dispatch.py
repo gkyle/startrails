@@ -1,12 +1,16 @@
 """User settings are validated and captured when work is submitted."""
 
 from types import SimpleNamespace
+from concurrent.futures import CancelledError
 from threading import Thread
 from unittest.mock import patch
 
 from support import QtTestCase
 from startrails.ui import ui_wrap
 from startrails.lib.file import InputFile
+from startrails.ui.progress import ProgressBarUpdater
+from startrails.ui.signals import Signals
+from PySide6.QtWidgets import QLabel, QProgressBar
 
 
 class RecordingQueue:
@@ -72,6 +76,62 @@ class DispatchTests(QtTestCase):
             self.assertTrue(ui.pushButton_contribute.isEnabled())
         self.assertEqual(ui.sidebar.toolsCard.ui.number.text(), "!")
         self.assertEqual(ui.sidebar.toolsCard.ui.number.property("stepStatus"), "ready")
+
+    def test_progress_works_without_console_and_keeps_frame_counts(self):
+        bar = QProgressBar()
+        label = QLabel()
+        self.addCleanup(bar.deleteLater)
+        self.addCleanup(label.deleteLater)
+        with patch("sys.stdout", None), patch("sys.stderr", None):
+            with ProgressBarUpdater(bar, label, total=2, desc="Detecting streaks") as updater:
+                updater.update(1)
+                self.assertEqual(updater.n, 1)
+                self.assertEqual(bar.value(), 50)
+                self.assertEqual(label.text(), "Detecting streaks")
+                updater.update(1)
+                self.assertEqual(updater.n, 2)
+                self.assertEqual(bar.value(), 100)
+
+    def test_worker_failure_is_logged_reported_and_allows_retry(self):
+        ui = self.make_ui([])
+        ui.op_queue = RecordingQueue()
+        ui.signals = Signals(ui)
+        ui.signals.task_failed.connect(ui._show_task_error)
+
+        def fail():
+            raise RuntimeError("Model could not be loaded")
+
+        with patch("startrails.ui.ui_wrap.QMessageBox.warning") as warning:
+            ui.enqueue_task("detectStreaks", "Detect Streaks", 1, "", fail)
+            with self.assertLogs("startrails.ui.ui_wrap", level="ERROR") as records:
+                worker = Thread(target=ui.op_queue.workers[0].run)
+                worker.start()
+                worker.join(timeout=5)
+                self.assertFalse(worker.is_alive())
+            self.assertFalse(warning.called)
+            self.qt.processEvents()
+            self.assertIn("Model could not be loaded", "\n".join(records.output))
+            warning.assert_called_once()
+            self.assertIn("Model could not be loaded", warning.call_args.args[2])
+            self.assertFalse(ui.enqueued_tasks)
+            self.assertIsNone(ui.current_running_task)
+            self.assertTrue(ui.enqueue_task("detectStreaks", "Detect Streaks", 1, "", lambda: None))
+
+    def test_cancelled_worker_is_not_reported_as_failure(self):
+        ui = self.make_ui([])
+        ui.op_queue = RecordingQueue()
+        ui.signals = Signals(ui)
+        ui.signals.task_failed.connect(ui._show_task_error)
+
+        def cancel():
+            raise CancelledError()
+
+        with patch("startrails.ui.ui_wrap.QMessageBox.warning") as warning:
+            ui.enqueue_task("detectStreaks", "Detect Streaks", 1, "", cancel)
+            ui.op_queue.workers[0].run()
+            self.qt.processEvents()
+            warning.assert_not_called()
+            self.assertFalse(ui.enqueued_tasks)
 
     def test_settings_are_captured_per_submission(self):
         file = InputFile("input.jpg", "input.jpg")
