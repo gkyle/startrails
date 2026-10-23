@@ -9,7 +9,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryDir = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-$toolchain = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'toolchain.json') -Raw | ConvertFrom-Json
+$toolchain = Get-Content -LiteralPath (Join-Path $repositoryDir 'build/toolchain.json') -Raw | ConvertFrom-Json
 $downloadsDir = Join-Path $repositoryDir 'out/windows/downloads'
 New-Item -ItemType Directory -Force -Path $downloadsDir | Out-Null
 $uvArchive = Join-Path $downloadsDir "uv-$($toolchain.uv_version).zip"
@@ -17,7 +17,7 @@ $uvUrl = "https://github.com/astral-sh/uv/releases/download/$($toolchain.uv_vers
 if (-not (Test-Path -LiteralPath $uvArchive)) {
     Invoke-WebRequest -UseBasicParsing -Uri $uvUrl -OutFile $uvArchive
 }
-if ((Get-FileHash -LiteralPath $uvArchive -Algorithm SHA256).Hash -ne $toolchain.uv_archive_sha256) {
+if ((Get-FileHash -LiteralPath $uvArchive -Algorithm SHA256).Hash -ne $toolchain.windows_x64_uv_archive_sha256) {
     throw "uv download failed verification. Remove '$uvArchive' and retry the build."
 }
 $uvDir = Join-Path $downloadsDir "uv-$($toolchain.uv_version)"
