@@ -25,7 +25,11 @@ def copy_source_tree(stage: Path) -> None:
             shutil.copy2(source, destination)
 
 
-def create_models_archive(path: Path) -> list[Path]:
+def models_archive_name(version: str) -> str:
+    return f"StarTrailsAI-{version}-models.zip"
+
+
+def create_models_archive(path: Path) -> None:
     models = sorted(source for source in (ROOT / "models").rglob("*") if source.is_file())
     if not models or not any(model.suffix == ".safetensors" for model in models):
         raise ValueError("The checked-in models, including sky detection, are required to build a release.")
@@ -40,4 +44,22 @@ def create_models_archive(path: Path) -> list[Path]:
             if model.suffix in MODEL_METADATA_SUFFIXES:
                 content = content.replace(b"\r\n", b"\n")
             archive.writestr(entry, content)
-    return models
+
+
+def stage_models_archive(source: Path, output: Path, version: str) -> tuple[Path, str, int]:
+    name = models_archive_name(version)
+    if source.name != name:
+        raise ValueError(f"Expected model archive named {name}, got {source.name}.")
+    with ZipFile(source) as archive:
+        entries = [entry for entry in archive.infolist() if not entry.is_dir()]
+        if not entries or not any(entry.filename.endswith(".safetensors") for entry in entries):
+            raise ValueError("The model archive must include sky detection weights.")
+        if any(not entry.filename.startswith("models/") or ".." in Path(entry.filename).parts for entry in entries):
+            raise ValueError("The model archive contains a path outside models/.")
+        if bad_entry := archive.testzip():
+            raise ValueError(f"The model archive contains a corrupt entry: {bad_entry}")
+        models_size = sum(entry.file_size for entry in entries)
+    destination = output / name
+    if source.resolve() != destination.resolve():
+        shutil.copy2(source, destination)
+    return destination, sha256(destination), models_size

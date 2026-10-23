@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Python = 'python',
+    [Parameter(Mandatory = $true)][string]$ModelsArchive,
     [string]$IsccPath,
     [string]$ModelBaseUrl,
     [string]$SignCommand,
@@ -9,6 +10,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryDir = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+$modelsArchivePath = (Resolve-Path -LiteralPath $ModelsArchive).Path
 $toolchain = Get-Content -LiteralPath (Join-Path $repositoryDir 'build/toolchain.json') -Raw | ConvertFrom-Json
 $downloadsDir = Join-Path $repositoryDir 'out/windows/downloads'
 New-Item -ItemType Directory -Force -Path $downloadsDir | Out-Null
@@ -42,7 +44,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Update uv.lock from the repository before building the installer.' }
     $buildId = [Guid]::NewGuid().ToString('N')
     $outputDir = Join-Path $repositoryDir "out/windows/build-$buildId"
-    $prepareArgs = @((Join-Path $PSScriptRoot 'prepare.py'), '--output', $outputDir, '--uv-executable', $uv)
+    $prepareArgs = @((Join-Path $PSScriptRoot 'prepare.py'), '--output', $outputDir, '--uv-executable', $uv, '--models-archive', $modelsArchivePath)
     if ($ModelBaseUrl) { $prepareArgs += @('--model-base-url', $ModelBaseUrl) }
     $result = & $Python @prepareArgs
     if ($LASTEXITCODE -ne 0) { throw 'Could not stage the Windows release.' }
