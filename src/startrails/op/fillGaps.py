@@ -48,11 +48,23 @@ class FillGaps(Observable):
 
                 # Extract the patch from the large image
                 patch = input_full_image[y:y + self.patch_size[0], x:x + self.patch_size[1]]
-                patch_tensor = transform(patch, input_dtype).unsqueeze(0).to(self.device)
+                patch_height, patch_width = patch.shape[:2]
+                # The U-Net requires dimensions divisible by 16. Replicate edge
+                # pixels to keep every input at its trained patch size, even for
+                # images smaller than a patch, without adding a black border.
+                padded_patch = cv2.copyMakeBorder(
+                    patch, 0, self.patch_size[0] - patch_height,
+                    0, self.patch_size[1] - patch_width, cv2.BORDER_REPLICATE,
+                )
+                patch_tensor = transform(padded_patch, input_dtype).unsqueeze(0).to(self.device)
 
                 # Run inference on the patch
                 with torch.no_grad():
                     output, output_mask = self.model(patch_tensor)
+
+                # Discard padding from both predictions before merging pixels.
+                output = output[..., :patch_height, :patch_width]
+                output_mask = output_mask[..., :patch_height, :patch_width]
 
                 # Convert output to numpy array and back to the original shape
                 output = untransform(output[0], input_dtype)
