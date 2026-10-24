@@ -3,10 +3,15 @@
 from types import SimpleNamespace
 from threading import Thread
 from unittest.mock import patch
+import os
+import cv2
+import numpy as np
 
 from support import QtTestCase
 from startrails.ui import ui_wrap
-from startrails.lib.file import InputFile
+from startrails.lib.file import InputFile, OutputFile
+from startrails.ui.canvasLabel import CanvasLabel
+from startrails.ui.progress import ProgressBarUpdater
 
 
 class RecordingQueue:
@@ -72,6 +77,40 @@ class DispatchTests(QtTestCase):
             self.assertTrue(ui.pushButton_contribute.isEnabled())
         self.assertEqual(ui.sidebar.toolsCard.ui.number.text(), "!")
         self.assertEqual(ui.sidebar.toolsCard.ui.number.property("stepStatus"), "ready")
+
+    def test_fill_gaps_preview_refreshes_same_output_through_completion(self):
+        ui = self.make_ui([])
+        ui.canvas_main = CanvasLabel()
+        self.addCleanup(ui.canvas_main.deleteLater)
+        path = self.root / "fill-gaps.tif"
+        output = OutputFile(path.name, str(path), operation="FillGaps")
+        ui.app.getOutputFileList = lambda: [output]
+        ui.outputFiles = ui.sidebar.outputs
+        ui.outputFiles.set_files([output])
+        image = np.zeros((30, 20, 3), dtype=np.uint8)
+        # All writes retain the same path, dimensions, size, and timestamp. Updates
+        # within one filesystem clock tick must still replace the displayed pixels.
+        stamp = None
+        with ProgressBarUpdater(None, None, total=3) as updater:
+            for row in range(3):
+                image[row * 10:(row + 1) * 10] = 255
+                self.assertTrue(cv2.imwrite(
+                    str(path), image,
+                    [cv2.IMWRITE_TIFF_COMPRESSION, cv2.IMWRITE_TIFF_COMPRESSION_NONE],
+                ))
+                if stamp is None:
+                    stamp = path.stat()
+                os.utime(path, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+                ui.slotIncrementProgressBar(updater, 3, 1, row + 1, row == 2, output)
+                displayed = ui.canvas_main.pixmap.toImage()
+                self.assertEqual(displayed.pixelColor(5, row * 10 + 5).red(), 255)
+                if row == 0:
+                    self.assertEqual(displayed.pixelColor(5, 25).red(), 0)
+                    ui.canvas_main.zoom_factor = 2
+                    ui.canvas_main.posX, ui.canvas_main.posY = 13, 17
+            self.assertEqual(ui.canvas_main.zoom_factor, 2)
+            self.assertEqual((ui.canvas_main.posX, ui.canvas_main.posY), (13, 17))
+        self.assertIs(ui.currentFile, output)
 
     def test_settings_are_captured_per_submission(self):
         file = InputFile("input.jpg", "input.jpg")

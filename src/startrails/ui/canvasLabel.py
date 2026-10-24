@@ -138,24 +138,25 @@ class CanvasLabel(QLabel):
         self.setFromNumpyArray(pixels, resetZoomAndPosition=reset_zoom_and_position, is_bgr=is_bgr)
 
     def setFile(self, file: File, reload: bool = False) -> None:
-        if (
-            not reload
-            and file is not None
+        same_file = (
+            file is not None
             and self.file is not None
             and getattr(file, "path", None) == getattr(self.file, "path", None)
-            and self.pixmap is not None
-            and not self.pixmap.isNull()
-        ):
+        )
+        preserve_view = same_file and self.pixmap is not None and not self.pixmap.isNull()
+        if not reload and preserve_view:
             return
 
         self._prepare_file_display(file)
 
         if file is not None and getattr(file, "path", None):
             QImageReader.setAllocationLimit(0)
-            newPixmap = QPixmap(file.path)
+            # QPixmap's filename cache can retain a partial output when successive
+            # writes share a timestamp and size. Explicit refreshes must read pixels.
+            newPixmap = QPixmap.fromImage(QImageReader(file.path).read()) if reload else QPixmap(file.path)
             # Sometimes we're writing over a file at the same moment we try to replace the pixmap. Try to not replace useful pixels with nil.
             if newPixmap.width() > 0 and newPixmap.height() > 0:
-                self.setPixmap(newPixmap, True)
+                self.setPixmap(newPixmap, not preserve_view)
             elif os.path.exists(file.path):
                 # Robust fallback for large, 16-bit, float, or formats that Qt QPixmap couldn't load directly
                 try:
@@ -163,7 +164,7 @@ class CanvasLabel(QLabel):
                         buf = np.frombuffer(f.read(), dtype=np.uint8)
                     arr = cv2.imdecode(buf, cv2.IMREAD_UNCHANGED)
                     if arr is not None and arr.size > 0:
-                        self.setFromNumpyArray(arr, resetZoomAndPosition=True)
+                        self.setFromNumpyArray(arr, resetZoomAndPosition=not preserve_view)
                 except Exception as err:
                     print(f"Error loading image fallback for {file.path}: {err}")
         else:

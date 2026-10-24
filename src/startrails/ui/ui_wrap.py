@@ -536,6 +536,10 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
                 if output_files is not None and hasattr(output_files, "model"):
                     output_files.model.sync_files(self.app.getOutputFileList())
                 self.slotFileIndicators(data)
+                # Output progress can replace pixels at the same path. Refresh
+                # before selection handling takes the same-file fast path.
+                if isinstance(data, OutputFile) and hasattr(self, "canvas_main") and self.canvas_main is not None:
+                    self.canvas_main.setFile(data, reload=True)
                 self.showFile(data)
             elif isinstance(data, dict):
                 preview = None

@@ -38,19 +38,33 @@ class FillGaps(Observable):
         full_image = np.zeros_like(input_full_image)
         full_mask = np.zeros_like(input_full_image)  # np.zeros((height, width))
 
-        self.startJob((height // self.stride) * (width // self.stride))
+        patch_rows = range(0, height, self.stride)
+        patch_columns = range(0, width, self.stride)
+        self.startJob(len(patch_rows) * len(patch_columns))
 
         # Patch-wise inference
-        for y in range(0, height, self.stride):
-            for x in range(0, width, self.stride):
+        for y in patch_rows:
+            for x in patch_columns:
 
                 # Extract the patch from the large image
                 patch = input_full_image[y:y + self.patch_size[0], x:x + self.patch_size[1]]
-                patch_tensor = transform(patch, input_dtype).unsqueeze(0).to(self.device)
+                patch_height, patch_width = patch.shape[:2]
+                # The U-Net requires dimensions divisible by 16. Replicate edge
+                # pixels to keep every input at its trained patch size, even for
+                # images smaller than a patch, without adding a black border.
+                padded_patch = cv2.copyMakeBorder(
+                    patch, 0, self.patch_size[0] - patch_height,
+                    0, self.patch_size[1] - patch_width, cv2.BORDER_REPLICATE,
+                )
+                patch_tensor = transform(padded_patch, input_dtype).unsqueeze(0).to(self.device)
 
                 # Run inference on the patch
                 with torch.no_grad():
                     output, output_mask = self.model(patch_tensor)
+
+                # Discard padding from both predictions before merging pixels.
+                output = output[..., :patch_height, :patch_width]
+                output_mask = output_mask[..., :patch_height, :patch_width]
 
                 # Convert output to numpy array and back to the original shape
                 output = untransform(output[0], input_dtype)
@@ -71,7 +85,7 @@ class FillGaps(Observable):
 
             imwrite(fileFillGaps.path, full_image)
             imwrite(fileFillGapsMask.path, full_mask)
-            self.updateJob((width // self.stride), fileFillGaps)
+            self.updateJob(len(patch_columns), fileFillGaps)
 
             if self.shouldInterrupt():
                 break

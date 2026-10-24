@@ -1,6 +1,7 @@
 """Shared image decoding, normalization, codec options, and file-lock fallback."""
 import sys
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Union
 import cv2
 import numpy
@@ -77,7 +78,7 @@ def imwrite(
     tiff_uint8_as_uint16: bool = False,
     eight_bit: bool = False,
 ) -> Path:
-    """Write an image to disk, handling CuPy arrays, float32 scaling, and TIFF/JPEG options.
+    """Atomically write an image, handling CuPy arrays, float scaling, and codec options.
 
     Args:
         outfile: Destination path.
@@ -124,7 +125,7 @@ def imwrite(
         comp_val = 8 if compression else 1
         options = [cv2.IMWRITE_TIFF_COMPRESSION, comp_val]
 
-    def _do_write(target_path: Path):
+    def _encode_image(target_path: Path):
         if optimize and suffix not in (".tif", ".tiff"):
             from PIL import Image
             rgb = img
@@ -142,6 +143,15 @@ def imwrite(
             raise ValueError(f"Could not encode image for '{target_path}'")
         with target_path.open("wb") as output:
             output.write(encoded)
+
+    def _do_write(target_path: Path):
+        # The UI can read a previous progress update while the worker saves the
+        # next one. Stage on the same filesystem so replacement is atomic and
+        # readers keep seeing a complete image throughout encoding and writing.
+        with TemporaryDirectory(dir=target_path.parent, prefix=".image-") as directory:
+            staged_path = Path(directory) / target_path.name
+            _encode_image(staged_path)
+            staged_path.replace(target_path)
 
     try:
         _do_write(path)
