@@ -30,7 +30,13 @@ def models_archive_name(version: str) -> str:
 
 
 def create_models_archive(path: Path) -> None:
-    models = sorted(source for source in (ROOT / "models").rglob("*") if source.is_file())
+    models = sorted(
+        source for source in (ROOT / "models").rglob("*")
+        if source.is_file()
+        and "__pycache__" not in source.parts
+        and not source.name.startswith(".")
+        and source.suffix not in {".pyc", ".pyo"}
+    )
     if not models or not any(model.suffix == ".safetensors" for model in models):
         raise ValueError("The checked-in models, including sky detection, are required to build a release.")
     with ZipFile(path, "w") as archive:

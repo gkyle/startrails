@@ -124,7 +124,7 @@ begin
     try
       if not ExecAndLogOutput(ExpandConstant('{#PowerShell}'),
         ExpandConstant('-NoProfile -ExecutionPolicy Bypass -File "{#SetupScript}" -Packaged'),
-        ExpandConstant('{#ReleaseDir}'), SW_SHOWNORMAL, ewWaitUntilTerminated, ResultCode, @LogSetupOutput) then
+        ExpandConstant('{#ReleaseDir}'), SW_HIDE, ewWaitUntilTerminated, ResultCode, @LogSetupOutput) then
         RaiseException('Could not start Python setup. Please run this installer again.');
     finally
       RuntimePage.Hide;

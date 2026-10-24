@@ -38,15 +38,18 @@ if __name__ == "__main__":
     else:
         # Check for CUDA
         cuda_version = get_cuda_version()
-        if not cuda_version is None:
-            cuda_version = int(float(cuda_version))
-            if cuda_version == 13:
-                print("cu133",end="")
-            elif cuda_version == 12:
-                print("cu124",end="")
-            elif cuda_version == 11:
-                print("cu118",end="")
-            else:
-                print("cpu",end="")
+        if cuda_version is not None:
+            try:
+                major = int(cuda_version.split(".")[0])
+                if major == 13:
+                    print("cu133", end="")
+                elif major == 12:
+                    print("cu124", end="")
+                elif major == 11:
+                    print("cu118", end="")
+                else:
+                    print("cpu", end="")
+            except (ValueError, IndexError):
+                print("cpu", end="")
         else:
-            print("cpu",end="")
+            print("cpu", end="")

@@ -19,7 +19,13 @@ if [[ $(uname -s) != Darwin || $(uname -m) != arm64 ]]; then
 fi
 source "$payload/release.conf"
 macos_version=$(sw_vers -productVersion)
-if (( ${macos_version%%.*} < ${macos_min_version%%.*} )); then
+macos_major=${macos_version%%.*}
+macos_minor=${macos_version#*.}
+macos_minor=${macos_minor%%.*}
+min_major=${macos_min_version%%.*}
+min_minor=${macos_min_version#*.}
+min_minor=${min_minor%%.*}
+if (( macos_major < min_major || (macos_major == min_major && macos_minor < min_minor) )); then
     printf 'StarTrails AI requires macOS %s or newer.\n' "$macos_min_version" >&2
     exit 1
 fi
