@@ -64,7 +64,7 @@ class MacAppMetadataTests(unittest.TestCase):
             self.assertEqual(metadata["LSArchitecturePriority"], ["arm64"])
 
 
-@unittest.skipUnless(MACOS_ARM, "macOS Apple Silicon installer")
+@unittest.skipIf(sys.platform == "win32", "Unix setup script")
 class MacSetupTests(unittest.TestCase):
     def setUp(self):
         directory = TemporaryDirectory(prefix="startrails_mac_setup_")

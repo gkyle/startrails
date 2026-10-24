@@ -55,8 +55,11 @@ class UpdateChecker(QObject):
         super().__init__(window)
         self.network = QNetworkAccessManager(self)
         self.reply: QNetworkReply | None = None
+        self.installed_version: str | None = None
 
     def check(self) -> None:
+        if self.reply is not None and self.reply.isRunning():
+            return
         self.status_changed.emit("Checking for updates...")
         try:
             with (APPLICATION_DIR / "pyproject.toml").open("rb") as stream:

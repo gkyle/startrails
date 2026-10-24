@@ -61,6 +61,25 @@ class ModelArchiveTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Expected model archive named"):
                 release.stage_models_archive(archive, root, "0.1.1")
 
+    def test_archive_excludes_pycache_and_bytecode(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            models = root / "models"
+            models.mkdir()
+            (models / "model.safetensors").write_bytes(b"model weights")
+            pycache = models / "__pycache__"
+            pycache.mkdir()
+            (pycache / "compiled.cpython-312.pyc").write_bytes(b"bytecode")
+            archive = root / "models.zip"
+
+            with patch.object(release, "ROOT", root):
+                release.create_models_archive(archive)
+
+            with ZipFile(archive) as zip_file:
+                names = zip_file.namelist()
+                self.assertIn("models/model.safetensors", names)
+                self.assertFalse(any("__pycache__" in name or name.endswith(".pyc") for name in names))
+
 
 if __name__ == "__main__":
     unittest.main()
