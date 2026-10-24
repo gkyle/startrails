@@ -690,7 +690,7 @@ class StarTrailsView(ModeView):
                 shell,
                 "Contribution Accepted",
                 f"Thank you for contributing to StarTrails!\n\n"
-                f"Your submission has been accepted into quarantine for review.\n\n"
+                f"Your submission has been accepted for review.\n\n"
                 f"Submission ID: {receipt_dict.get('submission_id', 'N/A')}\n"
                 f"Files: {receipt_dict.get('file_count', 0)}\n"
                 f"Size: {receipt_dict.get('size_bytes', 0):,} bytes",
