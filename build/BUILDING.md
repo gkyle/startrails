@@ -115,8 +115,34 @@ and preserves external projects. Setup logs are in the installed release's
 
 NVIDIA acceleration needs a compatible driver; CuPy also needs matching CUDA
 Toolkit components. CPU processing works without NVIDIA hardware. Native DLL
-errors may require the Microsoft Visual C++ x64 Redistributable. For signed
-installers, pass `-SignCommand` with an Inno signing command (`$f` is its filename
-placeholder). Before publishing, test clean Windows 10 and 11 installations,
-CPU and NVIDIA processing, offline launches, interrupted downloads, upgrades,
-repair, and uninstall.
+errors may require the Microsoft Visual C++ x64 Redistributable.
+
+For signed installers, use `release.ps1` with a code-signing certificate available to your
+signing tool. Set `WINDOWS_SIGN_COMMAND` to an
+[Inno signing command](https://jrsoftware.org/ishelp/topic_setup_signtool.htm),
+or pass `-SignCommand` to override it. For example, with Windows SDK
+[SignTool](https://learn.microsoft.com/en-us/windows/win32/seccrypto/signtool)
+on `PATH` and your certificate in the current user's certificate store:
+
+```powershell
+$env:WINDOWS_SIGN_COMMAND = 'signtool.exe sign /sha1 CERTIFICATE_THUMBPRINT /fd SHA256 /tr TIMESTAMP_URL /td SHA256 $f'
+python build/models.py
+powershell -NoProfile -ExecutionPolicy Bypass -File build/windows/release.ps1
+```
+
+Replace `CERTIFICATE_THUMBPRINT` with your certificate's thumbprint and
+`TIMESTAMP_URL` with your signing provider's RFC 3161 timestamp URL. Use single
+quotes in PowerShell to preserve Inno's `$f` filename placeholder; `$q` can
+quote paths containing spaces, such as `$qC:\path to\signtool.exe$q`.
+Keep signing credentials in your certificate store or signing provider.
+
+`release.ps1` requires a signing command and forwards `-Python`,
+`-ModelsArchive`, `-IsccPath`, and `-ModelBaseUrl` to the existing builder.
+Inno signs both the installer and uninstaller. The builder verifies the final
+installer's Authenticode signature before writing its checksum; signing or
+verification failures stop the release. `build.ps1` still supports unsigned
+development builds and optional `-SignCommand` signing.
+Publish the setup EXE, model ZIP, and `SHA256SUMS` from the printed output
+directory under the `v<version>` GitHub Release. Before publishing, test clean
+Windows 10 and 11 installations, CPU and NVIDIA processing, offline launches,
+interrupted downloads, upgrades, repair, and uninstall.

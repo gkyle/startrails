@@ -75,6 +75,12 @@ try {
     & $IsccPath @compileArgs
     if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
     $installer = Join-Path $outputDir "StarTrailsAI-$($release.version)-windows-x64-setup.exe"
+    if ($SignCommand) {
+        $signature = Get-AuthenticodeSignature -LiteralPath $installer
+        if ($signature.Status -ne 'Valid') {
+            throw "Installer signature verification failed ($($signature.Status)): $($signature.StatusMessage)"
+        }
+    }
     $installerHash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
     Add-Content -LiteralPath (Join-Path $outputDir 'SHA256SUMS') -Value "$installerHash  $([IO.Path]::GetFileName($installer))" -Encoding ASCII
     Write-Host "Installer, models, and checksums: $outputDir"
