@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Python = 'python',
-    [Parameter(Mandatory = $true)][string]$ModelsArchive,
+    [string]$ModelsArchive,
     [string]$IsccPath,
     [string]$ModelBaseUrl,
     [string]$SignCommand,
@@ -10,6 +10,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repositoryDir = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+if (-not $ModelsArchive) {
+    $ModelsArchive = & $Python (Join-Path $repositoryDir 'build/models.py') --print-path
+    if ($LASTEXITCODE -ne 0) { throw 'Could not determine the default model archive path.' }
+}
+if (-not (Test-Path -LiteralPath $ModelsArchive -PathType Leaf)) {
+    throw "Model archive not found: $ModelsArchive. Run python build/models.py first."
+}
 $modelsArchivePath = (Resolve-Path -LiteralPath $ModelsArchive).Path
 $toolchain = Get-Content -LiteralPath (Join-Path $repositoryDir 'build/toolchain.json') -Raw | ConvertFrom-Json
 $downloadsDir = Join-Path $repositoryDir 'out/windows/downloads'

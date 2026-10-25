@@ -3,17 +3,20 @@
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 repository_dir=$(cd "$script_dir/../.." && pwd -P)
+source "$script_dir/package.sh"
 python=python3
 stage_only=false
 model_base_url=
 models_archive=
 uv_archive_override=
+output=
 while (($#)); do
     case "$1" in
         --python) python=$2; shift ;;
         --model-base-url) model_base_url=$2; shift ;;
         --models-archive) models_archive=$2; shift ;;
         --uv-archive) uv_archive_override=$2; shift ;;
+        --output) output=$2; shift ;;
         --stage-only) stage_only=true ;;
         *) printf 'Unknown build option: %s\n' "$1" >&2; exit 2 ;;
     esac
@@ -23,11 +26,18 @@ if [[ $(uname -s) != Darwin || $(uname -m) != arm64 ]]; then
     printf 'Build the macOS installer on an Apple Silicon Mac.\n' >&2
     exit 1
 fi
-if [[ -z $models_archive || ! -f $models_archive ]]; then
-    printf 'Pass --models-archive with the ZIP created by build/models.py.\n' >&2
+if [[ -z $models_archive ]]; then
+    models_archive=$("$python" "$repository_dir/build/models.py" --print-path)
+fi
+if [[ ! -f $models_archive ]]; then
+    printf 'Model archive not found: %s\nRun python build/models.py first.\n' "$models_archive" >&2
     exit 2
 fi
 models_archive=$(cd "$(dirname "$models_archive")" && pwd -P)/$(basename "$models_archive")
+if [[ -n $output ]]; then
+    mkdir -p "$output"
+    output=$(cd "$output" && pwd -P)
+fi
 
 read -r uv_version uv_hash <<<"$("$python" "$script_dir/prepare.py" --toolchain)"
 downloads_dir="$repository_dir/out/macos/downloads"
@@ -62,15 +72,19 @@ done
 cd "$repository_dir"
 UV_CACHE_DIR="$downloads_dir/cache" "$uv" lock --check --offline
 
-output=$(mktemp -d "$repository_dir/out/macos/build.XXXXXX")
+if [[ -z $output ]]; then
+    output=$(mktemp -d "$repository_dir/out/macos/build.XXXXXX")
+else
+    if [[ -n $(ls -A "$output") ]]; then
+        printf 'Build output directory must be empty: %s\n' "$output" >&2
+        exit 2
+    fi
+fi
 prepare_args=(--output "$output" --uv-executable "$uv" --models-archive "$models_archive")
 if [[ -n $model_base_url ]]; then prepare_args+=(--model-base-url "$model_base_url"); fi
 "$python" "$script_dir/prepare.py" "${prepare_args[@]}"
 if ! $stage_only; then
-    version=$("$python" -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$output/release.json")
-    dmg="$output/StarTrailsAI-$version-macos-arm64.dmg"
-    hdiutil create -ov -srcfolder "$output/dmg" -volname "StarTrails AI $version" -format UDZO "$dmg"
-    dmg_hash=$(shasum -a 256 "$dmg" | awk '{print $1}')
-    printf '%s  %s\n' "$dmg_hash" "${dmg##*/}" >>"$output/SHA256SUMS"
+    dmg=$(create_dmg "$output" "$python")
+    append_dmg_checksum "$output" "$dmg"
 fi
 printf 'Build output: %s\n' "$output"

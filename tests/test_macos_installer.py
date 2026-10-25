@@ -1,6 +1,7 @@
 """Exercise macOS setup and installation without downloading dependencies."""
 
 import hashlib
+import json
 import os
 from pathlib import Path
 import platform
@@ -12,7 +13,7 @@ from tempfile import TemporaryDirectory
 import unittest
 from zipfile import ZipFile
 
-from build.macos.prepare import build_app
+from build.macos.prepare import build_app, finalize
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +63,40 @@ class MacAppMetadataTests(unittest.TestCase):
             with info_plist.open("rb") as stream:
                 metadata = plistlib.load(stream)
             self.assertEqual(metadata["LSArchitecturePriority"], ["arm64"])
+
+    def test_finalized_release_tracks_signed_payload(self):
+        with TemporaryDirectory(prefix="startrails_mac_release_") as temporary:
+            output = Path(temporary)
+            payload = output / "dmg/.payload"
+            tools = payload / "tools"
+            tools.mkdir(parents=True)
+            uv = tools / "uv"
+            uv.write_bytes(b"unsigned uv")
+            models = output / "StarTrailsAI-0.1.1-models.zip"
+            models.write_bytes(b"model archive")
+            model_hash = hashlib.sha256(models.read_bytes()).hexdigest()
+            (output / "release.json").write_text(
+                json.dumps(
+                    {
+                        "version": "0.1.1",
+                        "python_version": "3.12.15",
+                        "uv_version": "0.13.5",
+                        "models_sha256": model_hash,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            unsigned = finalize(output)
+            uv.write_bytes(b"signed uv")
+            signed = finalize(output)
+            self.assertNotEqual(unsigned["release_id"], signed["release_id"])
+            self.assertEqual(finalize(output)["release_id"], signed["release_id"])
+            self.assertIn(signed["release_id"], (payload / "release.conf").read_text(encoding="utf-8"))
+            self.assertEqual(
+                (output / "SHA256SUMS").read_text(encoding="utf-8"),
+                f"{model_hash}  {models.name}\n",
+            )
 
 
 @unittest.skipIf(sys.platform == "win32", "Unix setup script")
