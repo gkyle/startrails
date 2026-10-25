@@ -14,6 +14,7 @@ from startrails.paths import APPLICATION_DIR
 
 logger = logging.getLogger(__name__)
 
+# GitHub's Latest designation is the promotion gate for user update notices.
 LATEST_RELEASE_API = "https://api.github.com/repos/gkyle/startrails/releases/latest"
 RELEASE_PAGE_BASE = "https://github.com/gkyle/startrails/releases/tag/"
 REQUEST_TIMEOUT_MS = 5000

@@ -85,7 +85,10 @@ class UpdateOverlayTests(QtTestCase):
         self.checker.check()
         self.assertEqual(self.overlay.lbl_update_status.text(), "Checking for updates...")
         self.assertEqual(len(self.network.requests), 1)
-        self.assertEqual(self.network.requests[0].url().toString(), updates.LATEST_RELEASE_API)
+        self.assertEqual(
+            self.network.requests[0].url().toString(),
+            "https://api.github.com/repos/gkyle/startrails/releases/latest",
+        )
         self.finish_check()
 
         self.assertEqual(self.overlay.lbl_update_status.text(), "🎉 StarTrails AI v0.1.2 is available.")
@@ -122,4 +125,3 @@ class UpdateOverlayTests(QtTestCase):
         self.assertEqual(self.overlay.lbl_update_status.text(), "Could not check for updates.")
         self.assertFalse(self.overlay.btn_update_release.isVisible())
         self.assertFalse(any(isinstance(widget, QMessageBox) for widget in self.qt.topLevelWidgets()))
-
