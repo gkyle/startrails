@@ -11,11 +11,11 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryDir = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 if (-not $ModelsArchive) {
-    $ModelsArchive = & $Python (Join-Path $repositoryDir 'build/models.py') --print-path
-    if ($LASTEXITCODE -ne 0) { throw 'Could not determine the default model archive path.' }
+    $ModelsArchive = & $Python (Join-Path $repositoryDir 'build/models.py') --download
+    if ($LASTEXITCODE -ne 0) { throw 'Could not fetch the published model archive from GitHub.' }
 }
 if (-not (Test-Path -LiteralPath $ModelsArchive -PathType Leaf)) {
-    throw "Model archive not found: $ModelsArchive. Run python build/models.py first."
+    throw "Model archive not found: $ModelsArchive."
 }
 $modelsArchivePath = (Resolve-Path -LiteralPath $ModelsArchive).Path
 $toolchain = Get-Content -LiteralPath (Join-Path $repositoryDir 'build/toolchain.json') -Raw | ConvertFrom-Json

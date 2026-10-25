@@ -11,7 +11,6 @@ import shlex
 import shutil
 import sys
 import tomllib
-from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "build"))
@@ -19,6 +18,7 @@ from release import (  # noqa: E402
     RELEASE_HASH_PREFIX_LENGTH,
     copy_source_tree,
     models_archive_name,
+    models_archive_url,
     sha256,
     stage_models_archive,
 )
@@ -100,10 +100,7 @@ def prepare(output: Path, uv_executable: Path, models_archive: Path, model_base_
         toolchain["python_version"], python_requirement.removeprefix("==")
     ):
         raise ValueError("The pinned Python version must satisfy project.requires-python.")
-    base_url = model_base_url or f"https://github.com/gkyle/startrails/releases/download/v{version}"
-    parsed_url = urlparse(base_url)
-    if parsed_url.scheme != "https" or not parsed_url.netloc or any(char in base_url for char in "\r\n\"';"):
-        raise ValueError("ModelBaseUrl must be an HTTPS URL with a host and without quotes or newlines.")
+    models_url = models_archive_url(version, model_base_url)
 
     output.mkdir(parents=True, exist_ok=True)
     dmg = output / "dmg"
@@ -126,7 +123,7 @@ def prepare(output: Path, uv_executable: Path, models_archive: Path, model_base_
         "python_version": toolchain["python_version"],
         "uv_version": toolchain["uv_version"],
         "macos_min_version": toolchain["macos_min_version"],
-        "models_url": f"{base_url.rstrip('/')}/{model_archive.name}",
+        "models_url": models_url,
         "models_sha256": model_hash,
     }
     (output / "release.json").write_text(json.dumps(release, indent=2) + "\n", encoding="utf-8")

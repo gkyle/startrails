@@ -10,12 +10,17 @@ import runpy
 import shutil
 import sys
 import tomllib
-from urllib.parse import urlparse
 from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "build"))
-from release import RELEASE_HASH_PREFIX_LENGTH, copy_source_tree, sha256, stage_models_archive  # noqa: E402
+from release import (  # noqa: E402
+    RELEASE_HASH_PREFIX_LENGTH,
+    copy_source_tree,
+    models_archive_url,
+    sha256,
+    stage_models_archive,
+)
 
 
 def prepare(output: Path, uv_executable: Path, models_archive: Path, model_base_url: str | None) -> dict:
@@ -31,10 +36,7 @@ def prepare(output: Path, uv_executable: Path, models_archive: Path, model_base_
         python_requirement.removeprefix("=="),
     ):
         raise ValueError("The pinned Windows Python version must satisfy project.requires-python.")
-    base_url = model_base_url or f"https://github.com/gkyle/startrails/releases/download/v{version}"
-    parsed_url = urlparse(base_url)
-    if parsed_url.scheme != "https" or not parsed_url.netloc or any(char in base_url for char in "\r\n\"';"):
-        raise ValueError("ModelBaseUrl must be an HTTPS URL with a host and without quotes or newlines.")
+    models_url = models_archive_url(version, model_base_url)
 
     output.mkdir(parents=True, exist_ok=True)
     stage = output / "app"
@@ -81,7 +83,7 @@ def prepare(output: Path, uv_executable: Path, models_archive: Path, model_base_
         "ReleaseId": release["release_id"],
         "ApplicationName": application_archive.name,
         "ModelsName": model_archive.name,
-        "ModelsUrl": f"{base_url.rstrip('/')}/{model_archive.name}",
+        "ModelsUrl": models_url,
         "ModelsHash": model_hash,
     }
     config = "".join(f'#define {key} "{value}"\n' for key, value in definitions.items())

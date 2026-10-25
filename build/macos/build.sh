@@ -27,10 +27,10 @@ if [[ $(uname -s) != Darwin || $(uname -m) != arm64 ]]; then
     exit 1
 fi
 if [[ -z $models_archive ]]; then
-    models_archive=$("$python" "$repository_dir/build/models.py" --print-path)
+    models_archive=$("$python" "$repository_dir/build/models.py" --download)
 fi
 if [[ ! -f $models_archive ]]; then
-    printf 'Model archive not found: %s\nRun python build/models.py first.\n' "$models_archive" >&2
+    printf 'Model archive not found: %s\n' "$models_archive" >&2
     exit 2
 fi
 models_archive=$(cd "$(dirname "$models_archive")" && pwd -P)/$(basename "$models_archive")
