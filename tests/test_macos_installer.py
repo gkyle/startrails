@@ -356,6 +356,8 @@ class MacInstallerTests(unittest.TestCase):
     def test_failed_upgrade_keeps_previous_launcher(self):
         support = self.home / "Library/Application Support/StarTrails"
         support.mkdir(parents=True)
+        old_release = support / "releases/0.1.0-abcdefabcdef"
+        old_release.mkdir(parents=True)
         (support / "current").write_text("0.1.0-abcdefabcdef\n", encoding="utf-8")
         applications = self.home / "Applications"
         applications.mkdir()
@@ -366,6 +368,23 @@ class MacInstallerTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual((support / "current").read_text(encoding="utf-8"), "0.1.0-abcdefabcdef\n")
         self.assertTrue((applications / "StarTrails AI.app/old").exists())
+        self.assertTrue(old_release.exists())
+
+    def test_successful_upgrade_removes_old_releases(self):
+        support = self.home / "Library/Application Support/StarTrails"
+        old_release = support / "releases/0.1.0-abcdefabcdef"
+        old_release.mkdir(parents=True)
+        (old_release / "old_runtime.txt").write_text("old runtime", encoding="utf-8")
+        (support / "current").write_text("0.1.0-abcdefabcdef\n", encoding="utf-8")
+        applications = self.home / "Applications"
+        applications.mkdir()
+        (applications / "StarTrails AI.app").mkdir()
+
+        result = self.install()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((support / "current").read_text(encoding="utf-8").strip(), RELEASE_ID)
+        self.assertTrue((support / "releases" / RELEASE_ID).is_dir())
+        self.assertFalse(old_release.exists())
 
     def test_modified_model_archive_is_rejected(self):
         with self.models.open("ab") as archive:
