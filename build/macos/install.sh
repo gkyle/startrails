@@ -2,8 +2,8 @@
 
 set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-source "$script_dir/.payload/common.sh"
-payload="$script_dir/.payload"
+payload=$(cd "$script_dir/../../../.payload" && pwd -P)
+source "$payload/common.sh"
 models_archive=
 if (($#)); then
     if [[ $# != 2 || $1 != --models-archive ]]; then

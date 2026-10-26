@@ -22,7 +22,7 @@ and keep published release assets immutable.
 
 ## macOS
 
-Build on an Apple Silicon Mac running macOS 14 or newer:
+Build on an Apple Silicon Mac running macOS 14 or newer with Xcode's Swift compiler:
 
 ```sh
 .venv/bin/python build/models.py
@@ -37,7 +37,7 @@ Both macOS scripts use the versioned archive in `out/models/` by default;
 `--models-archive ZIP` selects another copy. Publish the model ZIP at that URL
 before distributing the DMG.
 
-The DMG's **Install StarTrails AI.command** installs to `~/Applications/` and
+The DMG's **Install StarTrails AI.app** installs to `~/Applications/` and
 prepares an isolated runtime under `~/Library/Application Support/StarTrails/`.
 Running it again repairs the installation and opens the app. Normal launches
 use the prepared runtime without network access. To remove the app, move it to
@@ -64,7 +64,7 @@ export MACOS_SIGNING_IDENTITY MACOS_SIGNING_PROFILE
 the app-specific password should be entered at the `notarytool` prompt, not
 stored in `.env`.
 
-`release.sh` stages the payload, signs bundled uv and the app with hardened
+`release.sh` stages the payload, signs bundled uv and both apps with hardened
 runtime and a secure timestamp, recalculates the release ID, signs the DMG,
 submits it with `notarytool`, saves the submission ID, waits while preventing idle
 sleep, staples and validates the ticket, then writes the final DMG checksum.
@@ -78,12 +78,12 @@ rebuilding or uploading the DMG again:
 For a release created before submission IDs were saved, also pass
 `--submission-id UUID` using the ID from the `notarytool` error or history.
 Keep the Mac awake and connected; closing a laptop lid can still suspend it.
-Publish the DMG, model ZIP, and `SHA256SUMS` from the
-printed release directory under the `v<version>` GitHub Release. Signing and
+Publish the DMG, model ZIP, and `SHA256SUMS` from the printed release directory
+under the `v<version>` GitHub Release. Signing and
 notarization credentials stay in the Mac's keychain; the script does not accept
 passwords. A downloaded Python runtime and native libraries are installed later
 and are outside the DMG's notarization scan. Test a downloaded DMG under
-Gatekeeper by double-clicking **Install StarTrails AI.command** in Finder,
+Gatekeeper by double-clicking **Install StarTrails AI.app** in Finder,
 including those downloaded components, installation, repair, upgrades,
 Finder launch, and Dock identity on a clean Mac.
 

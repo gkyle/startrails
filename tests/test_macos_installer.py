@@ -13,7 +13,7 @@ from tempfile import TemporaryDirectory
 import unittest
 from zipfile import ZipFile
 
-from build.macos.prepare import build_app, finalize
+from build.macos.prepare import build_app, build_installer_app, finalize
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,6 +63,19 @@ class MacAppMetadataTests(unittest.TestCase):
             with info_plist.open("rb") as stream:
                 metadata = plistlib.load(stream)
             self.assertEqual(metadata["LSArchitecturePriority"], ["arm64"])
+
+    @unittest.skipUnless(MACOS_ARM, "macOS Apple Silicon installer")
+    def test_installer_stages_as_an_app_bundle(self):
+        with TemporaryDirectory(prefix="startrails_mac_installer_app_") as temporary:
+            dmg = Path(temporary)
+            build_installer_app(dmg, "0.1.1", "14.0")
+            app = dmg / "Install StarTrails AI.app"
+            with (app / "Contents/Info.plist").open("rb") as stream:
+                metadata = plistlib.load(stream)
+            self.assertEqual(metadata["CFBundleIdentifier"], "org.startrails.ai.installer")
+            self.assertTrue((app / "Contents/MacOS/Install StarTrails AI").is_file())
+            self.assertTrue((app / "Contents/Resources/install.sh").is_file())
+            self.assertFalse((dmg / "Install StarTrails AI.command").exists())
 
     def test_finalized_release_tracks_signed_payload(self):
         with TemporaryDirectory(prefix="startrails_mac_release_") as temporary:
@@ -236,7 +249,9 @@ class MacInstallerTests(unittest.TestCase):
         )
         (self.payload / "src/setup/setup.sh").write_text(INSTALL_SETUP_STUB, encoding="utf-8")
         shutil.copy2(ROOT / "build/macos/common.sh", self.payload / "common.sh")
-        shutil.copy2(ROOT / "build/macos/install.command", self.dmg / "Install StarTrails AI.command")
+        installer_resources = self.dmg / "Install StarTrails AI.app/Contents/Resources"
+        installer_resources.mkdir(parents=True)
+        shutil.copy2(ROOT / "build/macos/install.sh", installer_resources / "install.sh")
         bin_dir = self.root / "bin"
         bin_dir.mkdir()
         open_stub = bin_dir / "open"
@@ -264,7 +279,12 @@ class MacInstallerTests(unittest.TestCase):
 
     def install(self):
         return subprocess.run(
-            ["/bin/bash", str(self.dmg / "Install StarTrails AI.command"), "--models-archive", str(self.models)],
+            [
+                "/bin/bash",
+                str(self.dmg / "Install StarTrails AI.app/Contents/Resources/install.sh"),
+                "--models-archive",
+                str(self.models),
+            ],
             env=self.env,
             capture_output=True,
             text=True,

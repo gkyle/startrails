@@ -4,12 +4,15 @@ import argparse
 import fnmatch
 import hashlib
 import json
+import os
 from pathlib import Path
 import plistlib
 import re
 import shlex
 import shutil
+import subprocess
 import sys
+from tempfile import TemporaryDirectory
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,6 +63,50 @@ def build_app(stage: Path, version: str, min_macos_version: str) -> None:
     write_executable(ROOT / "build/macos/launcher.sh", contents / "MacOS/StarTrails")
     copy_file(ROOT / "build/macos/common.sh", contents / "Resources/common.sh")
     copy_file(ROOT / "src/startrails/ui/icons/startrails_macos.icns", contents / "Resources/startrails.icns")
+
+
+def build_installer_app(dmg: Path, version: str, min_macos_version: str) -> None:
+    contents = dmg / "Install StarTrails AI.app/Contents"
+    executable = contents / "MacOS/Install StarTrails AI"
+    executable.parent.mkdir(parents=True)
+    with (contents / "Info.plist").open("wb") as stream:
+        plistlib.dump(
+            {
+                "CFBundleDevelopmentRegion": "en",
+                "CFBundleExecutable": executable.name,
+                "CFBundleIconFile": "startrails.icns",
+                "CFBundleIdentifier": "org.startrails.ai.installer",
+                "CFBundleInfoDictionaryVersion": "6.0",
+                "CFBundleName": "Install StarTrails AI",
+                "CFBundlePackageType": "APPL",
+                "CFBundleShortVersionString": version,
+                "CFBundleVersion": version,
+                "LSMinimumSystemVersion": min_macos_version,
+                "NSHighResolutionCapable": True,
+            },
+            stream,
+        )
+    resource = contents / "Resources/install.sh"
+    copy_file(ROOT / "build/macos/install.sh", resource)
+    resource.chmod(0o644)
+    copy_file(ROOT / "src/startrails/ui/icons/startrails_macos.icns", contents / "Resources/startrails.icns")
+    with TemporaryDirectory(prefix="startrails-swift-cache-") as module_cache:
+        subprocess.run(
+            [
+                "xcrun",
+                "swiftc",
+                "-O",
+                "-module-cache-path",
+                module_cache,
+                "-target",
+                f"arm64-apple-macosx{min_macos_version}",
+                "-o",
+                str(executable),
+                str(ROOT / "build/macos/installer.swift"),
+            ],
+            check=True,
+            env={**os.environ, "CLANG_MODULE_CACHE_PATH": module_cache},
+        )
 
 
 def finalize(output: Path) -> dict:
@@ -127,9 +174,9 @@ def prepare(output: Path, uv_executable: Path, models_archive: Path, model_base_
         "models_sha256": model_hash,
     }
     (output / "release.json").write_text(json.dumps(release, indent=2) + "\n", encoding="utf-8")
-    write_executable(ROOT / "build/macos/install.command", dmg / "Install StarTrails AI.command")
+    build_installer_app(dmg, version, toolchain["macos_min_version"])
     (dmg / "Install Instructions.txt").write_text(
-        "Double-click Install StarTrails AI.command. Installation needs an internet connection "
+        "Double-click Install StarTrails AI.app. Installation needs an internet connection "
         "for Python, dependencies, and the model archive.\n"
         "The installer opens StarTrails AI after installation or repair. Run it again to repair the app.\n"
         "To remove the app, move StarTrails AI.app from your Applications folder to the Trash.\n"

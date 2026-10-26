@@ -57,6 +57,10 @@ if [[ -n $resume_output ]]; then
         printf 'No signed DMG found at %s.\n' "$dmg" >&2
         exit 2
     fi
+    if [[ ! -d "$output/dmg/Install StarTrails AI.app" ]]; then
+        printf 'This release lacks the signed installer app; build a new release.\n' >&2
+        exit 2
+    fi
     codesign --verify --strict --verbose=2 "$dmg"
     hdiutil verify "$dmg"
     if [[ -n $submission_id ]]; then
@@ -80,8 +84,10 @@ else
     payload="$output/dmg/.payload"
     codesign --force --options runtime --timestamp --sign "$identity" "$payload/tools/uv"
     codesign --force --options runtime --timestamp --sign "$identity" "$payload/StarTrails AI.app"
+    codesign --force --options runtime --timestamp --sign "$identity" "$output/dmg/Install StarTrails AI.app"
     codesign --verify --strict --verbose=2 "$payload/tools/uv"
     codesign --verify --strict --verbose=2 "$payload/StarTrails AI.app"
+    codesign --verify --strict --verbose=2 "$output/dmg/Install StarTrails AI.app"
 
     # Signing changes the payload and therefore the installed release identifier.
     "$python" "$script_dir/prepare.py" --finalize-output "$output"
@@ -120,5 +126,6 @@ xcrun stapler staple "$dmg"
 xcrun stapler validate "$dmg"
 codesign --verify --strict --verbose=2 "$dmg"
 spctl --assess --type open --context context:primary-signature --verbose "$dmg"
+spctl --assess --type execute --verbose "$output/dmg/Install StarTrails AI.app"
 append_dmg_checksum "$output" "$dmg"
 printf 'Release output: %s\n' "$output"
