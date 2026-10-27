@@ -20,9 +20,7 @@ def main() -> None:
         type=Path,
         help="Archive and checksum directory (default: out/models/; out/models/downloads/ with --download)",
     )
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--print-path", action="store_true", help="Print the versioned archive path without building it")
-    mode.add_argument(
+    parser.add_argument(
         "--download", action="store_true", help="Fetch the shared archive and verify GitHub's asset digest"
     )
     args = parser.parse_args()
@@ -35,15 +33,12 @@ def main() -> None:
         if args.output is not None
         else (DEFAULT_DOWNLOAD_DIR if args.download else DEFAULT_OUTPUT_DIR)
     )
-    archive = output / models_archive_name(version)
-    if args.print_path:
-        print(archive)
-        return
     if args.download:
         print(f"Fetching published models for v{version}...", file=sys.stderr)
         archive = download_models_archive(output, version)
     else:
         output.mkdir(parents=True, exist_ok=True)
+        archive = output / models_archive_name(version)
         create_models_archive(archive)
     (output / "SHA256SUMS").write_text(f"{sha256(archive)}  {archive.name}\n", encoding="utf-8")
     print(archive)
