@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 $applicationDir = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $transcribing = $false
 $pushedLocation = $false
+$setupLockStream = $null
 
 function Invoke-Uv {
     param([string]$Executable, [string[]]$Arguments, [switch]$RetryPythonLinkFailure)
@@ -73,8 +74,22 @@ try {
             $ready = $installed.release_id -eq $release.release_id -and $installed.lock_hash -eq $lockHash
         }
         $needsSetup = $Repair -or -not $ready
+        if ($Launch -and -not $Repair -and -not $ready) {
+            throw 'The installed environment needs repair. Open Repair StarTrails AI from the Start menu.'
+        }
         if ($needsSetup) {
             New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
+            $setupLock = Join-Path $runtimeDir '.setup-lock'
+            try {
+                $setupLockStream = [System.IO.File]::Open(
+                    $setupLock,
+                    [System.IO.FileMode]::OpenOrCreate,
+                    [System.IO.FileAccess]::ReadWrite,
+                    [System.IO.FileShare]::None
+                )
+            } catch [System.IO.IOException] {
+                throw 'Another setup is running. Wait for it to finish before running Repair StarTrails AI.'
+            }
             Start-Transcript -LiteralPath (Join-Path $runtimeDir 'setup.log') -Force | Out-Null
             $transcribing = $true
             # A failed repair must not leave a readiness marker for a partial environment.
@@ -168,5 +183,6 @@ try {
     exit 1
 } finally {
     if ($transcribing) { Stop-Transcript | Out-Null }
+    if ($setupLockStream) { $setupLockStream.Dispose() }
     if ($pushedLocation) { Pop-Location }
 }

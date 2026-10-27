@@ -155,6 +155,33 @@ class WindowsSetupTests(unittest.TestCase):
             self.assertIn("Installing test dependency...", "".join(output))
             self.assertTrue((self.root / "runtime/ready.json").exists())
 
+    def test_concurrent_setup_is_rejected_without_interrupting_first_setup(self):
+        with subprocess.Popen(
+            self.command,
+            cwd=self.root,
+            env={**os.environ, "STARTRAILS_TEST_UV_FAILURE": "streaming"},
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        ) as first:
+            output = []
+            for line in first.stdout:
+                output.append(line)
+                if "Downloading test dependency..." in line:
+                    break
+            else:
+                self.fail("First setup did not reach dependency installation: " + "".join(output))
+
+            second = self.run_setup("recoverable")
+            self.assertNotEqual(second.returncode, 0)
+            self.assertIn("Another setup is running", second.stdout + second.stderr)
+            self.assertFalse((self.root / "runtime/ready.json").exists())
+
+            (self.root / "runtime/continue-sync").touch()
+            remaining, _ = first.communicate(timeout=20)
+            self.assertEqual(first.returncode, 0, "".join(output) + remaining)
+            self.assertTrue((self.root / "runtime/ready.json").exists())
+
     def test_unrelated_failure_stops_without_retry(self):
         result = self.run_setup("unrelated")
         self.assertNotEqual(result.returncode, 0)
