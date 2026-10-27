@@ -111,7 +111,7 @@ if ! $ready; then
         fi
         trap 'rmdir "$setup_lock"' EXIT
         rm -f "$ready_file"
-        prepare_environment 2>&1 | tee -a "$runtime_dir/setup.log"
+        prepare_environment 2>&1 | tee "$runtime_dir/setup.log"
     else
         prepare_environment
     fi

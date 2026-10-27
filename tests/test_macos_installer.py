@@ -180,9 +180,12 @@ class MacSetupTests(unittest.TestCase):
     def test_repair_rechecks_the_environment(self):
         self.assertEqual(self.run_setup().returncode, 0)
         before = self.calls.read_text(encoding="utf-8")
+        setup_log = self.root / "runtime/setup.log"
+        setup_log.write_text("previous setup output\n", encoding="utf-8")
         self.assertEqual(self.run_setup("--repair").returncode, 0)
         after = self.calls.read_text(encoding="utf-8")
         self.assertEqual(after.count("probeGPU.py"), before.count("probeGPU.py") + 1)
+        self.assertNotIn("previous setup output", setup_log.read_text(encoding="utf-8"))
 
     def test_failed_sync_does_not_mark_release_ready_and_can_retry(self):
         self.env["STARTRAILS_TEST_SYNC_FAIL"] = "1"
@@ -301,8 +304,6 @@ class MacInstallerTests(unittest.TestCase):
             "test model",
         )
         self.assertTrue((self.home / "Applications/StarTrails AI.app").is_dir())
-        self.assertFalse((self.home / "Applications/Repair StarTrails AI.command").exists())
-        self.assertFalse((self.home / "Applications/Uninstall StarTrails AI.command").exists())
         self.assertEqual(self.setup_calls.read_text(encoding="utf-8").splitlines(), ["--packaged"])
         self.assertEqual(
             self.open_calls.read_text(encoding="utf-8").splitlines(),
@@ -324,8 +325,6 @@ class MacInstallerTests(unittest.TestCase):
         (release_dir / "models/test.safetensors").write_text("damaged model", encoding="utf-8")
         (release_dir / "runtime/venv/bin/python").unlink()
         applications = self.home / "Applications"
-        for name in ("Repair StarTrails AI.command", "Uninstall StarTrails AI.command"):
-            (applications / name).write_text("old installer helper", encoding="utf-8")
 
         repaired = self.install()
         self.assertEqual(repaired.returncode, 0, repaired.stdout + repaired.stderr)
@@ -340,8 +339,6 @@ class MacInstallerTests(unittest.TestCase):
             self.open_calls.read_text(encoding="utf-8").splitlines(),
             [str(applications / "StarTrails AI.app")] * 2,
         )
-        for name in ("Repair StarTrails AI.command", "Uninstall StarTrails AI.command"):
-            self.assertFalse((applications / name).exists())
 
     def test_failed_repair_keeps_installed_app(self):
         self.assertEqual(self.install().returncode, 0)

@@ -118,7 +118,6 @@ if ! mv -f "$support_dir/current.tmp" "$support_dir/current"; then
     exit 1
 fi
 rm -rf "$old_app"
-rm -f "$applications_dir/Repair StarTrails AI.command" "$applications_dir/Uninstall StarTrails AI.command"
 for existing_release in "$support_dir/releases/"*; do
     if [[ -d $existing_release && $(basename "$existing_release") != "$release_id" ]]; then
         rm -rf "$existing_release"
