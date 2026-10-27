@@ -43,17 +43,30 @@ read -r uv_version uv_hash <<<"$("$python" "$script_dir/prepare.py" --toolchain)
 downloads_dir="$repository_dir/out/macos/downloads"
 mkdir -p "$downloads_dir"
 archive="$downloads_dir/uv-$uv_version-aarch64-apple-darwin.tar.gz"
+partial_archive=
 if [[ -n $uv_archive_override ]]; then
     cp "$uv_archive_override" "$archive"
 elif [[ ! -f $archive ]]; then
-    curl --fail --location --retry 3 --output "$archive" \
-        "https://github.com/astral-sh/uv/releases/download/$uv_version/uv-aarch64-apple-darwin.tar.gz"
+    partial_archive="$archive.partial"
+    if ! curl --fail --location --retry 3 --output "$partial_archive" \
+        "https://github.com/astral-sh/uv/releases/download/$uv_version/uv-aarch64-apple-darwin.tar.gz"; then
+        rm -f "$partial_archive"
+        printf 'Could not download the pinned uv archive. Retry the build.\n' >&2
+        exit 1
+    fi
 fi
-actual_hash=$(shasum -a 256 "$archive" | awk '{print $1}')
+archive_to_verify=${partial_archive:-$archive}
+actual_hash=$(shasum -a 256 "$archive_to_verify" | awk '{print $1}')
 if [[ $actual_hash != "$uv_hash" ]]; then
-    printf 'Bundled uv archive failed SHA-256 verification: %s\n' "$archive" >&2
+    if [[ -n $partial_archive ]]; then
+        rm -f "$partial_archive"
+        printf 'Downloaded uv archive failed SHA-256 verification. Retry the build.\n' >&2
+    else
+        printf 'Bundled uv archive failed SHA-256 verification. Remove %s and retry.\n' "$archive" >&2
+    fi
     exit 1
 fi
+if [[ -n $partial_archive ]]; then mv -f "$partial_archive" "$archive"; fi
 uv_dir="$downloads_dir/uv-$uv_version"
 mkdir -p "$uv_dir"
 tar -xzf "$archive" -C "$uv_dir"
