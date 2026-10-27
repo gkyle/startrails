@@ -59,7 +59,7 @@ try {
         $readyFile = Join-Path $runtimeDir 'ready.json'
         $env:UV_PROJECT_ENVIRONMENT = $environmentDir
         $env:UV_PYTHON_INSTALL_DIR = Join-Path $runtimeDir 'python'
-        $env:UV_CACHE_DIR = Join-Path $runtimeDir 'cache'
+        $env:UV_CACHE_DIR = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'StarTrails/cache/uv'
         $env:UV_PYTHON_PREFERENCE = 'only-managed'
         $env:UV_PYTHON_INSTALL_BIN = '0'
         $env:UV_PYTHON_NO_REGISTRY = '1'

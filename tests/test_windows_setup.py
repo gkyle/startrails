@@ -22,6 +22,7 @@ public class UvStub {
         string runtime = Path.Combine(Environment.CurrentDirectory, "runtime");
         string command = string.Join(" ", args);
         File.AppendAllText(Path.Combine(runtime, "calls.log"), command + "\n");
+        File.WriteAllText(Path.Combine(runtime, "cache-dir.txt"), Environment.GetEnvironmentVariable("UV_CACHE_DIR"));
         if (command == "--version") {
             Console.WriteLine("uv 0.0.0");
         } else if (command.Contains("probeGPU.py")) {
@@ -131,6 +132,10 @@ class WindowsSetupTests(unittest.TestCase):
         self.assertEqual(len(self.probe_calls()), 2)
         ready = json.loads((self.root / "runtime/ready.json").read_text(encoding="utf-8-sig"))
         self.assertEqual(ready["torch_variant"], "cpu")
+        self.assertEqual(
+            Path((self.root / "runtime/cache-dir.txt").read_text()),
+            Path(os.environ["LOCALAPPDATA"]) / "StarTrails/cache/uv",
+        )
         self.assertIn("os error 448", (self.root / "runtime/setup.log").read_text(encoding="utf-8-sig"))
 
     def test_dependency_output_arrives_before_sync_finishes(self):
