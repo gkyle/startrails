@@ -7,6 +7,7 @@ import sys
 import tomllib
 
 from release import create_models_archive, download_models_archive, models_archive_name, sha256
+from publish import sync_release
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = ROOT / "out/models"
@@ -42,6 +43,11 @@ def main() -> None:
         create_models_archive(archive)
     (output / "SHA256SUMS").write_text(f"{sha256(archive)}  {archive.name}\n", encoding="utf-8")
     print(archive)
+    if not args.download:
+        try:
+            sync_release(version, [archive], create_release=True)
+        except (OSError, ValueError, RuntimeError) as error:
+            raise SystemExit(f"Release sync failed: {error}") from error
 
 
 if __name__ == "__main__":

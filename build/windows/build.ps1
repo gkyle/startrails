@@ -84,6 +84,10 @@ try {
     $installerHash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
     Add-Content -LiteralPath (Join-Path $outputDir 'SHA256SUMS') -Value "$installerHash  $([IO.Path]::GetFileName($installer))" -Encoding ASCII
     Write-Host "Installer, models, and checksums: $outputDir"
+    if ($SignCommand) {
+        & $Python (Join-Path $repositoryDir 'build/publish.py') --version $release.version $installer
+        if ($LASTEXITCODE -ne 0) { throw 'GitHub Release sync failed.' }
+    }
 } finally {
     $env:UV_CACHE_DIR = $previousCache
     Pop-Location

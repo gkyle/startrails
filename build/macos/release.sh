@@ -129,3 +129,5 @@ spctl --assess --type open --context context:primary-signature --verbose "$dmg"
 spctl --assess --type execute --verbose "$output/dmg/Install StarTrails AI.app"
 append_dmg_checksum "$output" "$dmg"
 printf 'Release output: %s\n' "$output"
+version=$("$python" -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$output/release.json")
+"$python" "$repository_dir/build/publish.py" --version "$version" "$dmg"
