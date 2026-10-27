@@ -45,7 +45,6 @@ def prepare(output: Path, uv_executable: Path, models_archive: Path, model_base_
     for name in ("README.md", "LICENSE", "pyproject.toml", "uv.lock"):
         shutil.copy2(ROOT / name, stage / name)
     copy_source_tree(stage)
-    shutil.copy2(ROOT / "build/windows/run.bat", stage / "run.bat")
     (stage / "tools").mkdir()
     shutil.copy2(uv_executable, stage / "tools/uv.exe")
     # uv is redistributed under both licenses, alongside its upstream copyright notices.
@@ -62,7 +61,8 @@ def prepare(output: Path, uv_executable: Path, models_archive: Path, model_base_
         payload_hash.update(path.relative_to(stage).as_posix().encode("utf-8"))
         payload_hash.update(bytes.fromhex(sha256(path)))
     payload_hash.update(bytes.fromhex(model_hash))
-    payload_hash.update(json.dumps(toolchain, sort_keys=True).encode("utf-8"))
+    payload_hash.update(toolchain["python_version"].encode("ascii"))
+    payload_hash.update(toolchain["uv_version"].encode("ascii"))
     release = {
         "version": version,
         "release_id": f"{version}-{payload_hash.hexdigest()[:RELEASE_HASH_PREFIX_LENGTH]}",
