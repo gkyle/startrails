@@ -45,12 +45,12 @@ Source: "{tmp}\{#ApplicationName}"; DestDir: "{#ReleaseDir}"; ExternalSize: {#Ap
 Source: "{tmp}\{#ModelsName}"; DestDir: "{#ReleaseDir}"; ExternalSize: {#ModelsSize}; Hash: "{#ModelsHash}"; Flags: external extractarchive ignoreversion recursesubdirs
 
 [Icons]
-Name: "{group}\StarTrails AI"; Filename: "{#PowerShell}"; Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{#SetupScript}"" -Packaged -Launch"; WorkingDir: "{#ReleaseDir}"; IconFilename: "{#ReleaseDir}\resources\startrails.ico"; AppUserModelID: "{#AppUserModelId}"
+Name: "{group}\StarTrails AI"; Filename: "{#PowerShell}"; Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{#SetupScript}"" -Packaged -Launch"; WorkingDir: "{#ReleaseDir}"; IconFilename: "{#ReleaseDir}\resources\startrails.ico"; AppUserModelID: "{#AppUserModelId}"; Flags: runminimized
 Name: "{group}\Repair StarTrails AI"; Filename: "{#PowerShell}"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{#SetupScript}"" -Packaged -Repair"; WorkingDir: "{#ReleaseDir}"; IconFilename: "{#ReleaseDir}\resources\startrails.ico"
-Name: "{autodesktop}\StarTrails AI"; Filename: "{#PowerShell}"; Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{#SetupScript}"" -Packaged -Launch"; WorkingDir: "{#ReleaseDir}"; IconFilename: "{#ReleaseDir}\resources\startrails.ico"; AppUserModelID: "{#AppUserModelId}"; Tasks: desktopicon
+Name: "{autodesktop}\StarTrails AI"; Filename: "{#PowerShell}"; Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{#SetupScript}"" -Packaged -Launch"; WorkingDir: "{#ReleaseDir}"; IconFilename: "{#ReleaseDir}\resources\startrails.ico"; AppUserModelID: "{#AppUserModelId}"; Tasks: desktopicon; Flags: runminimized
 
 [Run]
-Filename: "{#PowerShell}"; Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{#SetupScript}"" -Packaged -Launch"; Description: "Launch StarTrails AI"; Flags: nowait postinstall skipifsilent
+Filename: "{#PowerShell}"; Parameters: "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{#SetupScript}"" -Packaged -Launch"; Description: "Launch StarTrails AI"; Flags: nowait postinstall skipifsilent runminimized
 
 [UninstallDelete]
 ; Dependency wheels contain paths longer than MAX_PATH. Use the extended-length
