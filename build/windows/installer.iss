@@ -56,6 +56,7 @@ Filename: "{#PowerShell}"; Parameters: "-NoProfile -WindowStyle Hidden -Executio
 ; Dependency wheels contain paths longer than MAX_PATH. Use the extended-length
 ; prefix for the application-owned directories; user working directories are separate.
 Type: filesandordirs; Name: "\\?\{app}\releases"
+Type: filesandordirs; Name: "\\?\{localappdata}\StarTrails\cache"
 
 [Code]
 const
@@ -100,16 +101,42 @@ var
   ResultCode: Integer;
   SetupLog: String;
   PrerequisiteNotice: AnsiString;
+  ModelArchive: String;
+  ModelCache: String;
+  ReusedModels: Boolean;
 begin
   Result := '';
   try
-    DownloadPage.Clear;
-    DownloadPage.Add('{#ModelsUrl}', '{#ModelsName}', '{#ModelsHash}');
-    DownloadPage.Show;
-    try
-      DownloadPage.Download;
-    finally
-      DownloadPage.Hide;
+    ModelArchive := ExpandConstant('{tmp}\{#ModelsName}');
+    ModelCache := ExpandConstant('{localappdata}\StarTrails\cache\models.zip');
+    ReusedModels := False;
+    if FileExists(ModelCache) then begin
+      try
+        if CompareText(GetSHA256OfFile(ModelCache), '{#ModelsHash}') = 0 then begin
+          ReusedModels := CopyFile(ModelCache, ModelArchive, False);
+          if ReusedModels then
+            Log('Reusing verified model archive from ' + ModelCache);
+        end;
+      except
+        Log('Could not reuse cached model archive: ' + GetExceptionMessage);
+      end;
+    end;
+    if not ReusedModels then begin
+      if FileExists(ModelArchive) and not DeleteFile(ModelArchive) then
+        RaiseException('Could not replace the temporary model archive.');
+      DownloadPage.Clear;
+      DownloadPage.Add('{#ModelsUrl}', '{#ModelsName}', '{#ModelsHash}');
+      DownloadPage.Show;
+      try
+        DownloadPage.Download;
+      finally
+        DownloadPage.Hide;
+      end;
+      if ForceDirectories(ExtractFileDir(ModelCache)) then begin
+        if not CopyFile(ModelArchive, ModelCache, False) then
+          Log('Could not cache the verified model archive for the next installation.');
+      end else
+        Log('Could not create the model cache directory.');
     end;
     ExtractTemporaryFile('{#ApplicationName}');
     ForceDirectories(ExpandConstant('{#ReleaseDir}'));

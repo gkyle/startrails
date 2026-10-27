@@ -60,22 +60,40 @@ ditto "$payload" "$release_dir"
 if $repair || [[ ! -f $release_dir/runtime/models.sha256 ||
     $(cat "$release_dir/runtime/models.sha256") != "$models_sha256" ]]; then
     mkdir -p "$release_dir/runtime"
-    archive="$release_dir/runtime/models.zip.partial"
-    if [[ -n $models_archive ]]; then
-        cp "$models_archive" "$archive"
-    else
-        printf 'Downloading models...\n'
-        curl --fail --location --retry 3 --output "$archive" "$models_url"
+    reused_models=false
+    if ! $repair && [[ -z $models_archive && -f $support_dir/current ]]; then
+        previous_release_id=$(cat "$support_dir/current")
+        previous_release="$support_dir/releases/$previous_release_id"
+        if [[ $previous_release_id =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9a-f]{12}$ &&
+            $previous_release_id != "$release_id" &&
+            -d $previous_release/models &&
+            -f $previous_release/runtime/models.sha256 &&
+            $(cat "$previous_release/runtime/models.sha256") == "$models_sha256" ]]; then
+            printf 'Reusing models from the installed release...\n'
+            rm -rf "$release_dir/models"
+            ditto "$previous_release/models" "$release_dir/models"
+            printf '%s\n' "$models_sha256" >"$release_dir/runtime/models.sha256"
+            reused_models=true
+        fi
     fi
-    actual_hash=$(shasum -a 256 "$archive" | awk '{print $1}')
-    if [[ $actual_hash != "$models_sha256" ]]; then
-        printf 'Model archive failed SHA-256 verification.\n' >&2
-        exit 1
+    if ! $reused_models; then
+        archive="$release_dir/runtime/models.zip.partial"
+        if [[ -n $models_archive ]]; then
+            cp "$models_archive" "$archive"
+        else
+            printf 'Downloading models...\n'
+            curl --fail --location --retry 3 --output "$archive" "$models_url"
+        fi
+        actual_hash=$(shasum -a 256 "$archive" | awk '{print $1}')
+        if [[ $actual_hash != "$models_sha256" ]]; then
+            printf 'Model archive failed SHA-256 verification.\n' >&2
+            exit 1
+        fi
+        rm -f "$release_dir/runtime/models.sha256"
+        ditto -x -k "$archive" "$release_dir"
+        printf '%s\n' "$models_sha256" >"$release_dir/runtime/models.sha256"
+        rm -f "$archive"
     fi
-    rm -f "$release_dir/runtime/models.sha256"
-    ditto -x -k "$archive" "$release_dir"
-    printf '%s\n' "$models_sha256" >"$release_dir/runtime/models.sha256"
-    rm -f "$archive"
 fi
 
 setup_args=(--packaged)

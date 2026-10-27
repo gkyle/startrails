@@ -277,13 +277,13 @@ class MacInstallerTests(unittest.TestCase):
             "STARTRAILS_TEST_OPEN_CALLS": str(self.open_calls),
         }
 
-    def install(self):
+    def install(self, *, use_archive=True):
+        archive_args = ["--models-archive", str(self.models)] if use_archive else []
         return subprocess.run(
             [
                 "/bin/bash",
                 str(self.dmg / "Install StarTrails AI.app/Contents/Resources/install.sh"),
-                "--models-archive",
-                str(self.models),
+                *archive_args,
             ],
             env=self.env,
             capture_output=True,
@@ -385,6 +385,25 @@ class MacInstallerTests(unittest.TestCase):
         self.assertEqual((support / "current").read_text(encoding="utf-8").strip(), RELEASE_ID)
         self.assertTrue((support / "releases" / RELEASE_ID).is_dir())
         self.assertFalse(old_release.exists())
+
+    def test_upgrade_reuses_matching_models_without_download(self):
+        self.assertEqual(self.install().returncode, 0)
+        new_release_id = "0.1.1-fedcba987654"
+        release_conf = self.payload / "release.conf"
+        release_conf.write_text(
+            release_conf.read_text(encoding="utf-8").replace(RELEASE_ID, new_release_id),
+            encoding="utf-8",
+        )
+
+        upgraded = self.install(use_archive=False)
+        self.assertEqual(upgraded.returncode, 0, upgraded.stdout + upgraded.stderr)
+        self.assertIn("Reusing models from the installed release", upgraded.stdout)
+        support = self.home / "Library/Application Support/StarTrails"
+        self.assertEqual((support / "current").read_text(encoding="utf-8").strip(), new_release_id)
+        self.assertEqual(
+            (support / "releases" / new_release_id / "models/test.safetensors").read_text(encoding="utf-8"),
+            "test model",
+        )
 
     def test_modified_model_archive_is_rejected(self):
         with self.models.open("ab") as archive:
