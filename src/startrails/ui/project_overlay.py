@@ -7,10 +7,11 @@ Supports selecting between "Star Trails" and "Denoise" workflows for:
 """
 
 from __future__ import annotations
+import logging
 from pathlib import Path
 from typing import Optional, Literal, override
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QColor, QFont, QIcon, QKeyEvent, QPainter, QPixmap
+from PySide6.QtCore import Qt, Signal, QSize, QUrl
+from PySide6.QtGui import QColor, QDesktopServices, QFont, QIcon, QKeyEvent, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -33,6 +34,8 @@ from startrails.lib.project_type import (
 )
 from startrails.ui.theme import system_theme, is_dark
 import startrails.ui.resources_rc
+
+logger = logging.getLogger(__name__)
 
 
 def _load_project_pixmap(project_type: str) -> QPixmap:
@@ -86,6 +89,7 @@ class ProjectWelcomeOverlay(QWidget):
         self.setAttribute(Qt.WA_StyledBackground, True)
         self._mode: OverlayMode = "welcome"
         self._can_dismiss: bool = False
+        self._release_url: str | None = None
 
         self._init_ui()
         system_theme().register(self)
@@ -105,17 +109,10 @@ class ProjectWelcomeOverlay(QWidget):
         card_layout.setSpacing(16)
 
         # -------------------------------------------------------------
-        # Header (Logo, Title, Subtitle, Close Button)
+        # Header (Title, Subtitle, Close Button)
         # -------------------------------------------------------------
         header_layout = QHBoxLayout()
         header_layout.setSpacing(14)
-
-        # Logo badge
-        lbl_logo = QLabel("ST", self.card)
-        lbl_logo.setObjectName("OverlayLogoBadge")
-        lbl_logo.setFixedSize(40, 40)
-        lbl_logo.setAlignment(Qt.AlignCenter)
-        header_layout.addWidget(lbl_logo)
 
         # Title text block
         title_box = QVBoxLayout()
@@ -309,6 +306,22 @@ class ProjectWelcomeOverlay(QWidget):
         self.cancel_row.addWidget(self.btn_cancel)
         card_layout.addLayout(self.cancel_row)
 
+        self.update_row = QWidget(self.card)
+        update_layout = QHBoxLayout(self.update_row)
+        update_layout.setContentsMargins(0, 0, 0, 0)
+        update_layout.setAlignment(Qt.AlignCenter)
+        update_layout.setSpacing(8)
+        self.lbl_update_status = QLabel("Checking for updates...", self.update_row)
+        self.lbl_update_status.setObjectName("UpdateStatus")
+        update_layout.addWidget(self.lbl_update_status)
+        self.btn_update_release = QPushButton("View release", self.update_row)
+        self.btn_update_release.setObjectName("UpdateReleaseLink")
+        self.btn_update_release.setCursor(Qt.PointingHandCursor)
+        self.btn_update_release.clicked.connect(self._open_release)
+        self.btn_update_release.hide()
+        update_layout.addWidget(self.btn_update_release)
+        card_layout.addWidget(self.update_row)
+
         root_layout.addWidget(self.card)
 
         self._apply_stylesheet()
@@ -326,13 +339,6 @@ class ProjectWelcomeOverlay(QWidget):
                 border: 1px solid #cbd5e1;
                 border-radius: 14px;
             }
-            QLabel#OverlayLogoBadge {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0284c7, stop:1 #0369a1);
-                color: #ffffff;
-                font-size: 16px;
-                font-weight: 800;
-                border-radius: 8px;
-            }
             QLabel#OverlayTitle {
                 color: #0f172a;
                 font-size: 19px;
@@ -342,6 +348,20 @@ class ProjectWelcomeOverlay(QWidget):
                 color: #64748b;
                 font-size: 12px;
                 font-weight: 500;
+            }
+            QLabel#UpdateStatus {
+                color: #64748b;
+                font-size: 12px;
+            }
+            QPushButton#UpdateReleaseLink {
+                background-color: transparent;
+                border: none;
+                color: #0369a1;
+                font-size: 12px;
+                text-decoration: underline;
+            }
+            QPushButton#UpdateReleaseLink:hover {
+                color: #0284c7;
             }
             QPushButton#OverlayCloseBtn {
                 background-color: transparent;
@@ -454,6 +474,7 @@ class ProjectWelcomeOverlay(QWidget):
 
         self.btn_close.setVisible(can_dismiss)
         self.btn_cancel.setVisible(can_dismiss and mode in ("new", "open"))
+        self.update_row.setVisible(mode == "welcome")
 
         if mode == "welcome":
             self.lbl_title.setText("Welcome to StarTrails AI")
@@ -497,6 +518,21 @@ class ProjectWelcomeOverlay(QWidget):
             self.footer_frame.setVisible(True)
 
         self.refresh_recent_projects()
+
+    def set_update_status(self, text: str) -> None:
+        self._release_url = None
+        self.lbl_update_status.setText(text)
+        self.btn_update_release.hide()
+
+    def set_update_release(self, tag: str, url: str) -> None:
+        self._release_url = url
+        self.lbl_update_status.setText(f"🎉 StarTrails AI {tag} is available.")
+        self.btn_update_release.setText(f"View release {tag}")
+        self.btn_update_release.show()
+
+    def _open_release(self) -> None:
+        if self._release_url and not QDesktopServices.openUrl(QUrl(self._release_url)):
+            logger.warning("Could not open release page: %s", self._release_url)
 
     def refresh_recent_projects(self):
         """Repopulate recent projects dropdown."""

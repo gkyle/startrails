@@ -20,8 +20,8 @@ def get_cuda_version():
         print("nvidia-smi command not found. Is the NVIDIA driver installed?", file=sys.stderr)
         return None
 
-def has_mps_support():
-    """Check if Apple Silicon MPS is available."""
+def has_apple_silicon():
+    """Select macOS dependencies; check functional MPS after installation."""
     if sys.platform != 'darwin':
         return False
     
@@ -29,35 +29,27 @@ def has_mps_support():
     if platform.machine() != 'arm64':
         return False
     
-    # Verify macOS version supports MPS (macOS 12.3+)
-    try:
-        mac_version = platform.mac_ver()[0]
-        if mac_version:
-            major, minor = map(int, mac_version.split('.')[:2])
-            # MPS requires macOS 12.3 or later
-            if major > 12 or (major == 12 and minor >= 3):
-                return True
-    except (ValueError, AttributeError):
-        pass
-    
-    return False
+    return True
     
 if __name__ == "__main__":
     # First check for MPS on macOS
-    if has_mps_support():
+    if has_apple_silicon():
         print("mps", end="")
     else:
         # Check for CUDA
         cuda_version = get_cuda_version()
-        if not cuda_version is None:
-            cuda_version = int(float(cuda_version))
-            if cuda_version == 13:
-                print("cu133",end="")
-            elif cuda_version == 12:
-                print("cu124",end="")
-            elif cuda_version == 11:
-                print("cu118",end="")
-            else:
-                print("cpu",end="")
+        if cuda_version is not None:
+            try:
+                major = int(cuda_version.split(".")[0])
+                if major == 13:
+                    print("cu133", end="")
+                elif major == 12:
+                    print("cu124", end="")
+                elif major == 11:
+                    print("cu118", end="")
+                else:
+                    print("cpu", end="")
+            except (ValueError, IndexError):
+                print("cpu", end="")
         else:
-            print("cpu",end="")
+            print("cpu", end="")

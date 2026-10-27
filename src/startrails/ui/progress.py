@@ -19,10 +19,11 @@ def progress_scope(task_token):
 
 class ProgressBarUpdater(tqdm):
     def __init__(self, qpbar: QProgressBar, qlabel: QLabel, *args, suppressStdout=True, result_guard=None, **kwargs):
+        self.suppressStdout = suppressStdout
+        kwargs['gui'] = suppressStdout
         tqdm.__init__(self, *args, **kwargs)
         self.qpbar = qpbar
         self.qlabel = qlabel
-        self.suppressStdout = suppressStdout
         self.signals = getSignals()
         self.task_token = _TASK_TOKEN.get()
         self.result_guard = result_guard
@@ -33,6 +34,12 @@ class ProgressBarUpdater(tqdm):
         self.desc = None
         if 'desc' in kwargs:
             self.desc = kwargs['desc']
+
+    def display(self, msg=None, pos=None):
+        # Keep tqdm's counters and timing, but render GUI progress without requiring
+        # a console stream (pythonw.exe has no stdout or stderr).
+        if not self.suppressStdout:
+            return super().display(msg, pos)
 
     def update(self, n=1):
         super().update(n)
