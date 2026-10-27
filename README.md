@@ -9,12 +9,14 @@ StarTrails AI is an open-source desktop app for stacking nightscape photographs.
 
 ## Get started
 
-Clone this repository or [download the ZIP](https://github.com/gkyle/startrails/archive/refs/heads/main.zip), then launch from the repository folder:
+Download an installer from [GitHub Releases](https://github.com/gkyle/startrails/releases):
 
-- **Windows:** run `run.bat`.
-- **Linux or macOS:** run `./run.sh`.
+- **Windows 10/11 (x64):** Run `StarTrailsAI-<version>-windows-x64-setup.exe`.
+- **macOS 14+ (Apple Silicon):** Open `StarTrailsAI-<version>-macos-arm64.dmg`, then double-click **Install StarTrails AI.app**.
 
-The launch scripts use **uv** to create an isolated Python environment, install dependencies, and identify a CPU or supported GPU configuration. Initial setup requires an internet connection. A compatible GPU can speed up supported processing steps.
+Initial installation needs an internet connection. A compatible GPU can speed up supported processing steps.
+
+To run from source, clone the repository or [download the source ZIP](https://github.com/gkyle/startrails/archive/refs/heads/main.zip). From the extracted folder, run `run.bat` on Windows or `./run.sh` on Linux or macOS. These scripts use **uv** to set up an isolated Python environment and install dependencies.
 
 On the welcome screen, choose **Star Trails** or **Denoise** and create or open a project.
 
