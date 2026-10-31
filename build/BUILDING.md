@@ -12,6 +12,12 @@ during setup.
 Create and push the `v<version>` Git tag from the final release commit before
 syncing assets.
 
+Prepare the unchanged GraXpert denoise model 3.0.2 as described in
+[its model notice](../third_party/graxpert/denoise/3.0.2/README.md). The model builder verifies its pinned
+hash and requires its attribution/license notices before building an archive.
+GraXpert weights retain CC BY-NC-SA 4.0 terms independently of the app's MIT
+license; this bundled route is for noncommercial distribution.
+
 Build the shared model ZIP once on macOS, Windows, or Linux:
 
 ```sh
@@ -39,6 +45,19 @@ GitHub's asset SHA-256. Use `python build/models.py --download` to fetch and
 verify it separately. To use a local model archive, pass `--models-archive ZIP`
 on macOS or `-ModelsArchive ZIP` on Windows. An installer for distribution must
 point to the same verified ZIP at its embedded model URL.
+
+After preparing an environment and its bundled models, run the explicit Finish setup
+smoke check before approving a platform release:
+
+```sh
+.venv/bin/python src/setup/check_finish_models.py --starnet /path/to/trusted/starnet2 --image /path/to/sample.tif
+```
+
+Omit `--starnet` to test the bundled GraXpert model alone. `--image` is optional;
+without it the check uses a constant synthetic image. These checks execute during
+setup/platform validation, not during ordinary image processing. CPU ONNX Runtime
+is the current baseline; CUDA finishing remains gated on setup validation of a
+compatible GPU package lane.
 
 ## macOS
 

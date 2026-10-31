@@ -128,3 +128,9 @@ Choose **Contribute Corrections** to upload training data for review, or **Expor
 Streak data contains 512×512 image crops and labels. Sky data contains a half-size, 8-bit reference image and corrected mask (`image.jpg` and `mask.png`).
 
 The [training dataset](https://github.com/gkyle/startrails/releases/tag/training) and [training notebooks](training/) for streak detection are available.
+
+## Third-party model licenses
+
+The release model archive includes the unchanged GraXpert denoise model 3.0.2,
+by the GraXpert Development Team, under CC BY-NC-SA 4.0. Its model license is
+separate from StarTrails' MIT license. See the [model attribution and terms](third_party/graxpert/denoise/3.0.2/README.md).

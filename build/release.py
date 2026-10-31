@@ -16,7 +16,7 @@ SOURCE_SUFFIXES = {".py", ".ps1", ".sh", ".ui", ".qrc", ".qss", ".svg", ".png"}
 ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 ZIP_CREATOR_SYSTEM_UNIX = 3
 RELEASE_HASH_PREFIX_LENGTH = 12
-MODEL_METADATA_SUFFIXES = {".json", ".xml", ".yaml", ".yml"}
+MODEL_METADATA_SUFFIXES = {".json", ".xml", ".yaml", ".yml", ".md", ".html", ".txt"}
 GITHUB_REPOSITORY = "gkyle/startrails"
 DOWNLOAD_TIMEOUT_SECONDS = 60
 

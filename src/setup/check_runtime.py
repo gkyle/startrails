@@ -13,13 +13,14 @@ def main():
     # These imports exercise native dependencies before a packaged install is ready.
     import cv2
     import openvino
+    import onnxruntime
     from PySide6 import QtWidgets
     import torch
     import torchvision
 
     print(
         f"Loaded Qt {QtWidgets.__name__}, OpenCV {cv2.__version__}, OpenVINO {openvino.__version__}, "
-        f"PyTorch {torch.__version__}, torchvision {torchvision.__version__}."
+        f"ONNX Runtime {onnxruntime.__version__}, PyTorch {torch.__version__}, torchvision {torchvision.__version__}."
     )
     notice = ""
     if args.variant.startswith("cu"):

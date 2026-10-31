@@ -9,7 +9,9 @@ import unittest
 from unittest.mock import patch
 from zipfile import ZipFile, ZipInfo
 
-from build import release
+from dataclasses import replace
+
+from build import release, models as model_builder
 
 
 class PublishedModelArchiveTests(unittest.TestCase):
@@ -67,6 +69,30 @@ class PublishedModelArchiveTests(unittest.TestCase):
 
 
 class ModelArchiveTests(unittest.TestCase):
+    def test_graxpert_bundle_requires_verified_weights_and_all_notices(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model_root, notices = root / "models", root / "notices"
+            notices.mkdir()
+            data = b"unmodified model"
+            manifest = replace(
+                model_builder.GRAXPERT_MANIFEST, sha256=hashlib.sha256(data).hexdigest(), size_bytes=len(data)
+            )
+            model = model_root / manifest.relative_path
+            model.parent.mkdir(parents=True)
+            with patch.object(model_builder, "GRAXPERT_MANIFEST", manifest):
+                with self.assertRaisesRegex(ValueError, "unverified GraXpert model"):
+                    model_builder.prepare_graxpert_bundle(model_root, notices)
+                model.write_bytes(data)
+                with self.assertRaisesRegex(ValueError, "Missing GraXpert attribution/license"):
+                    model_builder.prepare_graxpert_bundle(model_root, notices)
+                for name in ("README.md", "LICENSE.html", "LICENSE.txt"):
+                    (notices / name).write_text(name)
+                model_builder.prepare_graxpert_bundle(model_root, notices)
+            self.assertEqual(model.read_bytes(), data)
+            for name in ("README.md", "LICENSE.html", "LICENSE.txt"):
+                self.assertEqual((model.parent / name).read_bytes(), (notices / name).read_bytes())
+
     def test_checkout_platform_does_not_change_archive_hash(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -75,6 +101,15 @@ class ModelArchiveTests(unittest.TestCase):
             weights = models / "model.safetensors"
             weights.write_bytes(b"model weights")
             metadata = models / "config.json"
+            graxpert = models / "graxpert"
+            graxpert.mkdir()
+            model_data = b"ONNX weights\r\n\x00\xff"
+            (graxpert / "model.onnx").write_bytes(model_data)
+            notices = {
+                "README.md": b"# Model attribution\n",
+                "LICENSE.html": b"<p>License</p>\n",
+                "LICENSE.txt": b"Model license\n",
+            }
             first = root / "first.zip"
             second = root / "second.zip"
 
@@ -91,6 +126,8 @@ class ModelArchiveTests(unittest.TestCase):
                     return entry
 
                 metadata.write_bytes(b'{\n  "name": "sky"\n}\n'.replace(b"\n", newline))
+                for name, content in notices.items():
+                    (graxpert / name).write_bytes(content.replace(b"\n", newline))
                 with (
                     patch.object(release, "ROOT", root),
                     patch.object(release, "ZipInfo", side_effect=host_zip_info),
@@ -102,6 +139,9 @@ class ModelArchiveTests(unittest.TestCase):
                 self.assertEqual(archive.read("models/config.json"), b'{\n  "name": "sky"\n}\n')
                 self.assertEqual(archive.read("models/model.safetensors"), b"model weights")
                 self.assertEqual(archive.getinfo("models/config.json").create_system, unix_zip_system)
+                self.assertEqual(archive.read("models/graxpert/model.onnx"), model_data)
+                for name, content in notices.items():
+                    self.assertEqual(archive.read("models/graxpert/" + name), content)
 
     def test_staging_copies_the_exact_archive_and_uses_its_uncompressed_size(self):
         with TemporaryDirectory() as temporary:

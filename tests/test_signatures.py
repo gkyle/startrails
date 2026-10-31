@@ -1,11 +1,12 @@
-"""Shared metadata identity and processing-key contracts."""
+"""Shared metadata identity, file integrity and processing-key contracts."""
 
+import hashlib
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from startrails.lib.signatures import compute_signature, read_file_identity
+from startrails.lib.signatures import compute_signature, read_file_identity, verify_file_integrity
 
 
 class TestSignatures(unittest.TestCase):
@@ -42,3 +43,24 @@ class TestSignatures(unittest.TestCase):
             path.unlink()
             with self.assertRaises(FileNotFoundError):
                 read_file_identity(path)
+
+
+class TestFileIntegrity(unittest.TestCase):
+    def test_verify_file_integrity(self):
+        with TemporaryDirectory() as tmpdir:
+            file_path = Path(tmpdir) / "test.bin"
+            content = b"StarTrails Finish Model Verification Test Payload"
+            file_path.write_bytes(content)
+            expected_hash = hashlib.sha256(content).hexdigest()
+            expected_size = len(content)
+
+            self.assertTrue(verify_file_integrity(file_path, expected_hash, expected_size))
+            self.assertTrue(verify_file_integrity(file_path, expected_hash.upper(), expected_size))
+            self.assertTrue(verify_file_integrity(file_path, expected_hash))
+
+            # Corrupt size
+            self.assertFalse(verify_file_integrity(file_path, expected_hash, expected_size + 1))
+            # Corrupt hash
+            self.assertFalse(verify_file_integrity(file_path, "0" * 64, expected_size))
+            # Missing file
+            self.assertFalse(verify_file_integrity(Path(tmpdir) / "nonexistent.bin", expected_hash))
