@@ -10,7 +10,13 @@ import numpy as np
 from PIL import Image
 
 from support import IsolatedTestCase
-from startrails.lib.image_io import imread, imwrite, normalize_image
+from startrails.lib.image_io import (
+    imread,
+    imwrite,
+    normalize_image,
+    quantize_image,
+    validate_image_array,
+)
 
 
 class ImageIoTests(IsolatedTestCase):
@@ -123,3 +129,69 @@ class ImageIoTests(IsolatedTestCase):
         corrupt.write_bytes(b"not an image")
         with self.assertRaisesRegex(ValueError, "decode"):
             imread(corrupt)
+
+    def test_quantize_image(self):
+        float_img = np.array([[[0.0, 0.5, 1.0]]], dtype=np.float32)
+
+        q8 = quantize_image(float_img, bit_depth=8)
+        self.assertEqual(q8.dtype, np.uint8)
+        self.assertEqual(q8[0, 0, 0], 0)
+        self.assertEqual(q8[0, 0, 1], 128)
+        self.assertEqual(q8[0, 0, 2], 255)
+
+        q16 = quantize_image(float_img, bit_depth=16)
+        self.assertEqual(q16.dtype, np.uint16)
+        self.assertEqual(q16[0, 0, 0], 0)
+        self.assertEqual(q16[0, 0, 1], 32768)
+        self.assertEqual(q16[0, 0, 2], 65535)
+
+        with self.assertRaises(ValueError):
+            quantize_image(float_img, bit_depth=32)
+
+    def test_validate_image_array(self):
+        valid = np.zeros((16, 16, 3), dtype=np.float32)
+        validate_image_array(valid, expected_channels=3, normalized=True)
+
+        with self.assertRaises(TypeError):
+            validate_image_array([0, 1, 2])  # type: ignore
+
+        with self.assertRaises(ValueError):
+            validate_image_array(np.zeros((16, 16, 3), dtype=np.uint8), normalized=True)
+
+        nan_img = valid.copy()
+        nan_img[0, 0, 0] = np.nan
+        with self.assertRaises(ValueError):
+            validate_image_array(nan_img)
+
+        out_of_bounds = valid.copy()
+        out_of_bounds[0, 0, 0] = 1.2
+        with self.assertRaises(ValueError):
+            validate_image_array(out_of_bounds, normalized=True)
+
+        with self.assertRaises(ValueError):
+            validate_image_array(valid, expected_channels=4)
+
+    def test_imwrite_with_explicit_bit_depth(self):
+        pixels = np.array([[[0.0, 0.5, 1.0]]], dtype=np.float32)
+
+        # 8-bit TIFF export preserves 8-bit depth without promotion to 16-bit
+        path_8 = imwrite(self.root / "image_8bit.tif", pixels, bit_depth=8)
+        decoded_8 = imread(path_8)
+        self.assertEqual(decoded_8.dtype, np.uint8)
+
+        # 16-bit TIFF export preserves 16-bit depth
+        path_16 = imwrite(self.root / "image_16bit.tif", pixels, bit_depth=16)
+        decoded_16 = imread(path_16)
+        self.assertEqual(decoded_16.dtype, np.uint16)
+
+    def test_explicit_depth_rejects_incompatible_codec_or_integer_samples(self):
+        pixels = np.full((8, 8, 3), 0.25, dtype=np.float32)
+        destination = self.root / "image.jpg"
+        destination.write_bytes(b"previous image")
+        with self.assertRaisesRegex(ValueError, "16-bit"):
+            imwrite(destination, pixels, bit_depth=16)
+        self.assertEqual(destination.read_bytes(), b"previous image")
+        with self.assertRaisesRegex(ValueError, "dtype"):
+            imwrite(self.root / "depth.tif", np.zeros((2, 2, 3), dtype=np.uint16), bit_depth=8)
+        with self.assertRaisesRegex(ValueError, "legacy"):
+            imwrite(self.root / "depth.tif", pixels, bit_depth=8, tiff_uint8_as_uint16=True)

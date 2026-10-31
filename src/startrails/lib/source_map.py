@@ -11,6 +11,8 @@ from threading import Lock
 import cv2
 import numpy as np
 
+from startrails.lib.signatures import read_file_identity
+
 
 class SourceMapError(ValueError):
     """An unavailable map or source, with an explanation suitable for the UI."""
@@ -28,8 +30,8 @@ def source_dtype(count):
 
 
 def signature(path):
-    stat = Path(path).stat()
-    return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
+    identity = read_file_identity(path)
+    return {"size": identity.size, "mtime_ns": identity.mtime_ns}
 
 
 class _LookupImageCache:

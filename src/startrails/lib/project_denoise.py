@@ -3,7 +3,6 @@
 from __future__ import annotations
 import copy
 from dataclasses import asdict
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -13,6 +12,7 @@ import numpy as np
 
 from startrails.lib.denoise.defaults import DENOISE_DEFAULTS, DenoiseSettings
 from startrails.lib.file import DenoiseInputFile, Unpickle
+from startrails.lib.signatures import compute_signature, read_file_identity
 from startrails.lib.project_type import get_project_output_dir, DENOISE_EXT
 
 _ARTIFACT_FILENAMES = {
@@ -180,8 +180,8 @@ class DenoiseProject(Unpickle):
     def file_signature(path) -> tuple:
         resolved = Path(path).resolve()
         try:
-            stat = resolved.stat()
-            return str(resolved), stat.st_size, stat.st_mtime_ns
+            identity = read_file_identity(resolved)
+            return identity.path, identity.size, identity.mtime_ns
         except OSError:
             return str(resolved), None, None
 
@@ -199,7 +199,7 @@ class DenoiseProject(Unpickle):
         if stacking:
             data["stack"] = (self.stack_method, self.sigma_clip_threshold, self.sigma_clip_iterations,
                              self.horizon_denoise_radius, self.horizon_denoise_eps)
-        return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+        return compute_signature(data)
 
     def invalidate_results(self, alignment: bool = True) -> None:
         self.processing_revision += 1

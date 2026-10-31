@@ -1,26 +1,72 @@
 """Shared image decoding, normalization, codec options, and file-lock fallback."""
+
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Union
+from typing import Optional, Union
 import cv2
 import numpy
 
 
 DEFAULT_IMAGE_WRITE_JPEG_QUALITY = 100
 IMWRITE_OPTIONS = [cv2.IMWRITE_JPEG_QUALITY, DEFAULT_IMAGE_WRITE_JPEG_QUALITY]
+MAX_UINT8_VALUE = 255.0
+MAX_UINT16_VALUE = 65535.0
+FLOAT_NORM_EPSILON = 1e-6
 _BT601_RED_WEIGHT = 0.299
 _BT601_GREEN_WEIGHT = 0.587
 _BT601_BLUE_WEIGHT = 0.114
 
 
+def quantize_image(img: numpy.ndarray, bit_depth: int = 8) -> numpy.ndarray:
+    """Quantize normalized float32/float64 image to an integer array for standard codecs.
+
+    Args:
+        img: Normalized image array with values in [0.0, 1.0].
+        bit_depth: Target bit depth, either 8 (uint8) or 16 (uint16).
+
+    Returns:
+        numpy.ndarray of uint8 or uint16.
+    """
+    if bit_depth == 8:
+        return numpy.clip(img * MAX_UINT8_VALUE + 0.5, 0.0, MAX_UINT8_VALUE).astype(numpy.uint8)
+    if bit_depth == 16:
+        return numpy.clip(img * MAX_UINT16_VALUE + 0.5, 0.0, MAX_UINT16_VALUE).astype(numpy.uint16)
+    raise ValueError(f"Unsupported bit depth {bit_depth} for image quantization. Must be 8 or 16.")
+
+
+def validate_image_array(
+    image: numpy.ndarray,
+    expected_channels: Optional[int] = 3,
+    normalized: bool = True,
+) -> None:
+    """Validate that an image array satisfies expected dimensions, type, and range.
+
+    Args:
+        image: Array to validate.
+        expected_channels: If not None, checks that image.ndim == 3 and image.shape[2] == expected_channels.
+        normalized: If True, checks that dtype is float32 and values are finite in [0.0, 1.0].
+    """
+    if not isinstance(image, numpy.ndarray):
+        raise TypeError(f"Expected numpy ndarray, got {type(image).__name__}")
+    if image.size == 0:
+        raise ValueError("Image dimensions must be nonempty.")
+    if not numpy.all(numpy.isfinite(image)):
+        raise ValueError("Image contains non-finite values (NaN or Inf).")
+    if expected_channels is not None:
+        if image.ndim != 3 or image.shape[2] != expected_channels:
+            raise ValueError(f"Image must have shape (height, width, {expected_channels}), got {image.shape}")
+    if normalized:
+        if image.dtype != numpy.float32:
+            raise ValueError(f"Normalized image array must be float32, got {image.dtype}")
+        min_val, max_val = float(numpy.min(image)), float(numpy.max(image))
+        if min_val < -FLOAT_NORM_EPSILON or max_val > 1.0 + FLOAT_NORM_EPSILON:
+            raise ValueError(f"Image values out of normalized range [0.0, 1.0]: min={min_val}, max={max_val}")
+
+
 def rgb_luminance(image: numpy.ndarray) -> numpy.ndarray:
     """Return BT.601 luma for an RGB array."""
-    return (
-        _BT601_RED_WEIGHT * image[..., 0]
-        + _BT601_GREEN_WEIGHT * image[..., 1]
-        + _BT601_BLUE_WEIGHT * image[..., 2]
-    )
+    return _BT601_RED_WEIGHT * image[..., 0] + _BT601_GREEN_WEIGHT * image[..., 1] + _BT601_BLUE_WEIGHT * image[..., 2]
 
 
 def normalize_image(img):
@@ -77,6 +123,7 @@ def imwrite(
     optimize: bool = False,
     tiff_uint8_as_uint16: bool = False,
     eight_bit: bool = False,
+    bit_depth: Optional[int] = None,
 ) -> Path:
     """Atomically write an image, handling CuPy arrays, float scaling, and codec options.
 
@@ -86,12 +133,15 @@ def imwrite(
         convertBGR: If True, converts RGB to BGR before saving.
         quality: JPEG compression quality (1-100).
         compression: Whether to apply lossless Deflate compression for TIFF.
+        bit_depth: Optional explicit output depth (8 or 16). Incompatible codecs,
+            integer dtypes and legacy conversion flags are rejected when supplied.
 
     Returns:
         Path to the saved image file.
     """
     if not isinstance(img, numpy.ndarray):  # convert cupy array to numpy
         import cupy as cp
+
         img = cp.asnumpy(img)
 
     path = Path(outfile).resolve()
@@ -99,12 +149,26 @@ def imwrite(
 
     suffix = path.suffix.lower()
 
+    if bit_depth is not None:
+        if bit_depth not in (8, 16):
+            raise ValueError("Image sample depth must be 8 or 16 bits.")
+        if bit_depth == 16 and suffix not in (".png", ".tif", ".tiff"):
+            raise ValueError(f"{suffix} does not support 16-bit output.")
+        if tiff_uint8_as_uint16 or eight_bit:
+            raise ValueError("Explicit bit depth cannot be combined with legacy depth conversion flags.")
+        if img.dtype not in (numpy.float32, numpy.float64):
+            expected_dtype = numpy.uint8 if bit_depth == 8 else numpy.uint16
+            if img.dtype != expected_dtype:
+                raise ValueError("Integer input dtype must match the explicit output depth.")
+
     # Float array scaling: scale float32/float64 to integer ranges for standard codecs
     if img.dtype in (numpy.float32, numpy.float64):
-        if suffix in (".tif", ".tiff"):
-            img = numpy.clip(img * 65535.0 + 0.5, 0.0, 65535.0).astype(numpy.uint16)
+        if bit_depth is not None:
+            img = quantize_image(img, bit_depth=bit_depth)
+        elif suffix in (".tif", ".tiff"):
+            img = quantize_image(img, bit_depth=16)
         else:
-            img = numpy.clip(img * 255.0 + 0.5, 0.0, 255.0).astype(numpy.uint8)
+            img = quantize_image(img, bit_depth=8)
 
     if suffix in (".tif", ".tiff") and tiff_uint8_as_uint16 and img.dtype == numpy.uint8:
         img = img.astype(numpy.uint16) * 257
@@ -128,6 +192,7 @@ def imwrite(
     def _encode_image(target_path: Path):
         if optimize and suffix not in (".tif", ".tiff"):
             from PIL import Image
+
             rgb = img
             if img.ndim == 3 and img.shape[2] == 3:
                 rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
