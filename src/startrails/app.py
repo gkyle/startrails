@@ -15,10 +15,13 @@ from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.util import Observable
 from startrails.lib.project import Project
 from startrails.lib.project_denoise import DenoiseProject
+from startrails.lib.project_finish import FinishProject
 from startrails.lib.project_type import (
     STARTRAILS_EXT,
     DENOISE_EXT,
+    FINISH_EXT,
     TYPE_DENOISE,
+    TYPE_FINISH,
     detect_project_type_from_path,
     UnsupportedProjectError,
     InvalidProjectError,
@@ -28,6 +31,7 @@ from startrails.lib.recent import add_recent_project
 from startrails.workflow.base import Workflow
 from startrails.workflow.startrails import StarTrailsWorkflow
 from startrails.workflow.denoise import DenoiseWorkflow
+from startrails.workflow.finish import FinishWorkflow
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +50,9 @@ class App:
 
         self.loadAppState()
 
-        # Ensure default denoise project exists on disk
+        # Ensure default denoise and finish projects exist on disk
         DenoiseProject.ensure_default_project(f"projects/default{DENOISE_EXT}")
+        FinishProject.ensure_default_project(f"projects/default{FINISH_EXT}")
 
         default_proj = self.state.get("projectFile", f"projects/default{STARTRAILS_EXT}")
         if not os.path.exists(default_proj) and os.path.exists("projects/default.project.json"):
@@ -76,6 +81,8 @@ class App:
     def _create_workflow(self, project: Any) -> Workflow:
         if isinstance(project, DenoiseProject):
             return DenoiseWorkflow(self)
+        if isinstance(project, FinishProject):
+            return FinishWorkflow(self)
         return StarTrailsWorkflow(self)
 
     # -------------------------------------------------------------------------
@@ -208,6 +215,8 @@ class App:
                 proj_type = detect_project_type_from_path(path)
                 if proj_type == TYPE_DENOISE:
                     self.project = DenoiseProject(projectFile=str(path))
+                elif proj_type == TYPE_FINISH:
+                    self.project = FinishProject(project_file=str(path))
                 else:
                     self.project = Project(projectFile=str(path))
                 self.workflow = self._create_workflow(self.project)
@@ -235,13 +244,13 @@ class App:
         except Exception as e:
             raise InvalidProjectError(f"Failed to decode project file '{path}': {e}") from e
 
-        if not isinstance(loaded_proj, (Project, DenoiseProject)):
+        if not isinstance(loaded_proj, (Project, DenoiseProject, FinishProject)):
             raise InvalidProjectError(
-                f"File '{path}' does not contain a recognized StarTrails or Denoise project (got {type(loaded_proj).__name__})."
+                f"File '{path}' does not contain a recognized StarTrails, Denoise, or Finish project (got {type(loaded_proj).__name__})."
             )
 
         # Treat the chosen Open filename as the authoritative save path
-        if isinstance(loaded_proj, DenoiseProject):
+        if isinstance(loaded_proj, (DenoiseProject, FinishProject)):
             loaded_proj.relocate(str(path))
         else:
             loaded_proj.projectFile = str(path)
@@ -282,6 +291,8 @@ class App:
         proj_type = detect_project_type_from_path(fileName)
         if proj_type == TYPE_DENOISE:
             self.project = DenoiseProject(projectFile=fileName)
+        elif proj_type == TYPE_FINISH:
+            self.project = FinishProject(project_file=fileName)
         else:
             self.project = Project(projectFile=fileName)
         self.workflow = self._create_workflow(self.project)

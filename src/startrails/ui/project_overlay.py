@@ -27,9 +27,11 @@ from startrails.lib.recent import get_recent_projects
 from startrails.lib.project_type import (
     STARTRAILS_EXT,
     DENOISE_EXT,
+    FINISH_EXT,
     LEGACY_STARTRAILS_EXT,
     TYPE_STARTRAILS,
     TYPE_DENOISE,
+    TYPE_FINISH,
     detect_project_type_from_path,
 )
 from startrails.ui.theme import system_theme, is_dark
@@ -77,8 +79,10 @@ class ProjectWelcomeOverlay(QWidget):
 
     createStarTrailsRequested = Signal()
     createDenoiseRequested = Signal()
+    createFinishRequested = Signal()
     openStarTrailsRequested = Signal()
     openDenoiseRequested = Signal()
+    openFinishRequested = Signal()
     projectSelected = Signal(str)       # Emits selected project path to load
     browseRequested = Signal()          # Emits when user chooses to browse any project file on disk
     dismissed = Signal()                # Emits when user dismisses the overlay
@@ -102,7 +106,7 @@ class ProjectWelcomeOverlay(QWidget):
         # Card container
         self.card = QFrame(self)
         self.card.setObjectName("WelcomeCard")
-        self.card.setFixedWidth(780)
+        self.card.setFixedWidth(1020)
 
         card_layout = QVBoxLayout(self.card)
         card_layout.setContentsMargins(28, 24, 28, 24)
@@ -251,6 +255,62 @@ class ProjectWelcomeOverlay(QWidget):
         self.card_denoise.clicked.connect(self._on_card_dn_clicked)
         cards_layout.addWidget(self.card_denoise, 1)
 
+        # Card 3: Finish
+        self.card_finish = ClickableCard(self.card)
+        self.card_finish.setObjectName("OptionCardFinish")
+        layout_fn = QVBoxLayout(self.card_finish)
+        layout_fn.setContentsMargins(18, 16, 18, 18)
+        layout_fn.setSpacing(10)
+        layout_fn.setAlignment(Qt.AlignTop)
+
+        # Icon
+        self.lbl_icon_fn = QLabel(self.card_finish)
+        self.lbl_icon_fn.setObjectName("OverlayIcon")
+        self.lbl_icon_fn.setAlignment(Qt.AlignCenter)
+        self.lbl_icon_fn.setFixedHeight(175)
+        fn_pix = _load_project_pixmap("finish")
+        if not fn_pix.isNull():
+            self.lbl_icon_fn.setPixmap(fn_pix.scaled(176, 174, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        elif not dn_pix.isNull():
+            self.lbl_icon_fn.setPixmap(dn_pix.scaled(176, 174, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        layout_fn.addWidget(self.lbl_icon_fn)
+
+        # Title & Badge
+        lbl_fn_title = QLabel("Astro Finish", self.card_finish)
+        lbl_fn_title.setObjectName("CardHeaderTitle")
+        lbl_fn_title.setAlignment(Qt.AlignCenter)
+        layout_fn.addWidget(lbl_fn_title)
+
+        lbl_fn_desc = QLabel(
+            "Star separation with AI starless denoise, star rounding, glow, and recombination.",
+            self.card_finish,
+        )
+        lbl_fn_desc.setObjectName("CardDescription")
+        lbl_fn_desc.setWordWrap(True)
+        lbl_fn_desc.setAlignment(Qt.AlignCenter)
+        lbl_fn_desc.setFixedHeight(38)
+        layout_fn.addWidget(lbl_fn_desc)
+
+        layout_fn.addSpacing(4)
+
+        # Action Buttons for Finish
+        self.btn_fn_new = QPushButton("New Finish Project", self.card_finish)
+        self.btn_fn_new.setObjectName("PrimaryActionButton")
+        self.btn_fn_new.setFixedHeight(34)
+        self.btn_fn_new.setCursor(Qt.PointingHandCursor)
+        self.btn_fn_new.clicked.connect(self._on_fn_new_clicked)
+        layout_fn.addWidget(self.btn_fn_new)
+
+        self.btn_fn_open = QPushButton("Open Finish...", self.card_finish)
+        self.btn_fn_open.setObjectName("SecondaryActionButton")
+        self.btn_fn_open.setFixedHeight(34)
+        self.btn_fn_open.setCursor(Qt.PointingHandCursor)
+        self.btn_fn_open.clicked.connect(self._on_fn_open_clicked)
+        layout_fn.addWidget(self.btn_fn_open)
+
+        self.card_finish.clicked.connect(self._on_card_fn_clicked)
+        cards_layout.addWidget(self.card_finish, 1)
+
         card_layout.addLayout(cards_layout)
 
         # -------------------------------------------------------------
@@ -378,12 +438,12 @@ class ProjectWelcomeOverlay(QWidget):
             QPushButton#OverlayCloseBtn:pressed {
                 background-color: #e2e8f0;
             }
-            QFrame#OptionCardStarTrails, QFrame#OptionCardDenoise {
+            QFrame#OptionCardStarTrails, QFrame#OptionCardDenoise, QFrame#OptionCardFinish {
                 background-color: #f8fafc;
                 border: 1px solid #e2e8f0;
                 border-radius: 12px;
             }
-            QFrame#OptionCardStarTrails:hover, QFrame#OptionCardDenoise:hover {
+            QFrame#OptionCardStarTrails:hover, QFrame#OptionCardDenoise:hover, QFrame#OptionCardFinish:hover {
                 border-color: #0284c7;
                 background-color: #f0f9ff;
             }
@@ -489,6 +549,11 @@ class ProjectWelcomeOverlay(QWidget):
             self.btn_dn_open.setText("Open Existing...")
             self.btn_dn_open.setVisible(True)
 
+            self.btn_fn_new.setText("New Finish Project")
+            self.btn_fn_new.setVisible(True)
+            self.btn_fn_open.setText("Open Existing...")
+            self.btn_fn_open.setVisible(True)
+
             self.footer_frame.setVisible(True)
 
         elif mode == "new":
@@ -502,6 +567,10 @@ class ProjectWelcomeOverlay(QWidget):
             self.btn_dn_new.setVisible(True)
             self.btn_dn_open.setVisible(False)
 
+            self.btn_fn_new.setText("Create Finish Project")
+            self.btn_fn_new.setVisible(True)
+            self.btn_fn_open.setVisible(False)
+
             self.footer_frame.setVisible(False)
 
         elif mode == "open":
@@ -514,6 +583,10 @@ class ProjectWelcomeOverlay(QWidget):
             self.btn_dn_new.setVisible(False)
             self.btn_dn_open.setText("Open Denoise Project...")
             self.btn_dn_open.setVisible(True)
+
+            self.btn_fn_new.setVisible(False)
+            self.btn_fn_open.setText("Open Finish Project...")
+            self.btn_fn_open.setVisible(True)
 
             self.footer_frame.setVisible(True)
 
@@ -546,7 +619,12 @@ class ProjectWelcomeOverlay(QWidget):
 
         for p in recent:
             ptype = detect_project_type_from_path(p)
-            tag = "[Denoise]" if ptype == TYPE_DENOISE else "[Star Trails]"
+            if ptype == TYPE_FINISH:
+                tag = "[Finish]"
+            elif ptype == TYPE_DENOISE:
+                tag = "[Denoise]"
+            else:
+                tag = "[Star Trails]"
             label = f"{tag} {p.name}  —  {p.parent}"
             self.combo_recent.addItem(label, str(p))
 
@@ -567,6 +645,12 @@ class ProjectWelcomeOverlay(QWidget):
         elif self._mode == "open":
             self._on_dn_open_clicked()
 
+    def _on_card_fn_clicked(self):
+        if self._mode == "new":
+            self._on_fn_new_clicked()
+        elif self._mode == "open":
+            self._on_fn_open_clicked()
+
     def _on_st_new_clicked(self):
         self.createStarTrailsRequested.emit()
 
@@ -578,6 +662,12 @@ class ProjectWelcomeOverlay(QWidget):
 
     def _on_dn_open_clicked(self):
         self.openDenoiseRequested.emit()
+
+    def _on_fn_new_clicked(self):
+        self.createFinishRequested.emit()
+
+    def _on_fn_open_clicked(self):
+        self.openFinishRequested.emit()
 
     def _on_open_recent_clicked(self):
         data = self.combo_recent.currentData()
