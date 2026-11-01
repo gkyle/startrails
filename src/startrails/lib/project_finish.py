@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import jsonpickle
 import numpy as np
+from PIL import Image
 
 from startrails.lib.file import InputFile, Unpickle
 from startrails.lib.image_io import imread
@@ -142,9 +143,9 @@ class FinishProject(Unpickle):
         for name, default_val in defaults.items():
             setattr(self, name, kwargs.pop(name, default_val))
 
+        self.has_manual_sky_corrections: bool = kwargs.pop("has_manual_sky_corrections", False)
         for k, v in kwargs.items():
             setattr(self, k, v)
-
         self.processing_revision: int = 0
         self.separation_signature: Optional[str] = None
         self.denoise_signature: Optional[str] = None
@@ -186,13 +187,13 @@ class FinishProject(Unpickle):
             return name[:-5]
         return Path(self.project_file).stem
 
-    def artifact_path(self, role: str) -> Path:
-        """Resolve a named Finish artifact using project output directory."""
+    def artifact_path(self, role: str, *, for_write: bool = False) -> Path:
+        """Resolve an artifact reference, or its owned destination when writing."""
         if role not in _ARTIFACT_FILENAMES:
             raise ValueError(f"Unknown finish artifact role: {role}")
         field = _ARTIFACT_PATH_FIELDS[role]
         value = getattr(self, field, None)
-        if value:
+        if value and not for_write:
             return Path(value).resolve()
         return (self.get_output_dir() / _ARTIFACT_FILENAMES[role]).resolve()
 
@@ -222,6 +223,17 @@ class FinishProject(Unpickle):
     def _source_key(self) -> list:
         return [self.source_file.sourceId, list(self.source_stamp)]
 
+    def get_source_dimensions(self) -> Optional[Tuple[int, int]]:
+        """Return (height, width) of the current source image without loading full RGB buffer."""
+        if not self.source_file or not self.source_file.path:
+            return None
+        p = Path(self.source_file.path)
+        if not p.is_file():
+            return None
+        with Image.open(p) as img:
+            w, h = img.size
+            return (h, w)
+
     def set_source_image(self, path: Union[str, Path]) -> None:
         """Validate before replacing the source; never reuse its predecessor's artifacts."""
         resolved_path = Path(path).resolve()
@@ -234,6 +246,7 @@ class FinishProject(Unpickle):
         self.source_stamp = stamp
         self.source_snapshot_path = None
         self.sky_mask_path = None
+        self.has_manual_sky_corrections = False
         self.artifact_manifest.clear()
         self.invalidate_results()
         self.output_path = str(self.get_default_export_path())

@@ -1,4 +1,5 @@
 """Behavior for Designer-authored operation cards and settings."""
+
 from types import SimpleNamespace
 from PySide6.QtCore import Qt, QSignalBlocker, QObject, Signal, Property
 from PySide6.QtWidgets import QFrame, QWidget, QButtonGroup
@@ -62,14 +63,19 @@ class SegmentedButtonGroup(QObject):
         class _ModelAdapter:
             def __init__(self, buttons):
                 self._buttons = buttons
+
             def item(self, index):
                 class _ItemAdapter:
                     def __init__(self, btn):
                         self._btn = btn
+
                     def setEnabled(self, val):
                         self._btn.setEnabled(val)
+
                 return _ItemAdapter(self._buttons[index])
+
         return _ModelAdapter(self.buttons)
+
 
 from .ui_step import Ui_StepCard
 from .ui_step_detect_streaks import Ui_DetectSettings
@@ -101,7 +107,13 @@ class StepCard(QFrame):
         self._update_status_appearance()
 
     title = Property(str, lambda self: self.ui.toggle.text(), _set_title)
-    step_number = Property(int, lambda self: int(self.ui.number.text()) if self.ui.number is not None and self.ui.number.text().isdigit() else 0, _set_step_number)
+    step_number = Property(
+        int,
+        lambda self: (
+            int(self.ui.number.text()) if self.ui.number is not None and self.ui.number.text().isdigit() else 0
+        ),
+        _set_step_number,
+    )
     is_expanded = Property(bool, lambda self: self.ui.toggle.isChecked(), lambda self, value: self.setExpanded(value))
     subtitle = Property(str, lambda self: self.ui.subtitle.text(), lambda self, value: self.setSubtitle(value))
     alert = Property(bool, lambda self: getattr(self, "_alert", False), lambda self, value: self.set_alert(value))
@@ -179,6 +191,10 @@ class StepCard(QFrame):
             target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
             target.updateGeometry()
 
+    @property
+    def status(self) -> str:
+        return self._status
+
     def setStatus(self, status: str, subtitle: str | None = None):
         self._status = status
         if subtitle is not None:
@@ -219,10 +235,12 @@ class StepCard(QFrame):
         if self.ui.statusBadge is not None:
             self.ui.statusBadge.setVisible(self.has_number and status != "locked")
             if self.has_number:
-                self.ui.statusBadge.setText({
-                    "done": "Done",
-                    "running": "Running",
-                }.get(status, "Ready"))
+                self.ui.statusBadge.setText(
+                    {
+                        "done": "Done",
+                        "running": "Running",
+                    }.get(status, "Ready")
+                )
 
 
 class DetectSettings(QWidget):
@@ -234,9 +252,7 @@ class DetectSettings(QWidget):
         self.app = app
         if ui is not None:
             if hasattr(ui, "detectMergeNMS") and hasattr(ui, "detectMergeNMM"):
-                merge_method = SegmentedButtonGroup(
-                    [ui.detectMergeNMS, ui.detectMergeNMM], parent=self
-                )
+                merge_method = SegmentedButtonGroup([ui.detectMergeNMS, ui.detectMergeNMM], parent=self)
             else:
                 merge_method = getattr(ui, "detectMergeMethod", None)
 
@@ -311,10 +327,12 @@ class DetectSettings(QWidget):
                 return None
         self.ui.error.clear()
         self.ui.error.hide()
-        return dict(confThreshold=self.ui.confidence.value(),
-                    mergeThreshold=self.ui.mergeThreshold.value(),
-                    mergeMethod=("NMS", "GREEDYNMM")[self.ui.mergeMethod.currentIndex()],
-                    useGPU=self.ui.useGPU.isChecked())
+        return dict(
+            confThreshold=self.ui.confidence.value(),
+            mergeThreshold=self.ui.mergeThreshold.value(),
+            mergeMethod=("NMS", "GREEDYNMM")[self.ui.mergeMethod.currentIndex()],
+            useGPU=self.ui.useGPU.isChecked(),
+        )
 
 
 class StackSettings(QWidget):
@@ -326,9 +344,7 @@ class StackSettings(QWidget):
         self.app = app
         if ui is not None:
             if hasattr(ui, "stackStreaksKeep") and hasattr(ui, "stackStreaksRemove"):
-                streaks_widget = SegmentedButtonGroup(
-                    [ui.stackStreaksKeep, ui.stackStreaksRemove], parent=self
-                )
+                streaks_widget = SegmentedButtonGroup([ui.stackStreaksKeep, ui.stackStreaksRemove], parent=self)
             else:
                 streaks_widget = getattr(ui, "stackStreaks", None)
 
@@ -369,9 +385,28 @@ class StackSettings(QWidget):
                 )
             if hasattr(self.ui, "stackFadeOff") and hasattr(self.ui, "stackFadeBoth"):
                 self.ui.fade = SegmentedButtonGroup(
-                    [self.ui.stackFadeOff, self.ui.stackFadeStart, self.ui.stackFadeEnd, self.ui.stackFadeBoth], parent=self
+                    [self.ui.stackFadeOff, self.ui.stackFadeStart, self.ui.stackFadeEnd, self.ui.stackFadeBoth],
+                    parent=self,
                 )
-        for attr in ("run", "advancedToggle", "advancedBody", "useGPU", "useGPULabel", "batchSize", "batchLabel", "fadeAmount", "amountLabel", "memory", "error", "method", "methodLabel", "streaksLabel", "fadeLabel", "streaks", "fade"):
+        for attr in (
+            "run",
+            "advancedToggle",
+            "advancedBody",
+            "useGPU",
+            "useGPULabel",
+            "batchSize",
+            "batchLabel",
+            "fadeAmount",
+            "amountLabel",
+            "memory",
+            "error",
+            "method",
+            "methodLabel",
+            "streaksLabel",
+            "fadeLabel",
+            "streaks",
+            "fade",
+        ):
             stack_attr = f"stack{attr[0].upper()}{attr[1:]}"
             if hasattr(self.ui, stack_attr) and not hasattr(self.ui, attr):
                 setattr(self.ui, attr, getattr(self.ui, stack_attr))
@@ -444,10 +479,13 @@ class StackSettings(QWidget):
         self.ui.error.hide()
         mode = self.ui.fade.currentIndex()
         amount = self.ui.fadeAmount.value() / 100
-        return dict(streaksRemoved=self.ui.streaks.currentIndex() == 1,
-                    fade=mode != 0, fadeAmount=(amount if mode in (1, 3) else 0,
-                                               amount if mode in (2, 3) else 0),
-                    batchSize=self.ui.batchSize.value(), useGPU=self.ui.useGPU.isChecked())
+        return dict(
+            streaksRemoved=self.ui.streaks.currentIndex() == 1,
+            fade=mode != 0,
+            fadeAmount=(amount if mode in (1, 3) else 0, amount if mode in (2, 3) else 0),
+            batchSize=self.ui.batchSize.value(),
+            useGPU=self.ui.useGPU.isChecked(),
+        )
 
 
 class FillSettings(QWidget):
@@ -515,8 +553,12 @@ class AdditionalToolsSettings(QWidget):
         if ui is not None:
             self.ui = SimpleNamespace(
                 masks=getattr(ui, "exportMasks", getattr(ui, "masks", None)),
-                contribute=getattr(ui, "contribute", getattr(ui, "contributeTraining", getattr(ui, "pushButton_contribute", None))),
-                training=getattr(ui, "training", getattr(ui, "exportTraining", getattr(ui, "pushButton_exportTraining", None))),
+                contribute=getattr(
+                    ui, "contribute", getattr(ui, "contributeTraining", getattr(ui, "pushButton_contribute", None))
+                ),
+                training=getattr(
+                    ui, "training", getattr(ui, "exportTraining", getattr(ui, "pushButton_exportTraining", None))
+                ),
                 showDeletedMasks=getattr(ui, "exportShowDeletedMasks", getattr(ui, "showDeletedMasks", None)),
             )
         else:
@@ -526,5 +568,6 @@ class AdditionalToolsSettings(QWidget):
 
 class ExportSettings(ReviewSettings):
     """Backward-compatible wrapper for review/export settings."""
+
     def __init__(self, parent=None, ui=None):
         super().__init__(app=None, parent=parent, ui=ui)

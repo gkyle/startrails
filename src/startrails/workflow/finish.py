@@ -5,6 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Union
 
+import numpy as np
+
+from startrails.lib.denoise.mask import MaskHandler
 from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.finish.defaults import (
     ROLE_DENOISED_STARLESS,
@@ -13,16 +16,18 @@ from startrails.lib.finish.defaults import (
     ROLE_FINISHED_STARS,
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
+    ROLE_SKY_MASK,
 )
 from startrails.lib.image_io import imread, imwrite
 from startrails.lib.project_finish import FinishProject
 from startrails.workflow.base import Workflow
+from startrails.workflow.masking import SkyMaskingWorkflowMixin
 
 if TYPE_CHECKING:
     from startrails.app import App
 
 
-class FinishWorkflow(Workflow):
+class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
     """Workflow controller managing Finish mode project state, operations, and exports."""
 
     mode_name: str = "finish"
@@ -74,6 +79,55 @@ class FinishWorkflow(Workflow):
         """Replace the current source image with a new one and persist project state."""
         self.project.set_source_image(path)
         self.save_project()
+
+    def save_mask(self, mask: np.ndarray) -> Path:
+        """Validate source geometry, persist canonical sky mask, and invalidate downstream results."""
+        if not self.project.source_is_current():
+            raise ValueError("Source image is not current or unavailable.")
+        dims = self.project.get_source_dimensions()
+        if dims is None:
+            raise ValueError("No valid source image loaded.")
+        if mask.ndim != 2:
+            raise ValueError("Sky mask must be a 2D array.")
+        if mask.shape != dims:
+            raise ValueError(f"Mask dimensions {mask.shape} do not match source dimensions {dims}.")
+        if not np.isfinite(mask).all():
+            raise ValueError("Sky mask must contain finite values.")
+        canonical_path = self.project.artifact_path(ROLE_SKY_MASK, for_write=True)
+        written = MaskHandler.save_mask(mask, canonical_path)
+        self.project.record_artifact(ROLE_SKY_MASK, written)
+        self.project.invalidate_results()
+        self.save_project()
+        return written
+
+    def get_current_mask(self) -> Optional[np.ndarray]:
+        """Load published canonical sky mask after verifying freshness and source geometry."""
+        if not self.project.source_is_current():
+            return None
+        mask_path = self.project.current_artifact_path(ROLE_SKY_MASK)
+        if mask_path is None or not mask_path.is_file():
+            return None
+        dims = self.project.get_source_dimensions()
+        mask = MaskHandler.load_mask(mask_path)
+        if dims is None or mask.shape != dims:
+            return None
+        return mask
+
+    def do_clear_mask(self) -> Path:
+        """Create and publish an all-zeros mask matching source dimensions."""
+        dims = self.project.get_source_dimensions()
+        if dims is None:
+            raise ValueError("No valid source image loaded.")
+        mask = np.zeros(dims, dtype=np.float32)
+        return self.save_mask(mask)
+
+    def do_all_sky_mask(self) -> Path:
+        """Create and publish an all-ones (all sky) mask matching source dimensions."""
+        dims = self.project.get_source_dimensions()
+        if dims is None:
+            raise ValueError("No valid source image loaded.")
+        mask = np.ones(dims, dtype=np.float32)
+        return self.save_mask(mask)
 
     def do_export_composite(
         self,

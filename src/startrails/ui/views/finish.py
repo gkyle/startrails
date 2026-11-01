@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from concurrent.futures import CancelledError
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
+from PySide6.QtCore import QSignalBlocker, QTimer
 from PySide6.QtWidgets import QFileDialog, QMessageBox, QWidget
 
+from startrails.lib.denoise.defaults import DEFAULT_SKY_DETECTION_DEVICE
 from startrails.lib.file import File
 from startrails.lib.project_finish import FinishProject
 from startrails.ui.sidebar_finish import SidebarFinish
+from startrails.ui.sky_mask_controller import SkyMaskController
 from startrails.ui.views.base import ModeView
 
 if TYPE_CHECKING:
@@ -31,6 +35,9 @@ class FinishView(ModeView):
         self._project: FinishProject = app.project
         self.sidebar: Optional[SidebarFinish] = None
         self._displayed_source_id: Optional[str] = None
+        self._generation: int = 0
+        self._disposed: bool = False
+        self.mask_controller: Optional[SkyMaskController] = None
 
     def build_sidebar(self, parent: QWidget) -> QWidget:
         """Construct and return the Finish mode sidebar widget."""
@@ -56,8 +63,103 @@ class FinishView(ModeView):
         if hasattr(self.shell, "doOpenFinishProject"):
             self.connect_signal(self.sidebar.pushButton_openProject.clicked, self.shell.doOpenFinishProject)
 
+        # Wire reusable sky masking controller
+        if hasattr(self.sidebar, "skySettings"):
+            self.connect_signal(self.sidebar.skySettings.settings_changed, self.app.workflow.save_project)
+            self.mask_controller = SkyMaskController(
+                shell=self.shell,
+                settings_widget=self.sidebar.skySettings,
+                get_source_image=lambda: self._project.source_file if self._project.source_is_current() else None,
+                show_source_image=lambda: self.showFile(self._project.source_file),
+                get_saved_mask=self.app.workflow.get_current_mask,
+                save_mask=self._save_mask_to_project,
+                detect_sky_fn=self.app.workflow.do_detect_sky,
+                refine_mask_fn=self.app.workflow.do_refine_mask,
+                enqueue_task=self._enqueue_task,
+                get_post_result=self._get_post_result,
+                get_result_guard=self._result_guard,
+                on_manual_edit=self._on_manual_mask_edit,
+                on_detection_finished=self._on_mask_detection_finished,
+                sky_card=self.sidebar.skyCard,
+                get_device=lambda: DEFAULT_SKY_DETECTION_DEVICE,
+            )
+            self.mask_controller.bind()
+
+    def teardown(self) -> None:
+        """Disconnect signals and clean up canvas and mask controller state."""
+        self._disposed = True
+        self._generation += 1
+        canvas = getattr(self.shell, "canvas_main", None)
+        if canvas is not None:
+            canvas.set_mask_edit_mode(False)
+            canvas.set_denoise_mask(None)
+        if self.mask_controller is not None:
+            self.mask_controller.teardown()
+            self.mask_controller = None
+        super().teardown()
+
+    def _save_mask_to_project(self, mask: Any) -> None:
+        self.app.workflow.save_mask(mask)
+        self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
+        self.updateReadyStates()
+
+    def _on_manual_mask_edit(self) -> None:
+        self._project.has_manual_sky_corrections = True
+        self.updateReadyStates()
+
+    def _on_mask_detection_finished(self, mask: Any) -> None:
+        self._project.has_manual_sky_corrections = False
+        self.updateReadyStates()
+
+    def _enqueue_task(self, task_id: str, title: str, total: int, desc: str, work: Callable) -> bool:
+        workflow = self.app.workflow
+        guard = self._result_guard()
+
+        def run():
+            if not guard():
+                return
+            try:
+                with workflow.operation_session():
+                    work()
+            except CancelledError:
+                self._post_result(guard, lambda: self._show_task_error(task_id, "Cancelled"))
+            except Exception as error:
+                message = str(error)
+                self._post_result(guard, lambda: self._show_task_error(task_id, f"Failed: {message}"))
+
+        return self.shell.enqueue_task(task_id, title, total, desc, run)
+
+    def _result_guard(self) -> Callable[[], bool]:
+        project = self._project
+        generation = self._generation
+        revision = project.processing_revision
+        return lambda: (
+            not self._disposed
+            and generation == self._generation
+            and project is self.app.project
+            and revision == project.processing_revision
+            and project.source_is_current()
+        )
+
+    def _get_post_result(self) -> Callable[[Callable], None]:
+        guard = self._result_guard()
+        return lambda callback: self._post_result(guard, callback)
+
+    def _post_result(self, guard: Callable[[], bool], callback: Callable) -> None:
+        def deliver():
+            if guard():
+                callback()
+
+        QTimer.singleShot(0, self.shell, deliver)
+
+    def _show_task_error(self, task_id: str, message: str) -> None:
+        if self.sidebar is not None and hasattr(self.sidebar, "skySettings"):
+            self.sidebar.skySettings.ui.error.setText(message)
+            self.sidebar.skySettings.ui.error.show()
+
     def resetProjectView(self) -> None:  # noqa: N802 - ModeView interface
         """Reset sidebar view state when a new or opened project is active."""
+        self._generation += 1
         self._project = self.app.project
         if not isinstance(self._project, FinishProject):
             return
@@ -70,13 +172,35 @@ class FinishView(ModeView):
                 self._displayed_source_id = source.sourceId
                 if canvas.pixmap is not None and not canvas.pixmap.isNull():
                     dimensions = (canvas.pixmap.width(), canvas.pixmap.height())
+
+                existing_mask = self.app.workflow.get_current_mask()
+                if existing_mask is not None:
+                    canvas.set_denoise_mask(existing_mask)
+                    is_expanded = bool(self.sidebar and self.sidebar.skyCard.is_expanded)
+                    canvas.set_mask_edit_mode(is_expanded)
+                    if self.sidebar and hasattr(self.sidebar, "skySettings"):
+                        with QSignalBlocker(self.sidebar.skySettings.ui.showMaskOverlay):
+                            self.sidebar.skySettings.ui.showMaskOverlay.setChecked(is_expanded)
+                else:
+                    canvas.set_denoise_mask(None)
+                    canvas.set_mask_edit_mode(False)
+                    if self.sidebar and hasattr(self.sidebar, "skySettings"):
+                        with QSignalBlocker(self.sidebar.skySettings.ui.showMaskOverlay):
+                            self.sidebar.skySettings.ui.showMaskOverlay.setChecked(False)
             else:
                 canvas.setFile(None)
+                canvas.set_denoise_mask(None)
+                canvas.set_mask_edit_mode(False)
                 self._displayed_source_id = None
+                if self.sidebar and hasattr(self.sidebar, "skySettings"):
+                    with QSignalBlocker(self.sidebar.skySettings.ui.showMaskOverlay):
+                        self.sidebar.skySettings.ui.showMaskOverlay.setChecked(False)
 
         if self.sidebar is not None:
             self.sidebar.update_from_project(self._project, dimensions)
             self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
+            if hasattr(self.sidebar, "skySettings"):
+                self.sidebar.skySettings.set_from_project(self._project)
 
         self.updateReadyStates()
 

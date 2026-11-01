@@ -5,7 +5,7 @@ and project persistence share the same authoritative settings contracts.
 """
 
 from dataclasses import dataclass
-from typing import Final, Literal, Tuple
+from typing import Final, Literal, Optional, Tuple
 
 
 DenoiseScopeType = Literal["sky_only", "whole_image"]
@@ -73,6 +73,13 @@ SUPPORTED_CHANNELS: Final[int] = 3
 @dataclass(frozen=True)
 class FinishSettings:
     """Authoritative owner for persisted and runtime Finish settings."""
+
+    # Sky mask step
+    auto_mask_model: str = "nightstack"
+    auto_mask_path: Optional[str] = None
+    mask_search_radius: Optional[int] = None
+    mask_erosion_pixels: int = 5
+    mask_foliage_protection: bool = True
 
     # Denoise step
     denoise_strength: float = DEFAULT_DENOISE_STRENGTH_PERCENT

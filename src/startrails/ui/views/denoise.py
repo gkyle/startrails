@@ -6,7 +6,7 @@ from concurrent.futures import CancelledError
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 import numpy as np
-from PySide6.QtCore import Slot, Qt, QTimer, QSignalBlocker
+from PySide6.QtCore import Slot, Qt, QTimer
 from shiboken6 import isValid
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -20,13 +20,13 @@ from PySide6.QtWidgets import (
 from startrails.lib.denoise.defaults import (
     DEFAULT_HORIZON_FEATHER_RADIUS,
     DEFAULT_SKY_DETECTION_DEVICE,
-    DEFAULT_SKY_DETECTION_INPUT_SIZE,
 )
 from startrails.lib.file import File, DenoiseInputFile, OutputFile
 from startrails.ui.file_manager import FileSection
 from startrails.ui.progress import ProgressBarUpdater
 from startrails.ui.sidebar_denoise import SidebarDenoise
 from startrails.ui.signals import getSignals
+from startrails.ui.sky_mask_controller import SkyMaskController
 from startrails.ui.steps import StepCard
 from startrails.ui.steps_denoise import (
     DenoiseSkySettings,
@@ -91,6 +91,7 @@ class DenoiseView(ModeView):
         self.last_compositor: Any = None
         self._horizon_preview_id: Optional[int] = None
         self.last_align_result: Any = None
+        self.mask_controller: Optional[SkyMaskController] = None
 
         # Live horizon tuning worker & debounce state
         self._horizon_worker: Optional[HorizonOverlayWorker] = None
@@ -203,14 +204,50 @@ class DenoiseView(ModeView):
             self.connect_signal(self.output_files.removeFile, self.remove_output_file)
 
         # Connect operation actions
-        if self.btn_detect_sky is not None:
-            self.connect_signal(self.btn_detect_sky.clicked, self.do_detect_sky_action)
         if self.sky_settings is not None:
-            self.connect_signal(self.sky_settings.ui.refineMask.clicked, self.do_refine_mask_action)
-            self.connect_signal(self.sky_settings.clear_mask_requested, self.do_clear_mask_action)
-            self.connect_signal(self.sky_settings.full_frame_requested, self.do_full_frame_mask_action)
-            self.connect_signal(self.sky_settings.mask_edit_toggled, self._on_mask_edit_toggled)
-            self.connect_signal(self.sky_settings.brush_radius_changed, self._on_brush_radius_changed)
+            self.connect_signal(self.sky_settings.settings_changed, self.app.workflow.save_project)
+            if self.mask_controller is not None:
+                self.mask_controller.teardown()
+
+            def get_source():
+                return self.app.workflow.get_reference_file()
+
+            def show_source():
+                ref = self.app.workflow.get_reference_file()
+                if ref is not None:
+                    canvas_has_ref = (
+                        getattr(self.shell, "currentFile", None) == ref
+                        and getattr(self.shell.canvas_main, "file", None) == ref
+                        and self.shell.canvas_main.pixmap is not None
+                        and not self.shell.canvas_main.pixmap.isNull()
+                    )
+                    if not canvas_has_ref:
+                        self.show_file(ref)
+
+            def on_detection_finished(mask: np.ndarray) -> None:
+                self.has_manual_sky_corrections = False
+                if hasattr(self.app.workflow, "project") and self.app.workflow.project is not None:
+                    self.app.workflow.project.has_manual_sky_corrections = False
+                self.update_ready_states()
+
+            self.mask_controller = SkyMaskController(
+                shell=self.shell,
+                settings_widget=self.sky_settings,
+                get_source_image=get_source,
+                show_source_image=show_source,
+                get_saved_mask=self._find_existing_mask,
+                save_mask=self._save_mask_to_project,
+                detect_sky_fn=self.app.workflow.do_detect_sky,
+                refine_mask_fn=self.app.workflow.do_refine_mask,
+                enqueue_task=self._enqueue_task,
+                get_post_result=lambda: (lambda gen=self._generation: lambda cb: self._post_result(gen, cb))(),
+                get_result_guard=lambda: self._result_guard(self._generation),
+                on_manual_edit=self._on_canvas_mask_brush_edited,
+                on_detection_finished=on_detection_finished,
+                sky_card=self.sky_card,
+                get_device=lambda: DEFAULT_SKY_DETECTION_DEVICE if getattr(self._project, "use_gpu", True) else "cpu",
+            )
+            self.mask_controller.bind()
             self.connect_signal(self.sky_settings.export_training_requested, self.do_export_training_sky)
             self.connect_signal(self.sky_settings.contribute_requested, self.do_contribute_training_sky)
         if self.export_settings is not None:
@@ -231,10 +268,6 @@ class DenoiseView(ModeView):
             self.connect_signal(self.tune_settings.settings_changed, self._schedule_horizon_tuning)
         if self.tune_card is not None:
             self.connect_signal(self.tune_card.expanded, lambda: self._schedule_horizon_tuning(save=False))
-        if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            self.connect_signal(self.shell.canvas_main.mask_changed, self._on_canvas_mask_changed)
-            self.connect_signal(self.shell.canvas_main.mask_brush_edited, self._on_canvas_mask_brush_edited)
-            self.connect_signal(self.shell.canvas_main.brush_radius_changed, self._on_canvas_brush_radius_changed)
         if self.btn_save_output is not None:
             self.connect_signal(self.btn_save_output.clicked, self.do_save_output_action)
         if self.btn_pipeline is not None:
@@ -283,14 +316,15 @@ class DenoiseView(ModeView):
             self.app.workflow.remove_noise_file(file)
             self.reset_project_view()
 
-
     def reset_project_view(self) -> None:
         if not hasattr(self.app.workflow, "get_star_files"):
             return
         self.app.workflow.project.validate_cached_results()
-        alignment_result = self.last_align_result if (
-            self._project is self.app.project and self.app.project.alignment_is_current()
-        ) else None
+        alignment_result = (
+            self.last_align_result
+            if (self._project is self.app.project and self.app.project.alignment_is_current())
+            else None
+        )
         self._generation += 1
         self._project = self.app.project
         self.last_align_result = alignment_result
@@ -389,8 +423,13 @@ class DenoiseView(ModeView):
         workflow = self.app.workflow
         generation = self._generation
         revision = workflow.project.processing_revision
+
         def run():
-            if generation != self._generation or workflow.project is not self.app.project or revision != workflow.project.processing_revision:
+            if (
+                generation != self._generation
+                or workflow.project is not self.app.project
+                or revision != workflow.project.processing_revision
+            ):
                 return
             try:
                 with workflow.operation_session():
@@ -400,6 +439,7 @@ class DenoiseView(ModeView):
             except Exception as error:
                 message = str(error)
                 self._post_result(generation, lambda: self._show_task_error(task_id, f"Failed: {message}"))
+
         return self.shell.enqueue_task(task_id, title, total, desc, run)
 
     def _show_task_error(self, task_id: str, message: str) -> None:
@@ -409,9 +449,12 @@ class DenoiseView(ModeView):
                 QMessageBox.warning(parent, "Sky Training Export Failed", message)
             return
         settings = {
-            "detectSky": self.sky_settings, "refineMask": self.sky_settings,
-            "alignStars": self.align_settings, "stackDenoise": self.stack_settings,
-            "composeHorizon": self.tune_settings, "exportDenoise": self.tune_settings,
+            "detectSky": self.sky_settings,
+            "refineMask": self.sky_settings,
+            "alignStars": self.align_settings,
+            "stackDenoise": self.stack_settings,
+            "composeHorizon": self.tune_settings,
+            "exportDenoise": self.tune_settings,
             "pipeline": self.tune_settings,
         }.get(task_id)
         if settings is not None:
@@ -424,6 +467,7 @@ class DenoiseView(ModeView):
 
     def _post_result(self, generation: int, callback) -> None:
         """Deliver only results belonging to this view's current project session."""
+
         def deliver():
             if not self._disposed and generation == self._generation and self._project is self.app.project:
                 callback()
@@ -513,8 +557,12 @@ class DenoiseView(ModeView):
         canvas = getattr(self.shell, "canvas_main", None)
         if canvas is not None:
             canvas.set_mask_edit_mode(False)
+            canvas.set_denoise_mask(None)
             canvas.clear_horizon_overlay()
             canvas.set_gradient_mask_visible(False)
+        if self.mask_controller is not None:
+            self.mask_controller.teardown()
+            self.mask_controller = None
         super().teardown()
         if self._sidebar is not None:
             self._sidebar.setParent(None)
@@ -540,17 +588,20 @@ class DenoiseView(ModeView):
         worker.project = self._project
         worker.generation = self._generation
         self._background_workers.add(worker)
+
         def release():
             self._background_workers.discard(worker)
             if isValid(worker):
                 worker.deleteLater()
             if self._disposed and not self._background_workers and isValid(self):
                 self._dispose_retired_view()
+
         worker.finished.connect(release)
 
     def _worker_is_current(self, worker, request_id: int, latest_id: int) -> bool:
         return (
-            not self._disposed and worker is not None
+            not self._disposed
+            and worker is not None
             and worker.project is self.app.project
             and worker.generation == self._generation
             and request_id == latest_id
@@ -608,9 +659,11 @@ class DenoiseView(ModeView):
         self._pending_final_save = None
         project = self._project
         worker = FinalCompositeSaveWorker(
-            self.last_compositor, self._horizon_params(),
+            self.last_compositor,
+            self._horizon_params(),
             project.get_output_dir() / f"{project.get_project_stem()}_final.tif",
-            self._final_save_request_id, parent=self,
+            self._final_save_request_id,
+            parent=self,
         )
         self._final_save_worker = worker
         self._track_worker(worker)
@@ -624,9 +677,7 @@ class DenoiseView(ModeView):
         if self._pending_final_save and not self._disposed:
             self._dispatch_async_save_final_composite()
 
-    def _on_final_save_finished(
-        self, staged_path: Any, req_id: Any, legacy_req_id: Optional[int] = None
-    ) -> None:
+    def _on_final_save_finished(self, staged_path: Any, req_id: Any, legacy_req_id: Optional[int] = None) -> None:
         if legacy_req_id is not None:
             req_id = legacy_req_id
         worker = self.sender() or self._final_save_worker
@@ -663,7 +714,10 @@ class DenoiseView(ModeView):
             return
         self._pending_horizon_params = None
         worker = HorizonOverlayWorker(
-            self.last_compositor, self._horizon_params(), self._horizon_request_id, parent=self,
+            self.last_compositor,
+            self._horizon_params(),
+            self._horizon_request_id,
+            parent=self,
         )
         self._horizon_worker = worker
         self._track_worker(worker)
@@ -686,7 +740,9 @@ class DenoiseView(ModeView):
 
     def _on_background_error(self, message: str, req_id: int) -> None:
         worker = self.sender()
-        if worker is not None and (worker.project is not self.app.project or worker.is_cancelled() or worker.generation != self._generation):
+        if worker is not None and (
+            worker.project is not self.app.project or worker.is_cancelled() or worker.generation != self._generation
+        ):
             return
         if not self._disposed and self.tune_settings is not None:
             self.tune_settings.ui.tuneStatus.setText(f"Failed: {message}")
@@ -698,10 +754,13 @@ class DenoiseView(ModeView):
             mask = None
             if self.last_compositor is not None and getattr(self.last_compositor, "gradient_mask", None) is not None:
                 mask = self.last_compositor.gradient_mask
-            elif hasattr(self.app.workflow, "project") and getattr(self.app.workflow.project, "gradient_mask_path", None):
+            elif hasattr(self.app.workflow, "project") and getattr(
+                self.app.workflow.project, "gradient_mask_path", None
+            ):
                 p = Path(self.app.workflow.project.gradient_mask_path)
                 if p.exists():
                     from startrails.lib.denoise.mask import MaskHandler
+
                     mask = MaskHandler.load_mask(p)
             if mask is not None:
                 self.shell.canvas_main.set_gradient_mask(mask)
@@ -720,6 +779,7 @@ class DenoiseView(ModeView):
         if path is None or not Path(path).is_file():
             return None
         from startrails.lib.denoise.mask import MaskHandler
+
         return MaskHandler.load_mask(path)
 
     def _has_existing_stacks(self) -> bool:
@@ -736,6 +796,7 @@ class DenoiseView(ModeView):
         try:
             from startrails.lib.util import imread
             from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
+
             sky_stack = imread(sky_p, to_rgb=True, as_float=True)
             ground_stack = imread(ground_p, to_rgb=True, as_float=True)
             h, w = sky_stack.shape[:2]
@@ -747,10 +808,12 @@ class DenoiseView(ModeView):
             grad_p = proj.artifact_path("gradient_mask")
             if grad_p.exists():
                 from startrails.lib.denoise.mask import MaskHandler
+
                 gradient_mask = MaskHandler.load_mask(grad_p)
             elif getattr(proj, "homographies", None) and mask is not None:
                 try:
                     import cv2
+
                     coverages = []
                     for h_val in proj.homographies.values():
                         if h_val is not None:
@@ -758,10 +821,13 @@ class DenoiseView(ModeView):
                             if H_mat.shape == (2, 3):
                                 H_mat = np.vstack([H_mat, [0, 0, 1]])
                             if H_mat.shape == (3, 3):
-                                cov = cv2.warpPerspective(np.ones((h, w), dtype=np.float32), H_mat, (w, h), flags=cv2.INTER_NEAREST)
+                                cov = cv2.warpPerspective(
+                                    np.ones((h, w), dtype=np.float32), H_mat, (w, h), flags=cv2.INTER_NEAREST
+                                )
                                 coverages.append(cov)
                     if coverages:
                         from startrails.lib.denoise.mask import MaskHandler
+
                         gradient_mask = MaskHandler.compute_gradient_mask(coverages, sky_mask=mask)
                         MaskHandler.save_mask(gradient_mask, grad_p)
                         proj.gradient_mask_path = str(grad_p)
@@ -799,60 +865,12 @@ class DenoiseView(ModeView):
         return Path("projects/default.denoise/mask.png")
 
     def _on_mask_edit_toggled(self, enabled: bool) -> None:
-        if not hasattr(self.shell, "canvas_main") or self.shell.canvas_main is None:
-            return
-        if enabled:
-            ref = self.app.workflow.get_reference_file()
-            if ref is not None:
-                canvas_has_ref = (
-                    getattr(self.shell, "currentFile", None) == ref
-                    and getattr(self.shell.canvas_main, "file", None) == ref
-                    and self.shell.canvas_main.pixmap is not None
-                    and not self.shell.canvas_main.pixmap.isNull()
-                )
-                if not canvas_has_ref:
-                    self.show_file(ref)
-
-            current_m = self.shell.canvas_main.get_denoise_mask()
-            if current_m is None:
-                existing_mask = self._find_existing_mask()
-                if existing_mask is not None:
-                    self.shell.canvas_main.set_denoise_mask(existing_mask)
-                else:
-                    self.shell.canvas_main.fill_denoise_mask()
-                    current_mask = self.shell.canvas_main.get_denoise_mask()
-                    if current_mask is not None:
-                        self._save_mask_to_project(current_mask)
-        self.shell.canvas_main.set_mask_edit_mode(enabled)
-
-    def _on_brush_radius_changed(self, radius: int) -> None:
-        if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            self.shell.canvas_main.set_brush_radius(radius)
-
-    def _on_canvas_brush_radius_changed(self, radius: int) -> None:
-        if self.sky_settings is not None:
-            with QSignalBlocker(self.sky_settings.ui.brushSlider):
-                self.sky_settings.ui.brushSlider.setValue(radius)
-            with QSignalBlocker(self.sky_settings.ui.brushRadius):
-                self.sky_settings.ui.brushRadius.setValue(radius)
-
-    def _on_canvas_mask_changed(self) -> None:
-        if not hasattr(self.shell, "canvas_main") or self.shell.canvas_main is None:
-            return
-        mask = self.shell.canvas_main.get_denoise_mask()
-        if mask is not None:
-            self._save_mask_to_project(mask)
+        if self.mask_controller is not None:
+            self.mask_controller.on_mask_edit_toggled(enabled)
 
     def _apply_mask_to_canvas_and_project(self, mask: np.ndarray) -> None:
-        ref = self.app.workflow.get_reference_file()
-        if ref is not None:
-            self.show_file(ref)
-        if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            self.shell.canvas_main.set_denoise_mask(mask)
-            self.shell.canvas_main.set_mask_edit_mode(True)
-        if self.sky_settings is not None:
-            with QSignalBlocker(self.sky_settings.ui.showMaskOverlay):
-                self.sky_settings.ui.showMaskOverlay.setChecked(True)
+        if self.mask_controller is not None:
+            self.mask_controller.apply_mask_to_canvas(mask)
         self._save_mask_to_project(mask)
 
     def _on_canvas_mask_brush_edited(self) -> None:
@@ -873,6 +891,7 @@ class DenoiseView(ModeView):
     def _save_mask_to_project(self, mask: np.ndarray) -> None:
         out_mask = self._get_project_mask_path()
         from startrails.lib.denoise.mask import MaskHandler
+
         MaskHandler.save_brush_mask(mask, out_mask)
         if hasattr(self.app.workflow, "project") and self.app.workflow.project is not None:
             self.app.workflow.project.mask_path = str(out_mask)
@@ -890,166 +909,21 @@ class DenoiseView(ModeView):
         self.update_ready_states()
 
     def do_detect_sky_action(self) -> None:
-        ref = self.app.workflow.get_reference_file()
-        if ref is None:
-            return
-
-        # 1. Immediately ensure the canvas is showing the reference image
-        self.show_file(ref)
-
-        vals = self.sky_settings.values() if self.sky_settings else vars(self._project)
-        search_radius = vals["mask_search_radius"]
-        erosion_pixels = vals["mask_erosion_pixels"]
-        foliage_protection = self._project.mask_foliage_protection
-        model_path = self._project.auto_mask_path
-        device = DEFAULT_SKY_DETECTION_DEVICE if self._project.use_gpu else "cpu"
-
-        generation = self._generation
-
-        def work():
-            progress_updater = ProgressBarUpdater(
-                getattr(self.shell, "progressBar", None),
-                getattr(self.shell, "label_progressBar", None),
-                total=1000,
-                desc="Detecting sky mask...",
-                result_guard=self._result_guard(generation),
-            )
-            try:
-                reported = 0
-
-                def report_stage(offset, total, count, done, data):
-                    nonlocal reported
-                    target = offset + (500 if done else round(500 * count / max(total, 1)))
-                    increment = max(0, target - reported)
-                    reported += increment
-                    progress_updater.tick(1000, increment, reported, offset == 500 and done, data)
-
-                def on_detect_tick(total, inc, count, done, data=None):
-                    report_stage(0, total, count, done, data)
-
-                # Step 1: Run model detection to generate coarse sky mask
-                coarse_mask = self.app.workflow.do_detect_sky(
-                    ref.path,
-                    progress_bar=on_detect_tick,
-                    model_type=vals["auto_mask_model"],
-                    model_path=model_path,
-                    device=device,
-                    input_size=DEFAULT_SKY_DETECTION_INPUT_SIZE,
-                )
-                if coarse_mask is None:
-                    return
-
-                # Step 2: Run refine mask pass with current settings (search radius, erosion pixels)
-                progress_updater.tick(1000, 0, reported, False, {"desc": "Refining detected sky mask..."})
-
-                def on_refine_tick(total, inc, count, done, data=None):
-                    report_stage(500, total, count, done, data)
-
-                refined_mask = self.app.workflow.do_refine_mask(
-                    ref.path,
-                    coarse_mask,
-                    progress_bar=on_refine_tick,
-                    search_radius=search_radius,
-                    erosion_pixels=erosion_pixels,
-                    foliage_protection=foliage_protection,
-                )
-                if refined_mask is None:
-                    return
-                final_mask = refined_mask
-
-                # Step 3: Show the final refined mask overlay on top of the reference image on the canvas
-                self._post_result(generation, lambda m=final_mask: self._on_detection_finished(m))
-            except Exception:
-                raise
-
-        self._enqueue_task("detectSky", "Detect Sky", 1, "Detecting and refining sky mask...", work)
+        if self.mask_controller is not None:
+            self.mask_controller.do_detect_sky()
 
     def do_refine_mask_action(self) -> None:
-        ref = self.app.workflow.get_reference_file()
-        if ref is None:
-            return
-        vals = self.sky_settings.values() if self.sky_settings else vars(self._project)
-        search_radius = vals["mask_search_radius"]
-        erosion_pixels = vals["mask_erosion_pixels"]
-        foliage_protection = self._project.mask_foliage_protection
-
-        self.show_file(ref)
-
-        current_mask = None
-        if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            current_mask = self.shell.canvas_main.get_denoise_mask()
-        if current_mask is None or not np.any(current_mask > 0):
-            current_mask = self._find_existing_mask()
-        if current_mask is None or not np.any(current_mask > 0):
-            return
-
-        # Ensure mask overlay stays visible on canvas if toggle is checked
-        if (
-            self.sky_settings is not None
-            and self.sky_settings.ui.showMaskOverlay.isChecked()
-            and hasattr(self.shell, "canvas_main")
-            and self.shell.canvas_main is not None
-        ):
-            self.shell.canvas_main.set_mask_edit_mode(True)
-
-        generation = self._generation
-
-        def work():
-            progress_updater = ProgressBarUpdater(
-                getattr(self.shell, "progressBar", None),
-                getattr(self.shell, "label_progressBar", None),
-                total=1,
-                desc="Refining sky mask...",
-                result_guard=self._result_guard(generation),
-            )
-            try:
-                refined = self.app.workflow.do_refine_mask(
-                    ref.path,
-                    current_mask,
-                    progress_bar=progress_updater.tick,
-                    search_radius=search_radius,
-                    erosion_pixels=erosion_pixels,
-                    foliage_protection=foliage_protection,
-                )
-                if refined is not None:
-                    self._post_result(generation, lambda r=refined: self._on_detection_finished(r))
-            except Exception:
-                raise
-
-        self._enqueue_task("refineMask", "Refine Mask", 1, "Refining sky mask...", work)
+        if self.mask_controller is not None:
+            self.mask_controller.do_refine_mask()
 
     def do_clear_mask_action(self) -> None:
-        if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            self.shell.canvas_main.clear_denoise_mask()
-            mask = self.shell.canvas_main.get_denoise_mask()
-            if mask is not None:
-                self._save_mask_to_project(mask)
-        else:
-            ref = self.app.workflow.get_reference_file()
-            if ref is None:
-                return
-            from startrails.lib.util import imread
-            img = imread(ref.path, to_rgb=True, as_float=True)
-            h, w = img.shape[:2]
-            mask = np.zeros((h, w), dtype=np.float32)
-            self._save_mask_to_project(mask)
+        if self.mask_controller is not None:
+            self.mask_controller.do_clear_mask()
         self.update_ready_states()
 
     def do_full_frame_mask_action(self) -> None:
-        if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            self.shell.canvas_main.fill_denoise_mask()
-            mask = self.shell.canvas_main.get_denoise_mask()
-            if mask is not None:
-                self._save_mask_to_project(mask)
-        else:
-            ref = self.app.workflow.get_reference_file()
-            if ref is None:
-                return
-            from startrails.lib.util import imread
-            img = imread(ref.path, to_rgb=True, as_float=True)
-            h, w = img.shape[:2]
-            mask = np.ones((h, w), dtype=np.float32)
-            self._save_mask_to_project(mask)
+        if self.mask_controller is not None:
+            self.mask_controller.do_full_frame_mask()
         self.update_ready_states()
 
     def do_export_training_sky(self) -> None:
@@ -1226,6 +1100,7 @@ class DenoiseView(ModeView):
             )
             if result is None:
                 return
+
             def on_align_done():
                 self.last_align_result = result
                 if self.align_card is not None:
@@ -1303,6 +1178,7 @@ class DenoiseView(ModeView):
 
             if compositor is None:
                 return
+
             def on_stack_done():
                 self.last_compositor = compositor
                 self._output_saved = False
@@ -1384,11 +1260,14 @@ class DenoiseView(ModeView):
             updater = ProgressBarUpdater(
                 getattr(self.shell, "progressBar", None),
                 getattr(self.shell, "label_progressBar", None),
-                total=2, desc="Compositing and saving final image...",
+                total=2,
+                desc="Compositing and saving final image...",
                 result_guard=self._result_guard(generation),
             )
             result = workflow.do_compose_horizon(
-                compositor, config=config, progress_bar=updater.tick,
+                compositor,
+                config=config,
+                progress_bar=updater.tick,
             )
             if result is None:
                 return
@@ -1428,7 +1307,9 @@ class DenoiseView(ModeView):
         if self.last_compositor is None:
             return
         output, _ = QFileDialog.getSaveFileName(
-            None, "Save Final Image", "final_denoise.tif",
+            None,
+            "Save Final Image",
+            "final_denoise.tif",
             filter="TIFF Image (*.tif *.tiff);;JPEG Image (*.jpg *.jpeg)",
         )
         if output:
@@ -1453,6 +1334,7 @@ class DenoiseView(ModeView):
                 result_guard=self._result_guard(generation),
             )
             out_path = self.app.workflow.do_pipeline(config=config_snapshot, progress_bar=progress_updater.tick)
+
             def on_pipeline_done():
                 if not out_path or not Path(out_path).is_file():
                     return
@@ -1487,6 +1369,7 @@ class DenoiseView(ModeView):
 
         self._enqueue_task("pipeline", "Full Pipeline", len(stars), "Processing denoise pipeline...", work)
 
+
 # Compatibility with the shared legacy app shell.
 DenoiseView.resetProjectView = DenoiseView.reset_project_view
 
@@ -1497,19 +1380,51 @@ DenoiseView.showFile = DenoiseView.show_file
 DenoiseView.updateReadyStates = DenoiseView.update_ready_states
 
 DenoiseView.starFiles = property(lambda self: self.star_files, lambda self, value: setattr(self, "star_files", value))
-DenoiseView.noiseFiles = property(lambda self: self.noise_files, lambda self, value: setattr(self, "noise_files", value))
-DenoiseView.outputFiles = property(lambda self: self.output_files, lambda self, value: setattr(self, "output_files", value))
-DenoiseView.skySettings = property(lambda self: self.sky_settings, lambda self, value: setattr(self, "sky_settings", value))
-DenoiseView.alignSettings = property(lambda self: self.align_settings, lambda self, value: setattr(self, "align_settings", value))
-DenoiseView.stackSettings = property(lambda self: self.stack_settings, lambda self, value: setattr(self, "stack_settings", value))
-DenoiseView.tuneSettings = property(lambda self: self.tune_settings, lambda self, value: setattr(self, "tune_settings", value))
+DenoiseView.noiseFiles = property(
+    lambda self: self.noise_files, lambda self, value: setattr(self, "noise_files", value)
+)
+DenoiseView.outputFiles = property(
+    lambda self: self.output_files, lambda self, value: setattr(self, "output_files", value)
+)
+DenoiseView.skySettings = property(
+    lambda self: self.sky_settings, lambda self, value: setattr(self, "sky_settings", value)
+)
+DenoiseView.alignSettings = property(
+    lambda self: self.align_settings, lambda self, value: setattr(self, "align_settings", value)
+)
+DenoiseView.stackSettings = property(
+    lambda self: self.stack_settings, lambda self, value: setattr(self, "stack_settings", value)
+)
+DenoiseView.tuneSettings = property(
+    lambda self: self.tune_settings, lambda self, value: setattr(self, "tune_settings", value)
+)
 DenoiseView.skyCard = property(lambda self: self.sky_card, lambda self, value: setattr(self, "sky_card", value))
 DenoiseView.alignCard = property(lambda self: self.align_card, lambda self, value: setattr(self, "align_card", value))
 DenoiseView.stackCard = property(lambda self: self.stack_card, lambda self, value: setattr(self, "stack_card", value))
 DenoiseView.tuneCard = property(lambda self: self.tune_card, lambda self, value: setattr(self, "tune_card", value))
-DenoiseView.pushButton_newProject = property(lambda self: self.new_project_button, lambda self, value: setattr(self, "new_project_button", value))
-DenoiseView.pushButton_openProject = property(lambda self: self.open_project_button, lambda self, value: setattr(self, "open_project_button", value))
-DenoiseView.exportSettings = property(lambda self: self.export_settings, lambda self, value: setattr(self, "export_settings", value))
-DenoiseView.exportCard = property(lambda self: self.export_card, lambda self, value: setattr(self, "export_card", value))
-DenoiseView.pushButton_contribute = property(lambda self: getattr(self.export_settings.ui, "contribute", None) if self.export_settings is not None and hasattr(self.export_settings, "ui") else None)
-DenoiseView.pushButton_exportTraining = property(lambda self: getattr(self.export_settings.ui, "training", None) if self.export_settings is not None and hasattr(self.export_settings, "ui") else None)
+DenoiseView.pushButton_newProject = property(
+    lambda self: self.new_project_button, lambda self, value: setattr(self, "new_project_button", value)
+)
+DenoiseView.pushButton_openProject = property(
+    lambda self: self.open_project_button, lambda self, value: setattr(self, "open_project_button", value)
+)
+DenoiseView.exportSettings = property(
+    lambda self: self.export_settings, lambda self, value: setattr(self, "export_settings", value)
+)
+DenoiseView.exportCard = property(
+    lambda self: self.export_card, lambda self, value: setattr(self, "export_card", value)
+)
+DenoiseView.pushButton_contribute = property(
+    lambda self: (
+        getattr(self.export_settings.ui, "contribute", None)
+        if self.export_settings is not None and hasattr(self.export_settings, "ui")
+        else None
+    )
+)
+DenoiseView.pushButton_exportTraining = property(
+    lambda self: (
+        getattr(self.export_settings.ui, "training", None)
+        if self.export_settings is not None and hasattr(self.export_settings, "ui")
+        else None
+    )
+)

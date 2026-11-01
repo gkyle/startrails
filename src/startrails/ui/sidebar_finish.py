@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from startrails.lib.finish.defaults import ROLE_SKY_MASK, ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS
 from startrails.lib.project_finish import FinishProject
 from startrails.ui.file_manager import FileSection
+from startrails.ui.sky_mask_settings import SkyMaskSettings
 from startrails.ui.steps import StepCard
 from startrails.ui.theme import system_theme
 
@@ -126,6 +127,9 @@ class SidebarFinish(QWidget):
         # -------------------------------------------------------------
         self.skyCard = StepCard(title="Define Sky Region", number=1, expanded=False, parent=self.content)
         self.skyCard.setSubtitle("Detect Sky and refine sky protection mask")
+        self.skySettings = SkyMaskSettings(parent=self.content, app=self.app)
+        self.skyCard.add_body(self.skySettings)
+        self.btn_detect_sky = self.skySettings.ui.detect
         self.contentLayout.addWidget(self.skyCard)
 
         self.separateCard = StepCard(title="Separate Stars", number=2, expanded=False, parent=self.content)
@@ -209,6 +213,9 @@ class SidebarFinish(QWidget):
         has_starless = project.current_artifact_path(ROLE_SEPARATED_STARLESS) is not None
         has_stars = project.current_artifact_path(ROLE_SEPARATED_STARS) is not None
 
+        if hasattr(self, "skySettings"):
+            self.skySettings.refresh_inputs(has_source=has_source)
+
         if not has_source:
             self.skyCard.setStatus("locked", "Prerequisite: Source image required")
             self.separateCard.setStatus("locked", "Prerequisite: Source image required")
@@ -218,7 +225,10 @@ class SidebarFinish(QWidget):
             self.btn_save_output.setEnabled(False)
             return
 
-        self.skyCard.setStatus("ready", "Sky mask defined" if has_mask else "Ready to define sky region")
+        if has_mask:
+            self.skyCard.setStatus("done", "Sky mask defined")
+        else:
+            self.skyCard.setStatus("ready", "Ready to define sky region")
 
         if not has_mask:
             self.separateCard.setStatus("locked", "Prerequisite: Sky region required")
