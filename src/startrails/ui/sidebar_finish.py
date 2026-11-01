@@ -21,6 +21,7 @@ from startrails.lib.project_finish import FinishProject
 from startrails.ui.file_manager import FileSection
 from startrails.ui.sky_mask_settings import SkyMaskSettings
 from startrails.ui.steps import StepCard
+from startrails.ui.steps_separate import SeparateStarsSettings
 from startrails.ui.theme import system_theme
 
 if TYPE_CHECKING:
@@ -134,6 +135,8 @@ class SidebarFinish(QWidget):
 
         self.separateCard = StepCard(title="Separate Stars", number=2, expanded=False, parent=self.content)
         self.separateCard.setSubtitle("Separate into starless and stars layers")
+        self.separateSettings = SeparateStarsSettings(parent=self.content)
+        self.separateCard.add_body(self.separateSettings)
         self.contentLayout.addWidget(self.separateCard)
 
         self.starlessCard = StepCard(title="Finish Starless", number=3, expanded=False, parent=self.content)
@@ -216,6 +219,18 @@ class SidebarFinish(QWidget):
         if hasattr(self, "skySettings"):
             self.skySettings.refresh_inputs(has_source=has_source)
 
+        starnet_status = {}
+        if (
+            hasattr(self, "app")
+            and self.app
+            and hasattr(self.app, "workflow")
+            and hasattr(self.app.workflow, "get_starnet_status")
+        ):
+            starnet_status = self.app.workflow.get_starnet_status()
+
+        if hasattr(self, "separateSettings"):
+            self.separateSettings.refresh_status(starnet_status, has_prerequisites=has_source and has_mask)
+
         if not has_source:
             self.skyCard.setStatus("locked", "Prerequisite: Source image required")
             self.separateCard.setStatus("locked", "Prerequisite: Source image required")
@@ -239,7 +254,10 @@ class SidebarFinish(QWidget):
             return
 
         if not (has_starless and has_stars):
-            self.separateCard.setStatus("ready", "Ready to separate stars")
+            if not starnet_status.get("configured", False):
+                self.separateCard.setStatus("ready", "StarNet2 setup required")
+            else:
+                self.separateCard.setStatus("ready", "Ready to separate stars")
             self.starlessCard.setStatus("locked", "Prerequisite: Separated starless required")
             self.starsCard.setStatus("locked", "Prerequisite: Separated stars required")
             self.recombineCard.setStatus("ready", "Ready to export source")

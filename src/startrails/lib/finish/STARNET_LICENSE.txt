@@ -1,0 +1,234 @@
+STARNET2 SOFTWARE LICENSE AGREEMENT
+-----------------------------------
+Revision: 2026-09-07
+
+Plain-language summary - for convenience only
+---------------------------------------------
+
+This summary highlights the main permissions and restrictions. It is not
+part of the license agreement and does not replace or modify its terms.
+Read the full agreement below, which governs your use of the Software.
+
+- Free for astrophotography: personal, educational, research and commercial
+  processing, including paid and hosted services, without supplying
+  customers with software/model copies. (Section 2)
+- Your images remain yours: edit, share full-resolution images, sell prints
+  and provide paid processing results. No credit is required. These uses
+  remain subject to others' rights and the restrictions below. (Section 3)
+- Integration is conditional: apps/scripts may run the supplied CLI as a
+  separate process; supplied plugins may use their intended host interfaces.
+  Downloads and updates must come directly from official sources linked on
+  our website. Providers must identify the product, present the full terms
+  and obtain affirmative acceptance before use. Direct use of weights or
+  bypassing the supplied interfaces is not permitted. (Sections 2 and 5)
+- Redistribution needs prior written permission: do not bundle, mirror,
+  resell or distribute software/model copies, or incorporate them into
+  another product, without approval. (Sections 2, 5 and 9)
+  This includes hosting or serving copies from other websites, mirrors,
+  redistribution caches, servers or distribution nodes.
+- No model training without prior written permission: do not use software,
+  weights/components or outputs for training, fine-tuning, distillation or
+  generating/supplying training material, even for noncommercial research.
+  Modified outputs are covered too. (Section 4)
+- No development/testing of other products: do not use or supply software,
+  components or outputs to develop, test, validate or improve other
+  software/model products, commercial or noncommercial. This includes
+  modified outputs, product assets, test fixtures and reference results.
+  The permitted integration activities remain excepted. (Section 5)
+- Reviews are allowed: lawful criticism, comparisons and published
+  evaluations remain subject to the training/development restrictions.
+  (Sections 3, 4 and 5)
+- No warranties: the Software is provided as-is. Keep backups and check
+  results. Liability limitations apply, subject to mandatory legal rights.
+  (Section 6)
+- Existing rights are preserved: third-party licenses, prior grants and
+  mandatory rights still apply. Output restrictions survive termination;
+  new terms do not retroactively replace earlier licenses. (Sections 7-9)
+
+Full license agreement
+----------------------
+
+Please read this license agreement carefully. By installing or using the
+Software, you agree to its terms. If you do not agree, do not install or use
+the Software. Mandatory rights and separately granted licenses are
+preserved as explained below.
+
+1. Parties and Scope
+   This agreement is between you and Mikita (Nikita) Misiura (the Licensor).
+
+   "Software" means the product named above, including its executables,
+   plugins, Licensor-provided code, neural-network weights and model files,
+   and accompanying documentation supplied under this agreement.
+
+   "Outputs" means images or other results produced by the Software,
+   including starless, denoised and extracted-star images.
+
+   This agreement covers use of the Software both directly and through
+   another application or service.
+
+   Official downloads: https://starnetastro.com/
+
+2. Permitted Use
+   The Licensor grants you a non-exclusive, non-transferable license,
+   without a license fee, to install, run and make reasonable backup copies
+   of the Software solely for astrophotography image processing, subject
+   to this agreement. Permitted uses include personal, educational,
+   research and commercial processing, including paid and hosted services,
+   provided you do not supply customers with copies of the Software or
+   its model files.
+
+   Other applications and scripts may automate permitted image processing
+   by running the supplied CLI executable as a separate process. Supplied
+   plugins may be used through their intended interfaces in supported host
+   applications.
+
+   Integrations may help users download, install and update the Software
+   directly from the official download sources linked on the Licensor's
+   website. These integration activities do not require separate written
+   permission, provided the conditions below are met.
+
+   Providers of integrations or hosted services must clearly identify the
+   Software by its product name as performing the relevant processing,
+   make the full applicable agreement available for review, and obtain
+   the user's affirmative acceptance before enabling use under those terms.
+   Acceptance of the same terms need not be repeated; revised terms require
+   renewed acceptance. The provider may rely on acceptance obtained through
+   the Software's own acceptance mechanism.
+
+   A provider's failure to identify the Software or present these terms
+   does not grant additional permissions or waive the Licensor's
+   restrictions. An integration that does not meet these conditions is
+   not authorized by this section.
+
+   Bundling or redistributing copies of the Software or its model files,
+   or incorporating them into another product rather than invoking a
+   separate installation, requires the Licensor's prior written permission
+   (see section 9).
+
+3. Your Images and Reviews
+   You retain your existing rights in your input images. The Licensor
+   claims no ownership of your images or Outputs merely because you use
+   the Software.
+
+   You may edit, publish, share and sell your own images and Outputs,
+   including full-resolution files, prints and paid processing results,
+   subject to rights held by others and sections 4 and 5.
+   You do not need to credit the Software on your images.
+
+   Lawful reviews, criticism, comparisons and publication of evaluation
+   results are permitted without the Licensor's approval, subject to
+   sections 4 and 5.
+
+4. No Model Training
+   Without the Licensor's prior written permission, you may not use the
+   Software, its weights or other components, or any Outputs to train,
+   fine-tune or distill any machine-learning model or other learned system.
+
+   This includes generating or supplying training data, labels, targets
+   or teacher predictions for that purpose, whether for yourself or others.
+   It also includes pairing images produced by the Software with their
+   original input images or other data for model training.
+
+   The restriction applies to commercial and noncommercial activity,
+   including academic and personal research, and is not limited to
+   competing products.
+
+   The restriction also applies to Outputs you alter, convert or combine,
+   including through brightness adjustments, cropping or other
+   post-processing. Permission to edit, publish or sell images does not
+   allow you to use or supply them for model training.
+
+   This is a condition of your use under this agreement, not a claim
+   that the Licensor owns your photographs or independently created inputs.
+
+5. Redistribution and Other Restrictions
+   Redistribution, resale, sublicensing, mirroring, bundling or providing
+   others with copies of the Software or its model files requires the
+   Licensor's prior written permission, even if unchanged or free of charge.
+   This includes hosting or serving copies through other websites, mirrors,
+   redistribution caches, servers or distribution nodes.
+   Direct others to the official download instead.
+
+   You may not use or supply the Software, its components or Outputs to
+   develop, test, validate or improve other software or machine-learning
+   products, whether commercial or noncommercial. This includes using or
+   supplying Outputs as product assets, test fixtures or reference results,
+   even after modification.
+
+   The integration activities permitted in section 2 do not, by themselves,
+   violate this prohibition.
+
+   This exception does not permit bundling, redistribution or incorporation
+   of the Software or its model files into another product as described
+   in section 2 without the Licensor's prior written permission.
+
+   You may not extract, load or use the Software's weights or model files
+   independently of the supplied executables or plugins, including in
+   another inference engine, without the Licensor's prior written
+   permission. Do not reverse-engineer or modify the Software to bypass
+   its supplied interfaces or these restrictions. This does not prevent
+   the supplied executables or plugins from loading their model files
+   during permitted use.
+
+   Do not remove proprietary or third-party notices, or modify, extract
+   or repackage the Software to circumvent these restrictions.
+
+   These restrictions do not limit permissions or mandatory exceptions
+   expressly preserved by section 8.
+
+6. Warranty and Liability
+   TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS
+   PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT EXPRESS OR IMPLIED
+   WARRANTIES, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR
+   PURPOSE AND NON-INFRINGEMENT.
+
+   Results may contain errors or artifacts. Retain backups and evaluate
+   whether results are suitable for your use.
+
+   TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSOR IS NOT
+   LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL OR CONSEQUENTIAL DAMAGES,
+   OR LOSS OF PROFITS, DATA OR BUSINESS ARISING FROM USE OF OR INABILITY
+   TO USE THE SOFTWARE. Nothing excludes or limits liability or consumer
+   rights that cannot lawfully be excluded or limited.
+
+7. Termination
+   This license continues unless terminated. You may terminate it by
+   ceasing use and deleting your Software copies.
+
+   The Licensor may terminate it for breach, subject to any notice or
+   opportunity to cure required by applicable law. After termination,
+   stop using and delete copies of the Software held under this agreement.
+
+   You are not required to delete your own input images or Outputs.
+
+   The restrictions in sections 4 and 5 on using or supplying Outputs
+   survive termination, subject to section 8.
+
+8. Other Licenses and Mandatory Rights
+   Third-party components and separately licensed material remain subject
+   to their own applicable licenses and notices. This agreement does not
+   override those terms or impose extra restrictions on rights they grant.
+
+   It does not revoke rights previously granted under another applicable
+   license, including Creative Commons licenses.
+
+   Nothing in this agreement restricts uses or rights that applicable law
+   does not allow the Licensor to restrict. If a provision is unenforceable,
+   the remaining provisions apply to the extent permitted by law.
+
+9. Revisions and Permissions
+   This revision applies to the Software copy supplied with it.
+   Publishing new terms does not retroactively replace licenses granted
+   for earlier copies. Updated copies may carry revised terms; review
+   the agreement supplied with them.
+
+   To request additional permissions, contact the Licensor through the
+   official website listed above. Permission must be obtained in writing
+   before the proposed use.
+
+   This agreement does not transfer ownership of the Software.
+
+Copyright (c) 2026 Mikita (Nikita) Misiura
+
+Third-party runtime licenses and notices are included with release
+packages where applicable.

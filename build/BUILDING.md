@@ -50,14 +50,35 @@ After preparing an environment and its bundled models, run the explicit Finish s
 smoke check before approving a platform release:
 
 ```sh
-.venv/bin/python src/setup/check_finish_models.py --starnet /path/to/trusted/starnet2 --image /path/to/sample.tif
+.venv/bin/python src/setup/check_finish_models.py --variant cpu --show-starnet-terms
+.venv/bin/python src/setup/check_finish_models.py --variant cpu --accept-starnet-terms \
+  --starnet /path/to/trusted/starnet2 --image /path/to/sample.tif
 ```
 
 Omit `--starnet` to test the bundled GraXpert model alone. `--image` is optional;
-without it the check uses a constant synthetic image. These checks execute during
-setup/platform validation, not during ordinary image processing. CPU ONNX Runtime
-is the current baseline; CUDA finishing remains gated on setup validation of a
-compatible GPU package lane.
+without it the check uses a textured RGB sample that exercises actual model inference.
+The application carries the [full StarNet agreement](../src/startrails/lib/finish/STARNET_LICENSE.txt) as a required text resource and
+records its revision/hash after affirmative acceptance. StarNet is downloaded directly
+from the pinned official source; its executable, models and libraries are not bundled.
+Managed setup validates actual CLI inference and retains the prior installation for
+rollback. Automated macOS StarNet installation remains disabled until its trust route
+has been validated; users can select an official installation after normal macOS setup.
+
+Select exactly one dependency extra through the normal setup scripts. `cpu`, `cu118`,
+`cu124` and `mps` install CPU `onnxruntime==1.31.1`; `cu133` installs
+`onnxruntime-gpu==1.31.1` for GraXpert CUDA, leaving existing stacking acceleration intact.
+Do not install both ORT distributions in the same environment. This follows the upstream
+[CUDA provider compatibility policy](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
+
+The existing setup/repair runtime check now runs the bundled GraXpert model. It verifies
+CUDA kernel execution from an ORT profile on `cu133`, explicitly reports a failed GPU
+check and verifies CPU fallback, then atomically records the resolved choice in
+`runtime/graxpert-runtime.json`. The explicit command above refreshes the same result;
+pass the installed variant instead of `cpu` when testing another lane. Runtime inference
+reads that result without device probes or silent provider reselection. Repair refreshes
+it after variant changes. A missing model is recorded as unavailable and leaves other
+modes usable; it never produces a verified provider result. Clean Windows/macOS and real CUDA execution remain release
+validation gates; a successful Linux CPU check does not establish those configurations.
 
 ## macOS
 

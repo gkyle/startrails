@@ -69,6 +69,18 @@ class PublishedModelArchiveTests(unittest.TestCase):
 
 
 class ModelArchiveTests(unittest.TestCase):
+    def test_source_bundle_includes_the_starnet_terms_resource(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            relative_path = Path("src/startrails/lib/finish/STARNET_LICENSE.txt")
+            source = root / relative_path
+            source.parent.mkdir(parents=True)
+            source.write_text("Full applicable terms", encoding="utf-8")
+            stage = root / "release"
+            with patch.object(release, "ROOT", root):
+                release.copy_source_tree(stage)
+            self.assertEqual((stage / relative_path).read_text(), "Full applicable terms")
+
     def test_graxpert_bundle_requires_verified_weights_and_all_notices(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)

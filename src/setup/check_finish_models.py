@@ -24,39 +24,96 @@ from startrails.lib.finish.graxpert import (
     graxpert_tile_postprocess,
     graxpert_tile_preprocess,
 )
+from startrails.lib.finish.graxpert_runtime import GRAXPERT_RUNTIME_POLICY_PATH
+from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.finish.starnet import build_starnet_cli_args, run_starnet_process
 from startrails.lib.image_io import imread, imwrite, normalize_image
 from startrails.lib.model_manifest import GRAXPERT_MANIFEST
 from startrails.lib.signatures import verify_file_integrity
-from startrails.lib.starnet_setup import probe_starnet_installation, validate_starnet_installation
+from startrails.lib.starnet_setup import (
+    probe_starnet_installation,
+    record_starnet_installation,
+    validate_starnet_installation,
+    STARNET_TERMS_TEXT,
+    starnet_terms_accepted,
+    create_starnet_smoke_image,
+    STARNET_SMOKE_SIZE_PIXELS,
+)
 from startrails.paths import APPLICATION_DIR
 
-SMOKE_IMAGE_SIZE = 512  # StarNet's minimum unscaled input dimension.
+SMOKE_IMAGE_SIZE = STARNET_SMOKE_SIZE_PIXELS
 CLI_DIFF_TOLERANCE_SAMPLES = 1
 
 
-def check_graxpert(model_path: Path, image: np.ndarray) -> dict:
+def check_graxpert(model_path: Path, image: np.ndarray, *, variant: str) -> dict:
+    """Setup owns selection; verify actual GPU kernels, explicitly report CPU fallback."""
     if not verify_file_integrity(model_path, GRAXPERT_MANIFEST.sha256, GRAXPERT_MANIFEST.size_bytes):
         raise ValueError(f"Missing or unverified GraXpert model: {model_path}")
     started = perf_counter()
-    # CPU is the initial release baseline on every app dependency variant.
-    # CUDA selection remains gated on separate setup validation of its package lane.
-    session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
     median, mad = compute_graxpert_stats(image)
     tile = image[:WINDOW_SIZE, :WINDOW_SIZE]
+    if tile.shape != (WINDOW_SIZE, WINDOW_SIZE, 3):
+        raise ValueError("GraXpert setup requires at least a 256-pixel RGB sample.")
     batch = graxpert_tile_preprocess(tile, median, mad)[None]
-    output = session.run([OUTPUT_TENSOR_NAME], {INPUT_TENSOR_NAME: batch})[0]
-    if output.shape != batch.shape or output.dtype != np.float32 or not np.isfinite(output).all():
-        raise ValueError("GraXpert produced an invalid denoise tensor")
-    restored = graxpert_tile_postprocess(output[0], tile, median, mad)
-    if not np.isfinite(restored).all() or np.any(restored < 0) or np.any(restored > 1):
-        raise ValueError("GraXpert postprocessing produced invalid pixels")
+
+    def run(provider):
+        with TemporaryDirectory(prefix="startrails-ort-profile-") as temporary:
+            options = ort.SessionOptions()
+            options.enable_profiling = provider == "CUDAExecutionProvider"
+            options.profile_file_prefix = str(Path(temporary) / "profile")
+            session = ort.InferenceSession(str(model_path), sess_options=options, providers=[provider])
+            session.disable_fallback()
+            if session.get_providers()[0] != provider:
+                raise RuntimeError(f"Requested {provider}, but ONNX Runtime fell back to CPU.")
+            output = session.run([OUTPUT_TENSOR_NAME], {INPUT_TENSOR_NAME: batch})[0]
+            if output.shape != batch.shape or output.dtype != np.float32 or not np.isfinite(output).all():
+                raise ValueError("GraXpert inference returned invalid model output.")
+            if options.enable_profiling:
+                profile = json.loads(Path(session.end_profiling()).read_text())
+                if not any(event.get("args", {}).get("provider") == provider for event in profile):
+                    raise RuntimeError("GraXpert inference did not execute any CUDA kernels.")
+            restored = graxpert_tile_postprocess(output[0], tile, median, mad)
+            if not np.isfinite(restored).all():
+                raise ValueError("GraXpert postprocessing returned non-finite output.")
+            return session.get_providers(), list(output.shape)
+
+    if variant == "cu133":
+        # Match the application's Torch import before initializing native CUDA libraries.
+        import torch  # noqa: F401
+
+    gpu_error = None
+    provider = "CUDAExecutionProvider" if variant == "cu133" else "CPUExecutionProvider"
+    try:
+        providers, shape = run(provider)
+    except Exception as error:
+        if provider == "CPUExecutionProvider":
+            raise
+        gpu_error = str(error)
+        provider = "CPUExecutionProvider"
+        providers, shape = run(provider)
+    policy = {
+        "provider": provider,
+        "device": "cuda" if provider == "CUDAExecutionProvider" else "cpu",
+        "variant": variant,
+        "ort_version": ort.__version__,
+        "model_sha256": GRAXPERT_MANIFEST.sha256,
+        "gpu_error": gpu_error,
+        "verified": True,
+    }
     return {
         "version": ort.__version__,
-        "providers": session.get_providers(),
-        "shape": list(output.shape),
+        "providers": providers,
+        "selected_policy": policy,
+        "shape": shape,
         "seconds": perf_counter() - started,
     }
+
+
+def persist_graxpert_policy(policy: dict, path: Path) -> None:
+    with ArtifactTransaction() as transaction:
+        staged = transaction.stage(path)
+        staged.write_text(json.dumps(policy, indent=2), encoding="utf-8")
+        transaction.commit()
 
 
 def check_starnet(location: Path, pixels: np.ndarray) -> tuple[np.ndarray, dict]:
@@ -97,9 +154,34 @@ def main():
     )
     parser.add_argument("--starnet", type=Path, help="Trusted installation directory or executable")
     parser.add_argument("--image", type=Path, help="Sample RGB image; check its central 512-pixel crop")
+    parser.add_argument(
+        "--persist-state",
+        type=Path,
+        nargs="?",
+        const=Path("app.json"),
+        help="Persist the verified StarNet installation and accepted terms into application state JSON",
+    )
+    parser.add_argument("--variant", choices=("cpu", "cu118", "cu124", "cu133", "mps"))
+    parser.add_argument("--runtime-policy", type=Path, default=GRAXPERT_RUNTIME_POLICY_PATH)
+    parser.add_argument("--show-starnet-terms", action="store_true", help="Print the full applicable agreement")
+    parser.add_argument(
+        "--accept-starnet-terms", action="store_true", help="Affirm acceptance of the displayed full agreement"
+    )
     args = parser.parse_args()
+    if args.show_starnet_terms:
+        print(STARNET_TERMS_TEXT)
+        return
+    if args.variant is None:
+        parser.error("--variant must match the installed setup variant")
+    state = {}
+    if args.persist_state is not None and args.persist_state.is_file():
+        state = json.loads(args.persist_state.read_text(encoding="utf-8"))
+        if not isinstance(state, dict):
+            raise ValueError("Application state must be a JSON object.")
+    if args.starnet is not None and not (args.accept_starnet_terms or starnet_terms_accepted(state)):
+        parser.error("Read --show-starnet-terms, then pass --accept-starnet-terms before testing StarNet.")
     if args.image is None:
-        pixels = np.full((SMOKE_IMAGE_SIZE, SMOKE_IMAGE_SIZE, 3), 32768, np.uint16)
+        pixels = create_starnet_smoke_image()
     else:
         original = imread(args.image, to_rgb=True)
         height, width = original.shape[:2]
@@ -110,10 +192,24 @@ def main():
         del original
     image = normalize_image(pixels)
     report = {}
+    starnet_inst = None
     if args.starnet is not None:
         image, report["starnet"] = check_starnet(args.starnet, pixels)
-    report["graxpert"] = check_graxpert(args.graxpert_model, image)
+        starnet_inst = validate_starnet_installation(args.starnet)
+    report["graxpert"] = check_graxpert(args.graxpert_model, image, variant=args.variant)
+    persist_graxpert_policy(report["graxpert"]["selected_policy"], args.runtime_policy)
     print(json.dumps(report, indent=2))
+
+    if args.persist_state is not None:
+        state_path = args.persist_state
+        if starnet_inst is not None:
+            record_starnet_installation(state, starnet_inst, managed=False, terms_accepted=True)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        with ArtifactTransaction() as transaction:
+            staged = transaction.stage(state_path)
+            staged.write_text(json.dumps(state, indent=4), encoding="utf-8")
+            transaction.commit()
+        print(f"Persisted setup state to {state_path}")
 
 
 if __name__ == "__main__":

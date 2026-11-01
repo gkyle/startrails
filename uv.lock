@@ -1070,6 +1070,22 @@ wheels = [
 ]
 
 [[package]]
+name = "onnxruntime-gpu"
+version = "1.31.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flatbuffers" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "protobuf" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/22/97/9531b4d9e566cf2a0f04b4b5c26a3bc0ef2e2e0b6bc943a02c0eead98cf7/onnxruntime_gpu-1.31.1-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:05d548956197b9d01f59b625de740e0d6be3593f874e241a12dc0362650ecdf7", size = 255569273, upload-time = "2026-10-26T19:10:23.625Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/dc/0e7674377dd204170a4e077c719ee735a2eea6b7f102aa66873af74cced4/onnxruntime_gpu-1.31.1-cp312-cp312-manylinux_2_34_aarch64.whl", hash = "sha256:a0f1725c5a6d1ef82d63498b5ebc25e2c90c9560e91dc76db9be4a49162d4d33", size = 212341829, upload-time = "2026-10-26T18:51:54.287Z" },
+    { url = "https://files.pythonhosted.org/packages/05/ec/fe99397c6d6582fe26502b608f132a1c7748381fa72523c8b7a0686b9b14/onnxruntime_gpu-1.31.1-cp312-cp312-win_amd64.whl", hash = "sha256:2bb1e9373baba88f6415257f5b6a589d23e23c16004f7d89adf4344eada5749e", size = 168098228, upload-time = "2026-10-26T18:50:20.408Z" },
+]
+
+[[package]]
 name = "opencv-python"
 version = "5.0.0.93"
 source = { registry = "https://pypi.org/simple" }
@@ -1493,7 +1509,6 @@ dependencies = [
     { name = "jsonpickle" },
     { name = "numpy" },
     { name = "nvidia-ml-py" },
-    { name = "onnxruntime" },
     { name = "opencv-python-headless" },
     { name = "openvino" },
     { name = "pi-heif" },
@@ -1522,6 +1537,7 @@ dependencies = [
 
 [package.optional-dependencies]
 cpu = [
+    { name = "onnxruntime" },
     { name = "torch", version = "2.14.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-10-startrails-cpu') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps')" },
     { name = "torch", version = "2.14.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-10-startrails-cpu') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps')" },
     { name = "torchvision", version = "0.29.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-10-startrails-cpu') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps')" },
@@ -1529,20 +1545,24 @@ cpu = [
 ]
 cu118 = [
     { name = "cupy-cuda11x" },
+    { name = "onnxruntime" },
     { name = "torch", version = "2.7.1+cu118", source = { registry = "https://download.pytorch.org/whl/cu118" } },
     { name = "torchvision", version = "0.22.1+cu118", source = { registry = "https://download.pytorch.org/whl/cu118" } },
 ]
 cu124 = [
     { name = "cupy-cuda12x" },
+    { name = "onnxruntime" },
     { name = "torch", version = "2.6.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" } },
     { name = "torchvision", version = "0.21.0+cu124", source = { registry = "https://download.pytorch.org/whl/cu124" } },
 ]
 cu133 = [
     { name = "cupy-cuda13x" },
+    { name = "onnxruntime-gpu" },
     { name = "torch", version = "2.14.1+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" } },
     { name = "torchvision", version = "0.29.1+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" } },
 ]
 mps = [
+    { name = "onnxruntime" },
     { name = "torch", version = "2.14.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps')" },
     { name = "torch", version = "2.14.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps')" },
     { name = "torchvision", version = "0.29.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu118') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cpu' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu124') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu118' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-cu133') or (extra == 'extra-10-startrails-cu124' and extra == 'extra-10-startrails-mps') or (extra == 'extra-10-startrails-cu133' and extra == 'extra-10-startrails-mps')" },
@@ -1559,7 +1579,11 @@ requires-dist = [
     { name = "jsonpickle", specifier = ">=4.1.3" },
     { name = "numpy", specifier = ">=2.5.4" },
     { name = "nvidia-ml-py", specifier = ">=13.615.71" },
-    { name = "onnxruntime", specifier = "==1.31.1" },
+    { name = "onnxruntime", marker = "extra == 'cpu'", specifier = "==1.31.1" },
+    { name = "onnxruntime", marker = "extra == 'cu118'", specifier = "==1.31.1" },
+    { name = "onnxruntime", marker = "extra == 'cu124'", specifier = "==1.31.1" },
+    { name = "onnxruntime", marker = "extra == 'mps'", specifier = "==1.31.1" },
+    { name = "onnxruntime-gpu", marker = "extra == 'cu133'", specifier = "==1.31.1" },
     { name = "opencv-python-headless", specifier = ">=5.0.0" },
     { name = "openvino", specifier = ">=2026.4.1" },
     { name = "pi-heif", specifier = ">=1.4.0" },

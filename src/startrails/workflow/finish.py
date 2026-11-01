@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Union
+from contextlib import nullcontext
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -18,8 +19,30 @@ from startrails.lib.finish.defaults import (
     ROLE_SEPARATED_STARS,
     ROLE_SKY_MASK,
 )
+from startrails.lib.finish.starnet import DEFAULT_STRIDE as STARNET_DEFAULT_STRIDE
+from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
 from startrails.lib.image_io import imread, imwrite
+from startrails.lib.model_manifest import GRAXPERT_MANIFEST, PlatformNotSupportedError
 from startrails.lib.project_finish import FinishProject
+from startrails.lib.signatures import verify_file_integrity
+from startrails.lib.starnet_setup import (
+    STARNET_TERMS_REVISION,
+    STARNET_TERMS_SHA256,
+    starnet_terms_accepted,
+    starnet_installation_lock,
+    get_starnet_storage_dir,
+    StarNetSetupError,
+    detect_platform_target,
+    managed_starnet_setup_notice,
+    StarNetInstallation,
+    get_active_starnet_installation,
+    install_starnet_managed,
+    record_starnet_installation,
+    repair_starnet_installation,
+)
+from startrails.op.finish.graxpert_denoise import GraXpertDenoise
+from startrails.op.finish.run_starnet import RunStarNet
+from startrails.paths import APPLICATION_DIR
 from startrails.workflow.base import Workflow
 from startrails.workflow.masking import SkyMaskingWorkflowMixin
 
@@ -171,6 +194,173 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self.project.record_export(written)
         self.save_project()
         return written
+
+    # -------------------------------------------------------------------------
+    # Dependency Lifecycle & Operational Adapters (StarNet & GraXpert)
+    # -------------------------------------------------------------------------
+
+    def get_starnet_status(self) -> dict:
+        """Return the current installation, configuration, and terms status for StarNet."""
+        state = self.app.state
+        record = state.get("starnet", {})
+        if not isinstance(record, dict):
+            record = {}
+        terms_accepted = starnet_terms_accepted(state)
+        installation = get_active_starnet_installation(state)
+
+        try:
+            setup_notice = managed_starnet_setup_notice(detect_platform_target())
+        except PlatformNotSupportedError as error:
+            setup_notice = str(error)
+        return {
+            "setup_notice": setup_notice,
+            "configured": installation is not None and terms_accepted,
+            "installation": installation,
+            "managed": record.get("managed", False),
+            "executable": str(installation.executable) if installation else record.get("executable"),
+            "version": installation.package.version if installation else record.get("version"),
+            "build": installation.package.build if installation else record.get("build"),
+            "backend_id": installation.package.backend_id if installation else record.get("backend_id"),
+            "terms_accepted": terms_accepted,
+            "terms_revision": record.get("terms_revision"),
+        }
+
+    def get_graxpert_status(self) -> dict:
+        """Return the current runtime execution policy and model file readiness for GraXpert."""
+        try:
+            policy = resolve_graxpert_runtime_policy()
+            setup_error = None
+        except (RuntimeError, ValueError, OSError) as error:
+            policy = None
+            setup_error = str(error)
+        model_path = APPLICATION_DIR / "models" / GRAXPERT_MANIFEST.relative_path
+        model_ready = verify_file_integrity(model_path, GRAXPERT_MANIFEST.sha256, GRAXPERT_MANIFEST.size_bytes)
+        return {
+            "policy": policy,
+            "setup_error": setup_error,
+            "model_ready": model_ready,
+            "model_path": str(model_path),
+        }
+
+    def accept_starnet_terms(self) -> None:
+        """Record affirmative terms acceptance in application state."""
+        record = self.app.state.setdefault("starnet", {})
+        record["terms_accepted"] = True
+        record["terms_revision"] = STARNET_TERMS_REVISION
+        record["terms_sha256"] = STARNET_TERMS_SHA256
+        self.app.saveAppState()
+
+    def set_starnet_installation(
+        self,
+        installation: StarNetInstallation,
+        *,
+        managed: bool,
+        terms_accepted: bool,
+    ) -> None:
+        """Persist verified StarNet installation in application state."""
+        record_starnet_installation(
+            self.app.state,
+            installation,
+            managed=managed,
+            terms_accepted=terms_accepted,
+        )
+        self.app.saveAppState()
+
+    def do_install_starnet_managed(
+        self,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+        cancel_check: Optional[Callable[[], bool]] = None,
+    ) -> StarNetInstallation:
+        """Download, validate, probe, and atomically install managed StarNet."""
+        if not starnet_terms_accepted(self.app.state):
+            raise StarNetSetupError("Accept the current StarNet terms before installation.")
+        installation = install_starnet_managed(
+            progress_callback=progress_callback,
+            cancel_check=cancel_check,
+        )
+        self.set_starnet_installation(installation, managed=True, terms_accepted=True)
+        return installation
+
+    def do_repair_starnet(
+        self,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+        cancel_check: Optional[Callable[[], bool]] = None,
+    ) -> StarNetInstallation:
+        """Repair or re-probe the active StarNet installation."""
+        state = dict(self.app.state)
+        installation = repair_starnet_installation(
+            state,
+            progress_callback=progress_callback,
+            cancel_check=cancel_check,
+        )
+        return installation
+
+    def do_run_starnet(
+        self,
+        input_image_path: Union[str, Path],
+        output_starless_path: Union[str, Path],
+        *,
+        output_stars_path: Optional[Union[str, Path]] = None,
+        stride: int = STARNET_DEFAULT_STRIDE,
+        disable_highlights: bool = False,
+        upsample: bool = False,
+    ) -> Optional[Tuple[Path, Optional[Path]]]:
+        """Execute StarNet subprocess using the active verified installation."""
+        managed = self.app.state.get("starnet", {}).get("managed", False)
+        lock = starnet_installation_lock(get_starnet_storage_dir()) if managed else nullcontext()
+        with lock:
+            status = self.get_starnet_status()
+            if not status["configured"]:
+                raise RuntimeError("StarNet is not configured or terms have not been accepted.")
+            op = self._new_operation(RunStarNet)
+            self.app.activeOperation = op
+            try:
+                return op.run(
+                    status["executable"],
+                    input_image_path,
+                    output_starless_path,
+                    output_stars_path=output_stars_path,
+                    stride=stride,
+                    disable_highlights=disable_highlights,
+                    upsample=upsample,
+                )
+            finally:
+                if self.app.activeOperation is op:
+                    self.app.activeOperation = self._session_operation
+
+    def do_denoise_starless(
+        self,
+        image: np.ndarray,
+        *,
+        strength: float = 1.0,
+        sky_mask: Optional[np.ndarray] = None,
+        sky_only: bool = True,
+        output_path: Optional[Union[str, Path]] = None,
+        bit_depth: int = 16,
+    ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
+        """Execute GraXpert AI denoising on starless plate using the resolved runtime policy."""
+        op = self._new_operation(GraXpertDenoise)
+        self.app.activeOperation = op
+        try:
+            if op.shouldInterrupt():
+                return None
+            session = None
+            if strength > 0:
+                policy = resolve_graxpert_runtime_policy()
+                session = GraXpertSession(provider=policy["provider"])
+            return op.denoise(
+                image,
+                strength=strength,
+                sky_mask=sky_mask,
+                sky_only=sky_only,
+                session=session,
+                output_path=output_path,
+                bit_depth=bit_depth,
+                settings=self.project.get_settings(),
+            )
+        finally:
+            if self.app.activeOperation is op:
+                self.app.activeOperation = self._session_operation
 
 
 __all__ = ["FinishWorkflow"]

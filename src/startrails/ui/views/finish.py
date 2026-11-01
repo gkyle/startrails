@@ -7,13 +7,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from PySide6.QtCore import QSignalBlocker, QTimer
-from PySide6.QtWidgets import QFileDialog, QMessageBox, QWidget
+from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox, QWidget
 
 from startrails.lib.denoise.defaults import DEFAULT_SKY_DETECTION_DEVICE
 from startrails.lib.file import File
 from startrails.lib.project_finish import FinishProject
 from startrails.ui.sidebar_finish import SidebarFinish
 from startrails.ui.sky_mask_controller import SkyMaskController
+from startrails.ui.starnet_dialog import StarNetSetupDialog, StarNetTermsDialog, choose_existing_starnet
 from startrails.ui.views.base import ModeView
 
 if TYPE_CHECKING:
@@ -84,6 +85,12 @@ class FinishView(ModeView):
                 get_device=lambda: DEFAULT_SKY_DETECTION_DEVICE,
             )
             self.mask_controller.bind()
+
+        if hasattr(self.sidebar, "separateSettings"):
+            self.connect_signal(self.sidebar.separateSettings.setup_requested, self.on_setup_starnet)
+            self.connect_signal(self.sidebar.separateSettings.browse_requested, self.on_browse_starnet)
+            self.connect_signal(self.sidebar.separateSettings.repair_requested, self.on_repair_starnet)
+            self.connect_signal(self.sidebar.separateSettings.change_requested, self.on_browse_starnet)
 
     def teardown(self) -> None:
         """Disconnect signals and clean up canvas and mask controller state."""
@@ -265,6 +272,52 @@ class FinishView(ModeView):
                 QMessageBox.information(self.sidebar, "Image Saved", f"Successfully saved:\n{out}")
             except Exception as e:
                 QMessageBox.critical(self.sidebar, "Export Error", f"Failed to save image:\n{e}")
+
+    def on_setup_starnet(self) -> None:
+        """Handle user request to download and set up managed StarNet."""
+        status = self.app.workflow.get_starnet_status()
+        if not status.get("terms_accepted", False):
+            terms_dlg = StarNetTermsDialog(self.sidebar)
+            if terms_dlg.exec() != QDialog.DialogCode.Accepted:
+                return
+            self.app.workflow.accept_starnet_terms()
+
+        setup_dlg = StarNetSetupDialog(self.sidebar)
+        setup_dlg.start()
+        if setup_dlg.exec() == QDialog.DialogCode.Accepted and setup_dlg.installation:
+            self.app.workflow.set_starnet_installation(setup_dlg.installation, managed=True, terms_accepted=True)
+            self.updateReadyStates()
+            QMessageBox.information(
+                self.sidebar,
+                "StarNet2 Setup Complete",
+                "StarNet2 was successfully installed, verified, and is ready for star separation.",
+            )
+
+    def on_browse_starnet(self) -> None:
+        """Handle user request to discover and validate an existing StarNet installation."""
+        choose_existing_starnet(
+            self.sidebar,
+            self.app.state,
+            on_installed=lambda inst: self.app.workflow.set_starnet_installation(
+                inst, managed=False, terms_accepted=True
+            ),
+        )
+        self.updateReadyStates()
+
+    def on_repair_starnet(self) -> None:
+        """Handle user request to repair or re-probe the active StarNet installation."""
+        status = self.app.workflow.get_starnet_status()
+        if not status["terms_accepted"]:
+            terms = StarNetTermsDialog(self.sidebar)
+            if terms.exec() != QDialog.DialogCode.Accepted:
+                return
+            self.app.workflow.accept_starnet_terms()
+        workflow = self.app.workflow
+        setup = StarNetSetupDialog(self.sidebar, operation=workflow.do_repair_starnet)
+        setup.start()
+        if setup.exec() == QDialog.DialogCode.Accepted and setup.installation is not None:
+            workflow.set_starnet_installation(setup.installation, managed=status["managed"], terms_accepted=True)
+        self.updateReadyStates()
 
 
 __all__ = ["FinishView"]
