@@ -21,6 +21,7 @@ from startrails.lib.finish.defaults import (
     DEFAULT_STAR_GLOW_RADIUS_PX,
     FINISH_EXT,
     ROLE_FINISHED_COMPOSITE,
+    ROLE_FINISHED_STARLESS,
     ROLE_FINISHED_STARS,
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
@@ -720,6 +721,53 @@ class TestFinishViewStarsInteraction(QtTestCase):
             QApplication.processEvents()
 
         self.assertEqual(shown_files, [])
+
+    def _check_interleaved_finishing_changes(self, first_layer):
+        queued = []
+
+        def enqueue(task_id, title, total, desc, work):
+            queued.append(work)
+            return True
+
+        def dispatch(layer):
+            timer = self.view._denoise_timer if layer == "starless" else self.view._stars_timer
+            timer.stop()
+            timer.timeout.emit()
+
+        def edit(layer):
+            if layer == "starless":
+                self.view.on_structure_amount_changed(40.0)
+            else:
+                self.view.on_round_stars_enabled_changed(True)
+
+        self.project.update_settings(replace(self.project.get_settings(), denoise_strength=0.0))
+        second_layer = "stars" if first_layer == "starless" else "starless"
+        with patch.object(self.shell, "enqueue_task", side_effect=enqueue):
+            edit(first_layer)
+            dispatch(first_layer)
+            edit(second_layer)
+            dispatch(second_layer)
+            queued.pop(0)()  # Rejected because the other card changed the revision.
+            QApplication.processEvents()
+            retry_timer = self.view._denoise_timer if first_layer == "starless" else self.view._stars_timer
+            self.assertTrue(retry_timer.isActive())
+            queued.pop(0)()
+            QApplication.processEvents()
+            dispatch(first_layer)
+            queued.pop(0)()
+            QApplication.processEvents()
+
+        self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
+        self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_STARS))
+        self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
+        self.assertEqual(self.project.artifact_manifest[ROLE_FINISHED_STARLESS]["options"]["structure_amount"], 40.0)
+        self.assertTrue(self.project.artifact_manifest[ROLE_FINISHED_STARS]["options"]["round_stars_enabled"])
+
+    def test_starless_edit_survives_a_subsequent_star_effect_edit(self):
+        self._check_interleaved_finishing_changes("starless")
+
+    def test_star_effect_edit_survives_a_subsequent_starless_edit(self):
+        self._check_interleaved_finishing_changes("stars")
 
     def test_reset_action_reverts_settings_and_updates_sidebar(self):
         """Reset reverts all star settings in project and updates sidebar widget."""

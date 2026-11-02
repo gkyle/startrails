@@ -190,11 +190,28 @@ class FinishView(ModeView):
     def _enqueue_task(self, task_id: str, title: str, total: int, desc: str, work: Callable) -> bool:
         workflow = self.app.workflow
         guard = self._result_guard()
+        project = self._project
+        generation = self._generation
+        revision = project.processing_revision
+        retry_preview = {
+            "finish_denoise_preview": self._debounce_denoise_preview,
+            "finish_stars_preview": self._debounce_stars_preview,
+        }.get(task_id)
+
+        def retry_if_stale():
+            if (
+                not self._disposed
+                and generation == self._generation
+                and project is self.app.project
+                and revision != project.processing_revision
+                and project.source_is_current()
+            ):
+                retry_preview()
 
         def run():
-            if not guard():
-                return
             try:
+                if not guard():
+                    return
                 with workflow.operation_session():
                     work()
             except CancelledError:
@@ -202,6 +219,12 @@ class FinishView(ModeView):
             except Exception as error:
                 message = str(error)
                 self._post_result(guard, lambda: self._show_task_error(task_id, f"Failed: {message}"))
+            finally:
+                # Either finishing card can stale the other card's queued or
+                # running preview. Retain that pending edit as well as the edit
+                # that caused the revision change; retries remain coalesced.
+                if retry_preview is not None:
+                    QTimer.singleShot(0, self.shell, retry_if_stale)
 
         return self.shell.enqueue_task(task_id, title, total, desc, run)
 
