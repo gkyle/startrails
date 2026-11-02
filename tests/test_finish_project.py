@@ -1,6 +1,7 @@
 """Unit tests for Finish project persistence, source I/O, export policy, and mode routing."""
 
 from pathlib import Path
+from dataclasses import replace
 import os
 import shutil
 import cv2
@@ -11,11 +12,16 @@ from PySide6.QtCore import QObject
 from support import QtTestCase
 from startrails.lib.finish.defaults import (
     BLEND_SCREEN,
+    ROLE_DENOISED_STARLESS,
     FINISH_EXT,
     ROLE_FINISHED_COMPOSITE,
+    ROLE_FINISHED_STARLESS,
+    ROLE_FINISHED_STARS,
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
     ROLE_SKY_MASK,
+    ROLE_SOURCE_SNAPSHOT,
+    ROLE_UNMASKED_STARLESS,
 )
 from startrails.lib.image_io import imwrite
 from startrails.lib.project import Project
@@ -53,6 +59,61 @@ class TestFinishProject(QtTestCase):
         imwrite(target, arr, bit_depth=bit_depth)
         return target
 
+    def register_composite_fixture(self, project: FinishProject, *, bit_depth: int, value: int) -> Path:
+        """Publish a composite whose pixels cannot be mistaken for the source image."""
+        target = project.artifact_path(ROLE_FINISHED_COMPOSITE, for_write=True)
+        dtype = np.uint8 if bit_depth == 8 else np.uint16
+        shape = (*project.get_source_dimensions(), 3)
+        pixels = np.full(shape, value / np.iinfo(dtype).max, dtype=np.float32)
+        imwrite(target, pixels, bit_depth=16)
+        project.record_artifact(ROLE_FINISHED_COMPOSITE, target)
+        return target
+
+    def assert_no_composite_export_rejected(self, workflow: FinishWorkflow, output_path: Path) -> None:
+        with self.assertRaisesRegex(ValueError, "No current composite"):
+            workflow.do_export_composite(output_path)
+        self.assertFalse(output_path.exists())
+
+    def test_exports_protect_internal_images_and_avoid_default_name_collisions(self):
+        source = self.create_synthetic_image("export_source.tif", bit_depth=8)
+        roles = (
+            ROLE_SOURCE_SNAPSHOT,
+            ROLE_UNMASKED_STARLESS,
+            ROLE_SEPARATED_STARLESS,
+            ROLE_SEPARATED_STARS,
+            ROLE_FINISHED_COMPOSITE,
+        )
+        for role in roles:
+            with self.subTest(role=role):
+                project = FinishProject(project_file=str(self.root / f"{role}{FINISH_EXT}"))
+                # Use the actual reserved filename as the project stem.
+                stem = project.artifact_path(role).stem
+                project.project_file = str(self.root / f"{stem}{FINISH_EXT}")
+                app = self.make_app(project)
+                workflow = FinishWorkflow(app)
+                project.set_source_image(source)
+                reserved = project.artifact_path(role, for_write=True)
+                self.assertNotEqual(project.get_default_export_path(), reserved)
+                reserved.parent.mkdir(parents=True, exist_ok=True)
+                imwrite(reserved, np.full((64, 64, 3), 12345, dtype=np.uint16), bit_depth=16)
+                project.record_artifact(role, reserved)
+                self.register_composite_fixture(project, bit_depth=8, value=100)
+                original_bytes = reserved.read_bytes()
+                with self.assertRaisesRegex(ValueError, "must not overwrite"):
+                    workflow.do_export_composite(reserved)
+                exported = workflow.do_export_composite()
+                self.assertEqual(cv2.imread(str(exported), cv2.IMREAD_UNCHANGED).dtype, np.uint8)
+                self.assertEqual(reserved.read_bytes(), original_bytes)
+                self.assertEqual(project.current_artifact_path(role), reserved)
+
+        # Referenced artifacts outside the owned directory are protected too.
+        external = self.create_synthetic_image("external_starless.tif", bit_depth=16)
+        project.record_artifact(ROLE_SEPARATED_STARLESS, external)
+        with self.assertRaisesRegex(ValueError, "must not overwrite"):
+            workflow.do_export_composite(external)
+        with self.assertRaisesRegex(ValueError, "must not overwrite"):
+            workflow.do_export_composite(source)
+
     def test_finish_project_defaults_and_zero_settings_survival(self):
         proj_file = self.root / f"test{FINISH_EXT}"
         project = FinishProject(project_file=str(proj_file))
@@ -68,6 +129,7 @@ class TestFinishProject(QtTestCase):
         project.star_glow_amount = 40.0
         project.blend_mode = BLEND_SCREEN
         project.jpeg_quality = 90
+        project.starnet_stride = 128
 
         # Serialize and reload
         encoded = jsonpickle.encode(project)
@@ -85,6 +147,7 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(reloaded.star_glow_amount, 40.0)
         self.assertEqual(reloaded.blend_mode, BLEND_SCREEN)
         self.assertEqual(reloaded.jpeg_quality, 90)
+        self.assertEqual(reloaded.starnet_stride, 128)
 
     def test_operation_snapshot_isolates_mutable_artifact_state(self):
         project = FinishProject(project_file=str(self.root / f"snapshot{FINISH_EXT}"))
@@ -99,6 +162,80 @@ class TestFinishProject(QtTestCase):
         snapshot.invalidate_results()
         self.assertEqual(project.current_artifact_path(ROLE_FINISHED_COMPOSITE), composite)
         self.assertEqual(project.get_settings(), snapshot.get_settings())
+
+    def test_publish_separation_rejects_stale_revision(self):
+        project = FinishProject(project_file=str(self.root / f"publish{FINISH_EXT}"))
+        source = self.create_synthetic_image("publish_source.tif")
+        project.set_source_image(source)
+        starless = self.create_synthetic_image("publish.finish/starless.tif", bit_depth=16)
+        stars = self.create_synthetic_image("publish.finish/stars.tif", bit_depth=16)
+        revision = project.processing_revision
+        self.assertTrue(
+            project.publish_separation(
+                starless,
+                stars,
+                signature="signature-a",
+                model_identity="model-a",
+                expected_revision=revision,
+            )
+        )
+        self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
+
+        # An unrelated invalidation advances the revision but keeps the separation current.
+        project.invalidate_artifact_roles({ROLE_FINISHED_STARS})
+        self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
+
+        self.assertFalse(
+            project.publish_separation(
+                starless,
+                stars,
+                signature="signature-b",
+                model_identity="model-b",
+                expected_revision=revision,
+            )
+        )
+        self.assertEqual(project.separation_signature, "signature-a")
+        self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
+
+    def test_export_and_blend_settings_invalidate_only_their_dependents(self):
+        project = FinishProject(project_file=str(self.root / f"settings{FINISH_EXT}"))
+        source = self.create_synthetic_image("settings_source.tif")
+        project.set_source_image(source)
+        starless = self.create_synthetic_image("settings.finish/starless.tif", bit_depth=16)
+        stars = self.create_synthetic_image("settings.finish/stars.tif", bit_depth=16)
+        composite = self.create_synthetic_image("settings.finish/composite.tif", bit_depth=16)
+        denoised = self.create_synthetic_image("settings.finish/denoised.tif", bit_depth=16)
+        finished_starless = self.create_synthetic_image("settings.finish/finished_starless.tif", bit_depth=16)
+        finished_stars = self.create_synthetic_image("settings.finish/finished_stars.tif", bit_depth=16)
+        export = self.create_synthetic_image("settings.finish/export.tif", bit_depth=16)
+        project.record_artifact(ROLE_SEPARATED_STARLESS, starless)
+        project.record_artifact(ROLE_SEPARATED_STARS, stars)
+        project.record_artifact(ROLE_DENOISED_STARLESS, denoised)
+        project.record_artifact(ROLE_FINISHED_STARLESS, finished_starless)
+        project.record_artifact(ROLE_FINISHED_STARS, finished_stars)
+        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
+        project.record_export(export)
+
+        project.update_settings(replace(project.get_settings(), jpeg_quality=90))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_STARS))
+        self.assertIsNone(project.current_export_path())
+
+        project.record_export(export)
+        project.update_settings(replace(project.get_settings(), blend_mode=BLEND_SCREEN))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
+        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
+        self.assertIsNone(project.current_export_path())
+
+        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
+        project.update_settings(replace(project.get_settings(), structure_amount=10.0))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_DENOISED_STARLESS))
+        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_STARS))
+        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
 
     def test_ensure_default_project(self):
         default_file = self.root / "projects" / f"default{FINISH_EXT}"
@@ -147,8 +284,12 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(moved.source_snapshot_path, moved.source_file.path)
         self.assertTrue(moved.source_is_current())
         self.assertEqual(moved.current_artifact_path(ROLE_SKY_MASK), new_dir / "shoot.finish/sky_mask.png")
+        self.assert_no_composite_export_rejected(app.workflow, new_dir / "shoot.finish/rejected.tif")
+        self.register_composite_fixture(moved, bit_depth=16, value=23456)
         output = app.workflow.do_export_composite()
-        self.assertEqual(cv2.imread(str(output), cv2.IMREAD_UNCHANGED).dtype, np.uint16)
+        decoded = cv2.imread(str(output), cv2.IMREAD_UNCHANGED)
+        self.assertEqual(decoded.dtype, np.uint16)
+        np.testing.assert_array_equal(decoded, 23456)
 
     def test_save_as_preserves_existing_read_only_inputs(self):
         project = FinishProject(project_file=str(self.root / f"old{FINISH_EXT}"))
@@ -191,11 +332,15 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(project.source_bit_depth, 8)
         self.assertTrue(project.get_default_export_path().name.endswith(".jpg"))
 
+        self.assert_no_composite_export_rejected(workflow, self.root / "rejected.jpg")
+        self.register_composite_fixture(project, bit_depth=8, value=17)
+
         exported_jpg = workflow.do_export_composite()
         self.assertTrue(exported_jpg.is_file())
         self.assertTrue(exported_jpg.name.endswith(".jpg"))
         decoded_jpg = cv2.imread(str(exported_jpg), cv2.IMREAD_UNCHANGED)
         self.assertEqual(decoded_jpg.dtype, np.uint8)
+        np.testing.assert_allclose(decoded_jpg, 17, atol=1)
 
         with self.assertRaisesRegex(ValueError, "format must match"):
             workflow.do_export_composite(self.root / "wrong.tif")
@@ -209,10 +354,14 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(project.source_bit_depth, 8)
         self.assertTrue(project.get_default_export_path().name.endswith(".tif"))
 
+        self.assert_no_composite_export_rejected(workflow, self.root / "rejected_tif8.tif")
+        self.register_composite_fixture(project, bit_depth=8, value=34)
+
         exported_tif8 = workflow.do_export_composite()
         self.assertTrue(exported_tif8.is_file())
         decoded_tif8 = cv2.imread(str(exported_tif8), cv2.IMREAD_UNCHANGED)
         self.assertEqual(decoded_tif8.dtype, np.uint8)
+        np.testing.assert_array_equal(decoded_tif8, 34)
 
         with self.assertRaisesRegex(ValueError, "format must match"):
             workflow.do_export_composite(self.root / "wrong.jpg")
@@ -223,10 +372,14 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(project.source_bit_depth, 16)
         self.assertTrue(project.get_default_export_path().name.endswith(".tif"))
 
+        self.assert_no_composite_export_rejected(workflow, self.root / "rejected_tif16.tif")
+        self.register_composite_fixture(project, bit_depth=16, value=12345)
+
         exported_tif16 = workflow.do_export_composite()
         self.assertTrue(exported_tif16.is_file())
         decoded_tif16 = cv2.imread(str(exported_tif16), cv2.IMREAD_UNCHANGED)
         self.assertEqual(decoded_tif16.dtype, np.uint16)
+        np.testing.assert_array_equal(decoded_tif16, 12345)
 
         # 4. Incompatible depth: 16-bit JPEG export must be rejected
         with self.assertRaises(ValueError):
@@ -310,8 +463,8 @@ class TestFinishProject(QtTestCase):
         view.resetProjectView()
 
         # Initial state: no source image loaded
-        self.assertTrue(sidebar.btn_replace_source.isHidden())
-        self.assertFalse(sidebar.btn_import_source.isHidden())
+        self.assertEqual(sidebar.inputFiles.model.files, [])
+        self.assertEqual(sidebar.outputFiles.model.files, [])
         self.assertEqual(sidebar.skyCard._status, "locked")
         self.assertEqual(sidebar.separateCard._status, "locked")
         self.assertEqual(sidebar.starlessCard._status, "locked")
@@ -329,15 +482,16 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(shell.canvas_main.pixmap.width(), 100)
         self.assertEqual(shell.canvas_main.pixmap.height(), 80)
 
-        self.assertIn("100 × 80 px", sidebar.lbl_source_meta.text())
+        inputs = sidebar.inputFiles.model.files
+        self.assertEqual(len(inputs), 1)
+        self.assertEqual(Path(inputs[0].path), Path(img_path).resolve())
+        self.assertEqual(sidebar.outputFiles.model.files, [])
         self.assertNotIn("source_dimensions", project.__getstate__())
         self.assertNotIn("source_format", project.__getstate__())
 
         # Step 1 is ready, Step 2 remains locked until mask is defined
         self.assertEqual(sidebar.skyCard._status, "ready")
         self.assertEqual(sidebar.separateCard._status, "locked")
-        self.assertFalse(sidebar.btn_replace_source.isHidden())
-        self.assertTrue(sidebar.btn_import_source.isHidden())
 
         # Simulate sky mask defined
         mask_path = project.get_output_dir() / "sky_mask.png"
@@ -362,6 +516,18 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(sidebar.starlessCard._status, "ready")
         self.assertEqual(sidebar.starsCard._status, "ready")
         self.assertEqual(sidebar.recombineCard._status, "ready")
+        self.assertEqual({f.operation for f in sidebar.outputFiles.model.files}, {"Starless", "Stars"})
+        self.assertFalse(sidebar.btn_save_output.isEnabled())
+
+        composite_path = project.artifact_path(ROLE_FINISHED_COMPOSITE)
+        imwrite(composite_path, np.zeros((80, 100, 3), dtype=np.uint16), bit_depth=16)
+        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite_path)
+        view.updateReadyStates()
+        self.assertEqual(
+            {f.operation for f in sidebar.outputFiles.model.files},
+            {"Starless", "Stars", "Composite"},
+        )
+        self.assertTrue(sidebar.btn_save_output.isEnabled())
 
         # Output files list in sidebar shows published artifacts
         outputs = app.workflow.get_output_file_list()
@@ -373,7 +539,9 @@ class TestFinishProject(QtTestCase):
         app.workflow.do_replace_source(img_path)
         view.resetProjectView()
         self.assertEqual(shell.canvas_main.pixmap.width(), 60)
-        self.assertIn("60 × 40 px", sidebar.lbl_source_meta.text())
+        inputs = sidebar.inputFiles.model.files
+        self.assertEqual(len(inputs), 1)
+        self.assertEqual(Path(inputs[0].path), Path(img_path).resolve())
         self.assertEqual(sidebar.separateCard._status, "locked")
         self.assertEqual(sidebar.outputFiles.model.files, [])
         img_path.unlink()
@@ -386,9 +554,15 @@ class TestFinishProject(QtTestCase):
         app = self.make_app(project)
         source = self.create_synthetic_image("first.tif")
         app.workflow.do_import_source(source)
+
+        default_export = project.get_default_export_path()
+        with self.assertRaisesRegex(ValueError, "No current composite"):
+            app.workflow.do_export_composite()
+        self.assertFalse(default_export.exists())
+
         composite = project.artifact_path(ROLE_FINISHED_COMPOSITE)
         composite.parent.mkdir(parents=True, exist_ok=True)
-        imwrite(composite, np.zeros((64, 64, 3), dtype=np.uint16), bit_depth=16)
+        imwrite(composite, np.full((16, 16, 3), 34, dtype=np.uint8), bit_depth=8)
         # Existing files are not published just because they use a default filename.
         self.assertEqual(app.workflow.get_output_file_list(), [])
         project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
@@ -398,7 +572,9 @@ class TestFinishProject(QtTestCase):
         project = app.project
         self.assertEqual(project.current_artifact_path(ROLE_FINISHED_COMPOSITE), composite)
         result = app.workflow.do_export_composite()
-        self.assertFalse(cv2.imread(str(result), cv2.IMREAD_UNCHANGED).any())
+        np.testing.assert_array_equal(cv2.imread(str(result), cv2.IMREAD_UNCHANGED), 34)
+        prior_export = Path(result)
+        prior_bytes = prior_export.read_bytes()
 
         stamp = composite.stat()
         os.utime(composite, ns=(stamp.st_atime_ns, stamp.st_mtime_ns + 1_000_000))
@@ -409,11 +585,13 @@ class TestFinishProject(QtTestCase):
         self.assertTrue(composite.is_file())
         self.assertIsNone(project.composite_path)
         self.assertEqual(app.workflow.get_output_file_list(), [])
-        result = app.workflow.do_export_composite()
-        np.testing.assert_array_equal(
-            cv2.imread(str(result), cv2.IMREAD_UNCHANGED),
-            cv2.imread(str(replacement), cv2.IMREAD_UNCHANGED),
-        )
+
+        # A missing composite must never fall back to exporting the source.
+        with self.assertRaisesRegex(ValueError, "No current composite"):
+            app.workflow.do_export_composite()
+        self.assertTrue(prior_export.is_file())
+        self.assertEqual(prior_export.read_bytes(), prior_bytes)
+
         stamp = replacement.stat()
         os.utime(replacement, ns=(stamp.st_atime_ns, stamp.st_mtime_ns + 1_000_000))
         self.assertFalse(project.source_is_current())

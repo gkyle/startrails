@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import CancelledError
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
@@ -10,12 +11,19 @@ from PySide6.QtCore import QSignalBlocker, QTimer
 from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox, QWidget
 
 from startrails.lib.denoise.defaults import DEFAULT_SKY_DETECTION_DEVICE
-from startrails.lib.file import File
+from startrails.lib.file import File, OutputFile
+from startrails.lib.finish.defaults import (
+    ROLE_FINISHED_COMPOSITE,
+    ROLE_SEPARATED_STARLESS,
+    ROLE_SEPARATED_STARS,
+)
 from startrails.lib.project_finish import FinishProject
+from startrails.ui.progress import ProgressBarUpdater
 from startrails.ui.sidebar_finish import SidebarFinish
 from startrails.ui.sky_mask_controller import SkyMaskController
 from startrails.ui.starnet_dialog import StarNetSetupDialog, StarNetTermsDialog, choose_existing_starnet
 from startrails.ui.views.base import ModeView
+from startrails.workflow.finish import SEPARATION_PROGRESS_TOTAL
 
 if TYPE_CHECKING:
     from startrails.app import App
@@ -27,7 +35,7 @@ _SOURCE_IMAGE_FILTER = (
 
 
 class FinishView(ModeView):
-    """View controller managing the Finish sidebar, source image selection, and workflow actions."""
+    """View controller managing the Finish sidebar, file sections, and workflow actions."""
 
     mode_name: str = "finish"
 
@@ -44,6 +52,7 @@ class FinishView(ModeView):
         """Construct and return the Finish mode sidebar widget."""
         self.sidebar = SidebarFinish(parent, app=self.app)
         self.sidebar_widget = self.sidebar
+        self.inputFiles = self.sidebar.inputFiles
         self.outputFiles = self.sidebar.outputFiles
         self.pushButton_newProject = self.sidebar.pushButton_newProject
         self.pushButton_openProject = self.sidebar.pushButton_openProject
@@ -54,10 +63,12 @@ class FinishView(ModeView):
         if self.sidebar is None:
             return
 
-        self.connect_signal(self.sidebar.btn_import_source.clicked, self.on_import_source)
-        self.connect_signal(self.sidebar.btn_replace_source.clicked, self.on_replace_source)
         self.connect_signal(self.sidebar.btn_save_output.clicked, self.on_save_output)
-        self.connect_signal(self.sidebar.outputFiles.showFile, self.showFile)
+
+        self.connect_signal(self.sidebar.inputFiles.addRequested, self.on_import_source)
+        self.connect_signal(self.sidebar.inputFiles.showFile, self._on_file_section_show_file)
+        self.connect_signal(self.sidebar.inputFiles.removeFile, self.on_remove_source)
+        self.connect_signal(self.sidebar.outputFiles.showFile, self._on_file_section_show_file)
 
         if hasattr(self.shell, "doCreateNewFinishProject"):
             self.connect_signal(self.sidebar.pushButton_newProject.clicked, self.shell.doCreateNewFinishProject)
@@ -91,6 +102,8 @@ class FinishView(ModeView):
             self.connect_signal(self.sidebar.separateSettings.browse_requested, self.on_browse_starnet)
             self.connect_signal(self.sidebar.separateSettings.repair_requested, self.on_repair_starnet)
             self.connect_signal(self.sidebar.separateSettings.change_requested, self.on_browse_starnet)
+            self.connect_signal(self.sidebar.separateSettings.run_separation_requested, self.on_run_separation)
+            self.connect_signal(self.sidebar.separateSettings.stride_changed, self.on_starnet_stride_changed)
 
     def teardown(self) -> None:
         """Disconnect signals and clean up canvas and mask controller state."""
@@ -107,6 +120,7 @@ class FinishView(ModeView):
 
     def _save_mask_to_project(self, mask: Any) -> None:
         self.app.workflow.save_mask(mask)
+        self.sidebar.inputFiles.set_files(self.app.workflow.getInputFileList())
         self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
         self.updateReadyStates()
 
@@ -160,7 +174,11 @@ class FinishView(ModeView):
         QTimer.singleShot(0, self.shell, deliver)
 
     def _show_task_error(self, task_id: str, message: str) -> None:
-        if self.sidebar is not None and hasattr(self.sidebar, "skySettings"):
+        if task_id == "finish_separation":
+            if self.sidebar is not None and hasattr(self.sidebar, "separateSettings"):
+                self.sidebar.separateSettings.lbl_status.setText(message)
+                self.sidebar.separateSettings.lbl_status.show()
+        elif self.sidebar is not None and hasattr(self.sidebar, "skySettings"):
             self.sidebar.skySettings.ui.error.setText(message)
             self.sidebar.skySettings.ui.error.show()
 
@@ -205,28 +223,65 @@ class FinishView(ModeView):
 
         if self.sidebar is not None:
             self.sidebar.update_from_project(self._project, dimensions)
+            self.sidebar.inputFiles.set_files(self.app.workflow.getInputFileList())
             self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
+            if self._project.source_is_current() and self._project.source_file is not None:
+                self.sidebar.inputFiles.focus_file(self._project.source_file)
             if hasattr(self.sidebar, "skySettings"):
                 self.sidebar.skySettings.set_from_project(self._project)
 
         self.updateReadyStates()
 
-    def showFile(self, file: Optional[File]) -> None:  # noqa: N802 - ModeView interface
-        """Handle preview display on the canvas."""
+    def _on_file_section_show_file(self, file: Optional[File]) -> None:
+        """Show a file selected from the Input or Output FileSection, preserving zoom/pan."""
+        self.showFile(file, preserve_view=True)
+
+    def showFile(  # noqa: N802 - ModeView interface
+        self,
+        file: Optional[File],
+        preserve_view: Optional[bool] = None,
+        reload: bool = False,
+    ) -> None:
+        """Handle preview display on the canvas.
+
+        preserve_view=None keeps the canvas's same-file behavior; True keeps
+        zoom/pan while switching files. reload re-reads pixels, which is
+        required after the displayed file has been rewritten.
+        """
         if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            self.shell.canvas_main.setFile(file)
+            self.shell.canvas_main.setFile(file, reload=reload, preserve_view=preserve_view)
 
     def updateReadyStates(self, _=None) -> None:  # noqa: N802 - ModeView interface
-        """Update button enabled states and prerequisite subtitles based on project readiness."""
+        """Update file sections and step prerequisites based on project readiness."""
         if self.sidebar is not None and isinstance(self._project, FinishProject):
+            self.app.workflow.invalidate_if_starnet_changed()
+            self.sidebar.inputFiles.set_files(self.app.workflow.getInputFileList())
+            self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
             self.sidebar.update_prerequisites(self._project)
+            # If the canvas is showing a file that is no longer available, fall
+            # back to the source so the user isn't left on a stale preview.
+            canvas = getattr(self.shell, "canvas_main", None)
+            current_file = getattr(canvas, "file", None) if canvas is not None else None
+            if current_file is not None:
+                current_path = getattr(current_file, "path", None)
+                available = {
+                    getattr(f, "path", None)
+                    for f in self.sidebar.inputFiles.model.files + self.sidebar.outputFiles.model.files
+                }
+                if current_path not in available and self._project.source_is_current():
+                    self.showFile(self._project.source_file, preserve_view=True)
 
     def on_import_source(self) -> None:
-        """Prompt user for a source image and import it into the project."""
+        """Prompt user for a source image and import/replace it in the project."""
+        has_source = self._project.source_file is not None
+        title = "Replace Source Image" if has_source else "Import Source Image"
+        start_dir = str(self._project.get_output_dir().parent)
+        if has_source and self._project.source_file.path:
+            start_dir = str(Path(self._project.source_file.path).parent)
         fileName, _ = QFileDialog.getOpenFileName(
             self.sidebar,
-            "Import Source Image",
-            dir=str(self._project.get_output_dir().parent),
+            title,
+            dir=start_dir,
             filter=_SOURCE_IMAGE_FILTER,
         )
         if fileName:
@@ -236,25 +291,35 @@ class FinishView(ModeView):
             except Exception as e:
                 QMessageBox.critical(self.sidebar, "Import Error", f"Failed to import source image:\n{e}")
 
-    def on_replace_source(self) -> None:
-        """Prompt user for a replacement source image."""
-        fileName, _ = QFileDialog.getOpenFileName(
+    def on_remove_source(self, file: File) -> None:
+        """Remove the current source image from the project via the workflow API."""
+        if not self._project.source_file or getattr(file, "path", None) != self._project.source_file.path:
+            return
+        reply = QMessageBox.question(
             self.sidebar,
-            "Replace Source Image",
-            dir=str(Path(self._project.source_file.path).parent) if self._project.source_file else None,
-            filter=_SOURCE_IMAGE_FILTER,
+            "Remove Source Image",
+            "Remove the source image from this project?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
-        if fileName:
-            try:
-                self.app.workflow.do_replace_source(fileName)
-                self.resetProjectView()
-            except Exception as e:
-                QMessageBox.critical(self.sidebar, "Replace Error", f"Failed to replace source image:\n{e}")
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self.app.workflow.do_clear_source()
+            self.resetProjectView()
+        except Exception as e:
+            QMessageBox.critical(self.sidebar, "Remove Error", f"Failed to remove source image:\n{e}")
 
     def on_save_output(self) -> None:
         """Export composite or current result to destination path."""
         if not getattr(self._project, "source_file", None):
             QMessageBox.information(self.sidebar, "Save Image", "Please import a source image first.")
+            return
+        if self._project.current_artifact_path(ROLE_FINISHED_COMPOSITE) is None:
+            QMessageBox.information(
+                self.sidebar,
+                "Save Image",
+                "Separate stars and recombine before saving a finished image.",
+            )
             return
 
         default_export = self._project.get_default_export_path()
@@ -266,12 +331,82 @@ class FinishView(ModeView):
             filter_str,
         )
         if fileName:
+            if self._project.current_artifact_path(ROLE_FINISHED_COMPOSITE) is None:
+                QMessageBox.information(
+                    self.sidebar,
+                    "Save Image",
+                    "The finished image is no longer current. Separate stars and recombine before saving.",
+                )
+                return
             try:
                 out = self.app.workflow.do_export_composite(output_path=fileName)
-                self.resetProjectView()
+                self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
+                self.updateReadyStates()
                 QMessageBox.information(self.sidebar, "Image Saved", f"Successfully saved:\n{out}")
             except Exception as e:
                 QMessageBox.critical(self.sidebar, "Export Error", f"Failed to save image:\n{e}")
+
+    def on_run_separation(self) -> None:
+        """Execute star separation workflow in background task."""
+        if not self._project or not self._project.source_is_current():
+            QMessageBox.warning(self.sidebar, "Source Required", "Please import a source image first.")
+            return
+        if self.app.workflow.get_current_mask() is None:
+            QMessageBox.warning(
+                self.sidebar, "Sky Mask Required", "Please define a sky region before separating stars."
+            )
+            return
+
+        stride = self.sidebar.separateSettings.get_stride()
+        if hasattr(self.sidebar.separateSettings, "lbl_status"):
+            self.sidebar.separateSettings.lbl_status.hide()
+
+        deliver_result = self._get_post_result()
+        result_guard = self._result_guard()
+        workflow = self.app.workflow
+
+        def on_done():
+            # Same-project completion: refresh file sections and prerequisites
+            # without resetting the full project view (which would lose zoom/pan).
+            self.updateReadyStates()
+            p = self._project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+            if p:
+                starless_file = OutputFile(basename=p.name, path=str(p), operation="Starless")
+                self.sidebar.outputFiles.focus_file(starless_file)
+                # The job just rewrote this file; re-read its pixels.
+                self.showFile(starless_file, preserve_view=True, reload=True)
+
+        def on_cancelled():
+            self._show_task_error("finish_separation", "Cancelled")
+
+        def work():
+            progress_updater = ProgressBarUpdater(
+                getattr(self.shell, "progressBar", None),
+                getattr(self.shell, "label_progressBar", None),
+                total=SEPARATION_PROGRESS_TOTAL,
+                desc="Separating stars from sky background...",
+                result_guard=result_guard,
+            )
+            result = workflow.do_separate_stars(stride=stride, progress_bar=progress_updater.tick)
+            if result is not None:
+                deliver_result(on_done)
+            else:
+                deliver_result(on_cancelled)
+
+        self._enqueue_task(
+            task_id="finish_separation",
+            title="Separating Stars",
+            total=SEPARATION_PROGRESS_TOTAL,
+            desc="Separating stars from sky background...",
+            work=work,
+        )
+
+    def on_starnet_stride_changed(self, stride: int) -> None:
+        """Persist the project-owned StarNet stride and invalidate old separation outputs."""
+        settings = self._project.get_settings()
+        self._project.update_settings(replace(settings, starnet_stride=stride))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
 
     def on_setup_starnet(self) -> None:
         """Handle user request to download and set up managed StarNet."""

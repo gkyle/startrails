@@ -7,12 +7,14 @@ from dataclasses import asdict, fields
 import json
 import os
 from pathlib import Path
+from threading import RLock
 from typing import Any, Dict, Optional, Tuple, Union
 
 import jsonpickle
 import numpy as np
 from PIL import Image
 
+from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.file import InputFile, Unpickle
 from startrails.lib.image_io import imread
 from startrails.lib.finish.defaults import (
@@ -62,6 +64,7 @@ _ARTIFACT_PATH_FIELDS: Dict[str, str] = {
 _INPUT_ARTIFACT_ROLES = (ROLE_SOURCE_SNAPSHOT, ROLE_SKY_MASK)
 _EXPORT_ROLE = "export"
 _SOURCE_FORMATS_BY_SUFFIX = {".jpg": "jpeg", ".jpeg": "jpeg", ".tif": "tiff", ".tiff": "tiff"}
+_UNSET = object()
 
 
 def _source_format(path: Path) -> str:
@@ -120,6 +123,7 @@ class FinishProject(Unpickle):
         **kwargs: Any,
     ):
         super().__init__()
+        self._state_lock = RLock()
         self.project_file = kwargs.pop("projectFile", project_file)
         self.source_file: Optional[InputFile] = source_file
         self.source_bit_depth: Optional[int] = source_bit_depth
@@ -151,6 +155,8 @@ class FinishProject(Unpickle):
         self.denoise_signature: Optional[str] = None
         self.composite_signature: Optional[str] = None
         self.artifact_manifest: Dict[str, Any] = {}
+        self.separation_model_identity: Optional[str] = None
+        self.separation_options: Optional[Dict[str, Any]] = None
 
     @property
     def projectFile(self) -> str:  # noqa: N802 - compatibility property for host shell
@@ -162,7 +168,12 @@ class FinishProject(Unpickle):
         self.project_file = value
 
     def __getstate__(self) -> Dict[str, Any]:
-        return dict(self.__dict__)
+        with self._state_lock:
+            state = dict(self.__dict__)
+            state.pop("_state_lock", None)
+            state["artifact_manifest"] = copy.deepcopy(self.artifact_manifest)
+            state["separation_options"] = copy.deepcopy(self.separation_options)
+            return state
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
         state = dict(state)
@@ -170,6 +181,7 @@ class FinishProject(Unpickle):
             state["project_file"] = state.pop("projectFile")
         state.pop("source_dimensions", None)
         state.pop("source_format", None)
+        state.pop("_state_lock", None)
         super().__setstate__(state)
 
     def get_output_dir(self) -> Path:
@@ -201,10 +213,23 @@ class FinishProject(Unpickle):
         """Derive the source-matching export path from the input path and project directory."""
         stem = self.get_project_stem()
         out_dir = self.get_output_dir()
+        suffix = Path(self.source_file.path).suffix.lower() if self.source_file and self.source_file.path else ".tif"
+        destination = (out_dir / f"{stem}{suffix}").resolve()
+        protected = self._protected_image_paths()
+        counter = 0
+        while destination in protected:
+            counter += 1
+            tail = "_finished" if counter == 1 else f"_finished_{counter}"
+            destination = (out_dir / f"{stem}{tail}{suffix}").resolve()
+        return destination
+
+    def _protected_image_paths(self) -> set[Path]:
+        """Reserve both owned destinations and referenced inputs/caches for processing."""
+        paths = {self.artifact_path(role, for_write=True) for role in _ARTIFACT_FILENAMES}
+        paths.update(self.artifact_path(role) for role in _ARTIFACT_FILENAMES)
         if self.source_file and self.source_file.path:
-            suffix = Path(self.source_file.path).suffix.lower()
-            return (out_dir / f"{stem}{suffix}").resolve()
-        return (out_dir / f"{stem}.tif").resolve()
+            paths.add(Path(self.source_file.path).resolve())
+        return paths
 
     def validate_export_path(self, path: Path) -> None:
         """Enforce the imported source's codec, accepting equivalent suffixes."""
@@ -212,6 +237,8 @@ class FinishProject(Unpickle):
             raise ValueError("No source image imported to export.")
         if _source_format(path) != _source_format(Path(self.source_file.path)):
             raise ValueError("Export format must match the source image format.")
+        if path.resolve() in self._protected_image_paths():
+            raise ValueError("Export must not overwrite the original source image or an internal artifact.")
 
     def source_is_current(self) -> bool:
         return bool(
@@ -241,73 +268,285 @@ class FinishProject(Unpickle):
         stamp = _file_stamp(resolved_path)
         if stamp is None:
             raise FileNotFoundError(f"Source image became unavailable: {resolved_path}")
-        self.source_file = InputFile(basename=resolved_path.name, path=str(resolved_path))
-        self.source_bit_depth = bit_depth
-        self.source_stamp = stamp
-        self.source_snapshot_path = None
-        self.sky_mask_path = None
-        self.has_manual_sky_corrections = False
-        self.artifact_manifest.clear()
-        self.invalidate_results()
-        self.output_path = str(self.get_default_export_path())
+        with self._state_lock:
+            self.source_file = InputFile(basename=resolved_path.name, path=str(resolved_path))
+            self.source_bit_depth = bit_depth
+            self.source_stamp = stamp
+            self.source_snapshot_path = None
+            self.sky_mask_path = None
+            self.has_manual_sky_corrections = False
+            self.artifact_manifest.clear()
+            self.invalidate_results()
+            self.output_path = str(self.get_default_export_path())
 
-    def _record_artifact(self, role: str, path: Path) -> None:
+    def clear_source_image(self) -> None:
+        """Remove the source and dependent references without deleting any image files."""
+        with self._state_lock:
+            self.source_file = None
+            self.source_bit_depth = None
+            self.source_stamp = None
+            self.source_snapshot_path = None
+            self.sky_mask_path = None
+            self.has_manual_sky_corrections = False
+            self.artifact_manifest.clear()
+            self.invalidate_results()
+            self.output_path = str(self.get_default_export_path())
+
+    def _record_artifact(self, role: str, path: Path, options: Optional[Dict[str, Any]] = None) -> None:
         if not self.source_is_current():
             raise ValueError("Source image changed or is unavailable; import it again.")
         stamp = _file_stamp(path)
         if stamp is None:
             raise FileNotFoundError(f"Cannot record missing artifact: {path}")
-        self.artifact_manifest[role] = {
+        entry: Dict[str, Any] = {
             "source": self._source_key(),
             "file": list(stamp),
             "revision": self.processing_revision,
         }
+        if options is not None:
+            entry["options"] = options
+        self.artifact_manifest[role] = entry
 
-    def record_artifact(self, role: str, path: Union[str, Path]) -> None:
+    def _commit_if_current(
+        self,
+        transaction: Optional[ArtifactTransaction],
+        *,
+        expected_revision: Optional[int],
+        expected_separation_signature: Any = _UNSET,
+    ) -> bool:
+        """Commit staged files while the caller holds the state lock and the job is current."""
+        if expected_revision is not None and (
+            expected_revision != self.processing_revision or not self.source_is_current()
+        ):
+            return False
+        if expected_separation_signature is not _UNSET and expected_separation_signature != self.separation_signature:
+            return False
+        if transaction is not None:
+            transaction.commit()
+        return True
+
+    def record_artifact(
+        self,
+        role: str,
+        path: Union[str, Path],
+        options: Optional[Dict[str, Any]] = None,
+        *,
+        expected_revision: Optional[int] = None,
+        expected_separation_signature: Any = _UNSET,
+        transaction: Optional[ArtifactTransaction] = None,
+    ) -> bool:
         """Register an ordinary image only after successful publication of its job."""
-        self.artifact_path(role)  # Reject unknown roles before changing state.
-        resolved = Path(path).resolve()
-        self._record_artifact(role, resolved)
-        setattr(self, _ARTIFACT_PATH_FIELDS[role], str(resolved))
+        with self._state_lock:
+            self.artifact_path(role)  # Reject unknown roles before changing state.
+            if not self._commit_if_current(
+                transaction,
+                expected_revision=expected_revision,
+                expected_separation_signature=expected_separation_signature,
+            ):
+                return False
+            resolved = Path(path).resolve()
+            self._record_artifact(role, resolved, options=options)
+            setattr(self, _ARTIFACT_PATH_FIELDS[role], str(resolved))
+            return True
 
-    def _artifact_is_current(self, role: str, path: Path) -> bool:
+    def _artifact_is_current(self, role: str, path: Path, options: Optional[Dict[str, Any]] = None) -> bool:
         record = self.artifact_manifest.get(role)
         if not record or not self.source_is_current():
             return False
+        if options is not None and record.get("options") != options:
+            return False
+        if role in (ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE):
+            artifact_signature = record.get("options", {}).get("separation_signature")
+            if artifact_signature is not None and artifact_signature != self.separation_signature:
+                return False
         return bool(
             record["source"] == self._source_key()
             and _file_stamp(path) == tuple(record["file"])
-            and (role in _INPUT_ARTIFACT_ROLES or record["revision"] == self.processing_revision)
+            and (
+                role in _INPUT_ARTIFACT_ROLES
+                or role == ROLE_UNMASKED_STARLESS
+                or record["revision"] == self.processing_revision
+            )
         )
 
-    def current_artifact_path(self, role: str) -> Optional[Path]:
+    def current_artifact_path(self, role: str, options: Optional[Dict[str, Any]] = None) -> Optional[Path]:
         """Return a published image only if its source, revision and file are current."""
-        path = self.artifact_path(role)
-        return path if self._artifact_is_current(role, path) else None
+        with self._state_lock:
+            path = self.artifact_path(role)
+            return path if self._artifact_is_current(role, path, options=options) else None
 
     def record_export(self, path: Path) -> None:
-        self._record_artifact(_EXPORT_ROLE, path)
-        self.final_output_path = str(path)
+        self.record_export_if_current(path)
+
+    def publish_mask(
+        self,
+        path: Union[str, Path],
+        *,
+        expected_revision: int,
+        transaction: Optional[ArtifactTransaction] = None,
+    ) -> bool:
+        """Publish a mask and invalidate its descendants as one state transition."""
+        with self._state_lock:
+            if not self._commit_if_current(transaction, expected_revision=expected_revision):
+                return False
+            if not self.record_artifact(ROLE_SKY_MASK, path, expected_revision=expected_revision):
+                return False
+            self.invalidate_results(preserve_unmasked=True)
+            return True
+
+    def record_export_if_current(
+        self,
+        path: Path,
+        *,
+        expected_revision: Optional[int] = None,
+        expected_separation_signature: Any = _UNSET,
+        transaction: Optional[ArtifactTransaction] = None,
+    ) -> bool:
+        """Record an export only if its source/composite snapshot is still current."""
+        with self._state_lock:
+            if not self._commit_if_current(
+                transaction,
+                expected_revision=expected_revision,
+                expected_separation_signature=expected_separation_signature,
+            ):
+                return False
+            options = None
+            if self.current_artifact_path(ROLE_FINISHED_COMPOSITE) is not None:
+                options = {"separation_signature": self.separation_signature}
+            self._record_artifact(_EXPORT_ROLE, path, options=options)
+            self.final_output_path = str(path)
+            return True
 
     def current_export_path(self) -> Optional[Path]:
-        if self.final_output_path is None:
-            return None
-        path = Path(self.final_output_path)
-        return path if self._artifact_is_current(_EXPORT_ROLE, path) else None
+        with self._state_lock:
+            if self.final_output_path is None:
+                return None
+            path = Path(self.final_output_path)
+            return path if self._artifact_is_current(_EXPORT_ROLE, path) else None
 
-    def invalidate_results(self) -> None:
+    def invalidate_results(self, preserve_unmasked: bool = False) -> None:
         """Discard derived references, preserving canonical input images and disk files."""
-        self.processing_revision += 1
-        self.separation_signature = None
-        self.denoise_signature = None
-        self.composite_signature = None
-        self.final_output_path = None
-        for role, field in _ARTIFACT_PATH_FIELDS.items():
-            if role not in _INPUT_ARTIFACT_ROLES:
-                setattr(self, field, None)
-        self.artifact_manifest = {
-            role: record for role, record in self.artifact_manifest.items() if role in _INPUT_ARTIFACT_ROLES
-        }
+        with self._state_lock:
+            self.processing_revision += 1
+            self.separation_signature = None
+            self.separation_model_identity = None
+            self.separation_options = None
+            self.denoise_signature = None
+            self.composite_signature = None
+            self.final_output_path = None
+            for role, field in _ARTIFACT_PATH_FIELDS.items():
+                if role not in _INPUT_ARTIFACT_ROLES:
+                    if preserve_unmasked and role == ROLE_UNMASKED_STARLESS:
+                        continue
+                    setattr(self, field, None)
+            self.artifact_manifest = {
+                role: record
+                for role, record in self.artifact_manifest.items()
+                if role in _INPUT_ARTIFACT_ROLES or (preserve_unmasked and role == ROLE_UNMASKED_STARLESS)
+            }
+
+    def invalidate_separation_descendants(self) -> None:
+        """Discard outputs derived from the separated layers without invalidating them."""
+        with self._state_lock:
+            descendant_roles = (
+                ROLE_DENOISED_STARLESS,
+                ROLE_FINISHED_STARLESS,
+                ROLE_FINISHED_STARS,
+                ROLE_FINISHED_COMPOSITE,
+            )
+            for role in descendant_roles:
+                setattr(self, _ARTIFACT_PATH_FIELDS[role], None)
+                self.artifact_manifest.pop(role, None)
+            self.denoise_signature = None
+            self.composite_signature = None
+            self.invalidate_export()
+
+    def invalidate_export(self) -> None:
+        """Discard only the user-encoded export while keeping its source composite."""
+        with self._state_lock:
+            self.final_output_path = None
+            self.artifact_manifest.pop(_EXPORT_ROLE, None)
+
+    def invalidate_artifact_roles(self, roles: set[str]) -> None:
+        """Invalidate selected outputs and advance unaffected cached records to a new revision."""
+        with self._state_lock:
+            self.processing_revision += 1
+            for role in roles:
+                if role == _EXPORT_ROLE:
+                    self.final_output_path = None
+                elif role in _ARTIFACT_PATH_FIELDS:
+                    setattr(self, _ARTIFACT_PATH_FIELDS[role], None)
+                self.artifact_manifest.pop(role, None)
+            if ROLE_DENOISED_STARLESS in roles:
+                self.denoise_signature = None
+            if ROLE_FINISHED_COMPOSITE in roles:
+                self.composite_signature = None
+            for role, record in self.artifact_manifest.items():
+                if role not in _INPUT_ARTIFACT_ROLES and role != ROLE_UNMASKED_STARLESS:
+                    record["revision"] = self.processing_revision
+
+    def publish_separation(
+        self,
+        starless_path: Union[str, Path],
+        stars_path: Union[str, Path],
+        *,
+        signature: str,
+        model_identity: str,
+        expected_revision: int,
+        composite_path: Optional[Union[str, Path]] = None,
+        options: Optional[Dict[str, Any]] = None,
+        transaction: Optional[ArtifactTransaction] = None,
+    ) -> bool:
+        """Atomically publish separated layers and their initial composite for one revision."""
+        with self._state_lock:
+            starless = Path(starless_path).resolve()
+            stars = Path(stars_path).resolve()
+            if starless == stars:
+                raise ValueError("Starless and stars artifact paths must differ.")
+            composite = Path(composite_path).resolve() if composite_path is not None else None
+            destinations = {starless, stars}
+            if composite is not None and composite in destinations:
+                raise ValueError("Composite artifact path must differ from the separated layers.")
+            if not self._commit_if_current(transaction, expected_revision=expected_revision):
+                return False
+            stamps = {ROLE_SEPARATED_STARLESS: _file_stamp(starless), ROLE_SEPARATED_STARS: _file_stamp(stars)}
+            if any(stamp is None for stamp in stamps.values()):
+                raise FileNotFoundError("Cannot register separation outputs that are missing.")
+            if composite is not None:
+                composite_stamp = _file_stamp(composite)
+                if composite_stamp is None:
+                    raise FileNotFoundError("Cannot register a missing composite output.")
+
+            self.invalidate_separation_descendants()
+            self.separation_signature = signature
+            self.separation_model_identity = model_identity
+            self.separation_options = dict(options) if options is not None else None
+            if options is not None and "stride" in options:
+                # Persist the actual producing stride so reopening the project
+                # shows the setting that created these layers.
+                self.starnet_stride = int(options["stride"])
+            source = self._source_key()
+            artifact_options = {"separation_signature": signature}
+            for role, path in (
+                (ROLE_SEPARATED_STARLESS, starless),
+                (ROLE_SEPARATED_STARS, stars),
+            ):
+                self.artifact_manifest[role] = {
+                    "source": source,
+                    "file": list(stamps[role]),
+                    "revision": self.processing_revision,
+                    "options": artifact_options,
+                }
+                setattr(self, _ARTIFACT_PATH_FIELDS[role], str(path))
+            if composite is not None:
+                self.artifact_manifest[ROLE_FINISHED_COMPOSITE] = {
+                    "source": source,
+                    "file": list(composite_stamp),
+                    "revision": self.processing_revision,
+                    "options": artifact_options,
+                }
+                setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_COMPOSITE], str(composite))
+            return True
 
     def relocate(self, new_project_file: str) -> None:
         """Rebase owned inputs after a move; retain existing read-only inputs on Save As.
@@ -348,10 +587,37 @@ class FinishProject(Unpickle):
 
     def update_settings(self, settings: FinishSettings) -> None:
         """Update persisted settings fields from a FinishSettings snapshot."""
-        if settings != self.get_settings():
-            self.invalidate_results()
-        for k, v in asdict(settings).items():
-            setattr(self, k, v)
+        with self._state_lock:
+            previous = self.get_settings()
+            changed = {name for name, value in asdict(settings).items() if value != getattr(previous, name)}
+            if not changed:
+                return
+            # The effective StarNet options are recorded with each separation, so
+            # changing the project default no longer discards valid outputs.
+            if changed & {"mask_feather_radius_px"}:
+                self.invalidate_results(preserve_unmasked=True)
+            else:
+                invalidated_roles: set[str] = set()
+                if changed & {"denoise_strength", "denoise_scope", "structure_amount", "detail_amount"}:
+                    invalidated_roles.update({ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
+                if changed & {
+                    "star_amount",
+                    "faint_star_suppression",
+                    "faint_star_amount",
+                    "round_stars_enabled",
+                    "round_stars_amount",
+                    "star_glow_enabled",
+                    "star_glow_amount",
+                    "star_glow_radius_px",
+                }:
+                    invalidated_roles.update({ROLE_FINISHED_STARS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
+                if changed & {"blend_mode"}:
+                    invalidated_roles.update({ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
+                if changed & {"jpeg_quality", "jpeg_optimize", "tiff_deflate_compression"}:
+                    invalidated_roles.add(_EXPORT_ROLE)
+                self.invalidate_artifact_roles(invalidated_roles)
+            for k, v in asdict(settings).items():
+                setattr(self, k, v)
 
     def to_finish_config(self) -> FinishProject:
         """Construct an isolated FinishProject snapshot matching operation configuration."""

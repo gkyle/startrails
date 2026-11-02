@@ -11,8 +11,10 @@ import sys
 from threading import Thread
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from startrails.lib.finish.defaults import DEFAULT_STARNET_STRIDE
 
-DEFAULT_STRIDE = 256
+
+DEFAULT_STRIDE = DEFAULT_STARNET_STRIDE
 MIN_STRIDE = 2
 MAX_STRIDE = 512
 PROCESS_POLL_SECONDS = 0.1

@@ -2,21 +2,24 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
-    QLabel,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
-from startrails.lib.finish.defaults import ROLE_SKY_MASK, ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS
+from startrails.lib.finish.defaults import (
+    ROLE_FINISHED_COMPOSITE,
+    ROLE_SKY_MASK,
+    ROLE_SEPARATED_STARLESS,
+    ROLE_SEPARATED_STARS,
+)
 from startrails.lib.project_finish import FinishProject
 from startrails.ui.file_manager import FileSection
 from startrails.ui.sky_mask_settings import SkyMaskSettings
@@ -29,7 +32,7 @@ if TYPE_CHECKING:
 
 
 class SidebarFinish(QWidget):
-    """Sidebar widget hosting Finish mode project actions, source section, step cards, and outputs."""
+    """Sidebar widget hosting Finish mode project actions, file sections, step cards, and outputs."""
 
     def __init__(self, parent: Optional[QWidget] = None, app: Optional[App] = None):
         super().__init__(parent)
@@ -80,48 +83,13 @@ class SidebarFinish(QWidget):
         self.contentLayout.addLayout(self.projectActions)
 
         # -------------------------------------------------------------
-        # Source Image Section
+        # Input Files Section (single source image)
         # -------------------------------------------------------------
-        self.sourceFrame = QFrame(self.content)
-        self.sourceFrame.setObjectName("sourceFrame")
-        self.sourceFrame.setStyleSheet(
-            "QFrame#sourceFrame {"
-            "    background-color: #ffffff;"
-            "    border: 1px solid #e2e8f0;"
-            "    border-radius: 8px;"
-            "    padding: 8px;"
-            "}"
-        )
-        sourceLayout = QVBoxLayout(self.sourceFrame)
-        sourceLayout.setContentsMargins(8, 8, 8, 8)
-        sourceLayout.setSpacing(4)
-
-        lbl_section = QLabel("Source Image", self.sourceFrame)
-        lbl_section.setStyleSheet("font-size: 13px; font-weight: bold; color: #0f172a;")
-        sourceLayout.addWidget(lbl_section)
-
-        self.lbl_source_name = QLabel("No image loaded", self.sourceFrame)
-        self.lbl_source_name.setStyleSheet("font-size: 12px; font-weight: 600; color: #334155;")
-        self.lbl_source_name.setWordWrap(True)
-        sourceLayout.addWidget(self.lbl_source_name)
-
-        self.lbl_source_meta = QLabel("Select an 8-bit or 16-bit RGB image", self.sourceFrame)
-        self.lbl_source_meta.setStyleSheet("font-size: 11px; color: #64748b;")
-        sourceLayout.addWidget(self.lbl_source_meta)
-
-        btnRow = QHBoxLayout()
-        btnRow.setSpacing(6)
-        self.btn_import_source = QPushButton("Import Image...", self.sourceFrame)
-        self.btn_import_source.setCursor(Qt.PointingHandCursor)
-        btnRow.addWidget(self.btn_import_source)
-
-        self.btn_replace_source = QPushButton("Replace Source...", self.sourceFrame)
-        self.btn_replace_source.setCursor(Qt.PointingHandCursor)
-        self.btn_replace_source.setVisible(False)
-        btnRow.addWidget(self.btn_replace_source)
-
-        sourceLayout.addLayout(btnRow)
-        self.contentLayout.addWidget(self.sourceFrame)
+        self.inputFiles = FileSection(title="Input Files", inputs=True, parent=self.content)
+        self.inputFiles.setObjectName("inputFiles")
+        self.inputFiles.setProperty("show_legend", False)
+        self.inputFiles.setProperty("is_expanded", True)
+        self.contentLayout.addWidget(self.inputFiles)
 
         # -------------------------------------------------------------
         # Step Cards (1 to 5)
@@ -187,26 +155,8 @@ class SidebarFinish(QWidget):
                 card.setExpanded(False)
 
     def update_from_project(self, project: FinishProject, dimensions: Optional[tuple[int, int]]) -> None:
-        """Update source card information and step prerequisites from active project."""
-        if project.source_file is not None:
-            name = project.source_file.basename or Path(project.source_file.path).name
-            self.lbl_source_name.setText(name)
-            depth = project.source_bit_depth
-            fmt = Path(project.source_file.path).suffix.lstrip(".").upper()
-            if not project.source_is_current():
-                self.lbl_source_meta.setText("Source changed or unavailable; import it again")
-            elif dimensions:
-                self.lbl_source_meta.setText(f"{dimensions[0]} × {dimensions[1]} px • {depth}-bit {fmt}")
-            else:
-                self.lbl_source_meta.setText(f"{depth}-bit {fmt}")
-            self.btn_import_source.setVisible(False)
-            self.btn_replace_source.setVisible(True)
-        else:
-            self.lbl_source_name.setText("No image loaded")
-            self.lbl_source_meta.setText("Select an 8-bit or 16-bit RGB image")
-            self.btn_import_source.setVisible(True)
-            self.btn_replace_source.setVisible(False)
-
+        """Update file sections and step prerequisites from active project."""
+        self.separateSettings.set_stride(project.starnet_stride)
         self.update_prerequisites(project)
 
     def update_prerequisites(self, project: FinishProject) -> None:
@@ -215,6 +165,7 @@ class SidebarFinish(QWidget):
         has_mask = project.current_artifact_path(ROLE_SKY_MASK) is not None
         has_starless = project.current_artifact_path(ROLE_SEPARATED_STARLESS) is not None
         has_stars = project.current_artifact_path(ROLE_SEPARATED_STARS) is not None
+        has_composite = project.current_artifact_path(ROLE_FINISHED_COMPOSITE) is not None
 
         if hasattr(self, "skySettings"):
             self.skySettings.refresh_inputs(has_source=has_source)
@@ -249,8 +200,8 @@ class SidebarFinish(QWidget):
             self.separateCard.setStatus("locked", "Prerequisite: Sky region required")
             self.starlessCard.setStatus("locked", "Prerequisite: Separated starless required")
             self.starsCard.setStatus("locked", "Prerequisite: Separated stars required")
-            self.recombineCard.setStatus("ready", "Ready to export source")
-            self.btn_save_output.setEnabled(True)
+            self.recombineCard.setStatus("locked", "Prerequisite: Sky region required")
+            self.btn_save_output.setEnabled(False)
             return
 
         if not (has_starless and has_stars):
@@ -260,15 +211,15 @@ class SidebarFinish(QWidget):
                 self.separateCard.setStatus("ready", "Ready to separate stars")
             self.starlessCard.setStatus("locked", "Prerequisite: Separated starless required")
             self.starsCard.setStatus("locked", "Prerequisite: Separated stars required")
-            self.recombineCard.setStatus("ready", "Ready to export source")
-            self.btn_save_output.setEnabled(True)
+            self.recombineCard.setStatus("locked", "Prerequisite: Separated layers required")
+            self.btn_save_output.setEnabled(False)
             return
 
         self.separateCard.setStatus("done", "Stars separated")
         self.starlessCard.setStatus("ready", "Ready to finish starless")
         self.starsCard.setStatus("ready", "Ready to finish stars")
         self.recombineCard.setStatus("ready", "Ready to recombine")
-        self.btn_save_output.setEnabled(True)
+        self.btn_save_output.setEnabled(has_composite)
 
 
 __all__ = ["SidebarFinish"]

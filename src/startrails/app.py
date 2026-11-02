@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from threading import RLock
 from typing import Any, Dict, List, Optional
 import jsonpickle
 
@@ -38,6 +39,8 @@ logger = logging.getLogger(__name__)
 
 class App:
     stateFile = "app.json"
+    # GUI actions and worker completion can save the same project/state files.
+    _persistence_lock = RLock()
 
     def __init__(self):
         try:
@@ -205,8 +208,10 @@ class App:
             }
 
     def saveAppState(self):
-        with open(self.stateFile, "w+") as f:
-            f.write(jsonpickle.encode(self.state, indent=4))
+        with self._persistence_lock:
+            encoded = jsonpickle.encode(self.state, indent=4)
+            with open(self.stateFile, "w+") as f:
+                f.write(encoded)
 
     def loadProject(self, projectFile: str) -> None:
         path = Path(projectFile)
@@ -273,10 +278,14 @@ class App:
             add_recent_project(self.project.projectFile)
 
     def saveProject(self):
-        with open(self.project.projectFile, "w+") as f:
-            f.write(jsonpickle.encode(self.project, indent=4))
-        self.state["projectFile"] = self.project.projectFile
-        self.saveAppState()
+        with self._persistence_lock:
+            project = self.project
+            encoded = jsonpickle.encode(project, indent=4)
+            with open(project.projectFile, "w+") as f:
+                f.write(encoded)
+            if project is self.project:
+                self.state["projectFile"] = project.projectFile
+                self.saveAppState()
 
     def getWindowSettings(self) -> Dict[str, Any]:
         if "window" not in self.state:

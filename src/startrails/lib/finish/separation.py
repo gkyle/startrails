@@ -51,6 +51,7 @@ def compute_separation_signature(
     upsample: bool,
     linear: bool,
     highlights_protection: bool,
+    mask_feather_radius_px: float,
 ) -> str:
     """Hash source, effective-mask and CLI/package identities.
 
@@ -60,7 +61,7 @@ def compute_separation_signature(
     return compute_signature(
         {
             "operation": "finish_separation",
-            "version": 1,
+            "version": 2,
             "source": source_id,
             "mask": mask_id,
             "model": model_identity,
@@ -68,5 +69,6 @@ def compute_separation_signature(
             "upsample": upsample,
             "linear": linear,
             "highlights_protection": highlights_protection,
+            "mask_feather_radius_px": mask_feather_radius_px,
         }
     )

@@ -601,8 +601,12 @@ class TestFinishDependencies(unittest.TestCase):
         widget.refresh_status(status, has_prerequisites=True)
         self.assertFalse(widget.unconfigured_box.isVisible())
         self.assertTrue(widget.configured_box.isVisible())
-        self.assertFalse(widget.btn_separate.isEnabled())
+        self.assertTrue(widget.btn_separate.isEnabled())
         self.assertIn("StarNet2 v2.6.2-0242 (ort) • Managed", widget.lbl_starnet_info.text())
+
+        # Prerequisite missing disables separation button
+        widget.refresh_status(status, has_prerequisites=False)
+        self.assertFalse(widget.btn_separate.isEnabled())
         widget.close()
 
 
@@ -685,10 +689,10 @@ class TestFinishDependencyUI(QtTestCase):
             workflow.set_starnet_installation(installation, managed=False, terms_accepted=True)
             with workflow.operation_session():
                 session = app.activeOperation
-                self.assertEqual(workflow.do_run_starnet(source, output), (output, None))
+                self.assertEqual(workflow.do_run_starnet(source, output, stride=project.starnet_stride), (output, None))
                 self.assertIs(app.activeOperation, session)
                 session.requestInterrupt()
-                self.assertIsNone(workflow.do_run_starnet(source, output))
+                self.assertIsNone(workflow.do_run_starnet(source, output, stride=project.starnet_stride))
             self.assertEqual(output.read_bytes(), b"output")
             self.assertIsNone(app.activeOperation)
 

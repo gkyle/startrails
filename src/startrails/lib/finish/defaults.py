@@ -57,6 +57,7 @@ INTERMEDIATE_BIT_DEPTH: Final[int] = 16
 DEFAULT_JPEG_QUALITY: Final[int] = 95
 DEFAULT_JPEG_OPTIMIZE: Final[bool] = True
 DEFAULT_TIFF_DEFLATE_COMPRESSION: Final[bool] = True
+DEFAULT_STARNET_STRIDE: Final[int] = 256
 
 # Neutral identity settings
 NEUTRAL_DENOISE_STRENGTH_PERCENT: Final[float] = 0.0
@@ -80,6 +81,7 @@ class FinishSettings:
     mask_search_radius: Optional[int] = None
     mask_erosion_pixels: int = 5
     mask_foliage_protection: bool = True
+    starnet_stride: int = DEFAULT_STARNET_STRIDE
 
     # Denoise step
     denoise_strength: float = DEFAULT_DENOISE_STRENGTH_PERCENT

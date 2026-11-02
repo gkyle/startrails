@@ -4,13 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 from contextlib import nullcontext
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
+from concurrent.futures import CancelledError
+import tempfile
+from typing import TYPE_CHECKING, Any, Callable, Final, List, Optional, Tuple, Union
 
 import numpy as np
 
+from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.denoise.mask import MaskHandler
 from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.finish.defaults import (
+    INTERMEDIATE_BIT_DEPTH,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
@@ -18,10 +22,13 @@ from startrails.lib.finish.defaults import (
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
     ROLE_SKY_MASK,
+    ROLE_UNMASKED_STARLESS,
+    SUPPORTED_CHANNELS,
 )
-from startrails.lib.finish.starnet import DEFAULT_STRIDE as STARNET_DEFAULT_STRIDE
+from startrails.lib.finish.separation import compute_separation_signature
+from startrails.lib.finish.starnet import MAX_STRIDE, MIN_STRIDE
 from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
-from startrails.lib.image_io import imread, imwrite
+from startrails.lib.image_io import imread, imwrite, normalize_image
 from startrails.lib.model_manifest import GRAXPERT_MANIFEST, PlatformNotSupportedError
 from startrails.lib.project_finish import FinishProject
 from startrails.lib.signatures import verify_file_integrity
@@ -41,13 +48,65 @@ from startrails.lib.starnet_setup import (
     repair_starnet_installation,
 )
 from startrails.op.finish.graxpert_denoise import GraXpertDenoise
+from startrails.op.finish.recombine import Recombine
 from startrails.op.finish.run_starnet import RunStarNet
+from startrails.op.finish.separate_stars import SeparateStars
 from startrails.paths import APPLICATION_DIR
 from startrails.workflow.base import Workflow
 from startrails.workflow.masking import SkyMaskingWorkflowMixin
 
 if TYPE_CHECKING:
     from startrails.app import App
+
+
+# Shared scale for the separation task's phase progress. The view's progress
+# updater and enqueue total must use the same value.
+SEPARATION_PROGRESS_TOTAL: Final[int] = 100
+
+# Phase spans on that scale (StarNet inference dominates runtime).
+_STARNET_PROGRESS_SPAN = (0, 80)
+_SEPARATION_PROGRESS_SPAN = (80, 17)
+_RECOMBINE_PROGRESS_SPAN = (97, 3)
+
+
+class _PhaseProgress:
+    """Map one operation's job counts onto a span of the shared separation scale.
+
+    Each phase runs its own Observable with an independent total; this adapter
+    reports every phase's absolute fraction onto SEPARATION_PROGRESS_TOTAL so
+    the task overlay sees one monotonic scale.
+    """
+
+    def __init__(self, observer: Callable[..., None], span: Tuple[int, int]):
+        self._observer = observer
+        self._start, self._size = span
+        self._reported = self._start
+
+    def __call__(self, total: int, increment: int, count: int, done: bool, data: Any = None) -> None:
+        fraction = min(1.0, count / total) if total > 0 else (1.0 if done else 0.0)
+        target = self._start + round(self._size * fraction)
+        delta = target - self._reported
+        self._reported = target
+        # A phase finishing early is not the whole task; only total completion
+        # may tell observers that the shared operation is done.
+        task_done = bool(done and target >= SEPARATION_PROGRESS_TOTAL)
+        self._observer(SEPARATION_PROGRESS_TOTAL, max(0, delta), target, task_done, data)
+
+
+def _starnet_identity(platform_id: str, version: str, build: str, backend_id: str, package_sha256: str) -> str:
+    return ":".join((platform_id, version, build, backend_id, package_sha256))
+
+
+def _starnet_model_identity(status: dict) -> Optional[str]:
+    if not status.get("configured"):
+        return None
+    return _starnet_identity(
+        str(status["platform_id"]),
+        str(status["version"]),
+        str(status["build"]),
+        str(status["backend_id"]),
+        str(status["package_sha256"]),
+    )
 
 
 class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
@@ -57,11 +116,57 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
 
     def __init__(self, app: App):
         super().__init__(app)
+        self._project = app.project
 
     @property
     def project(self) -> FinishProject:
         """The active FinishProject managed by this workflow."""
-        return self.app.project
+        return self._project
+
+    def save_project(self) -> None:
+        """Do not let a stale workflow persist a project that replaced it."""
+        if self._project is self.app.project:
+            super().save_project()
+
+    def invalidate_if_starnet_changed(self) -> bool:
+        """Invalidate separation when its saved inputs no longer match current project state."""
+        status = self.get_starnet_status()
+        current_identity = _starnet_model_identity(status)
+        project = self.project
+        if project.separation_signature is None:
+            return False
+        mask_record = project.artifact_manifest.get(ROLE_SKY_MASK)
+        if (
+            mask_record is None
+            or not project.source_file
+            or not project.source_is_current()
+            or project.current_artifact_path(ROLE_SKY_MASK) is None
+        ):
+            expected_signature = None
+        else:
+            if current_identity is None:
+                return False
+            options = project.separation_options
+            if options is None:
+                # A saved signature without its producing options cannot be
+                # revalidated; treat it as an invalid cache rather than guessing.
+                expected_signature = None
+            else:
+                expected_signature = compute_separation_signature(
+                    source_id=project.source_file.sourceId,
+                    mask_id=str(mask_record.get("file", "")),
+                    model_identity=current_identity,
+                    stride=int(options["stride"]),
+                    upsample=bool(options["upsample"]),
+                    linear=bool(options["linear"]),
+                    highlights_protection=bool(options["highlights_protection"]),
+                    mask_feather_radius_px=project.mask_feather_radius_px,
+                )
+        if expected_signature == project.separation_signature and project.separation_model_identity == current_identity:
+            return False
+        self.project.invalidate_results()
+        self.save_project()
+        return True
 
     def getInputFileList(self) -> List[InputFile]:  # noqa: N802 - standard host shell interface
         """Return list containing the single imported source image, if present."""
@@ -103,11 +208,18 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self.project.set_source_image(path)
         self.save_project()
 
+    def do_clear_source(self) -> None:
+        """Remove the selected source from the project, retaining its files on disk."""
+        self.project.clear_source_image()
+        self.save_project()
+
     def save_mask(self, mask: np.ndarray) -> Path:
         """Validate source geometry, persist canonical sky mask, and invalidate downstream results."""
-        if not self.project.source_is_current():
+        project = self.project
+        revision = project.processing_revision
+        if not project.source_is_current():
             raise ValueError("Source image is not current or unavailable.")
-        dims = self.project.get_source_dimensions()
+        dims = project.get_source_dimensions()
         if dims is None:
             raise ValueError("No valid source image loaded.")
         if mask.ndim != 2:
@@ -116,12 +228,23 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             raise ValueError(f"Mask dimensions {mask.shape} do not match source dimensions {dims}.")
         if not np.isfinite(mask).all():
             raise ValueError("Sky mask must contain finite values.")
-        canonical_path = self.project.artifact_path(ROLE_SKY_MASK, for_write=True)
-        written = MaskHandler.save_mask(mask, canonical_path)
-        self.project.record_artifact(ROLE_SKY_MASK, written)
-        self.project.invalidate_results()
+        canonical_path = project.artifact_path(ROLE_SKY_MASK, for_write=True)
+        try:
+            with ArtifactTransaction(self._job_cancel_check(project, revision)) as transaction:
+                staged_path = transaction.stage(canonical_path)
+                written = MaskHandler.save_mask(mask, staged_path)
+                if written != staged_path:
+                    raise OSError("Mask staging path changed unexpectedly; mask was not published.")
+                if not project.publish_mask(
+                    canonical_path,
+                    expected_revision=revision,
+                    transaction=transaction,
+                ):
+                    raise ValueError("Project changed while saving the sky mask; retry the mask edit.")
+        except CancelledError:
+            raise ValueError("Project changed while saving the sky mask; retry the mask edit.") from None
         self.save_project()
-        return written
+        return canonical_path
 
     def get_current_mask(self) -> Optional[np.ndarray]:
         """Load published canonical sky mask after verifying freshness and source geometry."""
@@ -156,44 +279,62 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self,
         output_path: Optional[Union[str, Path]] = None,
     ) -> Path:
-        """Export full-resolution result using source-matching depth and format."""
-        if not self.project.source_file or not self.project.source_file.path:
+        """Export the current recombined composite using source-matching depth and format."""
+        project = self.project
+        revision = project.processing_revision
+        if not project.source_file or not project.source_file.path:
             raise ValueError("No source image imported to export.")
 
-        source_path = Path(self.project.source_file.path)
+        source_path = Path(project.source_file.path)
         if not source_path.exists():
             raise FileNotFoundError(f"Source file not found: {source_path}")
 
-        if not self.project.source_is_current():
+        if not project.source_is_current():
             raise ValueError("Source image changed; import it again before exporting.")
-        depth = self.project.source_bit_depth
+        depth = project.source_bit_depth
         if depth not in (8, 16):
             raise ValueError("Source bit depth is unknown; import the source again before exporting.")
-        target_path = Path(output_path) if output_path is not None else self.project.get_default_export_path()
-        self.project.validate_export_path(target_path)
-        if target_path.resolve() == source_path.resolve():
-            raise ValueError("Export must not overwrite the original source image.")
+        target_path = Path(output_path) if output_path is not None else project.get_default_export_path()
+        project.validate_export_path(target_path)
 
-        composite_artifact = self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
-        image_path = composite_artifact if composite_artifact is not None else source_path
-        img = imread(image_path, to_rgb=True, as_float=True)
+        composite_artifact = project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
+        if composite_artifact is None:
+            raise ValueError("No current composite result to export; separate stars and recombine first.")
+        separation_signature = project.separation_signature
+        img = imread(composite_artifact, to_rgb=True, as_float=True)
 
-        settings = self.project.get_settings()
+        settings = project.get_settings()
         target_path = Path(target_path).resolve()
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
-        written = imwrite(
-            target_path,
-            img,
-            convertBGR=True,
-            bit_depth=depth,
-            quality=settings.jpeg_quality,
-            optimize=settings.jpeg_optimize,
-            compression=settings.tiff_deflate_compression,
-        )
-        self.project.record_export(written)
+        expected_export = {
+            "expected_revision": revision,
+            "expected_separation_signature": separation_signature,
+        }
+        try:
+            with ArtifactTransaction(self._job_cancel_check(project, revision)) as transaction:
+                staged_path = transaction.stage(target_path)
+                written = imwrite(
+                    staged_path,
+                    img,
+                    convertBGR=True,
+                    bit_depth=depth,
+                    quality=settings.jpeg_quality,
+                    optimize=settings.jpeg_optimize,
+                    compression=settings.tiff_deflate_compression,
+                )
+                if written != staged_path:
+                    raise OSError("Export staging path changed unexpectedly; output was not published.")
+                if not project.record_export_if_current(
+                    target_path,
+                    transaction=transaction,
+                    **expected_export,
+                ):
+                    raise ValueError("Project changed while saving; the export was not recorded as current.")
+        except CancelledError:
+            raise ValueError("Export was cancelled; no output was published.") from None
         self.save_project()
-        return written
+        return target_path
 
     # -------------------------------------------------------------------------
     # Dependency Lifecycle & Operational Adapters (StarNet & GraXpert)
@@ -221,6 +362,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             "version": installation.package.version if installation else record.get("version"),
             "build": installation.package.build if installation else record.get("build"),
             "backend_id": installation.package.backend_id if installation else record.get("backend_id"),
+            "platform_id": installation.package.platform_id if installation else None,
+            "package_sha256": installation.package.archive_sha256 if installation else None,
             "terms_accepted": terms_accepted,
             "terms_revision": record.get("terms_revision"),
         }
@@ -258,6 +401,23 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         terms_accepted: bool,
     ) -> None:
         """Persist verified StarNet installation in application state."""
+        project = self.project
+        new_identity = _starnet_identity(
+            installation.package.platform_id,
+            installation.package.version,
+            installation.package.build,
+            installation.package.backend_id,
+            installation.package.archive_sha256,
+        )
+        old_identity = _starnet_model_identity(self.get_starnet_status())
+        if old_identity is None:
+            # The recorded installation may be offline; the project still knows
+            # the identity that produced its current layers.
+            old_identity = project.separation_model_identity
+        invalidated_results = False
+        if (project.separation_signature is not None or old_identity is not None) and old_identity != new_identity:
+            project.invalidate_results()
+            invalidated_results = True
         record_starnet_installation(
             self.app.state,
             installation,
@@ -265,6 +425,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             terms_accepted=terms_accepted,
         )
         self.app.saveAppState()
+        if invalidated_results:
+            self.save_project()
 
     def do_install_starnet_managed(
         self,
@@ -295,17 +457,92 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         )
         return installation
 
+    def _job_cancel_check(self, project: FinishProject, revision: int) -> Callable[[], bool]:
+        """Return a cancellation guard bound to this job's project, revision, and session."""
+
+        def cancelled() -> bool:
+            if project is not self.app.project or revision != project.processing_revision:
+                return True
+            if not project.source_is_current():
+                return True
+            session = self._session_operation
+            return bool(session is not None and session.shouldInterrupt())
+
+        return cancelled
+
+    @staticmethod
+    def _validate_starnet_stride(stride: int) -> None:
+        """Enforce the StarNet CLI stride contract before any cache lookup."""
+        if type(stride) is not int or stride < MIN_STRIDE or stride > MAX_STRIDE or stride % 2 != 0:
+            raise ValueError(f"Stride must be an even integer between {MIN_STRIDE} and {MAX_STRIDE}, got {stride}")
+
+    @staticmethod
+    def _validate_model_output(path: Path, dimensions: Tuple[int, int]) -> None:
+        """Reject a corrupt StarNet result before it is cached or normalized."""
+        model = imread(path, to_rgb=True, as_float=False)
+        if model.dtype not in (np.uint8, np.uint16):
+            raise ValueError(f"StarNet output must be uint8 or uint16, got {model.dtype}.")
+        if model.ndim != 3 or model.shape[2] != SUPPORTED_CHANNELS or model.shape[:2] != dimensions:
+            raise ValueError(f"StarNet output shape {model.shape} does not match source dimensions {dimensions}.")
+        if not np.isfinite(model).all():
+            raise ValueError("StarNet output contains non-finite values.")
+
+    def _recombine_into_transaction(
+        self,
+        starless_path: Path,
+        stars_path: Path,
+        *,
+        composite_destination: Path,
+        transaction: ArtifactTransaction,
+        progress_bar: Optional[Any] = None,
+    ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
+        """Recombine the given layers into a staged composite without publishing it."""
+        project = self.project
+        source_arr = imread(project.source_file.path, to_rgb=True, as_float=True)
+        starless_arr = imread(starless_path, to_rgb=True, as_float=True)
+        stars_arr = imread(stars_path, to_rgb=True, as_float=True)
+
+        neg_residual = source_arr
+        np.subtract(neg_residual, starless_arr, out=neg_residual)
+        np.minimum(neg_residual, 0, out=neg_residual)
+
+        op = self._new_operation(Recombine)
+        if progress_bar is not None:
+            op.addObserver(progress_bar)
+        self.app.activeOperation = op
+        try:
+            result = op.recombine(
+                starless_arr,
+                stars_arr,
+                neg_residual,
+                project.get_settings(),
+                bit_depth=INTERMEDIATE_BIT_DEPTH,
+                output_path=composite_destination,
+                artifacts=transaction,
+            )
+        finally:
+            if self.app.activeOperation is op:
+                self.app.activeOperation = self._session_operation
+            if progress_bar is not None:
+                op.removeObserver(progress_bar)
+
+        if result is None or op.shouldInterrupt():
+            return None
+        return result
+
     def do_run_starnet(
         self,
         input_image_path: Union[str, Path],
         output_starless_path: Union[str, Path],
         *,
         output_stars_path: Optional[Union[str, Path]] = None,
-        stride: int = STARNET_DEFAULT_STRIDE,
+        stride: int,
         disable_highlights: bool = False,
         upsample: bool = False,
+        progress_bar: Optional[Any] = None,
     ) -> Optional[Tuple[Path, Optional[Path]]]:
         """Execute StarNet subprocess using the active verified installation."""
+        self._validate_starnet_stride(stride)
         managed = self.app.state.get("starnet", {}).get("managed", False)
         lock = starnet_installation_lock(get_starnet_storage_dir()) if managed else nullcontext()
         with lock:
@@ -313,6 +550,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             if not status["configured"]:
                 raise RuntimeError("StarNet is not configured or terms have not been accepted.")
             op = self._new_operation(RunStarNet)
+            if progress_bar is not None:
+                op.addObserver(progress_bar)
             self.app.activeOperation = op
             try:
                 return op.run(
@@ -327,6 +566,254 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             finally:
                 if self.app.activeOperation is op:
                     self.app.activeOperation = self._session_operation
+                if progress_bar is not None:
+                    op.removeObserver(progress_bar)
+
+    def do_separate_stars(
+        self,
+        *,
+        stride: Optional[int] = None,
+        disable_highlights: bool = False,
+        upsample: bool = False,
+        chunk_rows: int = 512,
+        progress_bar: Optional[Any] = None,
+    ) -> Optional[Tuple[OutputFile, OutputFile]]:
+        """Separate stars from sky background using StarNet and sky protection mask.
+
+        progress_bar, when given, receives each phase's progress mapped onto the
+        shared SEPARATION_PROGRESS_TOTAL scale.
+        """
+        project = self.project
+        stride = project.starnet_stride if stride is None else stride
+        self._validate_starnet_stride(stride)
+        project_revision = project.processing_revision
+        if not project.source_is_current():
+            raise ValueError("Source image is not current or unavailable.")
+        dims = project.get_source_dimensions()
+        min_dim = 256 if upsample else 512
+        if dims is None or dims[0] < min_dim or dims[1] < min_dim:
+            actual_dims = f"{dims[1]}x{dims[0]}" if dims else "0x0"
+            raise ValueError(
+                f"Image dimensions ({actual_dims}) are below StarNet minimum supported dimensions ({min_dim}x{min_dim})."
+            )
+
+        mask = self.get_current_mask()
+        if mask is None:
+            raise ValueError("A sky mask is required to separate stars.")
+        feather_radius_px = project.mask_feather_radius_px
+        mask = MaskHandler.feather_mask(mask, feather_radius_px)
+
+        source_id = project.source_file.sourceId
+        mask_record = project.artifact_manifest.get(ROLE_SKY_MASK, {})
+        mask_id = str(mask_record.get("file", ""))
+
+        starnet_status = self.get_starnet_status()
+        if not starnet_status.get("configured", False):
+            raise RuntimeError("StarNet2 is not configured or terms have not been accepted.")
+        model_identity = _starnet_model_identity(starnet_status)
+        if model_identity is None:
+            raise RuntimeError(
+                "StarNet2 package identity is unavailable; repair the installation before separating stars."
+            )
+
+        source_path = Path(project.source_file.path)
+        unmasked_options = {
+            "stride": stride,
+            "disable_highlights": disable_highlights,
+            "upsample": upsample,
+            "version": starnet_status.get("version"),
+            "build": starnet_status.get("build"),
+            "backend_id": starnet_status.get("backend_id"),
+            "platform_id": starnet_status.get("platform_id"),
+            "package_sha256": starnet_status.get("package_sha256"),
+        }
+        separation_options = {
+            "stride": stride,
+            "upsample": upsample,
+            "linear": False,
+            "highlights_protection": not disable_highlights,
+            "mask_feather_radius_px": feather_radius_px,
+        }
+
+        unmasked_path = project.current_artifact_path(ROLE_UNMASKED_STARLESS, options=unmasked_options)
+        if unmasked_path is None or not unmasked_path.is_file():
+            starnet_progress = (
+                _PhaseProgress(progress_bar, _STARNET_PROGRESS_SPAN) if progress_bar is not None else None
+            )
+            unmasked_dest = project.artifact_path(ROLE_UNMASKED_STARLESS, for_write=True)
+            try:
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    tmp_input = Path(tmp_dir) / "starnet_input.tif"
+                    source_int = imread(source_path, to_rgb=True, as_float=False)
+                    imwrite(tmp_input, source_int, convertBGR=True, bit_depth=project.source_bit_depth)
+                    del source_int
+                    with ArtifactTransaction(self._job_cancel_check(project, project_revision)) as transaction:
+                        staged_unmasked = transaction.stage(unmasked_dest)
+                        run_res = self.do_run_starnet(
+                            tmp_input,
+                            staged_unmasked,
+                            stride=stride,
+                            disable_highlights=disable_highlights,
+                            upsample=upsample,
+                            progress_bar=starnet_progress,
+                        )
+                        if run_res is None:
+                            return None
+                        self._validate_model_output(staged_unmasked, dims)
+                        if not project.record_artifact(
+                            ROLE_UNMASKED_STARLESS,
+                            unmasked_dest,
+                            options=unmasked_options,
+                            expected_revision=project_revision,
+                            transaction=transaction,
+                        ):
+                            return None
+                self.save_project()
+            except CancelledError:
+                return None
+            unmasked_path = unmasked_dest
+        elif progress_bar is not None:
+            star_net_span = _STARNET_PROGRESS_SPAN[1]
+            progress_bar(
+                SEPARATION_PROGRESS_TOTAL,
+                star_net_span,
+                star_net_span,
+                False,
+                {"desc": "Using cached StarNet separation..."},
+            )
+
+        source_float = imread(source_path, to_rgb=True, as_float=True)
+        model_float = imread(unmasked_path, to_rgb=True, as_float=True)
+
+        starless_dest = project.artifact_path(ROLE_SEPARATED_STARLESS, for_write=True)
+        stars_dest = project.artifact_path(ROLE_SEPARATED_STARS, for_write=True)
+        composite_dest = project.artifact_path(ROLE_FINISHED_COMPOSITE, for_write=True)
+
+        op = self._new_operation(SeparateStars)
+        separation_progress = (
+            _PhaseProgress(progress_bar, _SEPARATION_PROGRESS_SPAN) if progress_bar is not None else None
+        )
+        if separation_progress is not None:
+            op.addObserver(separation_progress)
+        self.app.activeOperation = op
+        try:
+            try:
+                with ArtifactTransaction(self._job_cancel_check(project, project_revision)) as transaction:
+                    staged_starless = transaction.stage(starless_dest)
+                    staged_stars = transaction.stage(stars_dest)
+                    sep_result = op.separate(
+                        source_float,
+                        model_float,
+                        mask,
+                        starless_path=staged_starless,
+                        stars_path=staged_stars,
+                        chunk_rows=chunk_rows,
+                        settings=project.get_settings(),
+                    )
+                    if (
+                        sep_result is None
+                        or op.shouldInterrupt()
+                        or project is not self.app.project
+                        or project_revision != project.processing_revision
+                        or not project.source_is_current()
+                    ):
+                        # A cancel, mask save or project switch landing after the
+                        # operation stage makes these results stale; never publish them.
+                        return None
+
+                    # Release the separation working arrays before allocating the
+                    # composite buffers; the staged files are the authoritative inputs.
+                    source_float = model_float = mask = None
+
+                    # Build the initial composite from the staged layers before
+                    # any new separated layer or metadata becomes visible.
+                    recombine_progress = (
+                        _PhaseProgress(progress_bar, _RECOMBINE_PROGRESS_SPAN) if progress_bar is not None else None
+                    )
+                    composite_result = self._recombine_into_transaction(
+                        staged_starless,
+                        staged_stars,
+                        composite_destination=composite_dest,
+                        transaction=transaction,
+                        progress_bar=recombine_progress,
+                    )
+                    if composite_result is None:
+                        return None
+
+                    separation_signature = compute_separation_signature(
+                        source_id=source_id,
+                        mask_id=mask_id,
+                        model_identity=model_identity,
+                        **separation_options,
+                    )
+                    if not project.publish_separation(
+                        starless_dest,
+                        stars_dest,
+                        signature=separation_signature,
+                        model_identity=model_identity,
+                        expected_revision=project_revision,
+                        composite_path=composite_dest,
+                        options=separation_options,
+                        transaction=transaction,
+                    ):
+                        return None
+                    self.save_project()
+            except CancelledError:
+                return None
+        finally:
+            if self.app.activeOperation is op:
+                self.app.activeOperation = self._session_operation
+            if separation_progress is not None:
+                op.removeObserver(separation_progress)
+            del source_float, model_float, mask
+
+        return (
+            OutputFile(basename=starless_dest.name, path=str(starless_dest), operation="Starless"),
+            OutputFile(basename=stars_dest.name, path=str(stars_dest), operation="Stars"),
+        )
+
+    def do_recombine(self, *, progress_bar: Optional[Any] = None) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
+        """Execute layer recombination and write internal composite artifact.
+
+        progress_bar observes the operation on its native job scale, or on the
+        shared separation scale when supplied by do_separate_stars.
+        """
+        project = self.project
+        revision = project.processing_revision
+        separation_signature = project.separation_signature
+        if not project.source_is_current():
+            return None
+        starless_path = project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+        stars_path = project.current_artifact_path(ROLE_SEPARATED_STARS)
+        if starless_path is None or stars_path is None:
+            return None
+
+        composite_dest = project.artifact_path(ROLE_FINISHED_COMPOSITE, for_write=True)
+        try:
+            with ArtifactTransaction(self._job_cancel_check(project, revision)) as transaction:
+                result = self._recombine_into_transaction(
+                    starless_path,
+                    stars_path,
+                    composite_destination=composite_dest,
+                    transaction=transaction,
+                    progress_bar=progress_bar,
+                )
+                if result is None:
+                    # Stale after a concurrent invalidation; keep the last valid composite.
+                    return None
+                if not project.record_artifact(
+                    ROLE_FINISHED_COMPOSITE,
+                    composite_dest,
+                    options={"separation_signature": separation_signature},
+                    expected_revision=revision,
+                    expected_separation_signature=separation_signature,
+                    transaction=transaction,
+                ):
+                    return None
+                self.save_project()
+        except CancelledError:
+            return None
+        return result
 
     def do_denoise_starless(
         self,

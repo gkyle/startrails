@@ -16,6 +16,8 @@ from startrails.lib.finish.defaults import (
     SCOPE_WHOLE_IMAGE,
 )
 
+RECOMBINE_CHUNK_ROWS = 512
+
 
 def blend_denoise(
     base: np.ndarray,
@@ -62,6 +64,8 @@ def recombine_layers(
     negative_residual: np.ndarray,
     star_amount_percent: float,
     blend_mode: BlendModeType,
+    *,
+    chunk_rows: int = RECOMBINE_CHUNK_ROWS,
 ) -> np.ndarray:
     """Recombine a working RGB region of finished starless and star layers.
 
@@ -80,23 +84,34 @@ def recombine_layers(
         raise ValueError("finished_starless and finished_stars shapes must match.")
     if finished_starless.shape != negative_residual.shape:
         raise ValueError("finished_starless and negative_residual shapes must match.")
+    if chunk_rows <= 0:
+        raise ValueError("chunk_rows must be positive.")
     if not np.isfinite(star_amount_percent) or not 0 <= star_amount_percent <= PERCENT_SCALE:
         raise ValueError(f"Star amount must be in range [0.0, 100.0], got {star_amount_percent}")
     if blend_mode not in (BLEND_ADD, BLEND_SCREEN):
         raise ValueError(f"Unknown blend mode '{blend_mode}'. Must be one of {(BLEND_ADD, BLEND_SCREEN)}.")
 
-    f = np.clip(finished_starless, 0.0, 1.0)
+    composite = np.clip(finished_starless, 0.0, 1.0)
     if star_amount_percent == 0.0:
-        return f.copy()
+        return composite
 
     a_s = float(star_amount_percent) / PERCENT_SCALE
-    s_f = a_s * finished_stars
-
-    if blend_mode == BLEND_ADD:
-        return np.clip(f + s_f + a_s * negative_residual, 0.0, 1.0)
-
-    s_f_clamped = np.clip(s_f, 0.0, 1.0)
-    return 1.0 - (1.0 - f) * (1.0 - s_f_clamped)
+    for start in range(0, finished_starless.shape[0], chunk_rows):
+        end = min(start + chunk_rows, finished_starless.shape[0])
+        finished = composite[start:end]
+        stars = finished_stars[start:end]
+        if blend_mode == BLEND_ADD:
+            star_delta = a_s * stars
+            star_delta += a_s * negative_residual[start:end]
+            np.add(finished, star_delta, out=finished)
+            np.clip(finished, 0.0, 1.0, out=finished)
+        else:
+            star_contribution = np.clip(a_s * stars, 0.0, 1.0)
+            np.subtract(1.0, finished, out=finished)
+            np.subtract(1.0, star_contribution, out=star_contribution)
+            np.multiply(finished, star_contribution, out=finished)
+            np.subtract(1.0, finished, out=finished)
+    return composite
 
 
 def compute_denoise_endpoint_signature(

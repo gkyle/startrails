@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSignalBlocker, Qt, Signal
 
-from startrails.lib.finish.starnet import DEFAULT_STRIDE
+from startrails.lib.finish.starnet import DEFAULT_STRIDE, MAX_STRIDE, MIN_STRIDE
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -26,6 +26,7 @@ class SeparateStarsSettings(QWidget):
     repair_requested = Signal()
     change_requested = Signal()
     run_separation_requested = Signal()
+    stride_changed = Signal(int)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -54,7 +55,8 @@ class SeparateStarsSettings(QWidget):
         unconf_layout.setContentsMargins(6, 6, 6, 6)
         unconf_layout.setSpacing(6)
 
-        self.lbl_unconf_msg = QLabel("StarNet2 is required to separate stars from the sky background.", self)
+        self._default_unconf_msg = "StarNet2 is required to separate stars from the sky background."
+        self.lbl_unconf_msg = QLabel(self._default_unconf_msg, self)
         self.lbl_unconf_msg.setWordWrap(True)
         self.lbl_unconf_msg.setStyleSheet("color: #92400e; font-size: 11px; line-height: 1.3;")
         unconf_layout.addWidget(self.lbl_unconf_msg)
@@ -130,8 +132,11 @@ class SeparateStarsSettings(QWidget):
         stride_row.addWidget(lbl_stride)
 
         self.combo_stride = QComboBox(self.configured_box)
-        for stride, label in ((DEFAULT_STRIDE, "Standard"), (128, "Fine"), (64, "Very Fine")):
+        self._standard_strides = ((DEFAULT_STRIDE, "Standard"), (128, "Fine"), (64, "Very Fine"))
+        for stride, label in self._standard_strides:
             self.combo_stride.addItem(f"{stride} ({label})", stride)
+        self.combo_stride.currentIndexChanged.connect(lambda _index: self.stride_changed.emit(self.get_stride()))
+        self.combo_stride.currentIndexChanged.connect(lambda _index: self._cleanup_custom_stride_items())
         self.combo_stride.setStyleSheet("font-size: 11px; padding: 2px 4px;")
         stride_row.addWidget(self.combo_stride)
         stride_row.addStretch(1)
@@ -146,9 +151,7 @@ class SeparateStarsSettings(QWidget):
             "QPushButton:disabled { background-color: #94a3b8; } "
             "QPushButton:hover:!disabled { background-color: #0369a1; }"
         )
-        # Step 6 exposes setup; the processing action is wired in Step 7.
         self.btn_separate.setEnabled(False)
-        self.btn_separate.hide()
         self.btn_separate.clicked.connect(self.run_separation_requested.emit)
         conf_layout.addWidget(self.btn_separate)
 
@@ -170,6 +173,8 @@ class SeparateStarsSettings(QWidget):
         self.btn_setup_starnet.setEnabled(notice is None)
         if notice is not None:
             self.lbl_unconf_msg.setText(notice)
+        else:
+            self.lbl_unconf_msg.setText(self._default_unconf_msg)
 
         if is_configured:
             version = status.get("version", "2.6.2")
@@ -178,12 +183,47 @@ class SeparateStarsSettings(QWidget):
             managed_str = "Managed" if status.get("managed", False) else "Custom"
             details = f"v{version}-{build} ({backend}) • {managed_str}" if build else f"v{version}"
             self.lbl_starnet_info.setText(f"StarNet2 {details}")
-            self.btn_separate.setEnabled(False)
+            self.btn_separate.setEnabled(has_prerequisites)
         else:
             self.btn_separate.setEnabled(False)
 
     def get_stride(self) -> int:
         return self.combo_stride.currentData()
+
+    def _cleanup_custom_stride_items(self) -> None:
+        """Remove transient custom stride entries once the user picks a standard value."""
+        standard_values = {s for s, _ in self._standard_strides}
+        current = self.combo_stride.currentData()
+        if current in standard_values:
+            with QSignalBlocker(self.combo_stride):
+                for i in range(self.combo_stride.count() - 1, -1, -1):
+                    if self.combo_stride.itemData(i) not in standard_values:
+                        self.combo_stride.removeItem(i)
+
+    def set_stride(self, stride: int) -> None:
+        """Restore the project's selected stride without emitting a settings change.
+
+        CLI-valid strides outside the preset list are shown as a temporary custom
+        entry instead of raising or silently falling back to the default.
+        """
+        if (
+            not isinstance(stride, int)
+            or stride < MIN_STRIDE
+            or stride > MAX_STRIDE
+            or stride % 2 != 0
+        ):
+            raise ValueError(
+                f"StarNet stride must be an even integer between {MIN_STRIDE} and {MAX_STRIDE}, got {stride}"
+            )
+        standard_values = {s for s, _ in self._standard_strides}
+        with QSignalBlocker(self.combo_stride):
+            self.combo_stride.clear()
+            for s, label in self._standard_strides:
+                self.combo_stride.addItem(f"{s} ({label})", s)
+            if stride not in standard_values:
+                self.combo_stride.addItem(f"{stride} (Custom)", stride)
+            index = self.combo_stride.findData(stride)
+            self.combo_stride.setCurrentIndex(index)
 
 
 __all__ = ["SeparateStarsSettings"]
