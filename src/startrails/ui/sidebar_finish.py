@@ -92,6 +92,16 @@ class SidebarFinish(QWidget):
         self.contentLayout.addWidget(self.inputFiles)
 
         # -------------------------------------------------------------
+        # Output Files Section
+        # -------------------------------------------------------------
+        self.outputFiles = FileSection(title="Output Files", inputs=False, parent=self.content)
+        self.outputFiles.setObjectName("outputFiles")
+        self.outputFiles.setProperty("show_legend", False)
+        self.outputFiles.setProperty("is_expanded", True)
+        self.outputs = self.outputFiles
+        self.contentLayout.addWidget(self.outputFiles)
+
+        # -------------------------------------------------------------
         # Step Cards (1 to 5)
         # -------------------------------------------------------------
         self.skyCard = StepCard(title="Define Sky Region", number=1, expanded=False, parent=self.content)
@@ -134,16 +144,6 @@ class SidebarFinish(QWidget):
         self._step_cards = (self.skyCard, self.separateCard, self.starlessCard, self.starsCard, self.recombineCard)
         for card in self._step_cards:
             card.expanded.connect(lambda c=card: self._collapse_other_steps(c))
-
-        # -------------------------------------------------------------
-        # Output Files Section
-        # -------------------------------------------------------------
-        self.outputFiles = FileSection(title="Output Files", inputs=False, parent=self.content)
-        self.outputFiles.setObjectName("outputFiles")
-        self.outputFiles.setProperty("show_legend", False)
-        self.outputFiles.setProperty("is_expanded", True)
-        self.outputs = self.outputFiles
-        self.contentLayout.addWidget(self.outputFiles)
 
         self.contentLayout.addStretch(1)
         self.scroll.setWidget(self.content)

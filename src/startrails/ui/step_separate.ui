@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SeparateStarsSettings</class>
+ <widget class="QWidget" name="SeparateStarsSettings">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>300</width>
+    <height>200</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QFrame#unconfigured_box {
+    background-color: #fffbeb;
+    border: 1px solid #fef3c7;
+    border-radius: 6px;
+    padding: 8px;
+}
+QLabel#lbl_unconf_msg {
+    color: #92400e;
+    font-size: 11px;
+    line-height: 1.3;
+}
+QPushButton#btn_setup_starnet {
+    background-color: #d97706;
+    color: #ffffff;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-weight: 600;
+    font-size: 11px;
+}
+QPushButton#btn_setup_starnet:hover {
+    background-color: #b45309;
+}
+QPushButton#btn_setup_starnet:disabled {
+    background-color: #cbd5e1;
+    color: #94a3b8;
+}
+QPushButton#btn_browse_starnet {
+    background-color: #ffffff;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 11px;
+}
+QPushButton#btn_browse_starnet:hover {
+    background-color: #f1f5f9;
+}
+QLabel#lbl_starnet_info {
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e293b;
+}
+QPushButton#btn_repair {
+    border: none;
+    color: #0284c7;
+    font-size: 11px;
+    text-decoration: underline;
+    background: transparent;
+}
+QPushButton#btn_repair:hover {
+    color: #0369a1;
+}
+QPushButton#btn_change {
+    border: none;
+    color: #64748b;
+    font-size: 11px;
+    text-decoration: underline;
+    background: transparent;
+}
+QPushButton#btn_change:hover {
+    color: #334155;
+}
+QLabel#lbl_stride {
+    font-size: 11px;
+    color: #475569;
+}
+QComboBox#combo_stride {
+    font-size: 11px;
+    padding: 2px 4px;
+}
+QPushButton#btn_separate {
+    background-color: #0284c7;
+    color: #ffffff;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-weight: 600;
+    font-size: 12px;
+}
+QPushButton#btn_separate:disabled {
+    background-color: #94a3b8;
+}
+QPushButton#btn_separate:hover:!disabled {
+    background-color: #0369a1;
+}
+QLabel#lbl_status {
+    font-size: 11px;
+    color: #dc2626;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing">
+    <number>8</number>
+   </property>
+   <property name="leftMargin">
+    <number>4</number>
+   </property>
+   <property name="topMargin">
+    <number>4</number>
+   </property>
+   <property name="rightMargin">
+    <number>4</number>
+   </property>
+   <property name="bottomMargin">
+    <number>4</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="unconfigured_box">
+     <layout class="QVBoxLayout" name="unconf_layout">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>6</number>
+      </property>
+      <property name="topMargin">
+       <number>6</number>
+      </property>
+      <property name="rightMargin">
+       <number>6</number>
+      </property>
+      <property name="bottomMargin">
+       <number>6</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="lbl_unconf_msg">
+        <property name="text">
+         <string>StarNet2 is required to separate stars from the sky background.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="btn_row">
+        <property name="spacing">
+         <number>6</number>
+        </property>
+        <item>
+         <widget class="QPushButton" name="btn_setup_starnet">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Set Up StarNet2…</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_browse_starnet">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Use Existing…</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="configured_box">
+     <layout class="QVBoxLayout" name="conf_layout">
+      <property name="spacing">
+       <number>6</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="header_row">
+        <property name="spacing">
+         <number>4</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="lbl_starnet_info">
+          <property name="text">
+           <string>StarNet2 Ready</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="header_spacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_repair">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Repair</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_change">
+          <property name="cursor">
+           <cursorShape>PointingHandCursor</cursorShape>
+          </property>
+          <property name="text">
+           <string>Change…</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="stride_row">
+        <property name="spacing">
+         <number>6</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="lbl_stride">
+          <property name="text">
+           <string>Stride:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="combo_stride"/>
+        </item>
+        <item>
+         <spacer name="stride_spacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_separate">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="cursor">
+         <cursorShape>PointingHandCursor</cursorShape>
+        </property>
+        <property name="text">
+         <string>Separate Stars</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="lbl_status">
+     <property name="text">
+      <string/>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

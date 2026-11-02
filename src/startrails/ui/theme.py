@@ -41,7 +41,7 @@ _DARK_BORDER = {
     "#f1f5f9": "#334155", "#e2e8f0": "#334155",
     "#cbd5e1": "#475569", "#94a3b8": "#64748b",
     "#bbf7d0": "#276749", "#bae6fd": "#25516c",
-    "#fde68a": "#705326", "#fecaca": "#7f3542",
+    "#fde68a": "#705326", "#fef3c7": "#705326", "#fecaca": "#7f3542",
     "#bfdbfe": "#315b85", "#e9d5ff": "#63417e",
 }
 _COLORS = {"foreground": _DARK_FOREGROUND, "background": _DARK_BACKGROUND,
