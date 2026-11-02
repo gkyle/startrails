@@ -473,6 +473,36 @@ class TestFinishDenoise(QtTestCase):
             self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
             self.assertIsNone(self.project.current_export_path())
 
+    def test_stale_graxpert_model_rejected_at_recombine_and_export_boundaries(self):
+        """Direct consumers cannot publish plates built from an obsolete denoise model."""
+        self.prepare_separated_project()
+        fake_session = MagicMock()
+        fake_session.denoise_full_strength.return_value = np.full((512, 512, 3), 0.45, dtype=np.float32)
+        with (
+            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
+            patch(
+                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
+                return_value={"provider": "CPUExecutionProvider"},
+            ),
+        ):
+            for consumer in ("recombine", "export"):
+                with self.subTest(consumer=consumer):
+                    self.assertIsNotNone(self.workflow.do_denoise_starless())
+                    self.assertIsNotNone(self.workflow.do_recombine())
+                    self.project.denoise_model_identity = "obsolete-model"
+
+                    if consumer == "recombine":
+                        self.assertIsNone(self.workflow.do_recombine())
+                    else:
+                        destination = self.root / "obsolete-export.tif"
+                        with self.assertRaisesRegex(ValueError, "No current composite"):
+                            self.workflow.do_export_composite(destination)
+                        self.assertFalse(destination.exists())
+
+                    for role in (ROLE_DENOISED_STARLESS, ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE):
+                        self.assertIsNone(self.project.current_artifact_path(role))
+                    self.assertIsNotNone(self.project.current_artifact_path(ROLE_SEPARATED_STARLESS))
+
     def test_progress_does_not_complete_before_sharpening_finishes(self):
         """Inference completion is mapped to a partial phase, not task completion."""
         self.prepare_separated_project()

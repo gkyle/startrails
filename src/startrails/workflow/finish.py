@@ -300,6 +300,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         output_path: Optional[Union[str, Path]] = None,
     ) -> Path:
         """Export the current recombined composite using source-matching depth and format."""
+        self.invalidate_if_graxpert_changed()
         self.invalidate_if_starless_filter_changed()
         project = self.project
         revision = project.processing_revision
@@ -877,7 +878,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         progress_bar observes the operation on its native job scale, or on the
         shared separation scale when supplied by do_separate_stars.
         """
-        if self.invalidate_if_starless_filter_changed():
+        if self.invalidate_if_graxpert_changed() or self.invalidate_if_starless_filter_changed():
             return None
         project = self.project
         revision = project.processing_revision
