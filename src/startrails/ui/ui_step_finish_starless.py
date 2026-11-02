@@ -23,7 +23,7 @@ class Ui_FinishStarlessSettings(object):
     def setupUi(self, FinishStarlessSettings):
         if not FinishStarlessSettings.objectName():
             FinishStarlessSettings.setObjectName(u"FinishStarlessSettings")
-        FinishStarlessSettings.resize(300, 240)
+        FinishStarlessSettings.resize(300, 340)
         FinishStarlessSettings.setStyleSheet(u"QFrame#unconfigured_box {\n"
 "    background-color: #fffbeb;\n"
 "    border: 1px solid #fef3c7;\n"
@@ -51,24 +51,24 @@ class Ui_FinishStarlessSettings(object):
 "    font-weight: 600;\n"
 "    color: #1e293b;\n"
 "}\n"
-"QLabel#lbl_strength_title, QLabel#lbl_scope_title {\n"
+"QLabel#lbl_strength_title, QLabel#lbl_scope_title, QLabel#lbl_structure_title, QLabel#lbl_detail_title {\n"
 "    font-size: 11px;\n"
 "    font-weight: 600;\n"
 "    color: #475569;\n"
 "}\n"
-"QLabel#lbl_strength_value {\n"
+"QLabel#lbl_strength_value, QLabel#lbl_structure_value, QLabel#lbl_detail_value {\n"
 "    font-size: 11px;\n"
 "    font-weight: 600;\n"
 "    color: #0369a1;\n"
 "}\n"
 "QRadioButton {\n"
-"    font-size: 11px;\n"
+"   "
+                        " font-size: 11px;\n"
 "    color: #334155;\n"
 "    font-weight: 500;\n"
 "    spacing: 5px;\n"
 "}\n"
-"QPushB"
-                        "utton#btn_run_denoise {\n"
+"QPushButton#btn_run_denoise {\n"
 "    background-color: #0284c7;\n"
 "    color: #ffffff;\n"
 "    border-radius: 4px;\n"
@@ -220,6 +220,78 @@ class Ui_FinishStarlessSettings(object):
 
         self.layout.addWidget(self.scope_container)
 
+        self.structure_container = QWidget(FinishStarlessSettings)
+        self.structure_container.setObjectName(u"structure_container")
+        self.structure_layout = QVBoxLayout(self.structure_container)
+        self.structure_layout.setSpacing(4)
+        self.structure_layout.setObjectName(u"structure_layout")
+        self.structure_layout.setContentsMargins(0, 0, 0, 0)
+        self.structure_header_layout = QHBoxLayout()
+        self.structure_header_layout.setObjectName(u"structure_header_layout")
+        self.lbl_structure_title = QLabel(self.structure_container)
+        self.lbl_structure_title.setObjectName(u"lbl_structure_title")
+
+        self.structure_header_layout.addWidget(self.lbl_structure_title)
+
+        self.lbl_structure_value = QLabel(self.structure_container)
+        self.lbl_structure_value.setObjectName(u"lbl_structure_value")
+        self.lbl_structure_value.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.structure_header_layout.addWidget(self.lbl_structure_value)
+
+
+        self.structure_layout.addLayout(self.structure_header_layout)
+
+        self.slider_structure = QSlider(self.structure_container)
+        self.slider_structure.setObjectName(u"slider_structure")
+        self.slider_structure.setOrientation(Qt.Orientation.Horizontal)
+        self.slider_structure.setMaximum(100)
+        self.slider_structure.setSingleStep(1)
+        self.slider_structure.setPageStep(10)
+        self.slider_structure.setValue(0)
+        self.slider_structure.setTracking(True)
+
+        self.structure_layout.addWidget(self.slider_structure)
+
+
+        self.layout.addWidget(self.structure_container)
+
+        self.detail_container = QWidget(FinishStarlessSettings)
+        self.detail_container.setObjectName(u"detail_container")
+        self.detail_layout = QVBoxLayout(self.detail_container)
+        self.detail_layout.setSpacing(4)
+        self.detail_layout.setObjectName(u"detail_layout")
+        self.detail_layout.setContentsMargins(0, 0, 0, 0)
+        self.detail_header_layout = QHBoxLayout()
+        self.detail_header_layout.setObjectName(u"detail_header_layout")
+        self.lbl_detail_title = QLabel(self.detail_container)
+        self.lbl_detail_title.setObjectName(u"lbl_detail_title")
+
+        self.detail_header_layout.addWidget(self.lbl_detail_title)
+
+        self.lbl_detail_value = QLabel(self.detail_container)
+        self.lbl_detail_value.setObjectName(u"lbl_detail_value")
+        self.lbl_detail_value.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+
+        self.detail_header_layout.addWidget(self.lbl_detail_value)
+
+
+        self.detail_layout.addLayout(self.detail_header_layout)
+
+        self.slider_detail = QSlider(self.detail_container)
+        self.slider_detail.setObjectName(u"slider_detail")
+        self.slider_detail.setOrientation(Qt.Orientation.Horizontal)
+        self.slider_detail.setMaximum(100)
+        self.slider_detail.setSingleStep(1)
+        self.slider_detail.setPageStep(10)
+        self.slider_detail.setValue(0)
+        self.slider_detail.setTracking(True)
+
+        self.detail_layout.addWidget(self.slider_detail)
+
+
+        self.layout.addWidget(self.detail_container)
+
         self.action_layout = QHBoxLayout()
         self.action_layout.setSpacing(6)
         self.action_layout.setObjectName(u"action_layout")
@@ -260,6 +332,10 @@ class Ui_FinishStarlessSettings(object):
         self.lbl_scope_title.setText(QCoreApplication.translate("FinishStarlessSettings", u"Denoise Scope", None))
         self.radio_sky_only.setText(QCoreApplication.translate("FinishStarlessSettings", u"Sky Only", None))
         self.radio_whole_image.setText(QCoreApplication.translate("FinishStarlessSettings", u"Whole Image", None))
+        self.lbl_structure_title.setText(QCoreApplication.translate("FinishStarlessSettings", u"Structure", None))
+        self.lbl_structure_value.setText(QCoreApplication.translate("FinishStarlessSettings", u"0%", None))
+        self.lbl_detail_title.setText(QCoreApplication.translate("FinishStarlessSettings", u"Detail", None))
+        self.lbl_detail_value.setText(QCoreApplication.translate("FinishStarlessSettings", u"0%", None))
         self.btn_run_denoise.setText(QCoreApplication.translate("FinishStarlessSettings", u"Run Denoise", None))
         self.btn_reset.setText(QCoreApplication.translate("FinishStarlessSettings", u"Reset", None))
         self.lbl_status.setText("")

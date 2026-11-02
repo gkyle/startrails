@@ -121,7 +121,7 @@ class SidebarFinish(QWidget):
         self.contentLayout.addWidget(self.separateCard)
 
         self.starlessCard = StepCard(title="Finish Starless", number=3, expanded=False, parent=self.content)
-        self.starlessCard.setSubtitle("GraXpert AI denoising and blending")
+        self.starlessCard.setSubtitle("AI denoise with Structure and Detail controls")
         self.starlessSettings = FinishStarlessSettings(parent=self.content)
         self.starlessCard.add_body(self.starlessSettings)
         self.contentLayout.addWidget(self.starlessCard)

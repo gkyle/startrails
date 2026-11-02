@@ -10,6 +10,8 @@ from PySide6.QtWidgets import QButtonGroup, QWidget
 from startrails.lib.finish.defaults import (
     DEFAULT_DENOISE_SCOPE,
     DEFAULT_DENOISE_STRENGTH_PERCENT,
+    DEFAULT_DETAIL_AMOUNT_PERCENT,
+    DEFAULT_STRUCTURE_AMOUNT_PERCENT,
     SCOPE_SKY_ONLY,
     SCOPE_WHOLE_IMAGE,
 )
@@ -25,6 +27,10 @@ class FinishStarlessSettings(QWidget):
     strength_changed = denoise_strength_changed
     denoise_scope_changed = Signal(str)
     scope_changed = denoise_scope_changed
+    structure_amount_changed = Signal(float)
+    structure_changed = structure_amount_changed
+    detail_amount_changed = Signal(float)
+    detail_changed = detail_amount_changed
     reset_requested = Signal()
     settings_changed = Signal()
 
@@ -44,6 +50,12 @@ class FinishStarlessSettings(QWidget):
         self.lbl_strength_value = self.ui.lbl_strength_value
         self.radio_sky_only = self.ui.radio_sky_only
         self.radio_whole_image = self.ui.radio_whole_image
+        self.slider_structure = self.ui.slider_structure
+        self.slider_structure_amount = self.ui.slider_structure
+        self.lbl_structure_value = self.ui.lbl_structure_value
+        self.slider_detail = self.ui.slider_detail
+        self.slider_detail_amount = self.ui.slider_detail
+        self.lbl_detail_value = self.ui.lbl_detail_value
         self.btn_run_denoise = self.ui.btn_run_denoise
         self.btn_reset = self.ui.btn_reset
         self.lbl_status = self.ui.lbl_status
@@ -71,6 +83,8 @@ class FinishStarlessSettings(QWidget):
         self.slider_strength.valueChanged.connect(self._on_strength_slider_changed)
         self.radio_sky_only.toggled.connect(self._on_scope_toggled)
         self.radio_whole_image.toggled.connect(self._on_scope_toggled)
+        self.slider_structure.valueChanged.connect(self._on_structure_slider_changed)
+        self.slider_detail.valueChanged.connect(self._on_detail_slider_changed)
         self.btn_run_denoise.clicked.connect(self.run_denoise_requested.emit)
         self.btn_reset.clicked.connect(self._on_reset_clicked)
 
@@ -85,9 +99,21 @@ class FinishStarlessSettings(QWidget):
             self.denoise_scope_changed.emit(self.get_scope())
             self.settings_changed.emit()
 
+    def _on_structure_slider_changed(self, value: int) -> None:
+        self.lbl_structure_value.setText(f"{value}%")
+        self.structure_amount_changed.emit(float(value))
+        self.settings_changed.emit()
+
+    def _on_detail_slider_changed(self, value: int) -> None:
+        self.lbl_detail_value.setText(f"{value}%")
+        self.detail_amount_changed.emit(float(value))
+        self.settings_changed.emit()
+
     def _on_reset_clicked(self) -> None:
         self.set_strength(DEFAULT_DENOISE_STRENGTH_PERCENT)
         self.set_scope(DEFAULT_DENOISE_SCOPE)
+        self.set_structure(DEFAULT_STRUCTURE_AMOUNT_PERCENT)
+        self.set_detail(DEFAULT_DETAIL_AMOUNT_PERCENT)
         self.reset_requested.emit()
         self.settings_changed.emit()
 
@@ -123,11 +149,53 @@ class FinishStarlessSettings(QWidget):
                 self.radio_sky_only.setChecked(True)
                 self.radio_whole_image.setChecked(False)
 
+    def get_structure(self) -> float:
+        """Return the current structure amount as a percentage (0.0 to 100.0)."""
+        return float(self.slider_structure.value())
+
+    def get_structure_amount(self) -> float:
+        """Alias returning the structure amount as a percentage."""
+        return self.get_structure()
+
+    def set_structure(self, value: float) -> None:
+        """Update the structure slider position and display label without emitting change signals."""
+        val = int(round(value))
+        val = max(0, min(100, val))
+        self.lbl_structure_value.setText(f"{val}%")
+        with QSignalBlocker(self.slider_structure):
+            self.slider_structure.setValue(val)
+
+    def set_structure_amount(self, value: float) -> None:
+        """Alias setting the structure amount without emitting change signals."""
+        self.set_structure(value)
+
+    def get_detail(self) -> float:
+        """Return the current detail amount as a percentage (0.0 to 100.0)."""
+        return float(self.slider_detail.value())
+
+    def get_detail_amount(self) -> float:
+        """Alias returning the detail amount as a percentage."""
+        return self.get_detail()
+
+    def set_detail(self, value: float) -> None:
+        """Update the detail slider position and display label without emitting change signals."""
+        val = int(round(value))
+        val = max(0, min(100, val))
+        self.lbl_detail_value.setText(f"{val}%")
+        with QSignalBlocker(self.slider_detail):
+            self.slider_detail.setValue(val)
+
+    def set_detail_amount(self, value: float) -> None:
+        """Alias setting the detail amount without emitting change signals."""
+        self.set_detail(value)
+
     def set_from_project(self, project: FinishProject) -> None:
         """Populate widget controls from active FinishProject settings."""
         settings = project.get_settings()
         self.set_strength(settings.denoise_strength)
         self.set_scope(settings.denoise_scope)
+        self.set_structure(settings.structure_amount)
+        self.set_detail(settings.detail_amount)
 
     def refresh_status(
         self,
@@ -198,6 +266,8 @@ class FinishStarlessSettings(QWidget):
         self.slider_strength.setEnabled(has_prerequisites)
         self.radio_sky_only.setEnabled(has_prerequisites)
         self.radio_whole_image.setEnabled(has_prerequisites)
+        self.slider_structure.setEnabled(has_prerequisites)
+        self.slider_detail.setEnabled(has_prerequisites)
         self.btn_reset.setEnabled(has_prerequisites)
         self._update_run_denoise_enabled()
 

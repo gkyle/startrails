@@ -15,6 +15,8 @@ from startrails.lib.file import File, OutputFile
 from startrails.lib.finish.defaults import (
     DEFAULT_DENOISE_SCOPE,
     DEFAULT_DENOISE_STRENGTH_PERCENT,
+    DEFAULT_DETAIL_AMOUNT_PERCENT,
+    DEFAULT_STRUCTURE_AMOUNT_PERCENT,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
@@ -116,6 +118,10 @@ class FinishView(ModeView):
                 self.sidebar.starlessSettings.denoise_strength_changed, self.on_denoise_strength_changed
             )
             self.connect_signal(self.sidebar.starlessSettings.denoise_scope_changed, self.on_denoise_scope_changed)
+            self.connect_signal(
+                self.sidebar.starlessSettings.structure_amount_changed, self.on_structure_amount_changed
+            )
+            self.connect_signal(self.sidebar.starlessSettings.detail_amount_changed, self.on_detail_amount_changed)
             self.connect_signal(self.sidebar.starlessSettings.reset_requested, self.on_reset_starless)
 
     def teardown(self) -> None:
@@ -279,6 +285,8 @@ class FinishView(ModeView):
             self.app.workflow.invalidate_if_starnet_changed()
             if hasattr(self.app.workflow, "invalidate_if_graxpert_changed"):
                 self.app.workflow.invalidate_if_graxpert_changed()
+            if hasattr(self.app.workflow, "invalidate_if_starless_filter_changed"):
+                self.app.workflow.invalidate_if_starless_filter_changed()
             self.sidebar.inputFiles.set_files(self.app.workflow.getInputFileList())
             self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
             self.sidebar.update_prerequisites(self._project)
@@ -500,6 +508,8 @@ class FinishView(ModeView):
         if hasattr(self.sidebar, "starlessSettings"):
             strength = self.sidebar.starlessSettings.get_strength()
             scope = self.sidebar.starlessSettings.get_scope()
+            structure = self.sidebar.starlessSettings.get_structure()
+            detail = self.sidebar.starlessSettings.get_detail()
             status = self.app.workflow.get_graxpert_status()
             policy = status.get("policy")
             model_ready = status.get("model_ready", False)
@@ -509,7 +519,15 @@ class FinishView(ModeView):
                 QMessageBox.warning(self.sidebar, "GraXpert Unavailable", msg)
                 return
             settings = self._project.get_settings()
-            self._project.update_settings(replace(settings, denoise_strength=strength, denoise_scope=scope))
+            self._project.update_settings(
+                replace(
+                    settings,
+                    denoise_strength=strength,
+                    denoise_scope=scope,
+                    structure_amount=structure,
+                    detail_amount=detail,
+                )
+            )
             self.app.workflow.save_project()
             if hasattr(self.sidebar.starlessSettings, "lbl_status"):
                 self.sidebar.starlessSettings.lbl_status.hide()
@@ -578,6 +596,30 @@ class FinishView(ModeView):
         if endpoint is not None or settings.denoise_strength == 0.0:
             self._debounce_denoise_preview()
 
+    def on_structure_amount_changed(self, value: float) -> None:
+        """Update structure amount setting and trigger debounced preview recomposition."""
+        settings = self._project.get_settings()
+        if settings.structure_amount == value:
+            return
+        self._project.update_settings(replace(settings, structure_amount=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
+        if endpoint is not None or settings.denoise_strength == 0.0:
+            self._debounce_denoise_preview()
+
+    def on_detail_amount_changed(self, value: float) -> None:
+        """Update detail amount setting and trigger debounced preview recomposition."""
+        settings = self._project.get_settings()
+        if settings.detail_amount == value:
+            return
+        self._project.update_settings(replace(settings, detail_amount=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
+        if endpoint is not None or settings.denoise_strength == 0.0:
+            self._debounce_denoise_preview()
+
     def on_reset_starless(self) -> None:
         """Reset starless finishing settings to their defaults."""
         settings = self._project.get_settings()
@@ -586,6 +628,8 @@ class FinishView(ModeView):
                 settings,
                 denoise_strength=DEFAULT_DENOISE_STRENGTH_PERCENT,
                 denoise_scope=DEFAULT_DENOISE_SCOPE,
+                structure_amount=DEFAULT_STRUCTURE_AMOUNT_PERCENT,
+                detail_amount=DEFAULT_DETAIL_AMOUNT_PERCENT,
             )
         )
         self.app.workflow.save_project()

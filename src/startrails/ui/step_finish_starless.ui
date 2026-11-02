@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>300</width>
-    <height>240</height>
+    <height>340</height>
    </rect>
   </property>
   <property name="styleSheet">
@@ -38,12 +38,12 @@ QLabel#lbl_provider_info {
     font-weight: 600;
     color: #1e293b;
 }
-QLabel#lbl_strength_title, QLabel#lbl_scope_title {
+QLabel#lbl_strength_title, QLabel#lbl_scope_title, QLabel#lbl_structure_title, QLabel#lbl_detail_title {
     font-size: 11px;
     font-weight: 600;
     color: #475569;
 }
-QLabel#lbl_strength_value {
+QLabel#lbl_strength_value, QLabel#lbl_structure_value, QLabel#lbl_detail_value {
     font-size: 11px;
     font-weight: 600;
     color: #0369a1;
@@ -320,6 +320,134 @@ QLabel#lbl_status {
          </spacer>
         </item>
        </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="structure_container" native="true">
+     <layout class="QVBoxLayout" name="structure_layout">
+      <property name="spacing">
+       <number>4</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="structure_header_layout">
+        <item>
+         <widget class="QLabel" name="lbl_structure_title">
+          <property name="text">
+           <string>Structure</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lbl_structure_value">
+          <property name="text">
+           <string>0%</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QSlider" name="slider_structure">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="singleStep">
+         <number>1</number>
+        </property>
+        <property name="pageStep">
+         <number>10</number>
+        </property>
+        <property name="value">
+         <number>0</number>
+        </property>
+        <property name="tracking">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="detail_container" native="true">
+     <layout class="QVBoxLayout" name="detail_layout">
+      <property name="spacing">
+       <number>4</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="detail_header_layout">
+        <item>
+         <widget class="QLabel" name="lbl_detail_title">
+          <property name="text">
+           <string>Detail</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lbl_detail_value">
+          <property name="text">
+           <string>0%</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QSlider" name="slider_detail">
+        <property name="orientation">
+         <enum>Qt::Orientation::Horizontal</enum>
+        </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="singleStep">
+         <number>1</number>
+        </property>
+        <property name="pageStep">
+         <number>10</number>
+        </property>
+        <property name="value">
+         <number>0</number>
+        </property>
+        <property name="tracking">
+         <bool>true</bool>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>

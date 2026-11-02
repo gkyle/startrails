@@ -21,6 +21,7 @@ from startrails.lib.finish.defaults import (
     FINISH_DEFAULTS,
     FINISH_EXT,
     FinishSettings,
+    PERCENT_SCALE,
     ROLE_SOURCE_SNAPSHOT,
     ROLE_SKY_MASK,
     ROLE_UNMASKED_STARLESS,
@@ -484,6 +485,14 @@ class FinishProject(Unpickle):
             {ROLE_DENOISED_STARLESS, ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE}
         )
 
+    def invalidate_starless_filter_descendants(self) -> None:
+        """Discard finished plates built by another sharpening algorithm version.
+
+        The full-strength denoise endpoint is independent of Structure/Detail and
+        remains a valid base for rebuilding the finished plate.
+        """
+        self.invalidate_artifact_roles({ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
+
     def invalidate_export(self) -> None:
         """Discard only the user-encoded export while keeping its source composite."""
         with self._state_lock:
@@ -580,6 +589,9 @@ class FinishProject(Unpickle):
         expected_revision: int,
         strength: float,
         scope: str,
+        structure_amount: float,
+        detail_amount: float,
+        starless_filter_version: int,
         endpoint_path: Optional[Union[str, Path]] = None,
         endpoint_signature: Optional[str] = None,
         model_identity: Optional[str] = None,
@@ -587,12 +599,20 @@ class FinishProject(Unpickle):
     ) -> bool:
         """Atomically publish a finished-starless blend and, when computed, its endpoint.
 
-        The full-strength endpoint is keyed by its inference signature. Strength and
-        scope only describe the finished blend, so changing them never requires a new
-        endpoint. A new finished starless plate invalidates the previous composite and
-        export because both were built from the replaced plate.
+        The full-strength endpoint is keyed by its inference signature. Strength,
+        scope, Structure and Detail only describe the finished blend, so changing
+        them never requires a new endpoint. The finished artifact records the
+        Structure/Detail amounts and sharpening algorithm version that produced it.
+        A new finished starless plate invalidates the previous composite and export
+        because both were built from the replaced plate.
         """
         with self._state_lock:
+            if not np.isfinite(structure_amount) or not 0 <= structure_amount <= PERCENT_SCALE:
+                raise ValueError(f"Structure amount must be in range [0.0, 100.0], got {structure_amount}")
+            if not np.isfinite(detail_amount) or not 0 <= detail_amount <= PERCENT_SCALE:
+                raise ValueError(f"Detail amount must be in range [0.0, 100.0], got {detail_amount}")
+            if type(starless_filter_version) is not int or starless_filter_version < 1:
+                raise ValueError(f"Starless filter version must be a positive integer, got {starless_filter_version}")
             if not self._commit_if_current(
                 transaction,
                 expected_revision=expected_revision,
@@ -637,7 +657,14 @@ class FinishProject(Unpickle):
                 "source": source,
                 "file": list(finished_stamp),
                 "revision": self.processing_revision,
-                "options": dict(common_options, strength=float(strength), scope=scope),
+                "options": dict(
+                    common_options,
+                    strength=float(strength),
+                    scope=scope,
+                    structure_amount=float(structure_amount),
+                    detail_amount=float(detail_amount),
+                    starless_filter_version=starless_filter_version,
+                ),
             }
             setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_STARLESS], str(finished))
 

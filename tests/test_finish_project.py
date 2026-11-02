@@ -23,6 +23,7 @@ from startrails.lib.finish.defaults import (
     ROLE_SOURCE_SNAPSHOT,
     ROLE_UNMASKED_STARLESS,
 )
+from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.image_io import imwrite
 from startrails.lib.project import Project
 from startrails.lib.project_denoise import DenoiseProject
@@ -269,6 +270,9 @@ class TestFinishProject(QtTestCase):
                 expected_revision=revision,
                 strength=50.0,
                 scope="sky_only",
+                structure_amount=35.0,
+                detail_amount=15.0,
+                starless_filter_version=STARLESS_FILTER_VERSION,
                 endpoint_path=endpoint,
                 endpoint_signature="endpoint-key",
                 model_identity="graxpert-model",
@@ -278,6 +282,12 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(project.denoise_model_identity, "graxpert-model")
         self.assertEqual(project.current_artifact_path(ROLE_DENOISED_STARLESS), endpoint)
         self.assertEqual(project.current_artifact_path(ROLE_FINISHED_STARLESS), finished)
+        finished_options = project.artifact_manifest[ROLE_FINISHED_STARLESS]["options"]
+        self.assertEqual(finished_options["structure_amount"], 35.0)
+        self.assertEqual(finished_options["detail_amount"], 15.0)
+        self.assertEqual(finished_options["starless_filter_version"], STARLESS_FILTER_VERSION)
+        self.assertNotIn("structure_amount", project.artifact_manifest[ROLE_DENOISED_STARLESS]["options"])
+        self.assertNotIn("starless_filter_version", project.artifact_manifest[ROLE_DENOISED_STARLESS]["options"])
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
         self.assertIsNone(project.current_export_path())
 
@@ -290,6 +300,9 @@ class TestFinishProject(QtTestCase):
                 expected_revision=stale_revision,
                 strength=100.0,
                 scope="whole_image",
+                structure_amount=100.0,
+                detail_amount=100.0,
+                starless_filter_version=STARLESS_FILTER_VERSION,
             )
         )
 

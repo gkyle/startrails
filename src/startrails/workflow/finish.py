@@ -32,6 +32,7 @@ from startrails.lib.finish.defaults import (
 from startrails.lib.finish.graxpert import graxpert_model_identity
 from startrails.lib.finish.separation import compute_separation_signature
 from startrails.lib.finish.starnet import MAX_STRIDE, MIN_STRIDE
+from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
 from startrails.lib.image_io import imread, imwrite, normalize_image
 from startrails.lib.model_manifest import GRAXPERT_MANIFEST, PlatformNotSupportedError
@@ -55,6 +56,7 @@ from startrails.op.finish.graxpert_denoise import GraXpertDenoise
 from startrails.op.finish.recombine import Recombine
 from startrails.op.finish.run_starnet import RunStarNet
 from startrails.op.finish.separate_stars import SeparateStars
+from startrails.op.finish.sharpen_starless import SharpenStarless
 from startrails.paths import APPLICATION_DIR
 from startrails.workflow.base import Workflow
 from startrails.workflow.masking import SkyMaskingWorkflowMixin
@@ -72,18 +74,31 @@ _STARNET_PROGRESS_SPAN = (0, 80)
 _SEPARATION_PROGRESS_SPAN = (80, 17)
 _RECOMBINE_PROGRESS_SPAN = (97, 3)
 
+# Starless finishing reserves the last unit for publishing, so no inner
+# operation can report the whole task complete before sharpening ends.
+_STARLESS_PROGRESS_TOTAL: Final[int] = 100
+_STARLESS_DENOISE_PROGRESS_SPAN = (0, 90)
+_STARLESS_SHARPEN_PROGRESS_SPAN = (90, 9)
+_STARLESS_NO_PHASE_PROGRESS = 99
+
 
 class _PhaseProgress:
-    """Map one operation's job counts onto a span of the shared separation scale.
+    """Map one operation's job counts onto a span of a shared progress scale.
 
     Each phase runs its own Observable with an independent total; this adapter
-    reports every phase's absolute fraction onto SEPARATION_PROGRESS_TOTAL so
-    the task overlay sees one monotonic scale.
+    reports every phase's absolute fraction onto ``scale`` so the task overlay
+    sees one monotonic scale.
     """
 
-    def __init__(self, observer: Callable[..., None], span: Tuple[int, int]):
+    def __init__(
+        self,
+        observer: Callable[..., None],
+        span: Tuple[int, int],
+        scale: int = SEPARATION_PROGRESS_TOTAL,
+    ):
         self._observer = observer
         self._start, self._size = span
+        self._scale = scale
         self._reported = self._start
 
     def __call__(self, total: int, increment: int, count: int, done: bool, data: Any = None) -> None:
@@ -93,8 +108,8 @@ class _PhaseProgress:
         self._reported = target
         # A phase finishing early is not the whole task; only total completion
         # may tell observers that the shared operation is done.
-        task_done = bool(done and target >= SEPARATION_PROGRESS_TOTAL)
-        self._observer(SEPARATION_PROGRESS_TOTAL, max(0, delta), target, task_done, data)
+        task_done = bool(done and target >= self._scale)
+        self._observer(self._scale, max(0, delta), target, task_done, data)
 
 
 def _starnet_identity(platform_id: str, version: str, build: str, backend_id: str, package_sha256: str) -> str:
@@ -285,6 +300,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         output_path: Optional[Union[str, Path]] = None,
     ) -> Path:
         """Export the current recombined composite using source-matching depth and format."""
+        self.invalidate_if_starless_filter_changed()
         project = self.project
         revision = project.processing_revision
         if not project.source_file or not project.source_file.path:
@@ -418,6 +434,23 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         if project.denoise_model_identity == graxpert_model_identity():
             return False
         project.invalidate_denoise_descendants()
+        self.save_project()
+        return True
+
+    def invalidate_if_starless_filter_changed(self) -> bool:
+        """Invalidate finished plates built by a different sharpening algorithm version.
+
+        The cached full-strength denoise endpoint is unaffected, so structure/detail
+        can be recomputed from the same endpoint after upgrading the filter.
+        """
+        project = self.project
+        record = project.artifact_manifest.get(ROLE_FINISHED_STARLESS)
+        if record is None:
+            return False
+        saved_version = record.get("options", {}).get("starless_filter_version")
+        if saved_version == STARLESS_FILTER_VERSION:
+            return False
+        project.invalidate_starless_filter_descendants()
         self.save_project()
         return True
 
@@ -844,6 +877,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         progress_bar observes the operation on its native job scale, or on the
         shared separation scale when supplied by do_separate_stars.
         """
+        if self.invalidate_if_starless_filter_changed():
+            return None
         project = self.project
         revision = project.processing_revision
         separation_signature = project.separation_signature
@@ -886,13 +921,15 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         return result
 
     def do_denoise_starless(self, progress_bar: Optional[Any] = None) -> Optional[OutputFile]:
-        """Finish the separated starless plate with the current denoise settings.
+        """Finish the separated starless plate with the current denoise and sharpen settings.
 
         A full-strength GraXpert endpoint is computed once per separation/model
-        identity and cached. Strength and scope then reuse that endpoint, so their
-        controls never rerun inference. Zero strength publishes the separated plate
-        without resolving a runtime policy or loading a model.
+        identity and cached. Strength, scope, Structure and Detail then reuse that
+        endpoint, so their controls never rerun inference. Each run starts from the
+        separated plate plus the cached endpoint, applies the denoise blend, then
+        applies the bounded two-scale enhancement. Zero amounts remain exact identity.
         """
+        self.invalidate_if_starless_filter_changed()
         self.invalidate_if_graxpert_changed()
         project = self.project
         revision = project.processing_revision
@@ -906,16 +943,19 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         settings = project.get_settings()
         strength = settings.denoise_strength
         scope = settings.denoise_scope
+        structure = settings.structure_amount
+        detail = settings.detail_amount
         if not np.isfinite(strength) or not 0 <= strength <= PERCENT_SCALE:
             raise ValueError(f"Denoise strength must be in range [0.0, 100.0], got {strength}")
         if scope not in (SCOPE_SKY_ONLY, SCOPE_WHOLE_IMAGE):
             raise ValueError(f"Unknown denoise scope '{scope}'.")
+        self._validate_sharpen_amounts(structure, detail)
 
         mask: Optional[np.ndarray] = None
-        if scope == SCOPE_SKY_ONLY and strength > 0:
+        if (scope == SCOPE_SKY_ONLY and strength > 0) or structure > 0 or detail > 0:
             mask = self.get_current_mask()
             if mask is None:
-                raise ValueError("Sky-only denoising requires a current sky mask.")
+                raise ValueError("Sky-only finishing requires a current sky mask.")
 
         model_identity = graxpert_model_identity()
         endpoint_signature = compute_denoise_endpoint_signature(separation_signature, model_identity)
@@ -925,6 +965,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         }
         endpoint_path = project.current_artifact_path(ROLE_DENOISED_STARLESS, options=endpoint_options)
         finished_dest = project.artifact_path(ROLE_FINISHED_STARLESS, for_write=True)
+        will_sharpen = structure > 0 or detail > 0
 
         base = imread(separated_path, to_rgb=True, as_float=True)
         denoised: Optional[np.ndarray] = None
@@ -938,8 +979,17 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         session = self._graxpert_session_for(policy)
                         endpoint_dest = project.artifact_path(ROLE_DENOISED_STARLESS, for_write=True)
                         op = self._new_operation(GraXpertDenoise)
-                        if progress_bar is not None:
-                            op.addObserver(progress_bar)
+                        inference_progress = (
+                            _PhaseProgress(
+                                progress_bar,
+                                _STARLESS_DENOISE_PROGRESS_SPAN if will_sharpen else (0, _STARLESS_NO_PHASE_PROGRESS),
+                                scale=_STARLESS_PROGRESS_TOTAL,
+                            )
+                            if progress_bar is not None
+                            else None
+                        )
+                        if inference_progress is not None:
+                            op.addObserver(inference_progress)
                         self.app.activeOperation = op
                         try:
                             inference = op.denoise(
@@ -953,8 +1003,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         finally:
                             if self.app.activeOperation is op:
                                 self.app.activeOperation = self._session_operation
-                            if progress_bar is not None:
-                                op.removeObserver(progress_bar)
+                            if inference_progress is not None:
+                                op.removeObserver(inference_progress)
                         if inference is None or op.shouldInterrupt():
                             return None
                         denoised = inference[0]
@@ -962,13 +1012,51 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         assert endpoint_path is not None
                         denoised = imread(endpoint_path, to_rgb=True, as_float=True)
                         if progress_bar is not None:
-                            progress_bar(1, 1, 1, True, {"desc": "Using cached denoise endpoint."})
+                            cached_progress = 90 if will_sharpen else _STARLESS_NO_PHASE_PROGRESS
+                            progress_bar(
+                                _STARLESS_PROGRESS_TOTAL,
+                                cached_progress,
+                                cached_progress,
+                                False,
+                                {"desc": "Using cached denoise endpoint."},
+                            )
 
                     if strength == 0:
                         finished = base
                     else:
                         assert denoised is not None
                         finished = blend_denoise(base, denoised, mask, strength, scope)
+
+                    if will_sharpen:
+                        assert mask is not None
+                        sharpen_op = self._new_operation(SharpenStarless)
+                        sharpen_progress = (
+                            _PhaseProgress(
+                                progress_bar,
+                                _STARLESS_SHARPEN_PROGRESS_SPAN if strength > 0 else (0, _STARLESS_NO_PHASE_PROGRESS),
+                                scale=_STARLESS_PROGRESS_TOTAL,
+                            )
+                            if progress_bar is not None
+                            else None
+                        )
+                        if sharpen_progress is not None:
+                            sharpen_op.addObserver(sharpen_progress)
+                        self.app.activeOperation = sharpen_op
+                        try:
+                            sharpened = sharpen_op.sharpen(
+                                finished,
+                                mask,
+                                structure_amount=structure,
+                                detail_amount=detail,
+                            )
+                        finally:
+                            if self.app.activeOperation is sharpen_op:
+                                self.app.activeOperation = self._session_operation
+                            if sharpen_progress is not None:
+                                sharpen_op.removeObserver(sharpen_progress)
+                        if sharpened is None:
+                            return None
+                        finished = sharpened
 
                     staged_finished = transaction.stage(finished_dest)
                     written = imwrite(
@@ -989,6 +1077,9 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         expected_revision=revision,
                         strength=strength,
                         scope=scope,
+                        structure_amount=structure,
+                        detail_amount=detail,
+                        starless_filter_version=STARLESS_FILTER_VERSION,
                         endpoint_path=endpoint_dest,
                         endpoint_signature=endpoint_signature,
                         model_identity=model_identity,
@@ -1001,13 +1092,27 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         finally:
             del base, denoised
 
-        if progress_bar is not None and strength == 0:
-            progress_bar(1, 1, 1, True, {"desc": "Denoise strength is zero; using the separated starless plate."})
+        if progress_bar is not None:
+            has_progress = strength > 0 or will_sharpen
+            progress_bar(
+                _STARLESS_PROGRESS_TOTAL,
+                1 if has_progress else _STARLESS_PROGRESS_TOTAL,
+                _STARLESS_PROGRESS_TOTAL,
+                True,
+                {"desc": "Starless finishing complete."},
+            )
         return OutputFile(
             basename=finished_dest.name,
             path=str(finished_dest),
             operation="Finished Starless",
         )
+
+    @staticmethod
+    def _validate_sharpen_amounts(structure: float, detail: float) -> None:
+        """Validate persisted Structure/Detail values before any expensive work."""
+        for label, amount in (("Structure", structure), ("Detail", detail)):
+            if not np.isfinite(amount) or not 0 <= amount <= PERCENT_SCALE:
+                raise ValueError(f"{label} amount must be in range [0.0, 100.0], got {amount}")
 
 
 __all__ = ["FinishWorkflow"]
