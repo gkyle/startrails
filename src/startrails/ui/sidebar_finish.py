@@ -245,8 +245,10 @@ class SidebarFinish(QWidget):
         graxpert_ready = bool(model_ready and policy and policy.get("verified", False))
 
         self.separateCard.setStatus("done", "Stars separated")
-        if has_finished_starless or has_denoise_endpoint:
+        if has_finished_starless:
             self.starlessCard.setStatus("done", "Starless finished")
+        elif has_denoise_endpoint:
+            self.starlessCard.setStatus("ready", "Ready to update starless")
         elif not graxpert_ready:
             self.starlessCard.setStatus("ready", "GraXpert setup required")
         else:

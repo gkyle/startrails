@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -385,7 +386,7 @@ class TestSidebarFinishPrerequisites(QtTestCase):
             self.assertEqual(self.sidebar.starlessCard.status, "ready")
             self.assertEqual(self.sidebar.starlessCard.ui.subtitle.text(), "Ready to finish starless")
 
-        # 6. Add denoised or finished starless artifact -> done
+        # 6. The inference cache alone does not finish the current settings.
         denoised_p = self.root / "denoised.tif"
         imwrite(denoised_p, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
         self.project.record_artifact(ROLE_DENOISED_STARLESS, denoised_p)
@@ -399,8 +400,21 @@ class TestSidebarFinishPrerequisites(QtTestCase):
             },
         ):
             self.sidebar.update_prerequisites(self.project)
+            self.assertEqual(self.sidebar.starlessCard.status, "ready")
+            self.assertEqual(self.sidebar.starlessCard.ui.subtitle.text(), "Ready to update starless")
+
+            finished_p = self.root / "finished.tif"
+            imwrite(finished_p, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+            self.project.record_artifact(ROLE_FINISHED_STARLESS, finished_p)
+            self.sidebar.update_prerequisites(self.project)
             self.assertEqual(self.sidebar.starlessCard.status, "done")
             self.assertEqual(self.sidebar.starlessCard.ui.subtitle.text(), "Starless finished")
+
+            self.project.update_settings(replace(self.project.get_settings(), structure_amount=25.0))
+            self.sidebar.update_prerequisites(self.project)
+            self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+            self.assertEqual(self.sidebar.starlessCard.status, "ready")
+            self.assertEqual(self.sidebar.starlessCard.ui.subtitle.text(), "Ready to update starless")
 
 
 class TestFinishViewStarlessInteraction(QtTestCase):
