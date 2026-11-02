@@ -715,6 +715,58 @@ class TestFinishViewStarlessInteraction(QtTestCase):
         self.assertEqual(self.project.get_settings().structure_amount, 35.0)
         self.assertEqual(self.project.get_settings().detail_amount, 50.0)
 
+    def test_latest_preview_retried_when_previous_preview_is_still_queued(self):
+        """The queue's duplicate-ID rejection must not lose the final slider settings."""
+        queued = {}
+        applied = []
+
+        def enqueue(task_id, title, total, desc, work):
+            if task_id in queued:
+                return False
+            queued[task_id] = work
+            return True
+
+        def run_queued():
+            task_id, work = next(iter(queued.items()))
+            try:
+                work()
+            finally:
+                del queued[task_id]
+
+        def finish(**kwargs):
+            applied.append(self.project.get_settings())
+            return None
+
+        def dispatch_timer():
+            # Consume the single-shot timeout without depending on wall time.
+            self.view._denoise_timer.stop()
+            self.view._denoise_timer.timeout.emit()
+
+        with (
+            patch.object(self.shell, "enqueue_task", side_effect=enqueue),
+            patch.object(self.workflow, "do_denoise_starless", side_effect=finish),
+        ):
+            self.sidebar.starlessSettings.slider_strength.setValue(0)
+            self.sidebar.starlessSettings.slider_structure.setValue(20)
+            dispatch_timer()
+            self.assertEqual(len(queued), 1)
+
+            self.sidebar.starlessSettings.slider_structure.setValue(60)
+            self.sidebar.starlessSettings.slider_detail.setValue(40)
+            dispatch_timer()
+            self.assertEqual(len(queued), 1)
+            self.assertTrue(self.view._denoise_timer.isActive())
+
+            run_queued()  # The old job's revision guard rejects it.
+            self.assertEqual(applied, [])
+            dispatch_timer()
+            run_queued()
+            self.assertEqual(len(applied), 1)
+            self.assertEqual(applied[0].denoise_strength, 0.0)
+            self.assertEqual(applied[0].structure_amount, 60.0)
+            self.assertEqual(applied[0].detail_amount, 40.0)
+            self.assertFalse(self.view._denoise_timer.isActive())
+
     def test_structure_detail_change_without_endpoint_does_not_infer_unless_zero(self):
         """Without cached endpoint, structure/detail changes do not run inference when strength > 0, but do when strength == 0."""
         self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))

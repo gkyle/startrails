@@ -693,13 +693,18 @@ class FinishView(ModeView):
             else:
                 deliver_result(on_cancelled)
 
-        self._enqueue_task(
+        accepted = self._enqueue_task(
             task_id="finish_denoise_preview",
             title="Finish Starless",
             total=100,
             desc="Updating starless finishing...",
             work=work,
         )
+        if not accepted:
+            # The shared queue rejects duplicate task IDs, including a stale
+            # preview still running after these settings changed. Keep one
+            # pending update so the latest settings run when that job exits.
+            self._debounce_denoise_preview()
 
 
 __all__ = ["FinishView"]
