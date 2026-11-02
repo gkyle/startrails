@@ -32,6 +32,7 @@ from startrails.lib.finish.defaults import (
 )
 from startrails.lib.finish.graxpert import graxpert_model_identity
 from startrails.lib.finish.separation import compute_separation_signature
+from startrails.lib.finish.star_analysis import StarAnalysisResult
 from startrails.lib.finish.star_effects import STAR_EFFECT_VERSION
 from startrails.lib.finish.starnet import MAX_STRIDE, MIN_STRIDE
 from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
@@ -115,14 +116,18 @@ class _PhaseProgress:
         return self._reported
 
     def __call__(self, total: int, increment: int, count: int, done: bool, data: Any = None) -> None:
-        fraction = min(1.0, count / total) if total > 0 else (1.0 if done else 0.0)
+        sub = 0.0
+        if isinstance(data, dict):
+            sub = float(data.get("sub_fraction", 0.0))
+        fraction = min(1.0, (count + max(0.0, min(0.99, sub))) / total) if total > 0 else (1.0 if done else 0.0)
         target = self._start + round(self._size * fraction)
         delta = target - self._reported
-        self._reported = target
+        if delta > 0:
+            self._reported = target
         # A phase finishing early is not the whole task; only total completion
         # may tell observers that the shared operation is done.
         task_done = bool(done and target >= self._scale)
-        self._observer(self._scale, max(0, delta), target, task_done, data)
+        self._observer(self._scale, max(0, delta), self._reported, task_done, data)
 
 
 def _starnet_identity(platform_id: str, version: str, build: str, backend_id: str, package_sha256: str) -> str:
@@ -151,6 +156,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self._project = app.project
         self._graxpert_session: Optional[GraXpertSession] = None
         self._graxpert_session_key: Optional[Tuple[str, str]] = None
+        self._star_analysis: Optional[StarAnalysisResult] = None
+        self._star_analysis_key: Optional[Tuple[str, str, str]] = None
 
     @property
     def project(self) -> FinishProject:
@@ -198,6 +205,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                 )
         if expected_signature == project.separation_signature and project.separation_model_identity == current_identity:
             return False
+        self._star_analysis = None
+        self._star_analysis_key = None
         self.project.invalidate_results()
         self.save_project()
         return True
@@ -486,6 +495,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         saved_version = record.get("options", {}).get("star_effect_version")
         if saved_version == STAR_EFFECT_VERSION:
             return False
+        self._star_analysis = None
+        self._star_analysis_key = None
         project.invalidate_star_effects_descendants()
         self.save_project()
         return True
@@ -968,6 +979,16 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         try:
             try:
                 with ArtifactTransaction(self._job_cancel_check(project, revision)) as transaction:
+                    mask_record = project.artifact_manifest.get(ROLE_SKY_MASK, {})
+                    mask_file = str(mask_record.get("file", ""))
+                    source_id = (
+                        getattr(project.source_file, "sourceId", str(project.source_file.path))
+                        if project.source_file
+                        else ""
+                    )
+                    cache_key = (separation_signature, source_id, mask_file)
+                    cached_analysis = self._star_analysis if self._star_analysis_key == cache_key else None
+
                     finished_path = op.finish(
                         imread(stars_path, to_rgb=True, as_float=True),
                         mask,
@@ -975,6 +996,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         source=imread(source_path, to_rgb=True, as_float=True),
                         output_path=finished_dest,
                         artifacts=transaction,
+                        analysis=cached_analysis,
                     )
                     if (
                         finished_path is None
@@ -993,6 +1015,9 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         transaction=transaction,
                     ):
                         return None
+                    if op.analysis is not None:
+                        self._star_analysis = op.analysis
+                        self._star_analysis_key = cache_key
                     self.save_project()
             except CancelledError:
                 return None

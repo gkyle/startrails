@@ -27,6 +27,7 @@ from startrails.lib.finish.defaults import (
     ROLE_SKY_MASK,
     FinishSettings,
 )
+from startrails.lib.finish.star_analysis import analyze_stars
 from startrails.lib.finish.star_effects import STAR_EFFECT_VERSION
 from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.image_io import imread, imwrite
@@ -513,6 +514,43 @@ class TestFinishStars(QtTestCase):
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
         self.assertIsNone(project.current_export_path())
         self.assertFalse((self.root / "stale_effect_export.tif").exists())
+
+    def test_do_finish_stars_reuses_cached_star_analysis(self):
+        project = self.prepare_separated_project("cache_reuse")
+        project.update_settings(replace(project.get_settings(), star_glow_enabled=True, star_glow_amount=20.0))
+        workflow = self.make_workflow(project)
+
+        # Initial finishing pass runs real effect and populates workflow._star_analysis
+        result1 = workflow.do_finish_stars()
+        self.assertIsNotNone(result1)
+        self.assertIsNotNone(workflow._star_analysis)
+        cached_analysis = workflow._star_analysis
+
+        # Subsequent parameter adjustment reuses cached analysis without re-analyzing
+        project.update_settings(replace(project.get_settings(), star_glow_amount=35.0))
+        with patch("startrails.lib.finish.star_effects.analyze_stars") as mock_analyze:
+            result2 = workflow.do_finish_stars()
+            self.assertIsNotNone(result2)
+            mock_analyze.assert_not_called()
+            self.assertIs(workflow._star_analysis, cached_analysis)
+
+        # Changing separation signature causes re-analysis on subsequent run
+        project.publish_separation(
+            project.current_artifact_path(ROLE_SEPARATED_STARLESS),
+            project.current_artifact_path(ROLE_SEPARATED_STARS),
+            signature="cache_reuse-separation-v2",
+            model_identity="starnet-model",
+            expected_revision=project.processing_revision,
+        )
+        with patch("startrails.lib.finish.star_effects.analyze_stars", wraps=analyze_stars) as mock_analyze:
+            result3 = workflow.do_finish_stars()
+            self.assertIsNotNone(result3)
+            mock_analyze.assert_called_once()
+
+        # Invalidation of star effects version clears cached analysis
+        project.artifact_manifest[ROLE_FINISHED_STARS]["options"]["star_effect_version"] = STAR_EFFECT_VERSION + 1
+        self.assertTrue(workflow.invalidate_if_star_effects_changed())
+        self.assertIsNone(workflow._star_analysis)
 
 
 if __name__ == "__main__":

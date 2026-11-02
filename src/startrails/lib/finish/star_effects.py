@@ -9,6 +9,7 @@ read here.
 
 from __future__ import annotations
 
+import inspect
 from typing import Callable, Final, Optional, Sequence, Tuple
 
 import cv2
@@ -90,8 +91,9 @@ def _footprint_flux(stars: np.ndarray, x: float, y: float, radius: float) -> np.
     iy, ix = int(round(y)), int(round(x))
     y0, y1 = max(0, iy - int(np.ceil(radius))), min(height, iy + int(np.ceil(radius)) + 1)
     x0, x1 = max(0, ix - int(np.ceil(radius))), min(width, ix + int(np.ceil(radius)) + 1)
-    yy, xx = np.mgrid[y0:y1, x0:x1]
-    inside = ((yy - y) ** 2 + (xx - x) ** 2) <= radius * radius
+    dys = (np.arange(y0, y1, dtype=np.float64) - y) ** 2
+    dxs = (np.arange(x0, x1, dtype=np.float64) - x) ** 2
+    inside = (dys[:, None] + dxs[None, :]) <= radius * radius
     return stars[y0:y1, x0:x1][inside].sum(axis=0, dtype=np.float64)
 
 
@@ -405,6 +407,7 @@ def _apply_glow(
     amount_percent: float,
     radius_px: float,
     interrupt: Callable[[], bool],
+    progress_callback: Optional[Callable[[int, int, str], None]] = None,
 ) -> Optional[bool]:
     selected = [c for c in analysis.candidates if c.is_valid and not c.is_blended and c.effective_peak >= GLOW_MIN_PEAK]
     if not selected:
@@ -424,10 +427,15 @@ def _apply_glow(
         (candidate, _footprint_flux(out, candidate.x, candidate.y, candidate.footprint_radius_px))
         for candidate in selected
     ]
+    num_glow = len(snapshots)
+    two_sigma_sq = 2.0 * sigma * sigma
 
     for index, (candidate, current_flux) in enumerate(snapshots):
-        if (index & (_INTERRUPT_INTERVAL - 1)) == 0 and interrupt():
-            return None
+        if (index & (_INTERRUPT_INTERVAL - 1)) == 0:
+            if interrupt():
+                return None
+            if progress_callback is not None:
+                progress_callback(index, num_glow, f"Adding star glow: {index:,} / {num_glow:,}")
         if float(current_flux.sum()) <= 0.0:
             continue
         # Full discrete kernel support, before clipping to the frame. At a frame
@@ -438,9 +446,12 @@ def _apply_glow(
         full_y1 = int(np.ceil(candidate.y + support)) + 1
         full_x0 = int(np.floor(candidate.x - support))
         full_x1 = int(np.ceil(candidate.x + support)) + 1
-        fy, fx = np.mgrid[full_y0:full_y1, full_x0:full_x1]
-        full_kernel = np.exp(-((fy - candidate.y) ** 2 + (fx - candidate.x) ** 2) / (2.0 * sigma * sigma))
-        full_normalization = float(full_kernel.sum())
+
+        y_coords = np.arange(full_y0, full_y1, dtype=np.float64)
+        x_coords = np.arange(full_x0, full_x1, dtype=np.float64)
+        ky_full = np.exp(-((y_coords - candidate.y) ** 2) / two_sigma_sq)
+        kx_full = np.exp(-((x_coords - candidate.x) ** 2) / two_sigma_sq)
+        full_normalization = float(ky_full.sum() * kx_full.sum())
         if full_normalization <= 0.0:
             continue
         iy0 = max(0, full_y0)
@@ -449,8 +460,9 @@ def _apply_glow(
         ix1 = min(width, full_x1)
         if iy0 >= iy1 or ix0 >= ix1:
             continue
-        yy, xx = np.mgrid[iy0:iy1, ix0:ix1]
-        gaussian = np.exp(-((yy - candidate.y) ** 2 + (xx - candidate.x) ** 2) / (2.0 * sigma * sigma))
+        ky = ky_full[(iy0 - full_y0):(iy1 - full_y0)]
+        kx = kx_full[(ix0 - full_x0):(ix1 - full_x0)]
+        gaussian = ky[:, None] * kx[None, :]
         halo = gaussian[..., None] * (amount * current_flux / full_normalization)[None, None, :]
         halo *= sky_mask[iy0:iy1, ix0:ix1][..., None]
         patch = out[iy0:iy1, ix0:ix1]
@@ -464,8 +476,10 @@ def apply_star_effects(
     settings: FinishSettings,
     *,
     source: np.ndarray,
+    analysis: Optional[StarAnalysisResult] = None,
+    analysis_callback: Optional[Callable[[StarAnalysisResult], None]] = None,
     should_interrupt: Optional[Callable[[], bool]] = None,
-    progress_callback: Optional[Callable[[int, int, str], None]] = None,
+    progress_callback: Optional[Callable[..., None]] = None,
 ) -> Optional[np.ndarray]:
     """Apply the enabled star effects and return the finished positive star layer.
 
@@ -504,37 +518,78 @@ def apply_star_effects(
     total = 1 + enabled_count
     done = 0
 
-    def report(description: str) -> None:
-        nonlocal done
-        done += 1
-        if progress_callback is not None:
-            progress_callback(done, total, description)
-
+    takes_extra = False
     if progress_callback is not None:
-        progress_callback(0, total, "Analyzing stars...")
-    analysis = analyze_stars(stars, source, sky_mask, should_interrupt=interrupt)
-    if analysis is None or interrupt():
-        return None
+        try:
+            sig = inspect.signature(progress_callback)
+            params = list(sig.parameters.values())
+            takes_extra = any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params) or len(params) >= 4
+        except Exception:
+            takes_extra = False
+
+    def emit_progress(step_done: int, description: str, sub_fraction: Optional[float] = None) -> None:
+        if progress_callback is not None:
+            if takes_extra and sub_fraction is not None:
+                progress_callback(step_done, total, description, {"sub_fraction": sub_fraction})
+            else:
+                progress_callback(step_done, total, description)
+
+    if analysis is None:
+        emit_progress(0, "Analyzing stars...")
+
+        def on_analysis_progress(cur: int, tot: int, desc: str) -> None:
+            frac = cur / tot if tot > 0 else 0.0
+            emit_progress(0, desc, sub_fraction=frac * 0.95)
+
+        analysis = analyze_stars(
+            stars,
+            source,
+            sky_mask,
+            should_interrupt=interrupt,
+            progress_callback=on_analysis_progress,
+        )
+        if analysis is None or interrupt():
+            return None
+        if analysis_callback is not None:
+            analysis_callback(analysis)
+    else:
+        emit_progress(0, f"Using analyzed stars ({len(analysis.candidates):,} detections)")
+        if interrupt():
+            return None
 
     out = stars.copy()
     done = 1
-    if progress_callback is not None:
-        progress_callback(done, total, "Star analysis complete")
+    emit_progress(done, "Star analysis complete")
     if round_on:
         result = _apply_round_stars(out, analysis, sky_mask, round_amount, interrupt)
         if result is None or interrupt():
             return None
-        report("Rounding stars...")
+        done += 1
+        emit_progress(done, "Rounding stars...")
     if suppression_on:
         result = _apply_faint_suppression(out, analysis, sky_mask, suppression_amount, interrupt)
         if result is None or interrupt():
             return None
-        report("Suppressing faint stars...")
+        done += 1
+        emit_progress(done, "Suppressing faint stars...")
     if glow_on:
-        result = _apply_glow(out, analysis, sky_mask, glow_amount, float(settings.star_glow_radius_px), interrupt)
+        def on_glow_progress(cur: int, tot: int, desc: str) -> None:
+            frac = cur / tot if tot > 0 else 0.0
+            emit_progress(done, desc, sub_fraction=frac)
+
+        result = _apply_glow(
+            out,
+            analysis,
+            sky_mask,
+            glow_amount,
+            float(settings.star_glow_radius_px),
+            interrupt,
+            progress_callback=on_glow_progress,
+        )
         if result is None or interrupt():
             return None
-        report("Adding star glow...")
+        done += 1
+        emit_progress(done, "Adding star glow...")
     np.clip(out, 0.0, 1.0, out=out)
     return out
 
