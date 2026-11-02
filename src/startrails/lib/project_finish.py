@@ -18,10 +18,16 @@ from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.file import InputFile, Unpickle
 from startrails.lib.image_io import imread
 from startrails.lib.finish.defaults import (
+    CATALOG_SETTING_NAMES,
+    COMPOSITION_ONLY_SETTING_NAMES,
+    FINISHED_STARS_COMPOSITION_SETTING_NAMES,
     FINISH_DEFAULTS,
     FINISH_EXT,
-    FinishSettings,
+    GLOW_SETTING_NAMES,
     PERCENT_SCALE,
+    RETIRED_FINISH_SETTING_NAMES,
+    STAR_EFFECT_SETTING_NAMES,
+    FinishSettings,
     ROLE_SOURCE_SNAPSHOT,
     ROLE_SKY_MASK,
     ROLE_UNMASKED_STARLESS,
@@ -31,6 +37,8 @@ from startrails.lib.finish.defaults import (
     ROLE_FINISHED_STARLESS,
     ROLE_FINISHED_STARS,
     ROLE_FINISHED_COMPOSITE,
+    ROLE_STAR_CATALOG,
+    ROLE_ROUND_DELTA,
     SUPPORTED_CHANNELS,
     SUPPORTED_SOURCE_FORMATS,
 )
@@ -44,6 +52,8 @@ _ARTIFACT_FILENAMES: Dict[str, str] = {
     ROLE_SEPARATED_STARLESS: "starless.tif",
     ROLE_SEPARATED_STARS: "stars.tif",
     ROLE_DENOISED_STARLESS: "denoised_starless.tif",
+    ROLE_STAR_CATALOG: "catalog.npz",
+    ROLE_ROUND_DELTA: "round_delta.npz",
     ROLE_FINISHED_STARLESS: "finished_starless.tif",
     ROLE_FINISHED_STARS: "finished_stars.tif",
     ROLE_FINISHED_COMPOSITE: "composite.tif",
@@ -56,6 +66,8 @@ _ARTIFACT_PATH_FIELDS: Dict[str, str] = {
     ROLE_SEPARATED_STARLESS: "separated_starless_path",
     ROLE_SEPARATED_STARS: "separated_stars_path",
     ROLE_DENOISED_STARLESS: "denoised_starless_path",
+    ROLE_STAR_CATALOG: "star_catalog_path",
+    ROLE_ROUND_DELTA: "round_delta_path",
     ROLE_FINISHED_STARLESS: "finished_starless_path",
     ROLE_FINISHED_STARS: "finished_stars_path",
     ROLE_FINISHED_COMPOSITE: "composite_path",
@@ -67,22 +79,11 @@ _EXPORT_ROLE = "export"
 _SOURCE_FORMATS_BY_SUFFIX = {".jpg": "jpeg", ".jpeg": "jpeg", ".tif": "tiff", ".tiff": "tiff"}
 _UNSET = object()
 
-# Effect settings that define a finished-stars result. Global star amount is a
-# recombination setting, so changing it never requires rerunning star effects.
-STAR_EFFECT_SETTING_NAMES: Final[Tuple[str, ...]] = (
-    "faint_star_suppression",
-    "faint_star_amount",
-    "round_stars_enabled",
-    "round_stars_amount",
-    "star_glow_enabled",
-    "star_glow_amount",
-    "star_glow_radius_px",
-)
-
 
 def _star_effect_options(settings: FinishSettings) -> Dict[str, Any]:
-    """Return the effect-only settings persisted with a finished-stars result."""
-    return {name: getattr(settings, name) for name in STAR_EFFECT_SETTING_NAMES}
+    """Return provenance settings baked into a finished-stars result."""
+    names = STAR_EFFECT_SETTING_NAMES + FINISHED_STARS_COMPOSITION_SETTING_NAMES
+    return {name: getattr(settings, name) for name in names}
 
 
 def _source_format(path: Path) -> str:
@@ -133,6 +134,8 @@ class FinishProject(Unpickle):
         separated_starless_path: Optional[Union[str, Path]] = None,
         separated_stars_path: Optional[Union[str, Path]] = None,
         denoised_starless_path: Optional[Union[str, Path]] = None,
+        star_catalog_path: Optional[Union[str, Path]] = None,
+        round_delta_path: Optional[Union[str, Path]] = None,
         finished_starless_path: Optional[Union[str, Path]] = None,
         finished_stars_path: Optional[Union[str, Path]] = None,
         composite_path: Optional[Union[str, Path]] = None,
@@ -154,13 +157,18 @@ class FinishProject(Unpickle):
         self.separated_starless_path: Optional[Union[str, Path]] = separated_starless_path
         self.separated_stars_path: Optional[Union[str, Path]] = separated_stars_path
         self.denoised_starless_path: Optional[Union[str, Path]] = denoised_starless_path
+        self.star_catalog_path: Optional[Union[str, Path]] = star_catalog_path
+        self.round_delta_path: Optional[Union[str, Path]] = round_delta_path
         self.finished_starless_path: Optional[Union[str, Path]] = finished_starless_path
         self.finished_stars_path: Optional[Union[str, Path]] = finished_stars_path
         self.composite_path: Optional[Union[str, Path]] = composite_path
         self.output_path: Optional[Union[str, Path]] = output_path
         self.final_output_path: Optional[Union[str, Path]] = final_output_path
 
-        # Authoritative defaults from FinishSettings
+        # Authoritative defaults from FinishSettings. Retired fields from older
+        # projects are consumed but never assigned.
+        for retired in RETIRED_FINISH_SETTING_NAMES:
+            kwargs.pop(retired, None)
         defaults = asdict(FINISH_DEFAULTS)
         for name, default_val in defaults.items():
             setattr(self, name, kwargs.pop(name, default_val))
@@ -201,7 +209,14 @@ class FinishProject(Unpickle):
         state.pop("source_dimensions", None)
         state.pop("source_format", None)
         state.pop("_state_lock", None)
+        for retired in RETIRED_FINISH_SETTING_NAMES:
+            state.pop(retired, None)
         super().__setstate__(state)
+        # Projects saved before a new setting existed inherit its authoritative
+        # default instead of missing the attribute at runtime.
+        for name, default_val in asdict(FINISH_DEFAULTS).items():
+            if not hasattr(self, name):
+                setattr(self, name, default_val)
 
     def get_output_dir(self) -> Path:
         """Resolve authoritative output directory for this project."""
@@ -378,6 +393,8 @@ class FinishProject(Unpickle):
             ROLE_SEPARATED_STARLESS,
             ROLE_SEPARATED_STARS,
             ROLE_DENOISED_STARLESS,
+            ROLE_STAR_CATALOG,
+            ROLE_ROUND_DELTA,
             ROLE_FINISHED_STARLESS,
             ROLE_FINISHED_STARS,
             ROLE_FINISHED_COMPOSITE,
@@ -485,6 +502,8 @@ class FinishProject(Unpickle):
         with self._state_lock:
             descendant_roles = (
                 ROLE_DENOISED_STARLESS,
+                ROLE_STAR_CATALOG,
+                ROLE_ROUND_DELTA,
                 ROLE_FINISHED_STARLESS,
                 ROLE_FINISHED_STARS,
                 ROLE_FINISHED_COMPOSITE,
@@ -512,13 +531,29 @@ class FinishProject(Unpickle):
         self.invalidate_artifact_roles({ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
 
     def invalidate_star_effects_descendants(self) -> None:
-        """Discard effect-processed stars and results built from them.
+        """Discard the catalog, its derived layers and results built from them.
 
-        Only outputs derived from the effect result are discarded. The separated
-        layers, denoise endpoint and finished starless plate do not depend on star
-        effects, so they remain valid bases for recomputing the effect result.
+        Only outputs derived from star analysis/effects are discarded. The
+        separated layers, denoise endpoint and finished starless plate do not
+        depend on them, so they remain valid bases for rebuilding the catalog.
         """
-        self.invalidate_artifact_roles({ROLE_FINISHED_STARS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
+        self.invalidate_artifact_roles(
+            {
+                ROLE_STAR_CATALOG,
+                ROLE_ROUND_DELTA,
+                ROLE_FINISHED_STARS,
+                ROLE_FINISHED_COMPOSITE,
+                _EXPORT_ROLE,
+            }
+        )
+
+    def invalidate_star_effect_layers(self) -> None:
+        """Discard effect layers produced by an older effect algorithm.
+
+        The catalog is analysis-versioned and independent of effect versioning, so
+        it remains valid while Round/Glow-derived outputs are rebuilt.
+        """
+        self.invalidate_artifact_roles({ROLE_ROUND_DELTA, ROLE_FINISHED_STARS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
 
     def invalidate_export(self) -> None:
         """Discard only the user-encoded export while keeping its source composite."""
@@ -703,27 +738,38 @@ class FinishProject(Unpickle):
             self.composite_signature = None
             return True
 
-    def publish_finished_stars(
+    def publish_star_effects(
         self,
-        path: Union[str, Path],
         *,
+        catalog_path: Union[str, Path],
+        round_delta_path: Optional[Union[str, Path]] = None,
+        finished_stars_path: Optional[Union[str, Path]] = None,
         separation_signature: str,
         expected_revision: int,
+        catalog_identity: str,
         star_effect_version: int,
         settings: FinishSettings,
+        round_identity: Optional[str] = None,
+        catalog_options: Optional[Dict[str, Any]] = None,
+        round_options: Optional[Dict[str, Any]] = None,
         transaction: Optional[ArtifactTransaction] = None,
     ) -> bool:
-        """Atomically publish effect-processed stars for the current separation.
+        """Atomically publish the analysis catalog and its derived effect layers.
 
-        The record contains the separation identity, the star-effects algorithm
-        version and only the effect settings that produced the layer. Global star
-        amount belongs to recombination and is deliberately excluded. A new effect
-        result invalidates the composite and export built from the previous star
-        layer while preserving the finished starless and denoise outputs.
+        The project stores paths, file stamps and identity/version metadata only;
+        array payloads live in the `.npz` artifacts. The optional finished-stars
+        TIFF is a derived display output for OutputFiles interoperability and is
+        never authoritative effect state. Publishing new effect layers invalidates
+        the composite and export built from the previous layers while preserving
+        the finished starless and denoise outputs.
         """
         with self._state_lock:
             if type(star_effect_version) is not int or star_effect_version < 1:
                 raise ValueError(f"Star effect version must be a positive integer, got {star_effect_version}")
+            if not catalog_identity:
+                raise ValueError("A star catalog publication requires its identity.")
+            if round_delta_path is not None and not round_identity:
+                raise ValueError("A round-delta publication requires its identity.")
             if not self._commit_if_current(
                 transaction,
                 expected_revision=expected_revision,
@@ -731,25 +777,81 @@ class FinishProject(Unpickle):
             ):
                 return False
 
-            finished = Path(path).resolve()
-            finished_stamp = _file_stamp(finished)
-            if finished_stamp is None:
-                raise FileNotFoundError(f"Cannot register a missing finished stars image: {finished}")
+            source = self._source_key()
+            catalog = Path(catalog_path).resolve()
+            catalog_stamp = _file_stamp(catalog)
+            if catalog_stamp is None:
+                raise FileNotFoundError(f"Cannot register a missing star catalog: {catalog}")
 
-            options = {
-                "separation_signature": separation_signature,
-                "star_effect_version": star_effect_version,
-                **_star_effect_options(settings),
-            }
-            self.artifact_manifest[ROLE_FINISHED_STARS] = {
-                "source": self._source_key(),
-                "file": list(finished_stamp),
+            finished = Path(finished_stars_path).resolve() if finished_stars_path is not None else None
+            resolved_round: Optional[Path] = None
+            round_stamp = None
+            if round_delta_path is not None:
+                resolved_round = Path(round_delta_path).resolve()
+                if resolved_round in (catalog, finished):
+                    raise ValueError("Star artifact paths must differ.")
+                round_stamp = _file_stamp(resolved_round)
+                if round_stamp is None:
+                    raise FileNotFoundError(f"Cannot register a missing round-stars delta: {resolved_round}")
+
+            finished_stamp = None
+            if finished is not None:
+                if finished in (catalog, resolved_round):
+                    raise ValueError("Star artifact paths must differ.")
+                finished_stamp = _file_stamp(finished)
+                if finished_stamp is None:
+                    raise FileNotFoundError(f"Cannot register a missing finished stars image: {finished}")
+
+            self.artifact_manifest[ROLE_STAR_CATALOG] = {
+                "source": source,
+                "file": list(catalog_stamp),
                 "revision": self.processing_revision,
-                "options": options,
+                "options": dict(
+                    catalog_options or {},
+                    separation_signature=separation_signature,
+                    catalog_identity=catalog_identity,
+                ),
             }
-            setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_STARS], str(finished))
+            setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_STAR_CATALOG], str(catalog))
 
-            # Composite and export were derived from the previous star layer.
+            if resolved_round is not None:
+                self.artifact_manifest[ROLE_ROUND_DELTA] = {
+                    "source": source,
+                    "file": list(round_stamp),
+                    "revision": self.processing_revision,
+                    "options": dict(
+                        round_options or {},
+                        separation_signature=separation_signature,
+                        catalog_identity=catalog_identity,
+                        round_identity=round_identity,
+                        star_effect_version=star_effect_version,
+                    ),
+                }
+                setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_ROUND_DELTA], str(resolved_round))
+            else:
+                setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_ROUND_DELTA], None)
+                self.artifact_manifest.pop(ROLE_ROUND_DELTA, None)
+
+            if finished is not None:
+                options = {
+                    "separation_signature": separation_signature,
+                    "catalog_identity": catalog_identity,
+                    "round_identity": round_identity,
+                    "star_effect_version": star_effect_version,
+                    **_star_effect_options(settings),
+                }
+                self.artifact_manifest[ROLE_FINISHED_STARS] = {
+                    "source": source,
+                    "file": list(finished_stamp),
+                    "revision": self.processing_revision,
+                    "options": options,
+                }
+                setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_STARS], str(finished))
+            else:
+                setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_STARS], None)
+                self.artifact_manifest.pop(ROLE_FINISHED_STARS, None)
+
+            # Composite and export were derived from the previous star layers.
             setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_COMPOSITE], None)
             self.final_output_path = None
             self.artifact_manifest.pop(ROLE_FINISHED_COMPOSITE, None)
@@ -809,13 +911,19 @@ class FinishProject(Unpickle):
                 invalidated_roles: set[str] = set()
                 if changed & {"denoise_strength", "denoise_scope", "structure_amount", "detail_amount"}:
                     invalidated_roles.update({ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
-                if changed & set(STAR_EFFECT_SETTING_NAMES):
+                if changed & set(CATALOG_SETTING_NAMES):
+                    # The catalog keeps its measurements; a new cutoff selects a
+                    # different included set, so Round/Glow and compositions rebuild.
+                    invalidated_roles.update(
+                        {ROLE_ROUND_DELTA, ROLE_FINISHED_STARS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE}
+                    )
+                if changed & (set(GLOW_SETTING_NAMES) | set(FINISHED_STARS_COMPOSITION_SETTING_NAMES)):
+                    # Glow geometry and Round/Glow composition are baked into the
+                    # derived finished-stars TIFF; catalog/Round/Glow caches remain.
                     invalidated_roles.update({ROLE_FINISHED_STARS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
-                if changed & {"star_amount"}:
-                    # Global star amount is a recombination control; the effect
-                    # result is independent of it and remains reusable.
-                    invalidated_roles.update({ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
-                if changed & {"blend_mode"}:
+                if changed & set(COMPOSITION_ONLY_SETTING_NAMES):
+                    # Layer amounts/modes change recombination only; the derived
+                    # S_fin TIFF remains valid when no baked control changed.
                     invalidated_roles.update({ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
                 if changed & {"jpeg_quality", "jpeg_optimize", "tiff_deflate_compression"}:
                     invalidated_roles.add(_EXPORT_ROLE)
@@ -853,4 +961,12 @@ class FinishProject(Unpickle):
         return default_proj
 
 
-__all__ = ["FinishProject", "STAR_EFFECT_SETTING_NAMES", "probe_source_image"]
+__all__ = [
+    "CATALOG_SETTING_NAMES",
+    "COMPOSITION_ONLY_SETTING_NAMES",
+    "FinishProject",
+    "GLOW_SETTING_NAMES",
+    "RETIRED_FINISH_SETTING_NAMES",
+    "STAR_EFFECT_SETTING_NAMES",
+    "probe_source_image",
+]

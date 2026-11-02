@@ -16,6 +16,10 @@ from scipy.spatial import cKDTree
 
 from startrails.lib.image_io import validate_image_array
 
+# Bumped when candidate/measurement semantics change and cached catalogs from an
+# earlier analysis must be invalidated.
+STAR_ANALYSIS_VERSION: Final[int] = 2
+
 # Detector constants are algorithm policy, not user settings. A reduced preview
 # must scale pixel units explicitly rather than changing these values.
 BACKGROUND_MEDIAN_PX: int = 5  # on a 4x area-downsampled luminance (~20 px window)
@@ -77,11 +81,22 @@ class StarAnalysisResult:
 
     candidates: Tuple[StarCandidate, ...]
     image_shape: Tuple[int, int]
-    faint_star_flux_threshold: float = 0.0
 
     @property
     def valid_stars(self) -> Tuple[StarCandidate, ...]:
         return tuple(s for s in self.candidates if s.is_valid)
+
+
+@dataclass(frozen=True)
+class _DetectedComponents:
+    """Shared detection pass used by full analysis and ranked catalog builds."""
+
+    luminance: np.ndarray
+    detail: np.ndarray
+    threshold: float
+    labels: np.ndarray
+    stats: np.ndarray
+    count: int
 
 
 def _local_background(luminance: np.ndarray) -> np.ndarray:
@@ -188,9 +203,7 @@ def _build_candidate(
     seed_weights = np.where(seed, np.maximum(detail[y0:y1, x0:x1], 0.0), 0.0).astype(np.float64)
     ys_seed = np.arange(y0, y1, dtype=np.float64)
     xs_seed = np.arange(x0, x1, dtype=np.float64)
-    seed_y, seed_x, a, b, ellipticity, theta = _second_moments(
-        seed_weights, ys_seed, xs_seed
-    )
+    seed_y, seed_x, a, b, ellipticity, theta = _second_moments(seed_weights, ys_seed, xs_seed)
     if not all(np.isfinite([seed_y, seed_x, a, b])):
         return None
 
@@ -285,6 +298,36 @@ def _build_candidate(
     )
 
 
+def _validate_analysis_inputs(stars: np.ndarray, source: np.ndarray, sky_mask: Optional[np.ndarray]) -> None:
+    validate_image_array(stars)
+    validate_image_array(source)
+    if stars.shape != source.shape:
+        raise ValueError("stars and source must have identical shape.")
+    if sky_mask is not None:
+        if sky_mask.shape != stars.shape[:2] or sky_mask.dtype != np.float32:
+            raise ValueError("sky_mask must be normalized float32 with image dimensions.")
+        if not np.isfinite(sky_mask).all() or np.any(sky_mask < 0.0) or np.any(sky_mask > 1.0):
+            raise ValueError("sky_mask values must be finite and in [0,1].")
+
+
+def _detect_components(stars: np.ndarray, sky_mask: Optional[np.ndarray]) -> _DetectedComponents:
+    height, width = stars.shape[:2]
+    luminance = stars.max(axis=2)
+    background = _local_background(luminance)
+    detail = luminance - background
+    threshold = max(DETECTION_SIGMA * _noise_sigma(detail, sky_mask), ABS_THRESHOLD_FLOOR)
+    binary = (detail > threshold).astype(np.uint8)
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    return _DetectedComponents(
+        luminance=luminance,
+        detail=detail,
+        threshold=float(threshold),
+        labels=labels,
+        stats=stats,
+        count=int(count),
+    )
+
+
 def analyze_stars(
     stars: np.ndarray,
     source: np.ndarray,
@@ -298,15 +341,7 @@ def analyze_stars(
     `source` is required for true saturation/core-brightness classification.
     Returns None only when interrupted. Both input arrays are read-only.
     """
-    validate_image_array(stars)
-    validate_image_array(source)
-    if stars.shape != source.shape:
-        raise ValueError("stars and source must have identical shape.")
-    if sky_mask is not None:
-        if sky_mask.shape != stars.shape[:2] or sky_mask.dtype != np.float32:
-            raise ValueError("sky_mask must be normalized float32 with image dimensions.")
-        if not np.isfinite(sky_mask).all() or np.any(sky_mask < 0.0) or np.any(sky_mask > 1.0):
-            raise ValueError("sky_mask values must be finite and in [0,1].")
+    _validate_analysis_inputs(stars, source, sky_mask)
 
     interrupt = should_interrupt or (lambda: False)
     if interrupt():
@@ -315,12 +350,13 @@ def analyze_stars(
         progress_callback(0, 1, "Analyzing stars...")
 
     height, width = stars.shape[:2]
-    luminance = stars.max(axis=2)
-    background = _local_background(luminance)
-    detail = luminance - background
-    threshold = max(DETECTION_SIGMA * _noise_sigma(detail, sky_mask), ABS_THRESHOLD_FLOOR)
-    binary = (detail > threshold).astype(np.uint8)
-    count, labels, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+    detected = _detect_components(stars, sky_mask)
+    detail = detected.detail
+    labels = detected.labels
+    stats = detected.stats
+    count = detected.count
+    threshold = detected.threshold
+    luminance = detected.luminance
 
     candidates: list[StarCandidate] = []
     for index in range(1, count):
@@ -335,73 +371,15 @@ def analyze_stars(
         if candidate is not None:
             candidates.append(candidate)
 
-    # Radius-binned KDTree query deblends nearby detections without an all-pairs
-    # or monolithic maximum-radius search across the entire dense catalog.
     if len(candidates) > 1:
         if interrupt():
             return None
         if progress_callback is not None:
             progress_callback(count, count, "Analyzing star companions...")
-        points = np.array([[s.x, s.y] for s in candidates], dtype=np.float64)
-        radii = np.array([s.core_radius_px for s in candidates], dtype=np.float64)
-        max_r = float(radii.max())
-
-        bins = [0.0]
-        b = 6.0
-        while b < max_r:
-            bins.append(b)
-            b *= 2.0
-        bins.append(max_r + 1.0)
-
-        bin_indices = [np.where((radii > bins[k]) & (radii <= bins[k + 1]))[0] for k in range(len(bins) - 1)]
-        trees = [cKDTree(points[idx]) if len(idx) > 0 else None for idx in bin_indices]
-
-        blended: set[int] = set()
-        for i in range(len(bin_indices)):
-            if interrupt():
-                return None
-            idx_i = bin_indices[i]
-            tree_i = trees[i]
-            if tree_i is None or len(idx_i) < 2:
-                continue
-            r_max_i = bins[i + 1]
-            pairs_i = tree_i.query_pairs(2.0 * BLEND_DISTANCE_FACTOR * r_max_i, output_type="ndarray")
-            if len(pairs_i) > 0:
-                pi = idx_i[pairs_i[:, 0]]
-                pj = idx_i[pairs_i[:, 1]]
-                dists_sq = np.sum((points[pi] - points[pj]) ** 2, axis=1)
-                thresh_sq = (BLEND_DISTANCE_FACTOR * (radii[pi] + radii[pj])) ** 2
-                mask_b = dists_sq < thresh_sq
-                blended.update(pi[mask_b])
-                blended.update(pj[mask_b])
-
-        for i in range(len(bin_indices)):
-            if interrupt():
-                return None
-            idx_i = bin_indices[i]
-            tree_i = trees[i]
-            if tree_i is None or len(idx_i) == 0:
-                continue
-            for j in range(i + 1, len(bin_indices)):
-                idx_j = bin_indices[j]
-                tree_j = trees[j]
-                if tree_j is None or len(idx_j) == 0:
-                    continue
-                r_max_ij = BLEND_DISTANCE_FACTOR * (bins[i + 1] + bins[j + 1])
-                pairs_ij = tree_i.query_ball_tree(tree_j, r_max_ij)
-                for u, neighbors in enumerate(pairs_ij):
-                    if neighbors:
-                        orig_u = idx_i[u]
-                        orig_v = idx_j[neighbors]
-                        dists_sq = np.sum((points[orig_u] - points[orig_v]) ** 2, axis=1)
-                        thresh_sq = (BLEND_DISTANCE_FACTOR * (radii[orig_u] + radii[orig_v])) ** 2
-                        mask_b = dists_sq < thresh_sq
-                        if np.any(mask_b):
-                            blended.add(orig_u)
-                            blended.update(orig_v[mask_b])
-
-        for idx in blended:
-            candidates[idx] = _replace_blended(candidates[idx])
+        flagged = _apply_blend_flags(tuple(candidates), interrupt)
+        if flagged is None:
+            return None
+        candidates = list(flagged)
 
     if interrupt():
         return None
@@ -416,6 +394,82 @@ def _replace_blended(candidate: StarCandidate) -> StarCandidate:
     return replace(candidate, is_blended=True)
 
 
+def _apply_blend_flags(
+    candidates: Tuple[StarCandidate, ...],
+    interrupt: Callable[[], bool],
+) -> Optional[Tuple[StarCandidate, ...]]:
+    """Mark candidates whose protected cores overlap another detection.
+
+    The radius-binned KDTree query avoids all-pairs and a monolithic
+    maximum-radius search across a dense catalog. Existing local-peak
+    ``is_blended`` flags are preserved.
+    """
+    if len(candidates) <= 1:
+        return candidates
+    points = np.array([[s.x, s.y] for s in candidates], dtype=np.float64)
+    radii = np.array([s.core_radius_px for s in candidates], dtype=np.float64)
+    max_r = float(radii.max())
+
+    bins = [0.0]
+    b = 6.0
+    while b < max_r:
+        bins.append(b)
+        b *= 2.0
+    bins.append(max_r + 1.0)
+
+    bin_indices = [np.where((radii > bins[k]) & (radii <= bins[k + 1]))[0] for k in range(len(bins) - 1)]
+    trees = [cKDTree(points[idx]) if len(idx) > 0 else None for idx in bin_indices]
+
+    blended: set[int] = set()
+    for i in range(len(bin_indices)):
+        if interrupt():
+            return None
+        idx_i = bin_indices[i]
+        tree_i = trees[i]
+        if tree_i is None or len(idx_i) < 2:
+            continue
+        r_max_i = bins[i + 1]
+        pairs_i = tree_i.query_pairs(2.0 * BLEND_DISTANCE_FACTOR * r_max_i, output_type="ndarray")
+        if len(pairs_i) > 0:
+            pi = idx_i[pairs_i[:, 0]]
+            pj = idx_i[pairs_i[:, 1]]
+            dists_sq = np.sum((points[pi] - points[pj]) ** 2, axis=1)
+            thresh_sq = (BLEND_DISTANCE_FACTOR * (radii[pi] + radii[pj])) ** 2
+            mask_b = dists_sq < thresh_sq
+            blended.update(pi[mask_b])
+            blended.update(pj[mask_b])
+
+    for i in range(len(bin_indices)):
+        if interrupt():
+            return None
+        idx_i = bin_indices[i]
+        tree_i = trees[i]
+        if tree_i is None or len(idx_i) == 0:
+            continue
+        for j in range(i + 1, len(bin_indices)):
+            idx_j = bin_indices[j]
+            tree_j = trees[j]
+            if tree_j is None or len(idx_j) == 0:
+                continue
+            r_max_ij = BLEND_DISTANCE_FACTOR * (bins[i + 1] + bins[j + 1])
+            pairs_ij = tree_i.query_ball_tree(tree_j, r_max_ij)
+            for u, neighbors in enumerate(pairs_ij):
+                if neighbors:
+                    orig_u = idx_i[u]
+                    orig_v = idx_j[neighbors]
+                    dists_sq = np.sum((points[orig_u] - points[orig_v]) ** 2, axis=1)
+                    thresh_sq = (BLEND_DISTANCE_FACTOR * (radii[orig_u] + radii[orig_v])) ** 2
+                    mask_b = dists_sq < thresh_sq
+                    if np.any(mask_b):
+                        blended.add(orig_u)
+                        blended.update(orig_v[mask_b])
+
+    flagged = list(candidates)
+    for idx in blended:
+        flagged[idx] = _replace_blended(flagged[idx])
+    return tuple(flagged)
+
+
 __all__ = [
     "ABS_THRESHOLD_FLOOR",
     "BACKGROUND_DOWNSAMPLE",
@@ -427,6 +481,7 @@ __all__ = [
     "MAX_FOOTPRINT_RADIUS_PX",
     "MIN_AREA_PX",
     "SATURATION_LEVEL",
+    "STAR_ANALYSIS_VERSION",
     "StarAnalysisResult",
     "StarCandidate",
     "analyze_stars",

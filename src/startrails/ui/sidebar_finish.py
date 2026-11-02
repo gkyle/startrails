@@ -4,17 +4,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSignalBlocker, Qt, Signal
 from PySide6.QtWidgets import (
+    QComboBox,
     QFrame,
     QHBoxLayout,
+    QLabel,
     QPushButton,
     QScrollArea,
+    QSlider,
     QVBoxLayout,
     QWidget,
 )
 
 from startrails.lib.finish.defaults import (
+    DEFAULT_BLEND_MODE,
+    DEFAULT_ORIGINAL_STARS_AMOUNT_PERCENT,
+    DEFAULT_STAR_AMOUNT_PERCENT,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
@@ -34,6 +40,192 @@ from startrails.ui.theme import system_theme
 
 if TYPE_CHECKING:
     from startrails.app import App
+
+
+class FinishRecombineSettings(QWidget):
+    """Step 5 card body widget handling layer blending amounts, modes, and export."""
+
+    star_amount_changed = Signal(float)
+    blend_mode_changed = Signal(str)
+    original_stars_amount_changed = Signal(float)
+    original_stars_blend_mode_changed = Signal(str)
+    settings_changed = Signal()
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._init_ui()
+        self._init_events()
+        self.refresh_prerequisites(False)
+
+    def _init_ui(self) -> None:
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(8)
+
+        # Finished Stars section
+        fin_header = QHBoxLayout()
+        self.lbl_star_amount_title = QLabel("Finished Stars", self)
+        self.lbl_star_amount_title.setStyleSheet("font-size: 11px; font-weight: 600; color: #475569;")
+        self.lbl_star_amount_value = QLabel(f"{int(DEFAULT_STAR_AMOUNT_PERCENT)}%", self)
+        self.lbl_star_amount_value.setStyleSheet("font-size: 11px; font-weight: 600; color: #0369a1;")
+        self.lbl_star_amount_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        fin_header.addWidget(self.lbl_star_amount_title)
+        fin_header.addWidget(self.lbl_star_amount_value)
+        layout.addLayout(fin_header)
+
+        self.slider_star_amount = QSlider(Qt.Orientation.Horizontal, self)
+        self.slider_star_amount.setRange(0, 100)
+        self.slider_star_amount.setSingleStep(1)
+        self.slider_star_amount.setPageStep(10)
+        self.slider_star_amount.setValue(int(DEFAULT_STAR_AMOUNT_PERCENT))
+        layout.addWidget(self.slider_star_amount)
+
+        fin_mode_layout = QHBoxLayout()
+        lbl_fin_mode = QLabel("Blend Mode", self)
+        lbl_fin_mode.setStyleSheet("font-size: 11px; font-weight: 500; color: #64748b;")
+        self.combo_star_blend_mode = QComboBox(self)
+        self.combo_star_blend_mode.addItem("Add", "add")
+        self.combo_star_blend_mode.addItem("Screen", "screen")
+        self.combo_star_blend_mode.setStyleSheet(
+            "background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-size: 11px; color: #1e293b;"
+        )
+        fin_mode_layout.addWidget(lbl_fin_mode)
+        fin_mode_layout.addWidget(self.combo_star_blend_mode)
+        layout.addLayout(fin_mode_layout)
+
+        # Separator line
+        sep = QFrame(self)
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet("color: #e2e8f0;")
+        layout.addWidget(sep)
+
+        # Original Stars section
+        orig_header = QHBoxLayout()
+        self.lbl_original_stars_amount_title = QLabel("Original Stars", self)
+        self.lbl_original_stars_amount_title.setStyleSheet("font-size: 11px; font-weight: 600; color: #475569;")
+        self.lbl_original_stars_amount_value = QLabel(f"{int(DEFAULT_ORIGINAL_STARS_AMOUNT_PERCENT)}%", self)
+        self.lbl_original_stars_amount_value.setStyleSheet("font-size: 11px; font-weight: 600; color: #0369a1;")
+        self.lbl_original_stars_amount_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        orig_header.addWidget(self.lbl_original_stars_amount_title)
+        orig_header.addWidget(self.lbl_original_stars_amount_value)
+        layout.addLayout(orig_header)
+
+        self.slider_original_stars_amount = QSlider(Qt.Orientation.Horizontal, self)
+        self.slider_original_stars_amount.setRange(0, 100)
+        self.slider_original_stars_amount.setSingleStep(1)
+        self.slider_original_stars_amount.setPageStep(10)
+        self.slider_original_stars_amount.setValue(int(DEFAULT_ORIGINAL_STARS_AMOUNT_PERCENT))
+        layout.addWidget(self.slider_original_stars_amount)
+
+        orig_mode_layout = QHBoxLayout()
+        lbl_orig_mode = QLabel("Blend Mode", self)
+        lbl_orig_mode.setStyleSheet("font-size: 11px; font-weight: 500; color: #64748b;")
+        self.combo_original_stars_blend_mode = QComboBox(self)
+        self.combo_original_stars_blend_mode.addItem("Add", "add")
+        self.combo_original_stars_blend_mode.addItem("Screen", "screen")
+        self.combo_original_stars_blend_mode.setStyleSheet(
+            "background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-size: 11px; color: #1e293b;"
+        )
+        orig_mode_layout.addWidget(lbl_orig_mode)
+        orig_mode_layout.addWidget(self.combo_original_stars_blend_mode)
+        layout.addLayout(orig_mode_layout)
+
+        # Action: Save Image
+        self.btn_save_output = QPushButton("Save Image", self)
+        self.btn_save_output.setCursor(Qt.PointingHandCursor)
+        self.btn_save_output.setStyleSheet(
+            "QPushButton { font-weight: 600; padding: 6px; background-color: #ffffff; color: #0284c7; border: 1px solid #0284c7; border-radius: 4px; font-size: 11px; }"
+            "QPushButton:hover { background-color: #f0f9ff; }"
+            "QPushButton:disabled { background-color: #f8fafc; color: #cbd5e1; border-color: #e2e8f0; }"
+        )
+        layout.addWidget(self.btn_save_output)
+
+    def _init_events(self) -> None:
+        self.slider_star_amount.valueChanged.connect(self._on_star_amount_changed)
+        self.combo_star_blend_mode.currentIndexChanged.connect(self._on_star_blend_mode_changed)
+        self.slider_original_stars_amount.valueChanged.connect(self._on_orig_amount_changed)
+        self.combo_original_stars_blend_mode.currentIndexChanged.connect(self._on_orig_blend_mode_changed)
+
+    def _on_star_amount_changed(self, value: int) -> None:
+        self.lbl_star_amount_value.setText(f"{value}%")
+        self.star_amount_changed.emit(float(value))
+        self.settings_changed.emit()
+
+    def _on_star_blend_mode_changed(self, index: int) -> None:
+        data = self.combo_star_blend_mode.currentData()
+        if data is not None:
+            self.blend_mode_changed.emit(str(data))
+            self.settings_changed.emit()
+
+    def _on_orig_amount_changed(self, value: int) -> None:
+        self.lbl_original_stars_amount_value.setText(f"{value}%")
+        self.original_stars_amount_changed.emit(float(value))
+        self.settings_changed.emit()
+
+    def _on_orig_blend_mode_changed(self, index: int) -> None:
+        data = self.combo_original_stars_blend_mode.currentData()
+        if data is not None:
+            self.original_stars_blend_mode_changed.emit(str(data))
+            self.settings_changed.emit()
+
+    def get_star_amount(self) -> float:
+        return float(self.slider_star_amount.value())
+
+    def set_star_amount(self, amount: float) -> None:
+        val = int(round(amount))
+        val = max(0, min(100, val))
+        self.lbl_star_amount_value.setText(f"{val}%")
+        with QSignalBlocker(self.slider_star_amount):
+            self.slider_star_amount.setValue(val)
+
+    def get_blend_mode(self) -> str:
+        data = self.combo_star_blend_mode.currentData()
+        if data is None:
+            raise ValueError("Blend mode combo has no valid selection.")
+        return str(data)
+
+    def set_blend_mode(self, mode: str) -> None:
+        idx = self.combo_star_blend_mode.findData(mode)
+        if idx < 0:
+            raise ValueError(f"Unsupported blend mode '{mode}'.")
+        with QSignalBlocker(self.combo_star_blend_mode):
+            self.combo_star_blend_mode.setCurrentIndex(idx)
+
+    def get_original_stars_amount(self) -> float:
+        return float(self.slider_original_stars_amount.value())
+
+    def set_original_stars_amount(self, amount: float) -> None:
+        val = int(round(amount))
+        val = max(0, min(100, val))
+        self.lbl_original_stars_amount_value.setText(f"{val}%")
+        with QSignalBlocker(self.slider_original_stars_amount):
+            self.slider_original_stars_amount.setValue(val)
+
+    def get_original_stars_blend_mode(self) -> str:
+        data = self.combo_original_stars_blend_mode.currentData()
+        if data is None:
+            raise ValueError("Original stars blend mode combo has no valid selection.")
+        return str(data)
+
+    def set_original_stars_blend_mode(self, mode: str) -> None:
+        idx = self.combo_original_stars_blend_mode.findData(mode)
+        if idx < 0:
+            raise ValueError(f"Unsupported original stars blend mode '{mode}'.")
+        with QSignalBlocker(self.combo_original_stars_blend_mode):
+            self.combo_original_stars_blend_mode.setCurrentIndex(idx)
+
+    def set_from_project(self, project: FinishProject) -> None:
+        settings = project.get_settings()
+        self.set_star_amount(settings.star_amount)
+        self.set_blend_mode(settings.blend_mode)
+        self.set_original_stars_amount(settings.original_stars_amount)
+        self.set_original_stars_blend_mode(settings.original_stars_blend_mode)
+
+    def refresh_prerequisites(self, has_prerequisites: bool = True) -> None:
+        self.slider_star_amount.setEnabled(has_prerequisites)
+        self.combo_star_blend_mode.setEnabled(has_prerequisites)
+        self.slider_original_stars_amount.setEnabled(has_prerequisites)
+        self.combo_original_stars_blend_mode.setEnabled(has_prerequisites)
 
 
 class SidebarFinish(QWidget):
@@ -129,7 +321,7 @@ class SidebarFinish(QWidget):
         self.contentLayout.addWidget(self.starlessCard)
 
         self.starsCard = StepCard(title="Finish Stars", number=4, expanded=False, parent=self.content)
-        self.starsCard.setSubtitle("Star rounding, faint-star suppression, and glow")
+        self.starsCard.setSubtitle("Star selection, rounding, and glow")
         self.starsSettings = FinishStarsSettings(parent=self.content)
         self.starsCard.add_body(self.starsSettings)
         self.contentLayout.addWidget(self.starsCard)
@@ -137,17 +329,10 @@ class SidebarFinish(QWidget):
         self.recombineCard = StepCard(title="Recombine & Save", number=5, expanded=False, parent=self.content)
         self.recombineCard.setSubtitle("Blend layers and export image")
 
-        recombineBody = QWidget()
-        recombineBodyLayout = QVBoxLayout(recombineBody)
-        recombineBodyLayout.setContentsMargins(4, 4, 4, 4)
-        recombineBodyLayout.setSpacing(6)
-
-        self.btn_save_output = QPushButton("Save Image", recombineBody)
-        self.btn_save_output.setCursor(Qt.PointingHandCursor)
-        self.btn_save_output.setStyleSheet("font-weight: 600; padding: 6px;")
-        recombineBodyLayout.addWidget(self.btn_save_output)
-
-        self.recombineCard.add_body(recombineBody)
+        self.recombineSettings = FinishRecombineSettings(parent=self.content)
+        self.recombineCard.add_body(self.recombineSettings)
+        self.btn_save_output = self.recombineSettings.btn_save_output
+        self.slider_star_amount = self.recombineSettings.slider_star_amount
         self.contentLayout.addWidget(self.recombineCard)
 
         self._step_cards = (self.skyCard, self.separateCard, self.starlessCard, self.starsCard, self.recombineCard)
@@ -170,6 +355,8 @@ class SidebarFinish(QWidget):
             self.starlessSettings.set_from_project(project)
         if hasattr(self, "starsSettings"):
             self.starsSettings.set_from_project(project)
+        if hasattr(self, "recombineSettings"):
+            self.recombineSettings.set_from_project(project)
         self.update_prerequisites(project)
 
     def update_prerequisites(self, project: FinishProject) -> None:
@@ -222,6 +409,8 @@ class SidebarFinish(QWidget):
             self.recombineCard.setStatus("locked", "Prerequisite: Source image required")
             if hasattr(self, "starsSettings"):
                 self.starsSettings.refresh_prerequisites(has_prerequisites=False)
+            if hasattr(self, "recombineSettings"):
+                self.recombineSettings.refresh_prerequisites(has_prerequisites=False)
             self.btn_save_output.setEnabled(False)
             return
 
@@ -237,6 +426,8 @@ class SidebarFinish(QWidget):
             self.recombineCard.setStatus("locked", "Prerequisite: Sky region required")
             if hasattr(self, "starsSettings"):
                 self.starsSettings.refresh_prerequisites(has_prerequisites=False)
+            if hasattr(self, "recombineSettings"):
+                self.recombineSettings.refresh_prerequisites(has_prerequisites=False)
             self.btn_save_output.setEnabled(False)
             return
 
@@ -250,6 +441,8 @@ class SidebarFinish(QWidget):
             self.recombineCard.setStatus("locked", "Prerequisite: Separated layers required")
             if hasattr(self, "starsSettings"):
                 self.starsSettings.refresh_prerequisites(has_prerequisites=False)
+            if hasattr(self, "recombineSettings"):
+                self.recombineSettings.refresh_prerequisites(has_prerequisites=False)
             self.btn_save_output.setEnabled(False)
             return
 
@@ -269,6 +462,8 @@ class SidebarFinish(QWidget):
 
         if hasattr(self, "starsSettings"):
             self.starsSettings.refresh_prerequisites(has_prerequisites=True)
+        if hasattr(self, "recombineSettings"):
+            self.recombineSettings.refresh_prerequisites(has_prerequisites=True)
 
         settings = project.get_settings()
         workflow = getattr(self.app, "workflow", None) if self.app else None
@@ -281,7 +476,7 @@ class SidebarFinish(QWidget):
             self.starsCard.setStatus("ready", "Ready to finish stars")
 
         self.recombineCard.setStatus("ready", "Ready to recombine")
-        self.btn_save_output.setEnabled(has_composite)
+        self.btn_save_output.setEnabled(has_source and has_mask and has_starless and has_stars)
 
 
-__all__ = ["SidebarFinish"]
+__all__ = ["FinishRecombineSettings", "SidebarFinish"]

@@ -15,15 +15,16 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout,
-    QLabel, QPushButton, QRadioButton, QSizePolicy,
-    QSlider, QSpacerItem, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame,
+    QGridLayout, QHBoxLayout, QLabel, QPushButton,
+    QRadioButton, QSizePolicy, QSlider, QSpacerItem,
+    QVBoxLayout, QWidget)
 
 class Ui_FinishStarsSettings(object):
     def setupUi(self, FinishStarsSettings):
         if not FinishStarsSettings.objectName():
             FinishStarsSettings.setObjectName(u"FinishStarsSettings")
-        FinishStarsSettings.resize(300, 520)
+        FinishStarsSettings.resize(300, 560)
         FinishStarsSettings.setStyleSheet(u"QFrame#help_box {\n"
 "    background-color: #f8fafc;\n"
 "    border: 1px solid #e2e8f0;\n"
@@ -35,17 +36,17 @@ class Ui_FinishStarsSettings(object):
 "    font-size: 11px;\n"
 "    line-height: 1.3;\n"
 "}\n"
-"QLabel#lbl_preview_note {\n"
-"    color: #94a3b8;\n"
-"    font-size: 10px;\n"
-"    font-style: italic;\n"
+"QLabel#lbl_star_cutoff_info {\n"
+"    color: #64748b;\n"
+"    font-size: 11px;\n"
+"    line-height: 1.3;\n"
 "}\n"
-"QLabel#lbl_round_stars_title, QLabel#lbl_faint_suppression_title, QLabel#lbl_glow_amount_title, QLabel#lbl_glow_radius_title, QLabel#lbl_star_amount_title, QLabel#lbl_preview_title {\n"
+"QLabel#lbl_round_stars_title, QLabel#lbl_glow_count_title, QLabel#lbl_glow_amount_title, QLabel#lbl_glow_radius_title, QLabel#lbl_star_cutoff_title, QLabel#lbl_preview_title {\n"
 "    font-size: 11px;\n"
 "    font-weight: 600;\n"
 "    color: #475569;\n"
 "}\n"
-"QLabel#lbl_round_stars_value, QLabel#lbl_faint_suppression_value, QLabel#lbl_glow_amount_value, QLabel#lbl_glow_radius_value, QLabel#lbl_star_amount_value {\n"
+"QLabel#lbl_round_stars_value, QLabel#lbl_glow_amount_value, QLabel#lbl_glow_radius_value {\n"
 "    font-size: 11px;\n"
 "    font-weight: 600;\n"
 "    color: #0369a1;\n"
@@ -57,13 +58,26 @@ class Ui_FinishStarsSettings(object):
 "    spacing: 6px;\n"
 "}\n"
 "QRadioButton {\n"
-"    font-"
-                        "size: 11px;\n"
+"    font-size: 11px;\n"
 "    color: #334155;\n"
 "    font-weight: 500;\n"
-"    spacing: 5px;\n"
+"    s"
+                        "pacing: 5px;\n"
 "}\n"
-"QPushButton#btn_reset {\n"
+"QComboBox {\n"
+"    background-color: #ffffff;\n"
+"    border: 1px solid #cbd5e1;\n"
+"    border-radius: 4px;\n"
+"    padding: 3px 8px;\n"
+"    font-size: 11px;\n"
+"    color: #1e293b;\n"
+"}\n"
+"QComboBox:disabled {\n"
+"    background-color: #f8fafc;\n"
+"    color: #94a3b8;\n"
+"    border-color: #e2e8f0;\n"
+"}\n"
+"QPushButton#btn_reset, QPushButton#btn_compare {\n"
 "    background-color: #ffffff;\n"
 "    color: #475569;\n"
 "    border: 1px solid #cbd5e1;\n"
@@ -71,23 +85,64 @@ class Ui_FinishStarsSettings(object):
 "    padding: 6px 12px;\n"
 "    font-size: 11px;\n"
 "}\n"
-"QPushButton#btn_reset:hover {\n"
+"QPushButton#btn_compare:pressed {\n"
+"    background-color: #e2e8f0;\n"
+"    color: #0f172a;\n"
+"    border-color: #94a3b8;\n"
+"}\n"
+"QPushButton#btn_reset:hover, QPushButton#btn_compare:hover {\n"
 "    background-color: #f1f5f9;\n"
 "}\n"
-"QPushButton#btn_reset:disabled {\n"
+"QPushButton#btn_reset:disabled, QPushButton#btn_compare:disabled {\n"
 "    background-color: #f8fafc;\n"
 "    color: #cbd5e1;\n"
 "    border-color: #e2e8f0;\n"
 "}\n"
 "QLabel#lbl_status {\n"
 "    color: #b91c1c;\n"
-"    font-size: 11px;\n"
+""
+                        "    font-size: 11px;\n"
 "    line-height: 1.3;\n"
 "}")
         self.layout = QVBoxLayout(FinishStarsSettings)
         self.layout.setSpacing(10)
         self.layout.setObjectName(u"layout")
         self.layout.setContentsMargins(4, 4, 4, 4)
+        self.included_stars_container = QWidget(FinishStarsSettings)
+        self.included_stars_container.setObjectName(u"included_stars_container")
+        self.included_stars_layout = QVBoxLayout(self.included_stars_container)
+        self.included_stars_layout.setSpacing(4)
+        self.included_stars_layout.setObjectName(u"included_stars_layout")
+        self.included_stars_layout.setContentsMargins(0, 0, 0, 0)
+        self.included_stars_header = QHBoxLayout()
+        self.included_stars_header.setObjectName(u"included_stars_header")
+        self.lbl_star_cutoff_title = QLabel(self.included_stars_container)
+        self.lbl_star_cutoff_title.setObjectName(u"lbl_star_cutoff_title")
+
+        self.included_stars_header.addWidget(self.lbl_star_cutoff_title)
+
+        self.combo_star_cutoff = QComboBox(self.included_stars_container)
+        self.combo_star_cutoff.addItem("")
+        self.combo_star_cutoff.addItem("")
+        self.combo_star_cutoff.addItem("")
+        self.combo_star_cutoff.addItem("")
+        self.combo_star_cutoff.setObjectName(u"combo_star_cutoff")
+        self.combo_star_cutoff.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        self.included_stars_header.addWidget(self.combo_star_cutoff)
+
+
+        self.included_stars_layout.addLayout(self.included_stars_header)
+
+        self.lbl_star_cutoff_info = QLabel(self.included_stars_container)
+        self.lbl_star_cutoff_info.setObjectName(u"lbl_star_cutoff_info")
+        self.lbl_star_cutoff_info.setWordWrap(True)
+
+        self.included_stars_layout.addWidget(self.lbl_star_cutoff_info)
+
+
+        self.layout.addWidget(self.included_stars_container)
+
         self.round_stars_container = QWidget(FinishStarsSettings)
         self.round_stars_container.setObjectName(u"round_stars_container")
         self.round_stars_layout = QVBoxLayout(self.round_stars_container)
@@ -138,56 +193,6 @@ class Ui_FinishStarsSettings(object):
 
         self.layout.addWidget(self.round_stars_container)
 
-        self.faint_suppression_container = QWidget(FinishStarsSettings)
-        self.faint_suppression_container.setObjectName(u"faint_suppression_container")
-        self.faint_suppression_layout = QVBoxLayout(self.faint_suppression_container)
-        self.faint_suppression_layout.setSpacing(4)
-        self.faint_suppression_layout.setObjectName(u"faint_suppression_layout")
-        self.faint_suppression_layout.setContentsMargins(0, 0, 0, 0)
-        self.check_faint_suppression = QCheckBox(self.faint_suppression_container)
-        self.check_faint_suppression.setObjectName(u"check_faint_suppression")
-        self.check_faint_suppression.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-
-        self.faint_suppression_layout.addWidget(self.check_faint_suppression)
-
-        self.faint_suppression_header = QHBoxLayout()
-        self.faint_suppression_header.setObjectName(u"faint_suppression_header")
-        self.faint_suppression_header.setContentsMargins(16, -1, -1, -1)
-        self.lbl_faint_suppression_title = QLabel(self.faint_suppression_container)
-        self.lbl_faint_suppression_title.setObjectName(u"lbl_faint_suppression_title")
-
-        self.faint_suppression_header.addWidget(self.lbl_faint_suppression_title)
-
-        self.lbl_faint_suppression_value = QLabel(self.faint_suppression_container)
-        self.lbl_faint_suppression_value.setObjectName(u"lbl_faint_suppression_value")
-        self.lbl_faint_suppression_value.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
-
-        self.faint_suppression_header.addWidget(self.lbl_faint_suppression_value)
-
-
-        self.faint_suppression_layout.addLayout(self.faint_suppression_header)
-
-        self.faint_suppression_slider_layout = QHBoxLayout()
-        self.faint_suppression_slider_layout.setObjectName(u"faint_suppression_slider_layout")
-        self.faint_suppression_slider_layout.setContentsMargins(16, -1, -1, -1)
-        self.slider_faint_suppression = QSlider(self.faint_suppression_container)
-        self.slider_faint_suppression.setObjectName(u"slider_faint_suppression")
-        self.slider_faint_suppression.setEnabled(False)
-        self.slider_faint_suppression.setOrientation(Qt.Orientation.Horizontal)
-        self.slider_faint_suppression.setMaximum(100)
-        self.slider_faint_suppression.setSingleStep(1)
-        self.slider_faint_suppression.setPageStep(10)
-        self.slider_faint_suppression.setValue(0)
-        self.slider_faint_suppression.setTracking(True)
-
-        self.faint_suppression_slider_layout.addWidget(self.slider_faint_suppression)
-
-
-        self.faint_suppression_layout.addLayout(self.faint_suppression_slider_layout)
-
-
-        self.layout.addWidget(self.faint_suppression_container)
-
         self.glow_container = QWidget(FinishStarsSettings)
         self.glow_container.setObjectName(u"glow_container")
         self.glow_layout = QVBoxLayout(self.glow_container)
@@ -199,6 +204,26 @@ class Ui_FinishStarsSettings(object):
         self.check_star_glow.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         self.glow_layout.addWidget(self.check_star_glow)
+
+        self.glow_count_header = QHBoxLayout()
+        self.glow_count_header.setObjectName(u"glow_count_header")
+        self.glow_count_header.setContentsMargins(16, -1, -1, -1)
+        self.lbl_glow_count_title = QLabel(self.glow_container)
+        self.lbl_glow_count_title.setObjectName(u"lbl_glow_count_title")
+
+        self.glow_count_header.addWidget(self.lbl_glow_count_title)
+
+        self.combo_glow_count = QComboBox(self.glow_container)
+        self.combo_glow_count.addItem("")
+        self.combo_glow_count.addItem("")
+        self.combo_glow_count.addItem("")
+        self.combo_glow_count.setObjectName(u"combo_glow_count")
+        self.combo_glow_count.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        self.glow_count_header.addWidget(self.combo_glow_count)
+
+
+        self.glow_layout.addLayout(self.glow_count_header)
 
         self.glow_amount_header = QHBoxLayout()
         self.glow_amount_header.setObjectName(u"glow_amount_header")
@@ -274,42 +299,6 @@ class Ui_FinishStarsSettings(object):
 
         self.layout.addWidget(self.glow_container)
 
-        self.star_amount_container = QWidget(FinishStarsSettings)
-        self.star_amount_container.setObjectName(u"star_amount_container")
-        self.star_amount_layout = QVBoxLayout(self.star_amount_container)
-        self.star_amount_layout.setSpacing(4)
-        self.star_amount_layout.setObjectName(u"star_amount_layout")
-        self.star_amount_layout.setContentsMargins(0, 0, 0, 0)
-        self.star_amount_header = QHBoxLayout()
-        self.star_amount_header.setObjectName(u"star_amount_header")
-        self.lbl_star_amount_title = QLabel(self.star_amount_container)
-        self.lbl_star_amount_title.setObjectName(u"lbl_star_amount_title")
-
-        self.star_amount_header.addWidget(self.lbl_star_amount_title)
-
-        self.lbl_star_amount_value = QLabel(self.star_amount_container)
-        self.lbl_star_amount_value.setObjectName(u"lbl_star_amount_value")
-        self.lbl_star_amount_value.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
-
-        self.star_amount_header.addWidget(self.lbl_star_amount_value)
-
-
-        self.star_amount_layout.addLayout(self.star_amount_header)
-
-        self.slider_star_amount = QSlider(self.star_amount_container)
-        self.slider_star_amount.setObjectName(u"slider_star_amount")
-        self.slider_star_amount.setOrientation(Qt.Orientation.Horizontal)
-        self.slider_star_amount.setMaximum(100)
-        self.slider_star_amount.setSingleStep(1)
-        self.slider_star_amount.setPageStep(10)
-        self.slider_star_amount.setValue(100)
-        self.slider_star_amount.setTracking(True)
-
-        self.star_amount_layout.addWidget(self.slider_star_amount)
-
-
-        self.layout.addWidget(self.star_amount_container)
-
         self.preview_container = QWidget(FinishStarsSettings)
         self.preview_container.setObjectName(u"preview_container")
         self.preview_layout = QVBoxLayout(self.preview_container)
@@ -321,34 +310,52 @@ class Ui_FinishStarsSettings(object):
 
         self.preview_layout.addWidget(self.lbl_preview_title)
 
-        self.preview_radios = QHBoxLayout()
-        self.preview_radios.setSpacing(12)
+        self.preview_radios = QGridLayout()
+        self.preview_radios.setSpacing(6)
         self.preview_radios.setObjectName(u"preview_radios")
         self.radio_preview_composite = QRadioButton(self.preview_container)
         self.radio_preview_composite.setObjectName(u"radio_preview_composite")
         self.radio_preview_composite.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.radio_preview_composite.setChecked(True)
 
-        self.preview_radios.addWidget(self.radio_preview_composite)
+        self.preview_radios.addWidget(self.radio_preview_composite, 0, 0, 1, 1)
 
-        self.radio_preview_stars = QRadioButton(self.preview_container)
-        self.radio_preview_stars.setObjectName(u"radio_preview_stars")
-        self.radio_preview_stars.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.radio_preview_finished_stars = QRadioButton(self.preview_container)
+        self.radio_preview_finished_stars.setObjectName(u"radio_preview_finished_stars")
+        self.radio_preview_finished_stars.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
-        self.preview_radios.addWidget(self.radio_preview_stars)
+        self.preview_radios.addWidget(self.radio_preview_finished_stars, 0, 1, 1, 1)
 
-        self.preview_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.radio_preview_original_stars = QRadioButton(self.preview_container)
+        self.radio_preview_original_stars.setObjectName(u"radio_preview_original_stars")
+        self.radio_preview_original_stars.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
-        self.preview_radios.addItem(self.preview_spacer)
+        self.preview_radios.addWidget(self.radio_preview_original_stars, 1, 0, 1, 1)
+
+        self.radio_preview_excluded_stars = QRadioButton(self.preview_container)
+        self.radio_preview_excluded_stars.setObjectName(u"radio_preview_excluded_stars")
+        self.radio_preview_excluded_stars.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        self.preview_radios.addWidget(self.radio_preview_excluded_stars, 1, 1, 1, 1)
 
 
         self.preview_layout.addLayout(self.preview_radios)
 
-        self.lbl_preview_note = QLabel(self.preview_container)
-        self.lbl_preview_note.setObjectName(u"lbl_preview_note")
-        self.lbl_preview_note.setWordWrap(True)
+        self.compare_layout = QHBoxLayout()
+        self.compare_layout.setObjectName(u"compare_layout")
+        self.compare_layout.setContentsMargins(-1, 4, -1, -1)
+        self.btn_compare = QPushButton(self.preview_container)
+        self.btn_compare.setObjectName(u"btn_compare")
+        self.btn_compare.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
-        self.preview_layout.addWidget(self.lbl_preview_note)
+        self.compare_layout.addWidget(self.btn_compare)
+
+        self.compare_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.compare_layout.addItem(self.compare_spacer)
+
+
+        self.preview_layout.addLayout(self.compare_layout)
 
 
         self.layout.addWidget(self.preview_container)
@@ -397,24 +404,36 @@ class Ui_FinishStarsSettings(object):
     # setupUi
 
     def retranslateUi(self, FinishStarsSettings):
+        self.lbl_star_cutoff_title.setText(QCoreApplication.translate("FinishStarsSettings", u"Included Stars", None))
+        self.combo_star_cutoff.setItemText(0, QCoreApplication.translate("FinishStarsSettings", u"All", None))
+        self.combo_star_cutoff.setItemText(1, QCoreApplication.translate("FinishStarsSettings", u"100,000", None))
+        self.combo_star_cutoff.setItemText(2, QCoreApplication.translate("FinishStarsSettings", u"10,000", None))
+        self.combo_star_cutoff.setItemText(3, QCoreApplication.translate("FinishStarsSettings", u"1,000", None))
+
+        self.lbl_star_cutoff_info.setText(QCoreApplication.translate("FinishStarsSettings", u"\u2014", None))
         self.check_round_stars.setText(QCoreApplication.translate("FinishStarsSettings", u"Round Stars", None))
         self.lbl_round_stars_title.setText(QCoreApplication.translate("FinishStarsSettings", u"Correction Amount", None))
         self.lbl_round_stars_value.setText(QCoreApplication.translate("FinishStarsSettings", u"50%", None))
-        self.check_faint_suppression.setText(QCoreApplication.translate("FinishStarsSettings", u"Faint Star Suppression", None))
-        self.lbl_faint_suppression_title.setText(QCoreApplication.translate("FinishStarsSettings", u"Suppression Amount", None))
-        self.lbl_faint_suppression_value.setText(QCoreApplication.translate("FinishStarsSettings", u"0%", None))
         self.check_star_glow.setText(QCoreApplication.translate("FinishStarsSettings", u"Star Glow", None))
+        self.lbl_glow_count_title.setText(QCoreApplication.translate("FinishStarsSettings", u"Glow Stars", None))
+        self.combo_glow_count.setItemText(0, QCoreApplication.translate("FinishStarsSettings", u"25", None))
+        self.combo_glow_count.setItemText(1, QCoreApplication.translate("FinishStarsSettings", u"100", None))
+        self.combo_glow_count.setItemText(2, QCoreApplication.translate("FinishStarsSettings", u"500", None))
+
         self.lbl_glow_amount_title.setText(QCoreApplication.translate("FinishStarsSettings", u"Glow Amount", None))
         self.lbl_glow_amount_value.setText(QCoreApplication.translate("FinishStarsSettings", u"0%", None))
         self.lbl_glow_radius_title.setText(QCoreApplication.translate("FinishStarsSettings", u"Glow Radius", None))
         self.lbl_glow_radius_value.setText(QCoreApplication.translate("FinishStarsSettings", u"15 px", None))
-        self.lbl_star_amount_title.setText(QCoreApplication.translate("FinishStarsSettings", u"Stars Amount", None))
-        self.lbl_star_amount_value.setText(QCoreApplication.translate("FinishStarsSettings", u"100%", None))
         self.lbl_preview_title.setText(QCoreApplication.translate("FinishStarsSettings", u"Preview Layer", None))
         self.radio_preview_composite.setText(QCoreApplication.translate("FinishStarsSettings", u"Composite", None))
-        self.radio_preview_stars.setText(QCoreApplication.translate("FinishStarsSettings", u"Stars Only", None))
-        self.lbl_preview_note.setText(QCoreApplication.translate("FinishStarsSettings", u"Finished stars layer is stored pre-global amount; amount is applied during composite blend.", None))
-        self.lbl_help.setText(QCoreApplication.translate("FinishStarsSettings", u"Rounding is cosmetic and applies to isolated stars only. Crowded, saturated, or border stars may be skipped; close unresolved pairs cannot be reliably distinguished.", None))
+        self.radio_preview_finished_stars.setText(QCoreApplication.translate("FinishStarsSettings", u"Finished Stars", None))
+        self.radio_preview_original_stars.setText(QCoreApplication.translate("FinishStarsSettings", u"Original Stars", None))
+        self.radio_preview_excluded_stars.setText(QCoreApplication.translate("FinishStarsSettings", u"Excluded Stars", None))
+#if QT_CONFIG(tooltip)
+        self.btn_compare.setToolTip(QCoreApplication.translate("FinishStarsSettings", u"Press and hold to view included stars without effects", None))
+#endif // QT_CONFIG(tooltip)
+        self.btn_compare.setText(QCoreApplication.translate("FinishStarsSettings", u"Hold to Compare", None))
+        self.lbl_help.setText(QCoreApplication.translate("FinishStarsSettings", u"Rounding circularizes isolated stars. Glow adds an atmospheric halo to top stars. Hold to Compare previews included stars without cosmetic effects.", None))
         self.btn_reset.setText(QCoreApplication.translate("FinishStarsSettings", u"Reset", None))
         self.lbl_status.setText("")
         pass

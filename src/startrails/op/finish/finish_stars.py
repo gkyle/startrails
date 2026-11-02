@@ -1,8 +1,7 @@
-"""Observable operation applying star effects to the separated star layer."""
+"""Observable operation composing the finished star layer and writing its TIFF."""
 
 from __future__ import annotations
 
-import inspect
 from pathlib import Path
 from typing import Optional
 
@@ -10,91 +9,60 @@ import numpy as np
 
 from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.finish.defaults import INTERMEDIATE_BIT_DEPTH, FinishSettings
-from startrails.lib.finish.star_analysis import StarAnalysisResult
-from startrails.lib.finish.star_effects import apply_star_effects
+from startrails.lib.finish.star_catalog import RankedStarCatalog
+from startrails.lib.finish.star_effects import SparseRoundDelta, compose_star_layer
 from startrails.lib.image_io import imwrite
 from startrails.lib.util import Observable
 
 
 class FinishStars(Observable):
-    """Cancelable wrapper around star effects and lossless intermediate writing."""
+    """Cancelable wrapper around composition and lossless intermediate writing.
+
+    Catalog analysis, Round/Glow layer rendering and persistence belong to the
+    workflow. This operation only composes the current in-memory layers and
+    stages the derived TIFF, so effect toggles and amounts can never trigger a
+    worker job or depend on stale TIFF pixels.
+    """
 
     def __init__(self, cancel_event=None, cancel_check=None):
         super().__init__(cancel_event, cancel_check)
-        self._started = False
-        self._last_completed = 0
-        self._analysis: Optional[StarAnalysisResult] = None
-
-    @property
-    def analysis(self) -> Optional[StarAnalysisResult]:
-        """The StarAnalysisResult from the latest execution, if available."""
-        return self._analysis
 
     def finish(
         self,
         stars: np.ndarray,
-        sky_mask: np.ndarray,
         settings: FinishSettings,
         *,
-        source: np.ndarray,
+        catalog: RankedStarCatalog,
+        inclusion_mask: np.ndarray,
+        round_delta: Optional[SparseRoundDelta],
+        glow: Optional[np.ndarray],
         output_path: Path,
         artifacts: ArtifactTransaction,
-        analysis: Optional[StarAnalysisResult] = None,
+        compare: bool = False,
     ) -> Optional[Path]:
-        """Apply the effects and stage a 16-bit TIFF without publishing it.
+        """Compose ``S_fin`` and stage a 16-bit TIFF without publishing it.
 
         Returns the resolved destination once written, or None when interrupted.
-        The caller owns the transaction so publication remains atomic with the
-        project state change. ``source`` is the original normalized source used to
-        distinguish saturated cores, where the separated star residual can be < 1.
+        ``inclusion_mask`` is the workflow-owned included-star mask for the
+        current catalog/cutoff. The caller owns the transaction so publication
+        remains atomic with the project state change.
         """
-        self._started = False
-        self._last_completed = 0
-        self._analysis = analysis
-
-        def on_progress(done: int, total: int, description: str, data: Optional[dict] = None) -> None:
-            if not self._started and total > 0:
-                self.startJob(total)
-                self._started = True
-            increment = done - self._last_completed
-            payload = {"desc": description}
-            if data:
-                payload.update(data)
-            if increment > 0:
-                self._last_completed = done
-                self.updateJob(increment, payload)
-            elif self._started:
-                self.updateJob(0, payload)
-
+        self.startJob(2)
         if self.shouldInterrupt():
             return None
 
-        def set_analysis(res: StarAnalysisResult) -> None:
-            self._analysis = res
-
-        apply_kwargs = {
-            "source": source,
-            "should_interrupt": self.shouldInterrupt,
-            "progress_callback": on_progress,
-        }
-        sig = inspect.signature(apply_star_effects)
-        if "analysis" in sig.parameters:
-            apply_kwargs["analysis"] = analysis
-        if "analysis_callback" in sig.parameters:
-            apply_kwargs["analysis_callback"] = set_analysis
-
-        finished = apply_star_effects(
+        finished = compose_star_layer(
             stars,
-            sky_mask,
+            catalog,
+            round_delta,
+            glow,
             settings,
-            **apply_kwargs,
+            inclusion_mask=inclusion_mask,
+            compare=compare,
         )
-        # The effect result is the only working buffer needed from here on.
-        del stars, sky_mask, source
-        if finished is None or self.shouldInterrupt():
+        if self.shouldInterrupt():
             return None
-        if self._started and self.job is not None and not self.job.done:
-            self.updateJob(self.job.total - self.job.count, {"desc": "Star effects complete."})
+        self.updateJob(1, {"desc": "Finished stars composed."})
 
         destination = Path(output_path).resolve()
         staged = artifacts.stage(destination)
@@ -108,6 +76,7 @@ class FinishStars(Observable):
         if written != staged:
             written.unlink(missing_ok=True)
             raise OSError("Finished stars staging path changed unexpectedly; nothing was published.")
+        self.updateJob(1, {"desc": "Finished stars complete."})
         return destination
 
 

@@ -124,15 +124,70 @@ class TestFinishNumerical(unittest.TestCase):
     def test_recombination_neutral_and_zero_amount_even_with_glow(self):
         base, stars = self.read_separation()
         negative = np.minimum(star_residual(self.source, base), 0)
+        zeros = np.zeros_like(stars)
         np.testing.assert_allclose(
-            recombine_layers(base, stars, negative, 100, BLEND_ADD), self.source, atol=np.finfo(np.float32).eps, rtol=0
+            recombine_layers(base, zeros, stars, negative, 0, BLEND_ADD, 100, BLEND_ADD),
+            self.source,
+            atol=np.finfo(np.float32).eps,
+            rtol=0,
         )
-        for mode in (BLEND_ADD, BLEND_SCREEN):
-            np.testing.assert_array_equal(recombine_layers(base, stars + 0.1, negative, 0, mode), base)
-        # Independently known Screen value: F=.4, S=.2 at 50% -> .46.
+        for original_mode in (BLEND_ADD, BLEND_SCREEN):
+            for finished_mode in (BLEND_ADD, BLEND_SCREEN):
+                with self.subTest(original_mode=original_mode, finished_mode=finished_mode):
+                    np.testing.assert_array_equal(
+                        recombine_layers(
+                            base,
+                            stars + 0.1,
+                            stars + 0.2,
+                            negative,
+                            0,
+                            original_mode,
+                            0,
+                            finished_mode,
+                        ),
+                        base,
+                    )
+        # Independently known Screen value: F=.4, Original=.2 at 50% -> .46.
         np.testing.assert_allclose(
-            recombine_layers(self.model, np.full_like(self.model, 0.2), np.zeros_like(self.model), 50, BLEND_SCREEN),
+            recombine_layers(
+                self.model,
+                np.full_like(self.model, 0.2),
+                np.zeros_like(self.model),
+                np.zeros_like(self.model),
+                50,
+                BLEND_SCREEN,
+                0,
+                BLEND_ADD,
+            ),
             0.46,
+        )
+
+    def test_two_layer_recombination_formula_and_negative_residual_follow_finished_add(self):
+        starless = np.full((2, 2, 3), 0.4, np.float32)
+        original = np.full_like(starless, 0.2)
+        finished = np.full_like(starless, 0.3)
+        negative = np.full_like(starless, -0.05)
+        c1 = np.clip(starless + 0.5 * original, 0.0, 1.0)
+        expected_add = np.clip(c1 + 0.5 * finished + 0.5 * negative, 0.0, 1.0)
+        np.testing.assert_allclose(
+            recombine_layers(starless, original, finished, negative, 50, BLEND_ADD, 50, BLEND_ADD),
+            expected_add,
+        )
+        # Screen does not consume the negative residual, even at full strength.
+        expected_screen = 1.0 - (1.0 - c1) * (1.0 - np.clip(0.5 * finished, 0.0, 1.0))
+        np.testing.assert_allclose(
+            recombine_layers(starless, original, finished, negative, 50, BLEND_ADD, 50, BLEND_SCREEN),
+            expected_screen,
+        )
+        # Original-only Add ignores N because N follows Finished Stars.
+        np.testing.assert_allclose(
+            recombine_layers(starless, original, finished, negative, 100, BLEND_ADD, 0, BLEND_ADD),
+            np.clip(starless + original, 0.0, 1.0),
+        )
+        # Full two-layer Add intentionally counts the shared included stars twice.
+        np.testing.assert_allclose(
+            recombine_layers(starless, original, finished, negative, 100, BLEND_ADD, 100, BLEND_ADD),
+            np.clip(starless + original + finished + negative, 0.0, 1.0),
         )
 
     def test_observable_separation_cancellation_and_image_outputs(self):
@@ -154,6 +209,7 @@ class TestFinishNumerical(unittest.TestCase):
                     self.model,
                     np.zeros_like(self.model),
                     np.zeros_like(self.model),
+                    np.zeros_like(self.model),
                     FINISH_DEFAULTS,
                     bit_depth=bit_depth,
                     output_path=destination,
@@ -169,6 +225,7 @@ class TestFinishNumerical(unittest.TestCase):
         with patch("startrails.op.finish.recombine.imwrite", side_effect=OSError("disk full")):
             with self.assertRaisesRegex(OSError, "disk full"):
                 Recombine().recombine(
+                    self.model,
                     self.model,
                     self.model,
                     self.model,
