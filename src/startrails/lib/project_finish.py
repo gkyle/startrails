@@ -8,7 +8,7 @@ import json
 import os
 from pathlib import Path
 from threading import RLock
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Final, Optional, Tuple, Union
 
 import jsonpickle
 import numpy as np
@@ -66,6 +66,23 @@ _INPUT_ARTIFACT_ROLES = (ROLE_SOURCE_SNAPSHOT, ROLE_SKY_MASK)
 _EXPORT_ROLE = "export"
 _SOURCE_FORMATS_BY_SUFFIX = {".jpg": "jpeg", ".jpeg": "jpeg", ".tif": "tiff", ".tiff": "tiff"}
 _UNSET = object()
+
+# Effect settings that define a finished-stars result. Global star amount is a
+# recombination setting, so changing it never requires rerunning star effects.
+STAR_EFFECT_SETTING_NAMES: Final[Tuple[str, ...]] = (
+    "faint_star_suppression",
+    "faint_star_amount",
+    "round_stars_enabled",
+    "round_stars_amount",
+    "star_glow_enabled",
+    "star_glow_amount",
+    "star_glow_radius_px",
+)
+
+
+def _star_effect_options(settings: FinishSettings) -> Dict[str, Any]:
+    """Return the effect-only settings persisted with a finished-stars result."""
+    return {name: getattr(settings, name) for name in STAR_EFFECT_SETTING_NAMES}
 
 
 def _source_format(path: Path) -> str:
@@ -362,6 +379,7 @@ class FinishProject(Unpickle):
             ROLE_SEPARATED_STARS,
             ROLE_DENOISED_STARLESS,
             ROLE_FINISHED_STARLESS,
+            ROLE_FINISHED_STARS,
             ROLE_FINISHED_COMPOSITE,
             _EXPORT_ROLE,
         ):
@@ -492,6 +510,15 @@ class FinishProject(Unpickle):
         remains a valid base for rebuilding the finished plate.
         """
         self.invalidate_artifact_roles({ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
+
+    def invalidate_star_effects_descendants(self) -> None:
+        """Discard effect-processed stars and results built from them.
+
+        Only outputs derived from the effect result are discarded. The separated
+        layers, denoise endpoint and finished starless plate do not depend on star
+        effects, so they remain valid bases for recomputing the effect result.
+        """
+        self.invalidate_artifact_roles({ROLE_FINISHED_STARS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
 
     def invalidate_export(self) -> None:
         """Discard only the user-encoded export while keeping its source composite."""
@@ -676,6 +703,60 @@ class FinishProject(Unpickle):
             self.composite_signature = None
             return True
 
+    def publish_finished_stars(
+        self,
+        path: Union[str, Path],
+        *,
+        separation_signature: str,
+        expected_revision: int,
+        star_effect_version: int,
+        settings: FinishSettings,
+        transaction: Optional[ArtifactTransaction] = None,
+    ) -> bool:
+        """Atomically publish effect-processed stars for the current separation.
+
+        The record contains the separation identity, the star-effects algorithm
+        version and only the effect settings that produced the layer. Global star
+        amount belongs to recombination and is deliberately excluded. A new effect
+        result invalidates the composite and export built from the previous star
+        layer while preserving the finished starless and denoise outputs.
+        """
+        with self._state_lock:
+            if type(star_effect_version) is not int or star_effect_version < 1:
+                raise ValueError(f"Star effect version must be a positive integer, got {star_effect_version}")
+            if not self._commit_if_current(
+                transaction,
+                expected_revision=expected_revision,
+                expected_separation_signature=separation_signature,
+            ):
+                return False
+
+            finished = Path(path).resolve()
+            finished_stamp = _file_stamp(finished)
+            if finished_stamp is None:
+                raise FileNotFoundError(f"Cannot register a missing finished stars image: {finished}")
+
+            options = {
+                "separation_signature": separation_signature,
+                "star_effect_version": star_effect_version,
+                **_star_effect_options(settings),
+            }
+            self.artifact_manifest[ROLE_FINISHED_STARS] = {
+                "source": self._source_key(),
+                "file": list(finished_stamp),
+                "revision": self.processing_revision,
+                "options": options,
+            }
+            setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_STARS], str(finished))
+
+            # Composite and export were derived from the previous star layer.
+            setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_COMPOSITE], None)
+            self.final_output_path = None
+            self.artifact_manifest.pop(ROLE_FINISHED_COMPOSITE, None)
+            self.artifact_manifest.pop(_EXPORT_ROLE, None)
+            self.composite_signature = None
+            return True
+
     def relocate(self, new_project_file: str) -> None:
         """Rebase owned inputs after a move; retain existing read-only inputs on Save As.
 
@@ -728,17 +809,12 @@ class FinishProject(Unpickle):
                 invalidated_roles: set[str] = set()
                 if changed & {"denoise_strength", "denoise_scope", "structure_amount", "detail_amount"}:
                     invalidated_roles.update({ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
-                if changed & {
-                    "star_amount",
-                    "faint_star_suppression",
-                    "faint_star_amount",
-                    "round_stars_enabled",
-                    "round_stars_amount",
-                    "star_glow_enabled",
-                    "star_glow_amount",
-                    "star_glow_radius_px",
-                }:
+                if changed & set(STAR_EFFECT_SETTING_NAMES):
                     invalidated_roles.update({ROLE_FINISHED_STARS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
+                if changed & {"star_amount"}:
+                    # Global star amount is a recombination control; the effect
+                    # result is independent of it and remains reusable.
+                    invalidated_roles.update({ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
                 if changed & {"blend_mode"}:
                     invalidated_roles.update({ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
                 if changed & {"jpeg_quality", "jpeg_optimize", "tiff_deflate_compression"}:
@@ -777,4 +853,4 @@ class FinishProject(Unpickle):
         return default_proj
 
 
-__all__ = ["FinishProject", "probe_source_image"]
+__all__ = ["FinishProject", "STAR_EFFECT_SETTING_NAMES", "probe_source_image"]

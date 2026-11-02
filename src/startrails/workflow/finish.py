@@ -28,9 +28,11 @@ from startrails.lib.finish.defaults import (
     SCOPE_SKY_ONLY,
     SCOPE_WHOLE_IMAGE,
     SUPPORTED_CHANNELS,
+    FinishSettings,
 )
 from startrails.lib.finish.graxpert import graxpert_model_identity
 from startrails.lib.finish.separation import compute_separation_signature
+from startrails.lib.finish.star_effects import STAR_EFFECT_VERSION
 from startrails.lib.finish.starnet import MAX_STRIDE, MIN_STRIDE
 from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
@@ -52,6 +54,7 @@ from startrails.lib.starnet_setup import (
     record_starnet_installation,
     repair_starnet_installation,
 )
+from startrails.op.finish.finish_stars import FinishStars
 from startrails.op.finish.graxpert_denoise import GraXpertDenoise
 from startrails.op.finish.recombine import Recombine
 from startrails.op.finish.run_starnet import RunStarNet
@@ -81,6 +84,11 @@ _STARLESS_DENOISE_PROGRESS_SPAN = (0, 90)
 _STARLESS_SHARPEN_PROGRESS_SPAN = (90, 9)
 _STARLESS_NO_PHASE_PROGRESS = 99
 
+# Star finishing also reserves the last unit for TIFF publication, so the inner
+# effect operation cannot report the task complete before its result is recorded.
+_STAR_FINISH_PROGRESS_TOTAL: Final[int] = 100
+_STAR_FINISH_PROGRESS_SPAN = (0, 99)
+
 
 class _PhaseProgress:
     """Map one operation's job counts onto a span of a shared progress scale.
@@ -100,6 +108,11 @@ class _PhaseProgress:
         self._start, self._size = span
         self._scale = scale
         self._reported = self._start
+
+    @property
+    def reported(self) -> int:
+        """Absolute count already reported on the shared scale."""
+        return self._reported
 
     def __call__(self, total: int, increment: int, count: int, done: bool, data: Any = None) -> None:
         fraction = min(1.0, count / total) if total > 0 else (1.0 if done else 0.0)
@@ -302,6 +315,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         """Export the current recombined composite using source-matching depth and format."""
         self.invalidate_if_graxpert_changed()
         self.invalidate_if_starless_filter_changed()
+        self.invalidate_if_star_effects_changed()
         project = self.project
         revision = project.processing_revision
         if not project.source_file or not project.source_file.path:
@@ -322,10 +336,14 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         composite_artifact = project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
         if composite_artifact is None:
             raise ValueError("No current composite result to export; separate stars and recombine first.")
+        settings = project.get_settings()
+        if self._star_effects_required(settings) and project.current_artifact_path(ROLE_FINISHED_STARS) is None:
+            raise ValueError(
+                "Star effects are enabled but no current finished-stars result exists; finish stars and recombine first."
+            )
         separation_signature = project.separation_signature
         img = imread(composite_artifact, to_rgb=True, as_float=True)
 
-        settings = project.get_settings()
         target_path = Path(target_path).resolve()
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -455,6 +473,40 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self.save_project()
         return True
 
+    def invalidate_if_star_effects_changed(self) -> bool:
+        """Invalidate effect results produced by a different star-effects version.
+
+        Only effect-derived outputs are discarded; separation, denoise and finished
+        starless results do not depend on the effects and remain valid.
+        """
+        project = self.project
+        record = project.artifact_manifest.get(ROLE_FINISHED_STARS)
+        if record is None:
+            return False
+        saved_version = record.get("options", {}).get("star_effect_version")
+        if saved_version == STAR_EFFECT_VERSION:
+            return False
+        project.invalidate_star_effects_descendants()
+        self.save_project()
+        return True
+
+    @staticmethod
+    def _star_effects_enabled(settings: FinishSettings) -> bool:
+        """Return whether an enabled effect has a non-zero amount.
+
+        A toggle left on at 0% is neutral and must not require an effect result.
+        """
+        return bool(
+            (settings.faint_star_suppression and settings.faint_star_amount > 0)
+            or (settings.round_stars_enabled and settings.round_stars_amount > 0)
+            or (settings.star_glow_enabled and settings.star_glow_amount > 0)
+        )
+
+    @classmethod
+    def _star_effects_required(cls, settings: FinishSettings) -> bool:
+        """Return whether effects can change the recombined output."""
+        return settings.star_amount > 0 and cls._star_effects_enabled(settings)
+
     def _graxpert_session_for(self, policy: dict) -> GraXpertSession:
         """Reuse one verified inference session for the resolved provider policy.
 
@@ -579,23 +631,24 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         starless_path: Path,
         stars_path: Path,
         *,
+        negative_base_path: Path,
         composite_destination: Path,
         transaction: ArtifactTransaction,
         progress_bar: Optional[Any] = None,
-        negative_base_path: Optional[Path] = None,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
         """Recombine the given layers into a staged composite without publishing it.
 
-        The negative correction must come from the original separated plate, not a
-        subsequently finished (denoised) starless plate. negative_base_path selects
-        that source; omitting it uses starless_path for the Step 7 neutral case.
+        The negative correction always derives from the separated starless plate
+        passed as negative_base_path, never from a subsequently finished plate.
+        starless_path controls the visible base; in the Step 7 neutral case both
+        paths are the same separated plate.
         """
         project = self.project
         source_arr = imread(project.source_file.path, to_rgb=True, as_float=True)
         starless_arr = imread(starless_path, to_rgb=True, as_float=True)
         stars_arr = imread(stars_path, to_rgb=True, as_float=True)
 
-        if negative_base_path is None or negative_base_path == starless_path:
+        if negative_base_path == starless_path:
             negative_base_arr = starless_arr
         else:
             negative_base_arr = imread(negative_base_path, to_rgb=True, as_float=True)
@@ -833,6 +886,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                     composite_result = self._recombine_into_transaction(
                         staged_starless,
                         staged_stars,
+                        negative_base_path=staged_starless,
                         composite_destination=composite_dest,
                         transaction=transaction,
                         progress_bar=recombine_progress,
@@ -872,13 +926,114 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             OutputFile(basename=stars_dest.name, path=str(stars_dest), operation="Stars"),
         )
 
+    def do_finish_stars(self, progress_bar: Optional[Any] = None) -> Optional[OutputFile]:
+        """Apply the current star effects to the separated stars layer.
+
+        The operation consumes the current separated stars, canonical sky mask and
+        immutable settings/revision snapshots. Output is a lossless 16-bit TIFF
+        published atomically with its project record; cancellation or a stale
+        project leaves the previous effect result untouched.
+        """
+        self.invalidate_if_star_effects_changed()
+        project = self.project
+        revision = project.processing_revision
+        if not project.source_is_current():
+            raise ValueError("Source image is not current or unavailable.")
+        stars_path = project.current_artifact_path(ROLE_SEPARATED_STARS)
+        separation_signature = project.separation_signature
+        if stars_path is None or separation_signature is None:
+            raise ValueError("Separate stars before finishing the stars layer.")
+
+        mask = self.get_current_mask()
+        if mask is None:
+            raise ValueError("A current sky mask is required to finish stars.")
+
+        settings = project.get_settings()
+        source_path = Path(project.source_file.path)
+        finished_dest = project.artifact_path(ROLE_FINISHED_STARS, for_write=True)
+
+        op = self._new_operation(FinishStars)
+        phase_progress = (
+            _PhaseProgress(
+                progress_bar,
+                _STAR_FINISH_PROGRESS_SPAN,
+                scale=_STAR_FINISH_PROGRESS_TOTAL,
+            )
+            if progress_bar is not None
+            else None
+        )
+        if phase_progress is not None:
+            op.addObserver(phase_progress)
+        self.app.activeOperation = op
+        try:
+            try:
+                with ArtifactTransaction(self._job_cancel_check(project, revision)) as transaction:
+                    finished_path = op.finish(
+                        imread(stars_path, to_rgb=True, as_float=True),
+                        mask,
+                        settings,
+                        source=imread(source_path, to_rgb=True, as_float=True),
+                        output_path=finished_dest,
+                        artifacts=transaction,
+                    )
+                    if (
+                        finished_path is None
+                        or op.shouldInterrupt()
+                        or project is not self.app.project
+                        or revision != project.processing_revision
+                        or not project.source_is_current()
+                    ):
+                        return None
+                    if not project.publish_finished_stars(
+                        finished_path,
+                        separation_signature=separation_signature,
+                        expected_revision=revision,
+                        star_effect_version=STAR_EFFECT_VERSION,
+                        settings=settings,
+                        transaction=transaction,
+                    ):
+                        return None
+                    self.save_project()
+            except CancelledError:
+                return None
+        finally:
+            if self.app.activeOperation is op:
+                self.app.activeOperation = self._session_operation
+            if phase_progress is not None:
+                op.removeObserver(phase_progress)
+            del mask
+
+        if progress_bar is not None:
+            # Publication is complete; only now may the shared task report done.
+            final_increment = _STAR_FINISH_PROGRESS_TOTAL - (phase_progress.reported if phase_progress else 0)
+            if final_increment > 0:
+                progress_bar(
+                    _STAR_FINISH_PROGRESS_TOTAL,
+                    final_increment,
+                    _STAR_FINISH_PROGRESS_TOTAL,
+                    True,
+                    {"desc": "Star finishing complete."},
+                )
+
+        return OutputFile(
+            basename=finished_dest.name,
+            path=str(finished_dest),
+            operation="Finished Stars",
+        )
+
     def do_recombine(self, *, progress_bar: Optional[Any] = None) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
         """Execute layer recombination and write internal composite artifact.
 
         progress_bar observes the operation on its native job scale, or on the
         shared separation scale when supplied by do_separate_stars.
         """
-        if self.invalidate_if_graxpert_changed() or self.invalidate_if_starless_filter_changed():
+        if any(
+            (
+                self.invalidate_if_graxpert_changed(),
+                self.invalidate_if_starless_filter_changed(),
+                self.invalidate_if_star_effects_changed(),
+            )
+        ):
             return None
         project = self.project
         revision = project.processing_revision
@@ -886,11 +1041,18 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         if not project.source_is_current():
             return None
         separated_starless_path = project.current_artifact_path(ROLE_SEPARATED_STARLESS)
-        stars_path = project.current_artifact_path(ROLE_SEPARATED_STARS)
-        if separated_starless_path is None or stars_path is None:
+        separated_stars_path = project.current_artifact_path(ROLE_SEPARATED_STARS)
+        if separated_starless_path is None or separated_stars_path is None:
             return None
+        # A current effect result supersedes the separated stars. Enabled effects
+        # must not silently fall back to the neutral Step 7 layers unless the
+        # global amount makes them invisible.
+        finished_stars_path = project.current_artifact_path(ROLE_FINISHED_STARS)
+        if finished_stars_path is None and self._star_effects_required(project.get_settings()):
+            return None
+        stars_path = finished_stars_path or separated_stars_path
         # A current finished starless plate supersedes the separated plate for the
-        # composite; the signed correction still derives from the separated plate.
+        # composite; the signed correction always derives from the separated plate.
         starless_path = project.current_artifact_path(ROLE_FINISHED_STARLESS) or separated_starless_path
 
         composite_dest = project.artifact_path(ROLE_FINISHED_COMPOSITE, for_write=True)

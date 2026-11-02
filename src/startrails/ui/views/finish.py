@@ -16,10 +16,19 @@ from startrails.lib.finish.defaults import (
     DEFAULT_DENOISE_SCOPE,
     DEFAULT_DENOISE_STRENGTH_PERCENT,
     DEFAULT_DETAIL_AMOUNT_PERCENT,
+    DEFAULT_FAINT_STAR_AMOUNT_PERCENT,
+    DEFAULT_FAINT_STAR_SUPPRESSION,
+    DEFAULT_ROUND_STARS_AMOUNT_PERCENT,
+    DEFAULT_ROUND_STARS_ENABLED,
+    DEFAULT_STAR_AMOUNT_PERCENT,
+    DEFAULT_STAR_GLOW_AMOUNT_PERCENT,
+    DEFAULT_STAR_GLOW_ENABLED,
+    DEFAULT_STAR_GLOW_RADIUS_PX,
     DEFAULT_STRUCTURE_AMOUNT_PERCENT,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
+    ROLE_FINISHED_STARS,
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
 )
@@ -54,6 +63,7 @@ class FinishView(ModeView):
         self._disposed: bool = False
         self.mask_controller: Optional[SkyMaskController] = None
         self._denoise_timer: Optional[QTimer] = None
+        self._stars_timer: Optional[QTimer] = None
 
     def build_sidebar(self, parent: QWidget) -> QWidget:
         """Construct and return the Finish mode sidebar widget."""
@@ -124,6 +134,26 @@ class FinishView(ModeView):
             self.connect_signal(self.sidebar.starlessSettings.detail_amount_changed, self.on_detail_amount_changed)
             self.connect_signal(self.sidebar.starlessSettings.reset_requested, self.on_reset_starless)
 
+        if hasattr(self.sidebar, "starsSettings"):
+            self.connect_signal(self.sidebar.starsSettings.star_amount_changed, self.on_star_amount_changed)
+            self.connect_signal(
+                self.sidebar.starsSettings.round_stars_enabled_changed, self.on_round_stars_enabled_changed
+            )
+            self.connect_signal(
+                self.sidebar.starsSettings.round_stars_amount_changed, self.on_round_stars_amount_changed
+            )
+            self.connect_signal(
+                self.sidebar.starsSettings.faint_star_suppression_changed, self.on_faint_star_suppression_changed
+            )
+            self.connect_signal(self.sidebar.starsSettings.faint_star_amount_changed, self.on_faint_star_amount_changed)
+            self.connect_signal(self.sidebar.starsSettings.star_glow_enabled_changed, self.on_star_glow_enabled_changed)
+            self.connect_signal(self.sidebar.starsSettings.star_glow_amount_changed, self.on_star_glow_amount_changed)
+            self.connect_signal(
+                self.sidebar.starsSettings.star_glow_radius_px_changed, self.on_star_glow_radius_px_changed
+            )
+            self.connect_signal(self.sidebar.starsSettings.reset_requested, self.on_reset_stars)
+            self.connect_signal(self.sidebar.starsSettings.preview_layer_changed, self.on_stars_preview_layer_changed)
+
     def teardown(self) -> None:
         """Disconnect signals and clean up canvas and mask controller state."""
         self._disposed = True
@@ -131,6 +161,9 @@ class FinishView(ModeView):
         if self._denoise_timer is not None:
             self._denoise_timer.stop()
             self._denoise_timer = None
+        if self._stars_timer is not None:
+            self._stars_timer.stop()
+            self._stars_timer = None
         canvas = getattr(self.shell, "canvas_main", None)
         if canvas is not None:
             canvas.set_mask_edit_mode(False)
@@ -204,6 +237,10 @@ class FinishView(ModeView):
             if self.sidebar is not None and hasattr(self.sidebar, "starlessSettings"):
                 self.sidebar.starlessSettings.lbl_status.setText(message)
                 self.sidebar.starlessSettings.lbl_status.show()
+        elif task_id in ("finish_stars", "finish_stars_preview"):
+            if self.sidebar is not None and hasattr(self.sidebar, "starsSettings"):
+                self.sidebar.starsSettings.lbl_status.setText(message)
+                self.sidebar.starsSettings.lbl_status.show()
         elif self.sidebar is not None and hasattr(self.sidebar, "skySettings"):
             self.sidebar.skySettings.ui.error.setText(message)
             self.sidebar.skySettings.ui.error.show()
@@ -213,6 +250,8 @@ class FinishView(ModeView):
         self._generation += 1
         if self._denoise_timer is not None and self._denoise_timer.isActive():
             self._denoise_timer.stop()
+        if self._stars_timer is not None and self._stars_timer.isActive():
+            self._stars_timer.stop()
         self._project = self.app.project
         if not isinstance(self._project, FinishProject):
             return
@@ -287,6 +326,8 @@ class FinishView(ModeView):
                 self.app.workflow.invalidate_if_graxpert_changed()
             if hasattr(self.app.workflow, "invalidate_if_starless_filter_changed"):
                 self.app.workflow.invalidate_if_starless_filter_changed()
+            if hasattr(self.app.workflow, "invalidate_if_star_effects_changed"):
+                self.app.workflow.invalidate_if_star_effects_changed()
             self.sidebar.inputFiles.set_files(self.app.workflow.getInputFileList())
             self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
             self.sidebar.update_prerequisites(self._project)
@@ -705,6 +746,243 @@ class FinishView(ModeView):
             # preview still running after these settings changed. Keep one
             # pending update so the latest settings run when that job exits.
             self._debounce_denoise_preview()
+
+    def on_star_amount_changed(self, value: float) -> None:
+        """Update global star amount setting and trigger debounced recombination."""
+        settings = self._project.get_settings()
+        if settings.star_amount == value:
+            return
+        self._project.update_settings(replace(settings, star_amount=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        self._debounce_stars_preview()
+
+    def on_round_stars_enabled_changed(self, value: bool) -> None:
+        """Update round stars enabled setting and trigger debounced star finishing."""
+        settings = self._project.get_settings()
+        if settings.round_stars_enabled == value:
+            return
+        self._project.update_settings(replace(settings, round_stars_enabled=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        self._debounce_stars_preview()
+
+    def on_round_stars_amount_changed(self, value: float) -> None:
+        """Update round stars correction amount and trigger debounced star finishing."""
+        settings = self._project.get_settings()
+        if settings.round_stars_amount == value:
+            return
+        self._project.update_settings(replace(settings, round_stars_amount=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        self._debounce_stars_preview()
+
+    def on_faint_star_suppression_changed(self, value: bool) -> None:
+        """Update faint star suppression enabled setting and trigger debounced star finishing."""
+        settings = self._project.get_settings()
+        if settings.faint_star_suppression == value:
+            return
+        self._project.update_settings(replace(settings, faint_star_suppression=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        self._debounce_stars_preview()
+
+    def on_faint_star_amount_changed(self, value: float) -> None:
+        """Update faint star suppression amount and trigger debounced star finishing."""
+        settings = self._project.get_settings()
+        if settings.faint_star_amount == value:
+            return
+        self._project.update_settings(replace(settings, faint_star_amount=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        self._debounce_stars_preview()
+
+    def on_star_glow_enabled_changed(self, value: bool) -> None:
+        """Update star glow enabled setting and trigger debounced star finishing."""
+        settings = self._project.get_settings()
+        if settings.star_glow_enabled == value:
+            return
+        self._project.update_settings(replace(settings, star_glow_enabled=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        self._debounce_stars_preview()
+
+    def on_star_glow_amount_changed(self, value: float) -> None:
+        """Update star glow amount setting and trigger debounced star finishing."""
+        settings = self._project.get_settings()
+        if settings.star_glow_amount == value:
+            return
+        self._project.update_settings(replace(settings, star_glow_amount=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        self._debounce_stars_preview()
+
+    def on_star_glow_radius_px_changed(self, value: float) -> None:
+        """Update star glow radius in full-resolution pixels and trigger debounced star finishing."""
+        settings = self._project.get_settings()
+        if settings.star_glow_radius_px == value:
+            return
+        self._project.update_settings(replace(settings, star_glow_radius_px=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        self._debounce_stars_preview()
+
+    def on_reset_stars(self) -> None:
+        """Reset star finishing settings to their defaults."""
+        settings = self._project.get_settings()
+        self._project.update_settings(
+            replace(
+                settings,
+                star_amount=DEFAULT_STAR_AMOUNT_PERCENT,
+                faint_star_suppression=DEFAULT_FAINT_STAR_SUPPRESSION,
+                faint_star_amount=DEFAULT_FAINT_STAR_AMOUNT_PERCENT,
+                round_stars_enabled=DEFAULT_ROUND_STARS_ENABLED,
+                round_stars_amount=DEFAULT_ROUND_STARS_AMOUNT_PERCENT,
+                star_glow_enabled=DEFAULT_STAR_GLOW_ENABLED,
+                star_glow_amount=DEFAULT_STAR_GLOW_AMOUNT_PERCENT,
+                star_glow_radius_px=DEFAULT_STAR_GLOW_RADIUS_PX,
+            )
+        )
+        self.app.workflow.save_project()
+        if hasattr(self.sidebar, "starsSettings"):
+            self.sidebar.starsSettings.set_from_project(self._project)
+        self.updateReadyStates()
+        self._debounce_stars_preview()
+
+    def on_stars_preview_layer_changed(self, layer: str) -> None:
+        """Switch preview display between composite and stars while preserving view."""
+        if not self._project or not self._project.source_is_current():
+            return
+        if layer == "stars":
+            finished_stars_p = self._project.current_artifact_path(ROLE_FINISHED_STARS)
+            separated_stars_p = self._project.current_artifact_path(ROLE_SEPARATED_STARS)
+            effects_enabled = self.app.workflow._star_effects_enabled(self._project.get_settings())
+
+            if finished_stars_p is not None:
+                stars_file = OutputFile(
+                    basename=finished_stars_p.name, path=str(finished_stars_p), operation="Finished Stars"
+                )
+                self.sidebar.outputFiles.focus_file(stars_file)
+                self.showFile(stars_file, preserve_view=True)
+            elif effects_enabled:
+                if separated_stars_p is not None:
+                    pending_file = OutputFile(
+                        basename=separated_stars_p.name,
+                        path=str(separated_stars_p),
+                        operation="Stars (pending effects)",
+                    )
+                    self.showFile(pending_file, preserve_view=True)
+                self._debounce_stars_preview()
+            elif separated_stars_p is not None:
+                stars_file = OutputFile(basename=separated_stars_p.name, path=str(separated_stars_p), operation="Stars")
+                self.sidebar.outputFiles.focus_file(stars_file)
+                self.showFile(stars_file, preserve_view=True)
+        else:
+            p = self._project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
+            if p:
+                composite_file = OutputFile(basename=p.name, path=str(p), operation="Composite")
+                self.sidebar.outputFiles.focus_file(composite_file)
+                self.showFile(composite_file, preserve_view=True)
+            else:
+                self._debounce_stars_preview()
+
+    def _debounce_stars_preview(self) -> None:
+        """Debounce rapid slider interactions before updating finished stars and composite."""
+        if self._stars_timer is None:
+            self._stars_timer = QTimer(self.sidebar)
+            self._stars_timer.setSingleShot(True)
+            self._stars_timer.timeout.connect(self._apply_interactive_stars)
+        self._stars_timer.start(100)
+
+    def _apply_interactive_stars(self) -> None:
+        """Apply star effects if needed, recompose composite, and update preview."""
+        if not self._result_guard()():
+            return
+        if not self._project or not self._project.source_is_current():
+            return
+        if self._project.current_artifact_path(ROLE_SEPARATED_STARS) is None:
+            return
+        if self.app.workflow.get_current_mask() is None:
+            return
+
+        settings = self._project.get_settings()
+        deliver_result = self._get_post_result()
+        result_guard = self._result_guard()
+        workflow = self.app.workflow
+        preview_layer = (
+            self.sidebar.starsSettings.get_preview_layer() if hasattr(self.sidebar, "starsSettings") else "composite"
+        )
+
+        if hasattr(self.sidebar, "starsSettings") and hasattr(self.sidebar.starsSettings, "lbl_status"):
+            self.sidebar.starsSettings.lbl_status.hide()
+
+        def on_done():
+            self.updateReadyStates()
+            active_layer = (
+                self.sidebar.starsSettings.get_preview_layer()
+                if hasattr(self.sidebar, "starsSettings")
+                else preview_layer
+            )
+            if active_layer == "stars":
+                p = self._project.current_artifact_path(ROLE_FINISHED_STARS) or self._project.current_artifact_path(
+                    ROLE_SEPARATED_STARS
+                )
+                if p:
+                    op_label = (
+                        "Finished Stars" if p == self._project.current_artifact_path(ROLE_FINISHED_STARS) else "Stars"
+                    )
+                    stars_file = OutputFile(basename=p.name, path=str(p), operation=op_label)
+                    self.sidebar.outputFiles.focus_file(stars_file)
+                    self.showFile(stars_file, preserve_view=True, reload=True)
+            else:
+                p = self._project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
+                if p:
+                    composite_file = OutputFile(basename=p.name, path=str(p), operation="Composite")
+                    self.sidebar.outputFiles.focus_file(composite_file)
+                    self.showFile(composite_file, preserve_view=True, reload=True)
+
+        def on_cancelled():
+            pass
+
+        def work():
+            progress_updater = ProgressBarUpdater(
+                getattr(self.shell, "progressBar", None),
+                getattr(self.shell, "label_progressBar", None),
+                total=100,
+                desc="Updating star finishing...",
+                result_guard=result_guard,
+            )
+            effects_enabled = workflow._star_effects_enabled(settings)
+            effects_needed = effects_enabled and (preview_layer == "stars" or settings.star_amount > 0)
+            finished_stars_path = self._project.current_artifact_path(ROLE_FINISHED_STARS)
+
+            stars_success = False
+            if effects_needed and finished_stars_path is None:
+                stars_out = workflow.do_finish_stars(progress_bar=progress_updater.tick)
+                if stars_out is None:
+                    deliver_result(on_cancelled)
+                    return
+                stars_success = True
+            elif finished_stars_path is not None or not effects_needed:
+                stars_success = True
+
+            recombine_res = workflow.do_recombine()
+            if recombine_res is not None:
+                deliver_result(on_done)
+            elif preview_layer == "stars" and stars_success:
+                deliver_result(on_done)
+            else:
+                deliver_result(on_cancelled)
+
+        accepted = self._enqueue_task(
+            task_id="finish_stars_preview",
+            title="Finish Stars",
+            total=100,
+            desc="Updating star finishing...",
+            work=work,
+        )
+        if not accepted:
+            self._debounce_stars_preview()
 
 
 __all__ = ["FinishView"]

@@ -18,6 +18,7 @@ from startrails.lib.finish.defaults import (
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
+    ROLE_FINISHED_STARS,
     ROLE_SKY_MASK,
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
@@ -28,6 +29,7 @@ from startrails.ui.sky_mask_settings import SkyMaskSettings
 from startrails.ui.steps import StepCard
 from startrails.ui.steps_separate import SeparateStarsSettings
 from startrails.ui.steps_starless import FinishStarlessSettings
+from startrails.ui.steps_stars import FinishStarsSettings
 from startrails.ui.theme import system_theme
 
 if TYPE_CHECKING:
@@ -128,6 +130,8 @@ class SidebarFinish(QWidget):
 
         self.starsCard = StepCard(title="Finish Stars", number=4, expanded=False, parent=self.content)
         self.starsCard.setSubtitle("Star rounding, faint-star suppression, and glow")
+        self.starsSettings = FinishStarsSettings(parent=self.content)
+        self.starsCard.add_body(self.starsSettings)
         self.contentLayout.addWidget(self.starsCard)
 
         self.recombineCard = StepCard(title="Recombine & Save", number=5, expanded=False, parent=self.content)
@@ -164,6 +168,8 @@ class SidebarFinish(QWidget):
         self.separateSettings.set_stride(project.starnet_stride)
         if hasattr(self, "starlessSettings"):
             self.starlessSettings.set_from_project(project)
+        if hasattr(self, "starsSettings"):
+            self.starsSettings.set_from_project(project)
         self.update_prerequisites(project)
 
     def update_prerequisites(self, project: FinishProject) -> None:
@@ -174,6 +180,7 @@ class SidebarFinish(QWidget):
         has_stars = project.current_artifact_path(ROLE_SEPARATED_STARS) is not None
         has_denoise_endpoint = project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
         has_finished_starless = project.current_artifact_path(ROLE_FINISHED_STARLESS) is not None
+        has_finished_stars = project.current_artifact_path(ROLE_FINISHED_STARS) is not None
         has_composite = project.current_artifact_path(ROLE_FINISHED_COMPOSITE) is not None
 
         if hasattr(self, "skySettings"):
@@ -213,6 +220,8 @@ class SidebarFinish(QWidget):
             self.starlessCard.setStatus("locked", "Prerequisite: Source image required")
             self.starsCard.setStatus("locked", "Prerequisite: Source image required")
             self.recombineCard.setStatus("locked", "Prerequisite: Source image required")
+            if hasattr(self, "starsSettings"):
+                self.starsSettings.refresh_prerequisites(has_prerequisites=False)
             self.btn_save_output.setEnabled(False)
             return
 
@@ -226,6 +235,8 @@ class SidebarFinish(QWidget):
             self.starlessCard.setStatus("locked", "Prerequisite: Separated starless required")
             self.starsCard.setStatus("locked", "Prerequisite: Separated stars required")
             self.recombineCard.setStatus("locked", "Prerequisite: Sky region required")
+            if hasattr(self, "starsSettings"):
+                self.starsSettings.refresh_prerequisites(has_prerequisites=False)
             self.btn_save_output.setEnabled(False)
             return
 
@@ -237,6 +248,8 @@ class SidebarFinish(QWidget):
             self.starlessCard.setStatus("locked", "Prerequisite: Separated starless required")
             self.starsCard.setStatus("locked", "Prerequisite: Separated stars required")
             self.recombineCard.setStatus("locked", "Prerequisite: Separated layers required")
+            if hasattr(self, "starsSettings"):
+                self.starsSettings.refresh_prerequisites(has_prerequisites=False)
             self.btn_save_output.setEnabled(False)
             return
 
@@ -253,7 +266,20 @@ class SidebarFinish(QWidget):
             self.starlessCard.setStatus("ready", "GraXpert setup required")
         else:
             self.starlessCard.setStatus("ready", "Ready to finish starless")
-        self.starsCard.setStatus("ready", "Ready to finish stars")
+
+        if hasattr(self, "starsSettings"):
+            self.starsSettings.refresh_prerequisites(has_prerequisites=True)
+
+        settings = project.get_settings()
+        workflow = getattr(self.app, "workflow", None) if self.app else None
+        effects_enabled = bool(workflow and workflow._star_effects_enabled(settings))
+        if has_finished_stars:
+            self.starsCard.setStatus("done", "Stars finished")
+        elif effects_enabled:
+            self.starsCard.setStatus("ready", "Ready to update stars")
+        else:
+            self.starsCard.setStatus("ready", "Ready to finish stars")
+
         self.recombineCard.setStatus("ready", "Ready to recombine")
         self.btn_save_output.setEnabled(has_composite)
 
