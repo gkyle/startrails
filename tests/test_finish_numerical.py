@@ -188,15 +188,18 @@ class TestFinishNumerical(unittest.TestCase):
             stride=128, upsample=True, linear=True, highlights_protection=False, mask_feather_radius_px=2.5
         ).items():
             self.assertNotEqual(first, compute_separation_signature("a|mask:b", "c", "m", **(options | {name: value})))
-        denoise_options = dict(stride=128, tile_size=256)
         self.assertNotEqual(
-            compute_denoise_endpoint_signature("a|model:b", "c", **denoise_options),
-            compute_denoise_endpoint_signature("a", "b|model:c", **denoise_options),
+            compute_denoise_endpoint_signature("a|model:b", "c"),
+            compute_denoise_endpoint_signature("a", "b|model:c"),
         )
         self.assertNotEqual(
-            compute_denoise_endpoint_signature(first, "m", **denoise_options),
-            compute_denoise_endpoint_signature("changed separation", "m", **denoise_options),
+            compute_denoise_endpoint_signature(first, "m"),
+            compute_denoise_endpoint_signature("changed separation", "m"),
         )
+        # Adapter tile constants are part of the inference key, not caller options.
+        baseline = compute_denoise_endpoint_signature(first, "m")
+        with patch("startrails.lib.finish.composition.WINDOW_SIZE", 512):
+            self.assertNotEqual(compute_denoise_endpoint_signature(first, "m"), baseline)
 
 
 if __name__ == "__main__":

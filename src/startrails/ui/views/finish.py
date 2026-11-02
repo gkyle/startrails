@@ -13,7 +13,11 @@ from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox, QWidget
 from startrails.lib.denoise.defaults import DEFAULT_SKY_DETECTION_DEVICE
 from startrails.lib.file import File, OutputFile
 from startrails.lib.finish.defaults import (
+    DEFAULT_DENOISE_SCOPE,
+    DEFAULT_DENOISE_STRENGTH_PERCENT,
+    ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
+    ROLE_FINISHED_STARLESS,
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
 )
@@ -47,6 +51,7 @@ class FinishView(ModeView):
         self._generation: int = 0
         self._disposed: bool = False
         self.mask_controller: Optional[SkyMaskController] = None
+        self._denoise_timer: Optional[QTimer] = None
 
     def build_sidebar(self, parent: QWidget) -> QWidget:
         """Construct and return the Finish mode sidebar widget."""
@@ -105,10 +110,21 @@ class FinishView(ModeView):
             self.connect_signal(self.sidebar.separateSettings.run_separation_requested, self.on_run_separation)
             self.connect_signal(self.sidebar.separateSettings.stride_changed, self.on_starnet_stride_changed)
 
+        if hasattr(self.sidebar, "starlessSettings"):
+            self.connect_signal(self.sidebar.starlessSettings.run_denoise_requested, self.on_run_denoise)
+            self.connect_signal(
+                self.sidebar.starlessSettings.denoise_strength_changed, self.on_denoise_strength_changed
+            )
+            self.connect_signal(self.sidebar.starlessSettings.denoise_scope_changed, self.on_denoise_scope_changed)
+            self.connect_signal(self.sidebar.starlessSettings.reset_requested, self.on_reset_starless)
+
     def teardown(self) -> None:
         """Disconnect signals and clean up canvas and mask controller state."""
         self._disposed = True
         self._generation += 1
+        if self._denoise_timer is not None:
+            self._denoise_timer.stop()
+            self._denoise_timer = None
         canvas = getattr(self.shell, "canvas_main", None)
         if canvas is not None:
             canvas.set_mask_edit_mode(False)
@@ -178,6 +194,10 @@ class FinishView(ModeView):
             if self.sidebar is not None and hasattr(self.sidebar, "separateSettings"):
                 self.sidebar.separateSettings.lbl_status.setText(message)
                 self.sidebar.separateSettings.lbl_status.show()
+        elif task_id in ("finish_denoise", "finish_denoise_preview"):
+            if self.sidebar is not None and hasattr(self.sidebar, "starlessSettings"):
+                self.sidebar.starlessSettings.lbl_status.setText(message)
+                self.sidebar.starlessSettings.lbl_status.show()
         elif self.sidebar is not None and hasattr(self.sidebar, "skySettings"):
             self.sidebar.skySettings.ui.error.setText(message)
             self.sidebar.skySettings.ui.error.show()
@@ -185,6 +205,8 @@ class FinishView(ModeView):
     def resetProjectView(self) -> None:  # noqa: N802 - ModeView interface
         """Reset sidebar view state when a new or opened project is active."""
         self._generation += 1
+        if self._denoise_timer is not None and self._denoise_timer.isActive():
+            self._denoise_timer.stop()
         self._project = self.app.project
         if not isinstance(self._project, FinishProject):
             return
@@ -255,6 +277,8 @@ class FinishView(ModeView):
         """Update file sections and step prerequisites based on project readiness."""
         if self.sidebar is not None and isinstance(self._project, FinishProject):
             self.app.workflow.invalidate_if_starnet_changed()
+            if hasattr(self.app.workflow, "invalidate_if_graxpert_changed"):
+                self.app.workflow.invalidate_if_graxpert_changed()
             self.sidebar.inputFiles.set_files(self.app.workflow.getInputFileList())
             self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
             self.sidebar.update_prerequisites(self._project)
@@ -453,6 +477,185 @@ class FinishView(ModeView):
         if setup.exec() == QDialog.DialogCode.Accepted and setup.installation is not None:
             workflow.set_starnet_installation(setup.installation, managed=status["managed"], terms_accepted=True)
         self.updateReadyStates()
+
+    def on_run_denoise(self) -> None:
+        """Execute GraXpert AI denoising on the separated starless plate."""
+        if not self._project or not self._project.source_is_current():
+            QMessageBox.warning(self.sidebar, "Source Required", "Please import a source image first.")
+            return
+        if self.app.workflow.get_current_mask() is None:
+            QMessageBox.warning(
+                self.sidebar, "Sky Mask Required", "Please define a sky region before finishing starless."
+            )
+            return
+        if self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is None:
+            QMessageBox.warning(self.sidebar, "Separation Required", "Please separate stars before running denoising.")
+            return
+
+        if self._denoise_timer is not None and self._denoise_timer.isActive():
+            self._denoise_timer.stop()
+
+        has_endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
+
+        if hasattr(self.sidebar, "starlessSettings"):
+            strength = self.sidebar.starlessSettings.get_strength()
+            scope = self.sidebar.starlessSettings.get_scope()
+            status = self.app.workflow.get_graxpert_status()
+            policy = status.get("policy")
+            model_ready = status.get("model_ready", False)
+            is_ready = bool(model_ready and policy and policy.get("verified", False))
+            if strength > 0 and not is_ready and not has_endpoint:
+                msg = status.get("setup_error") or "GraXpert AI model is unavailable or setup is incomplete."
+                QMessageBox.warning(self.sidebar, "GraXpert Unavailable", msg)
+                return
+            settings = self._project.get_settings()
+            self._project.update_settings(replace(settings, denoise_strength=strength, denoise_scope=scope))
+            self.app.workflow.save_project()
+            if hasattr(self.sidebar.starlessSettings, "lbl_status"):
+                self.sidebar.starlessSettings.lbl_status.hide()
+
+        deliver_result = self._get_post_result()
+        result_guard = self._result_guard()
+        workflow = self.app.workflow
+
+        def on_done():
+            self.updateReadyStates()
+            p = self._project.current_artifact_path(ROLE_FINISHED_STARLESS) or self._project.current_artifact_path(
+                ROLE_DENOISED_STARLESS
+            )
+            if p:
+                denoised_file = OutputFile(basename=p.name, path=str(p), operation="Finished Starless")
+                self.sidebar.outputFiles.focus_file(denoised_file)
+                self.showFile(denoised_file, preserve_view=True, reload=True)
+
+        def on_cancelled():
+            self._show_task_error("finish_denoise", "Cancelled")
+
+        def work():
+            progress_updater = ProgressBarUpdater(
+                getattr(self.shell, "progressBar", None),
+                getattr(self.shell, "label_progressBar", None),
+                total=100,
+                desc="Denoising starless layer with GraXpert...",
+                result_guard=result_guard,
+            )
+            result = workflow.do_denoise_starless(progress_bar=progress_updater.tick)
+            if result is not None:
+                workflow.do_recombine()
+                deliver_result(on_done)
+            else:
+                deliver_result(on_cancelled)
+
+        self._enqueue_task(
+            task_id="finish_denoise",
+            title="Denoising Starless",
+            total=100,
+            desc="Denoising starless layer with GraXpert...",
+            work=work,
+        )
+
+    def on_denoise_strength_changed(self, value: float) -> None:
+        """Update denoise strength setting and trigger debounced preview recomposition."""
+        settings = self._project.get_settings()
+        if settings.denoise_strength == value:
+            return
+        self._project.update_settings(replace(settings, denoise_strength=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
+        if endpoint is not None or value == 0.0:
+            self._debounce_denoise_preview()
+
+    def on_denoise_scope_changed(self, scope: str) -> None:
+        """Update denoise scope setting and trigger debounced preview recomposition."""
+        settings = self._project.get_settings()
+        if settings.denoise_scope == scope:
+            return
+        self._project.update_settings(replace(settings, denoise_scope=scope))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
+        if endpoint is not None or settings.denoise_strength == 0.0:
+            self._debounce_denoise_preview()
+
+    def on_reset_starless(self) -> None:
+        """Reset starless finishing settings to their defaults."""
+        settings = self._project.get_settings()
+        self._project.update_settings(
+            replace(
+                settings,
+                denoise_strength=DEFAULT_DENOISE_STRENGTH_PERCENT,
+                denoise_scope=DEFAULT_DENOISE_SCOPE,
+            )
+        )
+        self.app.workflow.save_project()
+        if hasattr(self.sidebar, "starlessSettings"):
+            self.sidebar.starlessSettings.set_from_project(self._project)
+        self.updateReadyStates()
+        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
+        if endpoint is not None:
+            self._debounce_denoise_preview()
+
+    def _debounce_denoise_preview(self) -> None:
+        """Debounce rapid slider interactions before updating blend and composite."""
+        if self._denoise_timer is None:
+            self._denoise_timer = QTimer(self.sidebar)
+            self._denoise_timer.setSingleShot(True)
+            self._denoise_timer.timeout.connect(self._apply_interactive_denoise)
+        self._denoise_timer.start(100)
+
+    def _apply_interactive_denoise(self) -> None:
+        """Apply strength/scope blending from cached endpoint and recompose preview."""
+        if not self._result_guard()():
+            return
+        if not self._project or not self._project.source_is_current():
+            return
+        if self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is None:
+            return
+
+        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
+        if endpoint is None and self._project.get_settings().denoise_strength > 0.0:
+            return
+
+        deliver_result = self._get_post_result()
+        result_guard = self._result_guard()
+        workflow = self.app.workflow
+
+        def on_done():
+            self.updateReadyStates()
+            p = self._project.current_artifact_path(ROLE_FINISHED_STARLESS) or self._project.current_artifact_path(
+                ROLE_DENOISED_STARLESS
+            )
+            if p:
+                denoised_file = OutputFile(basename=p.name, path=str(p), operation="Finished Starless")
+                self.sidebar.outputFiles.focus_file(denoised_file)
+                self.showFile(denoised_file, preserve_view=True, reload=True)
+
+        def on_cancelled():
+            pass
+
+        def work():
+            progress_updater = ProgressBarUpdater(
+                getattr(self.shell, "progressBar", None),
+                getattr(self.shell, "label_progressBar", None),
+                total=100,
+                desc="Updating starless finishing...",
+                result_guard=result_guard,
+            )
+            result = workflow.do_denoise_starless(progress_bar=progress_updater.tick)
+            if result is not None:
+                workflow.do_recombine()
+                deliver_result(on_done)
+            else:
+                deliver_result(on_cancelled)
+
+        self._enqueue_task(
+            task_id="finish_denoise_preview",
+            title="Finish Starless",
+            total=100,
+            desc="Updating starless finishing...",
+            work=work,
+        )
 
 
 __all__ = ["FinishView"]

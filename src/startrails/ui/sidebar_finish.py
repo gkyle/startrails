@@ -15,7 +15,9 @@ from PySide6.QtWidgets import (
 )
 
 from startrails.lib.finish.defaults import (
+    ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
+    ROLE_FINISHED_STARLESS,
     ROLE_SKY_MASK,
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
@@ -25,6 +27,7 @@ from startrails.ui.file_manager import FileSection
 from startrails.ui.sky_mask_settings import SkyMaskSettings
 from startrails.ui.steps import StepCard
 from startrails.ui.steps_separate import SeparateStarsSettings
+from startrails.ui.steps_starless import FinishStarlessSettings
 from startrails.ui.theme import system_theme
 
 if TYPE_CHECKING:
@@ -118,7 +121,9 @@ class SidebarFinish(QWidget):
         self.contentLayout.addWidget(self.separateCard)
 
         self.starlessCard = StepCard(title="Finish Starless", number=3, expanded=False, parent=self.content)
-        self.starlessCard.setSubtitle("AI denoise and structure/detail enhancement")
+        self.starlessCard.setSubtitle("GraXpert AI denoising and blending")
+        self.starlessSettings = FinishStarlessSettings(parent=self.content)
+        self.starlessCard.add_body(self.starlessSettings)
         self.contentLayout.addWidget(self.starlessCard)
 
         self.starsCard = StepCard(title="Finish Stars", number=4, expanded=False, parent=self.content)
@@ -157,6 +162,8 @@ class SidebarFinish(QWidget):
     def update_from_project(self, project: FinishProject, dimensions: Optional[tuple[int, int]]) -> None:
         """Update file sections and step prerequisites from active project."""
         self.separateSettings.set_stride(project.starnet_stride)
+        if hasattr(self, "starlessSettings"):
+            self.starlessSettings.set_from_project(project)
         self.update_prerequisites(project)
 
     def update_prerequisites(self, project: FinishProject) -> None:
@@ -165,6 +172,8 @@ class SidebarFinish(QWidget):
         has_mask = project.current_artifact_path(ROLE_SKY_MASK) is not None
         has_starless = project.current_artifact_path(ROLE_SEPARATED_STARLESS) is not None
         has_stars = project.current_artifact_path(ROLE_SEPARATED_STARS) is not None
+        has_denoise_endpoint = project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
+        has_finished_starless = project.current_artifact_path(ROLE_FINISHED_STARLESS) is not None
         has_composite = project.current_artifact_path(ROLE_FINISHED_COMPOSITE) is not None
 
         if hasattr(self, "skySettings"):
@@ -181,6 +190,22 @@ class SidebarFinish(QWidget):
 
         if hasattr(self, "separateSettings"):
             self.separateSettings.refresh_status(starnet_status, has_prerequisites=has_source and has_mask)
+
+        graxpert_status = {}
+        if (
+            hasattr(self, "app")
+            and self.app
+            and hasattr(self.app, "workflow")
+            and hasattr(self.app.workflow, "get_graxpert_status")
+        ):
+            graxpert_status = self.app.workflow.get_graxpert_status()
+
+        if hasattr(self, "starlessSettings"):
+            self.starlessSettings.refresh_status(
+                graxpert_status,
+                has_prerequisites=has_starless,
+                has_endpoint=has_denoise_endpoint,
+            )
 
         if not has_source:
             self.skyCard.setStatus("locked", "Prerequisite: Source image required")
@@ -215,8 +240,17 @@ class SidebarFinish(QWidget):
             self.btn_save_output.setEnabled(False)
             return
 
+        policy = graxpert_status.get("policy")
+        model_ready = graxpert_status.get("model_ready", False)
+        graxpert_ready = bool(model_ready and policy and policy.get("verified", False))
+
         self.separateCard.setStatus("done", "Stars separated")
-        self.starlessCard.setStatus("ready", "Ready to finish starless")
+        if has_finished_starless or has_denoise_endpoint:
+            self.starlessCard.setStatus("done", "Starless finished")
+        elif not graxpert_ready:
+            self.starlessCard.setStatus("ready", "GraXpert setup required")
+        else:
+            self.starlessCard.setStatus("ready", "Ready to finish starless")
         self.starsCard.setStatus("ready", "Ready to finish stars")
         self.recombineCard.setStatus("ready", "Ready to recombine")
         self.btn_save_output.setEnabled(has_composite)

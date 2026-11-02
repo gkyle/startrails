@@ -1,0 +1,297 @@
+"""Tests for Finish Step 3: GraXpert starless denoising, endpoint caching, and interactive strength/scope."""
+
+from __future__ import annotations
+
+from dataclasses import replace
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import jsonpickle
+import numpy as np
+from PySide6.QtCore import QObject
+
+from startrails.lib.finish.composition import blend_denoise, compute_denoise_endpoint_signature
+from startrails.lib.finish.defaults import (
+    FINISH_EXT,
+    ROLE_DENOISED_STARLESS,
+    ROLE_FINISHED_COMPOSITE,
+    ROLE_FINISHED_STARLESS,
+    ROLE_SEPARATED_STARLESS,
+    ROLE_SEPARATED_STARS,
+    ROLE_SKY_MASK,
+    SCOPE_SKY_ONLY,
+    SCOPE_WHOLE_IMAGE,
+)
+from startrails.lib.image_io import imread, imwrite
+from startrails.lib.model_manifest import get_starnet_package_for_platform
+from startrails.lib.project_finish import FinishProject
+from startrails.lib.starnet_setup import StarNetInstallation, detect_platform_target
+from startrails.op.finish.graxpert_denoise import GraXpertDenoise
+from startrails.op.finish.run_starnet import RunStarNet
+from startrails.ui.canvasLabel import CanvasLabel
+from startrails.ui.sidebar_finish import SidebarFinish
+from startrails.ui.views.finish import FinishView
+from startrails.workflow.finish import FinishWorkflow
+from support import QtTestCase
+
+
+class TestFinishDenoise(QtTestCase):
+    def setUp(self):
+        super().setUp()
+        self.rng = np.random.default_rng(42)
+        self.proj_path = self.root / f"test_denoise{FINISH_EXT}"
+        self.project = FinishProject(project_file=str(self.proj_path))
+        self.app = self.make_app(self.project)
+        self.workflow = FinishWorkflow(self.app)
+        self.app.workflow = self.workflow
+        self.configure_fake_starnet()
+
+    def configure_fake_starnet(self):
+        package = get_starnet_package_for_platform(detect_platform_target())
+        install_dir = self.root / "fake_starnet"
+        install_dir.mkdir(parents=True, exist_ok=True)
+        executable = install_dir / package.executable_relative_path
+        executable.write_bytes(b"#!/bin/sh\nexit 0\n")
+        executable.chmod(0o755)
+        weights = install_dir / package.weights_relative_path
+        if weights.suffix == ".mlpackage":
+            weights.mkdir(parents=True)
+            (weights / "Manifest.json").write_text("{}", encoding="utf-8")
+        else:
+            weights.write_bytes(b"dummy weights")
+        installation = StarNetInstallation(executable=executable, weights=weights, package=package)
+        self.workflow.accept_starnet_terms()
+        self.workflow.set_starnet_installation(installation, managed=False, terms_accepted=True)
+
+    def create_synthetic_image(self, name: str = "source.tif", shape: tuple[int, int] = (512, 512)) -> Path:
+        target = self.root / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        pixels = self.rng.integers(5000, 55000, (*shape, 3), dtype=np.uint16)
+        imwrite(target, pixels, convertBGR=False, bit_depth=16)
+        return target
+
+    @staticmethod
+    def create_gradient_mask(shape: tuple[int, int] = (512, 512)) -> np.ndarray:
+        height, width = shape
+        mask = np.zeros((height, width), dtype=np.float32)
+        mask[: height // 2, :] = 1.0
+        mask[height // 2 : height // 2 + 10, :] = 0.5
+        return mask
+
+    def prepare_separated_project(self) -> Path:
+        source_path = self.create_synthetic_image("night_sky.tif")
+        self.workflow.do_import_source(source_path)
+        self.workflow.save_mask(self.create_gradient_mask())
+
+        def fake_starnet(executable, input_p, output_p, **kwargs):
+            source = imread(input_p, to_rgb=True, as_float=False)
+            model = (source.astype(np.float32) * 0.8).astype(np.uint16)
+            imwrite(output_p, model, convertBGR=False, bit_depth=16)
+            return Path(output_p), None
+
+        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
+            self.assertIsNotNone(self.workflow.do_separate_stars())
+        return source_path
+
+    def test_end_to_end_denoise_endpoint_caching_and_strength_blending(self):
+        """Denoise runs inference once, caches endpoint, and strength/scope reuse it."""
+        self.prepare_separated_project()
+
+        inference_calls = 0
+
+        def fake_denoise_inference(image, progress_bar=None, should_interrupt=None):
+            nonlocal inference_calls
+            inference_calls += 1
+            # Return smoother/reduced noise version
+            return np.full_like(image, 0.45, dtype=np.float32)
+
+        fake_session = MagicMock()
+        fake_session.denoise_full_strength.side_effect = fake_denoise_inference
+
+        with (
+            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
+            patch(
+                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
+                return_value={"provider": "CPUExecutionProvider"},
+            ),
+        ):
+            # Step 1: Run denoise at default settings (50% strength, sky_only)
+            result = self.workflow.do_denoise_starless()
+            self.assertIsNotNone(result)
+            self.assertEqual(inference_calls, 1)
+
+            endpoint_p = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
+            finished_p = self.project.current_artifact_path(ROLE_FINISHED_STARLESS)
+            self.assertIsNotNone(endpoint_p)
+            self.assertIsNotNone(finished_p)
+            self.assertTrue(endpoint_p.is_file())
+            self.assertTrue(finished_p.is_file())
+
+            endpoint_pixels = imread(endpoint_p, to_rgb=True, as_float=True)
+            np.testing.assert_allclose(endpoint_pixels, 0.45, atol=1e-3)
+
+            # Step 2: Change strength to 80% and run again
+            settings = self.project.get_settings()
+            self.project.update_settings(replace(settings, denoise_strength=80.0))
+            result2 = self.workflow.do_denoise_starless()
+            self.assertIsNotNone(result2)
+            # Critical: inference was NOT called again; endpoint was reused!
+            self.assertEqual(inference_calls, 1)
+
+            finished_pixels = imread(finished_p, to_rgb=True, as_float=True)
+            base_pixels = imread(
+                self.project.current_artifact_path(ROLE_SEPARATED_STARLESS), to_rgb=True, as_float=True
+            )
+            mask = self.workflow.get_current_mask()
+            expected = blend_denoise(base_pixels, endpoint_pixels, mask, 80.0, SCOPE_SKY_ONLY)
+            np.testing.assert_allclose(finished_pixels, expected, atol=1e-3)
+
+            # Step 3: Change scope to whole_image
+            settings = self.project.get_settings()
+            self.project.update_settings(replace(settings, denoise_scope=SCOPE_WHOLE_IMAGE))
+            result3 = self.workflow.do_denoise_starless()
+            self.assertIsNotNone(result3)
+            self.assertEqual(inference_calls, 1)
+
+            finished_whole = imread(finished_p, to_rgb=True, as_float=True)
+            expected_whole = blend_denoise(base_pixels, endpoint_pixels, mask, 80.0, SCOPE_WHOLE_IMAGE)
+            np.testing.assert_allclose(finished_whole, expected_whole, atol=1e-3)
+
+    def test_zero_strength_does_not_require_graxpert_model(self):
+        """Zero strength produces finished starless without invoking GraXpert."""
+        self.prepare_separated_project()
+        settings = self.project.get_settings()
+        self.project.update_settings(replace(settings, denoise_strength=0.0))
+
+        with patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", side_effect=RuntimeError("no policy")):
+            result = self.workflow.do_denoise_starless()
+
+        self.assertIsNotNone(result)
+        finished_p = self.project.current_artifact_path(ROLE_FINISHED_STARLESS)
+        separated_p = self.project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+        self.assertIsNotNone(finished_p)
+        finished = imread(finished_p, to_rgb=True, as_float=True)
+        separated = imread(separated_p, to_rgb=True, as_float=True)
+        np.testing.assert_allclose(finished, separated, atol=1e-4)
+
+    def test_separation_change_invalidates_denoise_endpoint(self):
+        """Re-running separation invalidates the denoise endpoint and finished starless."""
+        self.prepare_separated_project()
+
+        fake_session = MagicMock()
+        fake_session.denoise_full_strength.return_value = np.full((512, 512, 3), 0.5, dtype=np.float32)
+
+        with (
+            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
+            patch(
+                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
+                return_value={"provider": "CPUExecutionProvider"},
+            ),
+        ):
+            self.workflow.do_denoise_starless()
+
+        self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+        self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
+
+        # Re-running separation must invalidate denoise artifacts
+        def fake_starnet(executable, input_p, output_p, **kwargs):
+            source = imread(input_p, to_rgb=True, as_float=False)
+            model = (source.astype(np.float32) * 0.7).astype(np.uint16)
+            imwrite(output_p, model, convertBGR=False, bit_depth=16)
+            return Path(output_p), None
+
+        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
+            self.workflow.do_separate_stars(stride=128)
+
+        self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+        self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
+
+    def test_project_reopen_preserves_valid_denoise_endpoint(self):
+        """Saving and reopening project preserves the cached denoise endpoint and finished layer."""
+        self.prepare_separated_project()
+
+        fake_session = MagicMock()
+        fake_session.denoise_full_strength.return_value = np.full((512, 512, 3), 0.5, dtype=np.float32)
+
+        with (
+            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
+            patch(
+                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
+                return_value={"provider": "CPUExecutionProvider"},
+            ),
+        ):
+            self.workflow.do_denoise_starless()
+
+        endpoint_before = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
+        finished_before = self.project.current_artifact_path(ROLE_FINISHED_STARLESS)
+        self.assertIsNotNone(endpoint_before)
+        self.assertIsNotNone(finished_before)
+
+        # Reopen project from disk
+        reloaded = jsonpickle.decode(self.proj_path.read_text(encoding="utf-8"))
+        endpoint_after = reloaded.current_artifact_path(ROLE_DENOISED_STARLESS)
+        finished_after = reloaded.current_artifact_path(ROLE_FINISHED_STARLESS)
+
+        self.assertEqual(endpoint_before, endpoint_after)
+        self.assertEqual(finished_before, finished_after)
+
+    def test_ui_denoise_card_status_and_prerequisites(self):
+        """Card status updates appropriately as project moves from unseparated to separated and denoised."""
+        source_path = self.create_synthetic_image("test_ui.tif")
+        self.workflow.do_import_source(source_path)
+
+        canvas = CanvasLabel()
+        self.addCleanup(canvas.deleteLater)
+
+        shell = QObject()
+        shell.canvas_main = canvas
+        shell.progressBar = None
+        shell.label_progressBar = None
+        self.addCleanup(shell.deleteLater)
+
+        view = FinishView(self.app, shell)
+        self.addCleanup(view.teardown)
+        sidebar = view.build_sidebar(canvas)
+        view.bind()
+
+        # Before separation: card 3 (starlessCard) must be locked
+        view.updateReadyStates()
+        self.assertEqual(sidebar.starlessCard.status, "locked")
+        self.assertEqual(sidebar.starlessCard.ui.subtitle.text(), "Prerequisite: Separated starless required")
+
+        # Define sky region
+        self.workflow.save_mask(self.create_gradient_mask())
+        view.updateReadyStates()
+        self.assertEqual(sidebar.starlessCard.status, "locked")
+        self.assertEqual(sidebar.starlessCard.ui.subtitle.text(), "Prerequisite: Separated starless required")
+
+        # Separate stars
+        def fake_starnet(executable, input_p, output_p, **kwargs):
+            source = imread(input_p, to_rgb=True, as_float=False)
+            model = (source.astype(np.float32) * 0.8).astype(np.uint16)
+            imwrite(output_p, model, convertBGR=False, bit_depth=16)
+            return Path(output_p), None
+
+        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
+            self.workflow.do_separate_stars()
+
+        view.updateReadyStates()
+        self.assertEqual(sidebar.starlessCard.status, "ready")
+        self.assertEqual(sidebar.starlessCard.ui.subtitle.text(), "Ready to finish starless")
+        self.assertTrue(sidebar.starlessSettings.btn_run_denoise.isEnabled())
+
+        # Test slider updates settings
+        sidebar.starlessSettings.slider_denoise_strength.setValue(72)
+        self.assertEqual(self.project.get_settings().denoise_strength, 72.0)
+        self.assertEqual(sidebar.starlessSettings.lbl_strength_value.text(), "72%")
+
+        # Test scope radio updates settings
+        sidebar.starlessSettings.radio_whole_image.setChecked(True)
+        self.assertEqual(self.project.get_settings().denoise_scope, SCOPE_WHOLE_IMAGE)
+
+        # Test reset button
+        sidebar.starlessSettings.btn_reset.click()
+        self.assertEqual(self.project.get_settings().denoise_strength, 50.0)
+        self.assertEqual(self.project.get_settings().denoise_scope, SCOPE_SKY_ONLY)
+        self.assertEqual(sidebar.starlessSettings.slider_denoise_strength.value(), 50)
+        self.assertTrue(sidebar.starlessSettings.radio_sky_only.isChecked())

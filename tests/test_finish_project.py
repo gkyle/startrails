@@ -237,6 +237,68 @@ class TestFinishProject(QtTestCase):
         self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_STARS))
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
 
+    def test_denoise_publication_persists_endpoint_and_invalidates_composite_export(self):
+        project = FinishProject(project_file=str(self.root / f"denoise{FINISH_EXT}"))
+        source = self.create_synthetic_image("denoise_source.tif")
+        project.set_source_image(source)
+        starless = self.create_synthetic_image("denoise.finish/starless.tif", bit_depth=16)
+        stars = self.create_synthetic_image("denoise.finish/stars.tif", bit_depth=16)
+        revision = project.processing_revision
+        self.assertTrue(
+            project.publish_separation(
+                starless,
+                stars,
+                signature="separation-a",
+                model_identity="starnet-model",
+                expected_revision=revision,
+            )
+        )
+        composite = self.create_synthetic_image("denoise.finish/composite.tif", bit_depth=16)
+        export = self.create_synthetic_image("denoise.finish/export.tif", bit_depth=16)
+        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
+        project.record_export(export)
+        self.assertIsNotNone(project.current_export_path())
+
+        endpoint = self.create_synthetic_image("denoise.finish/denoised.tif", bit_depth=16)
+        finished = self.create_synthetic_image("denoise.finish/finished.tif", bit_depth=16)
+        revision = project.processing_revision
+        self.assertTrue(
+            project.publish_denoise_results(
+                finished,
+                separation_signature="separation-a",
+                expected_revision=revision,
+                strength=50.0,
+                scope="sky_only",
+                endpoint_path=endpoint,
+                endpoint_signature="endpoint-key",
+                model_identity="graxpert-model",
+            )
+        )
+        self.assertEqual(project.denoise_signature, "endpoint-key")
+        self.assertEqual(project.denoise_model_identity, "graxpert-model")
+        self.assertEqual(project.current_artifact_path(ROLE_DENOISED_STARLESS), endpoint)
+        self.assertEqual(project.current_artifact_path(ROLE_FINISHED_STARLESS), finished)
+        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
+        self.assertIsNone(project.current_export_path())
+
+        # A stale job cannot replace the just-published plates.
+        stale_revision = revision - 1
+        self.assertFalse(
+            project.publish_denoise_results(
+                finished,
+                separation_signature="separation-a",
+                expected_revision=stale_revision,
+                strength=100.0,
+                scope="whole_image",
+            )
+        )
+
+        project.invalidate_denoise_descendants()
+        for role in (ROLE_DENOISED_STARLESS, ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE):
+            self.assertIsNone(project.current_artifact_path(role))
+        self.assertIsNone(project.denoise_signature)
+        self.assertIsNone(project.denoise_model_identity)
+
     def test_ensure_default_project(self):
         default_file = self.root / "projects" / f"default{FINISH_EXT}"
         proj = FinishProject.ensure_default_project(str(default_file))

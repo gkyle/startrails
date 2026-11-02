@@ -13,8 +13,10 @@ import numpy as np
 from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.denoise.mask import MaskHandler
 from startrails.lib.file import InputFile, OutputFile
+from startrails.lib.finish.composition import blend_denoise, compute_denoise_endpoint_signature
 from startrails.lib.finish.defaults import (
     INTERMEDIATE_BIT_DEPTH,
+    PERCENT_SCALE,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
@@ -23,15 +25,17 @@ from startrails.lib.finish.defaults import (
     ROLE_SEPARATED_STARS,
     ROLE_SKY_MASK,
     ROLE_UNMASKED_STARLESS,
+    SCOPE_SKY_ONLY,
+    SCOPE_WHOLE_IMAGE,
     SUPPORTED_CHANNELS,
 )
+from startrails.lib.finish.graxpert import graxpert_model_identity
 from startrails.lib.finish.separation import compute_separation_signature
 from startrails.lib.finish.starnet import MAX_STRIDE, MIN_STRIDE
 from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
 from startrails.lib.image_io import imread, imwrite, normalize_image
 from startrails.lib.model_manifest import GRAXPERT_MANIFEST, PlatformNotSupportedError
 from startrails.lib.project_finish import FinishProject
-from startrails.lib.signatures import verify_file_integrity
 from startrails.lib.starnet_setup import (
     STARNET_TERMS_REVISION,
     STARNET_TERMS_SHA256,
@@ -117,6 +121,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
     def __init__(self, app: App):
         super().__init__(app)
         self._project = app.project
+        self._graxpert_session: Optional[GraXpertSession] = None
+        self._graxpert_session_key: Optional[Tuple[str, str]] = None
 
     @property
     def project(self) -> FinishProject:
@@ -179,7 +185,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         artifact_roles = (
             (ROLE_SEPARATED_STARLESS, "Starless"),
             (ROLE_SEPARATED_STARS, "Stars"),
-            (ROLE_DENOISED_STARLESS, "Denoised"),
             (ROLE_FINISHED_STARLESS, "Finished Starless"),
             (ROLE_FINISHED_STARS, "Finished Stars"),
             (ROLE_FINISHED_COMPOSITE, "Composite"),
@@ -377,13 +382,61 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             policy = None
             setup_error = str(error)
         model_path = APPLICATION_DIR / "models" / GRAXPERT_MANIFEST.relative_path
-        model_ready = verify_file_integrity(model_path, GRAXPERT_MANIFEST.sha256, GRAXPERT_MANIFEST.size_bytes)
+        # Status is refreshed often; setup/repair already verified the model hash.
+        # A cheap presence/size check avoids rehashing the ~478 MB weights here.
+        try:
+            model_ready = model_path.is_file() and model_path.stat().st_size == GRAXPERT_MANIFEST.size_bytes
+        except OSError:
+            model_ready = False
+        provider = policy.get("provider") if policy is not None else None
+        device = policy.get("device") if policy is not None else None
+        session = self._graxpert_session
+        # A session created for a previous policy lane no longer describes the
+        # configured runtime, so do not present its execution state as current.
+        session_matches_policy = (
+            session is not None and provider is not None and session.configured_provider == provider
+        )
         return {
+            "configured": policy is not None and model_ready,
+            # Configured provider comes from the setup-owned policy; execution
+            # fields report what the last session actually used, including a CPU retry.
+            "provider": provider,
+            "device": device,
+            "execution_provider": session.execution_provider if session_matches_policy else None,
+            "fallback_reason": session.fallback_reason if session_matches_policy else None,
             "policy": policy,
             "setup_error": setup_error,
             "model_ready": model_ready,
             "model_path": str(model_path),
         }
+
+    def invalidate_if_graxpert_changed(self) -> bool:
+        """Invalidate denoise outputs when the pinned GraXpert model identity changed."""
+        project = self.project
+        if project.denoise_signature is None:
+            return False
+        if project.denoise_model_identity == graxpert_model_identity():
+            return False
+        project.invalidate_denoise_descendants()
+        self.save_project()
+        return True
+
+    def _graxpert_session_for(self, policy: dict) -> GraXpertSession:
+        """Reuse one verified inference session for the resolved provider policy.
+
+        The setup result is authoritative; processing must not re-probe providers or
+        rediscover capabilities. A cached session also avoids reloading the model on
+        every interactive strength/scope request.
+        """
+        provider = str(policy["provider"])
+        key = (provider, graxpert_model_identity())
+        session = self._graxpert_session
+        if session is not None and self._graxpert_session_key == key:
+            return session
+        session = GraXpertSession(provider=provider)
+        self._graxpert_session = session
+        self._graxpert_session_key = key
+        return session
 
     def accept_starnet_terms(self) -> None:
         """Record affirmative terms acceptance in application state."""
@@ -495,16 +548,29 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         composite_destination: Path,
         transaction: ArtifactTransaction,
         progress_bar: Optional[Any] = None,
+        negative_base_path: Optional[Path] = None,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
-        """Recombine the given layers into a staged composite without publishing it."""
+        """Recombine the given layers into a staged composite without publishing it.
+
+        The negative correction must come from the original separated plate, not a
+        subsequently finished (denoised) starless plate. negative_base_path selects
+        that source; omitting it uses starless_path for the Step 7 neutral case.
+        """
         project = self.project
         source_arr = imread(project.source_file.path, to_rgb=True, as_float=True)
         starless_arr = imread(starless_path, to_rgb=True, as_float=True)
         stars_arr = imread(stars_path, to_rgb=True, as_float=True)
 
+        if negative_base_path is None or negative_base_path == starless_path:
+            negative_base_arr = starless_arr
+        else:
+            negative_base_arr = imread(negative_base_path, to_rgb=True, as_float=True)
+
         neg_residual = source_arr
-        np.subtract(neg_residual, starless_arr, out=neg_residual)
+        np.subtract(neg_residual, negative_base_arr, out=neg_residual)
         np.minimum(neg_residual, 0, out=neg_residual)
+        if negative_base_arr is not starless_arr:
+            del negative_base_arr
 
         op = self._new_operation(Recombine)
         if progress_bar is not None:
@@ -783,10 +849,13 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         separation_signature = project.separation_signature
         if not project.source_is_current():
             return None
-        starless_path = project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+        separated_starless_path = project.current_artifact_path(ROLE_SEPARATED_STARLESS)
         stars_path = project.current_artifact_path(ROLE_SEPARATED_STARS)
-        if starless_path is None or stars_path is None:
+        if separated_starless_path is None or stars_path is None:
             return None
+        # A current finished starless plate supersedes the separated plate for the
+        # composite; the signed correction still derives from the separated plate.
+        starless_path = project.current_artifact_path(ROLE_FINISHED_STARLESS) or separated_starless_path
 
         composite_dest = project.artifact_path(ROLE_FINISHED_COMPOSITE, for_write=True)
         try:
@@ -797,6 +866,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                     composite_destination=composite_dest,
                     transaction=transaction,
                     progress_bar=progress_bar,
+                    negative_base_path=separated_starless_path,
                 )
                 if result is None:
                     # Stale after a concurrent invalidation; keep the last valid composite.
@@ -815,39 +885,129 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             return None
         return result
 
-    def do_denoise_starless(
-        self,
-        image: np.ndarray,
-        *,
-        strength: float = 1.0,
-        sky_mask: Optional[np.ndarray] = None,
-        sky_only: bool = True,
-        output_path: Optional[Union[str, Path]] = None,
-        bit_depth: int = 16,
-    ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
-        """Execute GraXpert AI denoising on starless plate using the resolved runtime policy."""
-        op = self._new_operation(GraXpertDenoise)
-        self.app.activeOperation = op
+    def do_denoise_starless(self, progress_bar: Optional[Any] = None) -> Optional[OutputFile]:
+        """Finish the separated starless plate with the current denoise settings.
+
+        A full-strength GraXpert endpoint is computed once per separation/model
+        identity and cached. Strength and scope then reuse that endpoint, so their
+        controls never rerun inference. Zero strength publishes the separated plate
+        without resolving a runtime policy or loading a model.
+        """
+        self.invalidate_if_graxpert_changed()
+        project = self.project
+        revision = project.processing_revision
+        if not project.source_is_current():
+            raise ValueError("Source image is not current or unavailable.")
+        separated_path = project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+        separation_signature = project.separation_signature
+        if separated_path is None or separation_signature is None:
+            raise ValueError("Separate stars before finishing the starless layer.")
+
+        settings = project.get_settings()
+        strength = settings.denoise_strength
+        scope = settings.denoise_scope
+        if not np.isfinite(strength) or not 0 <= strength <= PERCENT_SCALE:
+            raise ValueError(f"Denoise strength must be in range [0.0, 100.0], got {strength}")
+        if scope not in (SCOPE_SKY_ONLY, SCOPE_WHOLE_IMAGE):
+            raise ValueError(f"Unknown denoise scope '{scope}'.")
+
+        mask: Optional[np.ndarray] = None
+        if scope == SCOPE_SKY_ONLY and strength > 0:
+            mask = self.get_current_mask()
+            if mask is None:
+                raise ValueError("Sky-only denoising requires a current sky mask.")
+
+        model_identity = graxpert_model_identity()
+        endpoint_signature = compute_denoise_endpoint_signature(separation_signature, model_identity)
+        endpoint_options = {
+            "separation_signature": separation_signature,
+            "denoise_signature": endpoint_signature,
+        }
+        endpoint_path = project.current_artifact_path(ROLE_DENOISED_STARLESS, options=endpoint_options)
+        finished_dest = project.artifact_path(ROLE_FINISHED_STARLESS, for_write=True)
+
+        base = imread(separated_path, to_rgb=True, as_float=True)
+        denoised: Optional[np.ndarray] = None
+        endpoint_dest: Optional[Path] = None
+        op: Optional[GraXpertDenoise] = None
         try:
-            if op.shouldInterrupt():
+            try:
+                with ArtifactTransaction(self._job_cancel_check(project, revision)) as transaction:
+                    if strength > 0 and endpoint_path is None:
+                        policy = resolve_graxpert_runtime_policy()
+                        session = self._graxpert_session_for(policy)
+                        endpoint_dest = project.artifact_path(ROLE_DENOISED_STARLESS, for_write=True)
+                        op = self._new_operation(GraXpertDenoise)
+                        if progress_bar is not None:
+                            op.addObserver(progress_bar)
+                        self.app.activeOperation = op
+                        try:
+                            inference = op.denoise(
+                                base,
+                                session=session,
+                                settings=settings,
+                                bit_depth=INTERMEDIATE_BIT_DEPTH,
+                                output_path=endpoint_dest,
+                                artifacts=transaction,
+                            )
+                        finally:
+                            if self.app.activeOperation is op:
+                                self.app.activeOperation = self._session_operation
+                            if progress_bar is not None:
+                                op.removeObserver(progress_bar)
+                        if inference is None or op.shouldInterrupt():
+                            return None
+                        denoised = inference[0]
+                    elif strength > 0:
+                        assert endpoint_path is not None
+                        denoised = imread(endpoint_path, to_rgb=True, as_float=True)
+                        if progress_bar is not None:
+                            progress_bar(1, 1, 1, True, {"desc": "Using cached denoise endpoint."})
+
+                    if strength == 0:
+                        finished = base
+                    else:
+                        assert denoised is not None
+                        finished = blend_denoise(base, denoised, mask, strength, scope)
+
+                    staged_finished = transaction.stage(finished_dest)
+                    written = imwrite(
+                        staged_finished,
+                        finished,
+                        convertBGR=True,
+                        bit_depth=INTERMEDIATE_BIT_DEPTH,
+                        quality=settings.jpeg_quality,
+                        optimize=settings.jpeg_optimize,
+                        compression=settings.tiff_deflate_compression,
+                    )
+                    if written != staged_finished:
+                        written.unlink(missing_ok=True)
+                        raise OSError("Finished starless staging path changed unexpectedly; nothing was published.")
+                    if not project.publish_denoise_results(
+                        finished_dest,
+                        separation_signature=separation_signature,
+                        expected_revision=revision,
+                        strength=strength,
+                        scope=scope,
+                        endpoint_path=endpoint_dest,
+                        endpoint_signature=endpoint_signature,
+                        model_identity=model_identity,
+                        transaction=transaction,
+                    ):
+                        return None
+                    self.save_project()
+            except CancelledError:
                 return None
-            session = None
-            if strength > 0:
-                policy = resolve_graxpert_runtime_policy()
-                session = GraXpertSession(provider=policy["provider"])
-            return op.denoise(
-                image,
-                strength=strength,
-                sky_mask=sky_mask,
-                sky_only=sky_only,
-                session=session,
-                output_path=output_path,
-                bit_depth=bit_depth,
-                settings=self.project.get_settings(),
-            )
         finally:
-            if self.app.activeOperation is op:
-                self.app.activeOperation = self._session_operation
+            del base, denoised
+
+        if progress_bar is not None and strength == 0:
+            progress_bar(1, 1, 1, True, {"desc": "Denoise strength is zero; using the separated starless plate."})
+        return OutputFile(
+            basename=finished_dest.name,
+            path=str(finished_dest),
+            operation="Finished Starless",
+        )
 
 
 __all__ = ["FinishWorkflow"]

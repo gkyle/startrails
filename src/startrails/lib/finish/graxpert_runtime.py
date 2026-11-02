@@ -15,18 +15,45 @@ from startrails.lib.finish.graxpert import (
     INPUT_TENSOR_NAME,
     OUTPUT_TENSOR_NAME,
     WINDOW_SIZE,
-    blend_graxpert_denoised,
     compute_graxpert_stats,
+    graxpert_model_identity,
     graxpert_tile_postprocess,
     graxpert_tile_preprocess,
 )
 from startrails.lib.image_io import validate_image_array
 from startrails.lib.model_manifest import GRAXPERT_MANIFEST
-from startrails.lib.signatures import verify_file_integrity
 from startrails.paths import APPLICATION_DIR
 
 
 GRAXPERT_RUNTIME_POLICY_PATH = APPLICATION_DIR / "runtime" / "graxpert-runtime.json"
+
+CPU_EXECUTION_PROVIDER = "CPUExecutionProvider"
+CUDA_EXECUTION_PROVIDER = "CUDAExecutionProvider"
+
+# CUDA allocation failures are the only recognized recoverable execution errors.
+# Tile inference runs one 256-pixel window at a time, so no smaller batch exists;
+# recovery is an explained CPU retry of the whole image.
+CUDA_ALLOCATION_ERROR_MARKERS = (
+    "out of memory",
+    "outofmemory",
+    "out_of_memory",
+    "cuda_error_out_of_memory",
+    "cuda_error_launch_out_of_resources",
+    "failed to allocate",
+    "allocation failed",
+    "cublas_status_alloc_failed",
+    "cudnn_status_alloc_failed",
+    "bad_alloc",
+    "resource exhausted",
+)
+
+
+def is_cuda_allocation_failure(error: BaseException) -> bool:
+    """Return whether an execution error is a recognizable allocation failure."""
+    if isinstance(error, MemoryError):
+        return True
+    message = str(error).casefold()
+    return any(marker in message for marker in CUDA_ALLOCATION_ERROR_MARKERS)
 
 
 def resolve_graxpert_runtime_policy(policy_path: Path = GRAXPERT_RUNTIME_POLICY_PATH) -> Dict[str, Any]:
@@ -46,7 +73,7 @@ def resolve_graxpert_runtime_policy(policy_path: Path = GRAXPERT_RUNTIME_POLICY_
         or policy.get("verified") is not True
         or policy.get("ort_version") != ort.__version__
         or policy.get("model_sha256") != GRAXPERT_MANIFEST.sha256
-        or policy.get("provider") not in ("CPUExecutionProvider", "CUDAExecutionProvider")
+        or policy.get("provider") not in (CPU_EXECUTION_PROVIDER, CUDA_EXECUTION_PROVIDER)
     ):
         raise RuntimeError("GraXpert setup result is stale or invalid. Run StarTrails repair.")
     return policy
@@ -65,32 +92,73 @@ class GraXpertSession:
         if not self.model_path.is_file():
             raise FileNotFoundError(f"GraXpert model file not found: {self.model_path}")
 
-        if not verify_file_integrity(self.model_path, GRAXPERT_MANIFEST.sha256, GRAXPERT_MANIFEST.size_bytes):
-            raise ValueError(f"GraXpert model integrity check failed: {self.model_path}")
-
+        # Setup/repair already verified this pinned model. Processing consumes the
+        # saved policy without rehashing or probing readiness at inference time.
         self.provider = provider
+        self.configured_provider = provider
+        self.execution_provider = provider
+        self.fallback_reason: Optional[str] = None
+        self.model_identity = graxpert_model_identity()
 
+        try:
+            self.session = self._create_ort_session(provider)
+        except Exception as error:
+            if not self._can_retry_on_cpu(error):
+                raise
+            self._activate_cpu_fallback(error)
+
+    def _create_ort_session(self, provider: str):
         sess_options = ort.SessionOptions()
         sess_options.enable_cpu_mem_arena = True
-        self.session = ort.InferenceSession(str(self.model_path), sess_options=sess_options, providers=[self.provider])
-        self.session.disable_fallback()
-        if self.session.get_providers()[0] != self.provider:
-            raise RuntimeError(f"GraXpert could not use the configured provider {self.provider}. Run repair.")
+        session = ort.InferenceSession(str(self.model_path), sess_options=sess_options, providers=[provider])
+        session.disable_fallback()
+        if session.get_providers()[0] != provider:
+            raise RuntimeError(f"GraXpert could not use the configured provider {provider}. Run repair.")
+        return session
 
-    def denoise_image(
+    def _can_retry_on_cpu(self, error: BaseException) -> bool:
+        return self.execution_provider == CUDA_EXECUTION_PROVIDER and is_cuda_allocation_failure(error)
+
+    def _activate_cpu_fallback(self, error: BaseException) -> None:
+        """Retry the whole image on CPU after a recognized CUDA allocation failure."""
+        failed_provider = self.execution_provider
+        try:
+            self.session = self._create_ort_session(CPU_EXECUTION_PROVIDER)
+        except Exception as cpu_error:
+            raise RuntimeError(
+                f"GraXpert {failed_provider} execution failed ({error}); CPU retry also failed: {cpu_error}"
+            ) from cpu_error
+        self.execution_provider = CPU_EXECUTION_PROVIDER
+        self.fallback_reason = f"{failed_provider} allocation failure: {error}; retried on {CPU_EXECUTION_PROVIDER}."
+
+    def denoise_full_strength(
         self,
         image: np.ndarray,
-        strength: float = 1.0,
         progress_bar: Optional[Callable[[int, int, int, bool, Optional[dict]], None]] = None,
         should_interrupt: Optional[Callable[[], bool]] = None,
     ) -> np.ndarray:
-        """Run full-image GraXpert denoising with 50% overlapping tiles and smooth window blending."""
-        validate_image_array(image)
-        if not np.isfinite(strength) or not 0 <= strength <= 1:
-            raise ValueError("Denoise strength must be between 0 and 1.")
-        if strength == 0:
-            return image.copy()
+        """Return the full-strength GraXpert endpoint with overlapping tiled blending.
 
+        Interactive strength/scope blending happens in the composition owner, never
+        here, so this endpoint can be cached once per separation/model identity.
+        Recognized CUDA allocation failures retry the image on CPU; other errors
+        surface unchanged.
+        """
+        validate_image_array(image)
+        try:
+            return self._denoise_with_active_session(image, progress_bar, should_interrupt)
+        except Exception as error:
+            if not self._can_retry_on_cpu(error):
+                raise
+            self._activate_cpu_fallback(error)
+            return self._denoise_with_active_session(image, progress_bar, should_interrupt)
+
+    def _denoise_with_active_session(
+        self,
+        image: np.ndarray,
+        progress_bar: Optional[Callable[[int, int, int, bool, Optional[dict]], None]],
+        should_interrupt: Optional[Callable[[], bool]],
+    ) -> np.ndarray:
         if should_interrupt and should_interrupt():
             raise CancelledError("GraXpert denoising cancelled before start")
 
@@ -163,4 +231,4 @@ class GraXpertSession:
         denoised_full = (accum_denoised / accum_weight)[:source_h, :source_w]
         denoised_full = np.clip(denoised_full, 0.0, 1.0).astype(np.float32)
 
-        return blend_graxpert_denoised(image, denoised_full, median, mad, strength=strength)
+        return denoised_full

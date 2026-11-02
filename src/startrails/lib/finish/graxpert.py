@@ -1,7 +1,9 @@
-"""GraXpert AI Denoise preprocessing, highlight gating, tile contracts, and runtime helpers."""
+"""GraXpert AI Denoise preprocessing, highlight gating, tile contracts, and model identity."""
 
 from typing import Tuple
 import numpy as np
+
+from startrails.lib.model_manifest import GRAXPERT_MODEL_SHA256, GRAXPERT_MODEL_VERSION
 
 INPUT_TENSOR_NAME = "gen_input_image"
 OUTPUT_TENSOR_NAME = "output"
@@ -13,7 +15,14 @@ MODEL_THRESHOLD = 10.0
 MIN_MAD_EPSILON = 1e-6
 STATS_SAMPLE_STRIDE = 4
 
-DEFAULT_CPU_BATCH_SIZE = 1  # Setup smoke-validated CPU baseline; CUDA policy remains gated.
+
+def graxpert_model_identity() -> str:
+    """Return the pinned model identity used in full-strength inference cache keys.
+
+    Provider selection is deliberately excluded: CPU and CUDA lanes run the same
+    numerical pipeline, so switching an accelerator does not invalidate endpoints.
+    """
+    return f"{GRAXPERT_MODEL_VERSION}:{GRAXPERT_MODEL_SHA256}"
 
 
 def compute_graxpert_stats(image: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -51,31 +60,29 @@ def graxpert_tile_postprocess(
     median: np.ndarray,
     mad: np.ndarray,
 ) -> np.ndarray:
-    """Reverse standardization and apply highlight protection to a denoised tile."""
+    """Reverse standardization and apply highlight protection to a denoised tile.
+
+    Tiles whose source standardization reaches MODEL_THRESHOLD keep their original
+    sample, so bright structures keep their measured highlights.
+    """
     orig_scaled = (orig_tile - median) / mad * MODEL_SCALE_FACTOR
     gated = np.where(orig_scaled < MODEL_THRESHOLD, denoised_tile, orig_scaled)
     restored = gated / MODEL_SCALE_FACTOR * mad + median
     return np.clip(restored, 0.0, 1.0).astype(np.float32)
 
 
-def blend_graxpert_denoised(
-    orig: np.ndarray,
-    denoised: np.ndarray,
-    median: np.ndarray,
-    mad: np.ndarray,
-    strength: float = 0.5,
-) -> np.ndarray:
-    """Apply adaptive highlight gating and linear alpha-blend with the original image.
-
-    Strength: 0.0 returns orig exactly, 1.0 returns fully denoised plate with highlight protection.
-    """
-    if strength <= 0.0:
-        return orig.copy()
-
-    threshold = (MODEL_THRESHOLD / MODEL_SCALE_FACTOR) * mad + median
-    gated = np.where(orig < threshold, denoised, orig)
-    if strength >= 1.0:
-        return np.clip(gated, 0.0, 1.0).astype(np.float32)
-
-    blended = gated * float(strength) + orig * (1.0 - float(strength))
-    return np.clip(blended, 0.0, 1.0).astype(np.float32)
+__all__ = [
+    "CHANNELS",
+    "DEFAULT_STRIDE",
+    "INPUT_TENSOR_NAME",
+    "MIN_MAD_EPSILON",
+    "MODEL_SCALE_FACTOR",
+    "MODEL_THRESHOLD",
+    "OUTPUT_TENSOR_NAME",
+    "STATS_SAMPLE_STRIDE",
+    "WINDOW_SIZE",
+    "compute_graxpert_stats",
+    "graxpert_model_identity",
+    "graxpert_tile_postprocess",
+    "graxpert_tile_preprocess",
+]

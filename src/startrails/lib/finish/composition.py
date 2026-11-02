@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 import numpy as np
 
+from startrails.lib.finish.graxpert import DEFAULT_STRIDE, WINDOW_SIZE
 from startrails.lib.signatures import compute_signature
 
 from startrails.lib.finish.defaults import (
@@ -22,7 +25,7 @@ RECOMBINE_CHUNK_ROWS = 512
 def blend_denoise(
     base: np.ndarray,
     full_denoised: np.ndarray,
-    sky_mask: np.ndarray,
+    sky_mask: Optional[np.ndarray],
     strength_percent: float,
     scope: DenoiseScopeType,
 ) -> np.ndarray:
@@ -49,6 +52,8 @@ def blend_denoise(
     if scope == SCOPE_WHOLE_IMAGE:
         return base + a * (full_denoised - base)
 
+    if sky_mask is None:
+        raise ValueError("Sky-only denoising requires a sky mask.")
     if sky_mask.ndim != 2 or sky_mask.shape != (h, w):
         raise ValueError(f"Sky mask shape {sky_mask.shape} must match image shape {(h, w)}.")
 
@@ -114,13 +119,7 @@ def recombine_layers(
     return composite
 
 
-def compute_denoise_endpoint_signature(
-    separation_signature: str,
-    model_identity: str,
-    *,
-    stride: int,
-    tile_size: int,
-) -> str:
+def compute_denoise_endpoint_signature(separation_signature: str, model_identity: str) -> str:
     """Compute deterministic cache signature for GraXpert full-strength inference endpoint.
 
     Denoise strength and scope are deliberately EXCLUDED from this endpoint key,
@@ -132,7 +131,7 @@ def compute_denoise_endpoint_signature(
             "version": 1,
             "separation": separation_signature,
             "model": model_identity,
-            "stride": stride,
-            "tile_size": tile_size,
+            "stride": DEFAULT_STRIDE,
+            "tile_size": WINDOW_SIZE,
         }
     )

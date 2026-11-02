@@ -153,6 +153,7 @@ class FinishProject(Unpickle):
         self.processing_revision: int = 0
         self.separation_signature: Optional[str] = None
         self.denoise_signature: Optional[str] = None
+        self.denoise_model_identity: Optional[str] = None
         self.composite_signature: Optional[str] = None
         self.artifact_manifest: Dict[str, Any] = {}
         self.separation_model_identity: Optional[str] = None
@@ -355,9 +356,23 @@ class FinishProject(Unpickle):
             return False
         if options is not None and record.get("options") != options:
             return False
-        if role in (ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE):
+        if role in (
+            ROLE_SEPARATED_STARLESS,
+            ROLE_SEPARATED_STARS,
+            ROLE_DENOISED_STARLESS,
+            ROLE_FINISHED_STARLESS,
+            ROLE_FINISHED_COMPOSITE,
+            _EXPORT_ROLE,
+        ):
             artifact_signature = record.get("options", {}).get("separation_signature")
             if artifact_signature is not None and artifact_signature != self.separation_signature:
+                return False
+        if role == ROLE_DENOISED_STARLESS:
+            artifact_signature = record.get("options", {}).get("denoise_signature")
+            if artifact_signature is not None and artifact_signature != self.denoise_signature:
+                return False
+            sep_signature = record.get("options", {}).get("separation_signature")
+            if sep_signature is not None and sep_signature != self.separation_signature:
                 return False
         return bool(
             record["source"] == self._source_key()
@@ -432,6 +447,7 @@ class FinishProject(Unpickle):
             self.separation_model_identity = None
             self.separation_options = None
             self.denoise_signature = None
+            self.denoise_model_identity = None
             self.composite_signature = None
             self.final_output_path = None
             for role, field in _ARTIFACT_PATH_FIELDS.items():
@@ -458,8 +474,15 @@ class FinishProject(Unpickle):
                 setattr(self, _ARTIFACT_PATH_FIELDS[role], None)
                 self.artifact_manifest.pop(role, None)
             self.denoise_signature = None
+            self.denoise_model_identity = None
             self.composite_signature = None
             self.invalidate_export()
+
+    def invalidate_denoise_descendants(self) -> None:
+        """Discard the cached denoise endpoint and the plates built from it."""
+        self.invalidate_artifact_roles(
+            {ROLE_DENOISED_STARLESS, ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE}
+        )
 
     def invalidate_export(self) -> None:
         """Discard only the user-encoded export while keeping its source composite."""
@@ -479,6 +502,7 @@ class FinishProject(Unpickle):
                 self.artifact_manifest.pop(role, None)
             if ROLE_DENOISED_STARLESS in roles:
                 self.denoise_signature = None
+                self.denoise_model_identity = None
             if ROLE_FINISHED_COMPOSITE in roles:
                 self.composite_signature = None
             for role, record in self.artifact_manifest.items():
@@ -546,6 +570,83 @@ class FinishProject(Unpickle):
                     "options": artifact_options,
                 }
                 setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_COMPOSITE], str(composite))
+            return True
+
+    def publish_denoise_results(
+        self,
+        finished_path: Union[str, Path],
+        *,
+        separation_signature: str,
+        expected_revision: int,
+        strength: float,
+        scope: str,
+        endpoint_path: Optional[Union[str, Path]] = None,
+        endpoint_signature: Optional[str] = None,
+        model_identity: Optional[str] = None,
+        transaction: Optional[ArtifactTransaction] = None,
+    ) -> bool:
+        """Atomically publish a finished-starless blend and, when computed, its endpoint.
+
+        The full-strength endpoint is keyed by its inference signature. Strength and
+        scope only describe the finished blend, so changing them never requires a new
+        endpoint. A new finished starless plate invalidates the previous composite and
+        export because both were built from the replaced plate.
+        """
+        with self._state_lock:
+            if not self._commit_if_current(
+                transaction,
+                expected_revision=expected_revision,
+                expected_separation_signature=separation_signature,
+            ):
+                return False
+
+            finished = Path(finished_path).resolve()
+            finished_stamp = _file_stamp(finished)
+            if finished_stamp is None:
+                raise FileNotFoundError(f"Cannot register a missing finished starless image: {finished}")
+
+            endpoint: Optional[Path] = None
+            endpoint_stamp = None
+            if endpoint_path is not None:
+                if endpoint_signature is None or model_identity is None:
+                    raise ValueError("A published denoise endpoint requires its signature and model identity.")
+                endpoint = Path(endpoint_path).resolve()
+                if endpoint == finished:
+                    raise ValueError("Denoise endpoint and finished starless paths must differ.")
+                endpoint_stamp = _file_stamp(endpoint)
+                if endpoint_stamp is None:
+                    raise FileNotFoundError(f"Cannot register a missing denoise endpoint: {endpoint}")
+
+            source = self._source_key()
+            common_options = {
+                "separation_signature": separation_signature,
+                "denoise_signature": endpoint_signature,
+            }
+            if endpoint is not None:
+                self.artifact_manifest[ROLE_DENOISED_STARLESS] = {
+                    "source": source,
+                    "file": list(endpoint_stamp),
+                    "revision": self.processing_revision,
+                    "options": dict(common_options),
+                }
+                setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_DENOISED_STARLESS], str(endpoint))
+                self.denoise_signature = endpoint_signature
+                self.denoise_model_identity = model_identity
+
+            self.artifact_manifest[ROLE_FINISHED_STARLESS] = {
+                "source": source,
+                "file": list(finished_stamp),
+                "revision": self.processing_revision,
+                "options": dict(common_options, strength=float(strength), scope=scope),
+            }
+            setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_STARLESS], str(finished))
+
+            # Composite and export were derived from the previous finished plate.
+            setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_COMPOSITE], None)
+            self.final_output_path = None
+            self.artifact_manifest.pop(ROLE_FINISHED_COMPOSITE, None)
+            self.artifact_manifest.pop(_EXPORT_ROLE, None)
+            self.composite_signature = None
             return True
 
     def relocate(self, new_project_file: str) -> None:

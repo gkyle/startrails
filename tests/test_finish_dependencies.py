@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import CancelledError
+from dataclasses import replace
 import io
 import json
 import os
@@ -18,7 +19,18 @@ import zipfile
 
 import numpy as np
 
-from startrails.lib.finish.defaults import FINISH_DEFAULTS
+from startrails.lib.finish.composition import compute_denoise_endpoint_signature
+from startrails.lib.finish.defaults import (
+    FINISH_DEFAULTS,
+    ROLE_DENOISED_STARLESS,
+    ROLE_FINISHED_COMPOSITE,
+    ROLE_FINISHED_STARLESS,
+    ROLE_SEPARATED_STARLESS,
+    ROLE_SEPARATED_STARS,
+    ROLE_SKY_MASK,
+    SCOPE_WHOLE_IMAGE,
+)
+from startrails.lib.finish.graxpert import INPUT_TENSOR_NAME, graxpert_model_identity
 from startrails.lib.project_finish import FinishProject
 from support import QtTestCase
 from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
@@ -379,10 +391,7 @@ class TestFinishDependencies(unittest.TestCase):
         model_path = self.root / "fake_model.onnx"
         model_path.write_bytes(b"dummy")
 
-        with (
-            patch("startrails.lib.finish.graxpert_runtime.verify_file_integrity", return_value=True),
-            patch("onnxruntime.InferenceSession") as mock_ort,
-        ):
+        with patch("onnxruntime.InferenceSession") as mock_ort:
             mock_sess = MagicMock()
             mock_sess.get_providers.return_value = ["CPUExecutionProvider"]
             mock_sess.run.side_effect = lambda names, feeds: [feeds["gen_input_image"].copy()]
@@ -396,13 +405,13 @@ class TestFinishDependencies(unittest.TestCase):
             def on_progress(total, step, current, is_done, payload):
                 progress_events.append((current, total))
 
-            denoised = session.denoise_image(image, strength=0.8, progress_bar=on_progress)
+            denoised = session.denoise_full_strength(image, progress_bar=on_progress)
             self.assertEqual(denoised.shape, image.shape)
             np.testing.assert_allclose(denoised, image, atol=1e-6)
             for shape in ((1, 1, 3), (31, 47, 3), (259, 401, 3)):
                 with self.subTest(shape=shape):
                     image_variant = np.random.default_rng(0).uniform(0.1, 0.8, shape).astype(np.float32)
-                    result = session.denoise_image(image_variant)
+                    result = session.denoise_full_strength(image_variant)
                     np.testing.assert_allclose(result, image_variant, atol=1e-6)
             self.assertGreater(len(progress_events), 0)
             self.assertEqual(progress_events[-1][0], progress_events[-1][1])
@@ -415,7 +424,49 @@ class TestFinishDependencies(unittest.TestCase):
                 return cancelled_calls >= 2
 
             with self.assertRaises(CancelledError):
-                session.denoise_image(image, should_interrupt=should_interrupt)
+                session.denoise_full_strength(image, should_interrupt=should_interrupt)
+
+    def test_graxpert_session_retries_recognized_cuda_allocation_failure_on_cpu(self):
+        model_path = self.root / "fake_model.onnx"
+        model_path.write_bytes(b"dummy")
+        image = np.random.default_rng(0).uniform(0.1, 0.8, (256, 256, 3)).astype(np.float32)
+
+        gpu_session = MagicMock()
+        gpu_session.get_providers.return_value = ["CUDAExecutionProvider"]
+        gpu_session.run.side_effect = RuntimeError("CUDA failure 2: out of memory")
+        cpu_session = MagicMock()
+        cpu_session.get_providers.return_value = ["CPUExecutionProvider"]
+        cpu_session.run.side_effect = lambda names, feeds: [feeds[INPUT_TENSOR_NAME].copy()]
+
+        with patch("onnxruntime.InferenceSession", side_effect=[gpu_session, cpu_session]) as create_session:
+            session = GraXpertSession(model_path=model_path, provider="CUDAExecutionProvider")
+            result = session.denoise_full_strength(image)
+
+        self.assertEqual(create_session.call_count, 2)
+        self.assertEqual(create_session.call_args_list[0].kwargs["providers"], ["CUDAExecutionProvider"])
+        self.assertEqual(create_session.call_args_list[1].kwargs["providers"], ["CPUExecutionProvider"])
+        self.assertEqual(session.configured_provider, "CUDAExecutionProvider")
+        self.assertEqual(session.execution_provider, "CPUExecutionProvider")
+        self.assertIn("out of memory", session.fallback_reason)
+        np.testing.assert_allclose(result, image, atol=1e-6)
+
+    def test_graxpert_session_propagates_non_allocation_execution_errors(self):
+        model_path = self.root / "fake_model.onnx"
+        model_path.write_bytes(b"dummy")
+        image = np.full((256, 256, 3), 0.5, dtype=np.float32)
+
+        gpu_session = MagicMock()
+        gpu_session.get_providers.return_value = ["CUDAExecutionProvider"]
+        gpu_session.run.side_effect = RuntimeError("CUDA kernel launch failed: invalid argument")
+
+        with patch("onnxruntime.InferenceSession", return_value=gpu_session) as create_session:
+            session = GraXpertSession(model_path=model_path, provider="CUDAExecutionProvider")
+            with self.assertRaisesRegex(RuntimeError, "invalid argument"):
+                session.denoise_full_strength(image)
+
+        self.assertEqual(create_session.call_count, 1)
+        self.assertEqual(session.execution_provider, "CUDAExecutionProvider")
+        self.assertIsNone(session.fallback_reason)
 
     def test_run_starnet_operation_adapter(self):
         exec_file = self.root / "starnet2"
@@ -471,27 +522,35 @@ class TestFinishDependencies(unittest.TestCase):
         self.assertEqual(output.read_bytes(), b"previous")
         self.assertFalse(list(self.root.glob(".starnet-*")))
 
-    def test_graxpert_denoise_operation_adapter_and_mask(self):
+    def test_graxpert_denoise_operation_computes_full_strength_endpoint(self):
         img = np.full((256, 256, 3), 0.4, dtype=np.float32)
-        sky_mask = np.zeros((256, 256), dtype=np.float32)
-        sky_mask[:128, :] = 1.0  # Top half sky, bottom half ground
-
+        expected = np.full((256, 256, 3), 0.1, dtype=np.float32)
         mock_session = MagicMock()
-        mock_session.denoise_image.return_value = np.full((256, 256, 3), 0.1, dtype=np.float32)
+        mock_session.denoise_full_strength.return_value = expected
 
         op = GraXpertDenoise()
-        denoised, out_path = op.denoise(
+        denoised, written = op.denoise(
             img,
-            strength=1.0,
-            sky_mask=sky_mask,
-            sky_only=True,
             session=mock_session,
             bit_depth=16,
             settings=FINISH_DEFAULTS,
         )
-        self.assertIsNotNone(denoised)
-        np.testing.assert_allclose(denoised[:128, :, :], 0.1, atol=1e-5)
-        np.testing.assert_allclose(denoised[128:, :, :], 0.4, atol=1e-5)
+        self.assertIsNone(written)
+        np.testing.assert_array_equal(denoised, expected)
+        args, kwargs = mock_session.denoise_full_strength.call_args
+        np.testing.assert_array_equal(args[0], img)
+        self.assertNotIn("strength", kwargs)
+
+        destination = self.root / "endpoint.tif"
+        denoised, written = op.denoise(
+            img,
+            session=mock_session,
+            bit_depth=16,
+            settings=FINISH_DEFAULTS,
+            output_path=destination,
+        )
+        self.assertEqual(written, destination)
+        self.assertTrue(destination.is_file())
 
     def test_workflow_lifecycle_methods(self):
         from startrails.workflow.finish import FinishWorkflow
@@ -526,9 +585,13 @@ class TestFinishDependencies(unittest.TestCase):
         self.assertTrue(status_after["managed"])
         self.assertEqual(status_after["executable"], str(fake_exec.resolve()))
 
-        # GraXpert status
-        gx_status = wf.get_graxpert_status()
-        self.assertIn("policy", gx_status)
+        # GraXpert status surfaces the resolved provider policy for diagnostics.
+        policy = {"provider": "CUDAExecutionProvider", "device": "cuda", "verified": True}
+        with patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", return_value=policy):
+            gx_status = wf.get_graxpert_status()
+        self.assertEqual(gx_status["policy"], policy)
+        self.assertEqual(gx_status["provider"], "CUDAExecutionProvider")
+        self.assertEqual(gx_status["device"], "cuda")
         self.assertIn("model_ready", gx_status)
 
     def test_check_finish_models_persist_state(self):
@@ -644,26 +707,246 @@ class TestFinishDependencyUI(QtTestCase):
             release.set()
             self.assertTrue(dialog.worker.wait(5000))
 
-    def test_workflow_adapters_share_cancellation_and_zero_strength_needs_no_model(self):
-        from startrails.workflow.finish import FinishWorkflow
+    def prepare_separated_project(self, name: str, *, source, starless, stars, mask):
+        """Publish a small current separation and canonical mask without model work."""
+        from startrails.lib.denoise.mask import MaskHandler
         from startrails.lib.image_io import imwrite
 
-        project = FinishProject(project_file=str(self.root / "finish.proj_finish"))
-        image = np.full((16, 24, 3), 0.4, np.float32)
-        source = imwrite(self.root / "source.tif", image, bit_depth=16)
-        project.set_source_image(source)
+        project = FinishProject(project_file=str(self.root / f"{name}.proj_finish"))
+        source_path = imwrite(self.root / f"{name}_source.tif", source, bit_depth=16)
+        project.set_source_image(source_path)
+        starless_path = project.artifact_path(ROLE_SEPARATED_STARLESS, for_write=True)
+        stars_path = project.artifact_path(ROLE_SEPARATED_STARS, for_write=True)
+        imwrite(starless_path, starless, bit_depth=16)
+        imwrite(stars_path, stars, bit_depth=16)
+        self.assertTrue(
+            project.publish_separation(
+                starless_path,
+                stars_path,
+                signature="separation-a",
+                model_identity="starnet-model",
+                expected_revision=project.processing_revision,
+            )
+        )
+        mask_path = project.artifact_path(ROLE_SKY_MASK, for_write=True)
+        MaskHandler.save_mask(mask, mask_path)
+        project.record_artifact(ROLE_SKY_MASK, mask_path)
+        return project
+
+    def make_denoise_app(self, project):
+        from startrails.workflow.finish import FinishWorkflow
+
         app = self.make_app(project)
-        workflow = FinishWorkflow(app)
-        with patch("startrails.workflow.finish.GraXpertSession") as init_session:
-            result, _ = workflow.do_denoise_starless(image, strength=0, sky_only=False)
-            np.testing.assert_array_equal(result, image)
+        return app, FinishWorkflow(app)
+
+    def test_workflow_zero_strength_publishes_without_a_model(self):
+        from startrails.lib.image_io import imread
+
+        image = np.full((16, 24, 3), 0.4, np.float32)
+        starless = np.full((16, 24, 3), 0.3, np.float32)
+        project = self.prepare_separated_project(
+            "zero_strength",
+            source=image,
+            starless=starless,
+            stars=np.zeros_like(starless),
+            mask=np.ones((16, 24), np.float32),
+        )
+        project.update_settings(replace(project.get_settings(), denoise_strength=0.0))
+        app, workflow = self.make_denoise_app(project)
+
+        with (
+            patch("startrails.workflow.finish.resolve_graxpert_runtime_policy") as resolve_policy,
+            patch("startrails.workflow.finish.GraXpertSession") as init_session,
+        ):
+            result = workflow.do_denoise_starless()
+            resolve_policy.assert_not_called()
             init_session.assert_not_called()
+        self.assertEqual(result.operation, "Finished Starless")
+        finished = project.current_artifact_path(ROLE_FINISHED_STARLESS)
+        self.assertIsNotNone(finished)
+        np.testing.assert_allclose(imread(finished, to_rgb=True, as_float=True), starless, atol=0.5 / 65535)
         self.assertIsNone(app.activeOperation)
+
         with workflow.operation_session():
             session_operation = app.activeOperation
             session_operation.requestInterrupt()
-            self.assertIsNone(workflow.do_denoise_starless(image, strength=0, sky_only=False))
+            self.assertIsNone(workflow.do_denoise_starless())
             self.assertIs(app.activeOperation, session_operation)
+
+    def test_workflow_reuses_full_strength_endpoint_across_strength_and_scope(self):
+        from startrails.lib.finish.composition import blend_denoise
+        from startrails.lib.image_io import imread
+
+        source = np.full((16, 24, 3), 0.4, np.float32)
+        starless = np.full((16, 24, 3), 0.3, np.float32)
+        mask = np.zeros((16, 24), np.float32)
+        mask[:, :12] = 1.0
+        project = self.prepare_separated_project(
+            "endpoint_cache",
+            source=source,
+            starless=starless,
+            stars=np.zeros_like(starless),
+            mask=mask,
+        )
+        project.update_settings(replace(project.get_settings(), denoise_strength=50.0, denoise_scope="sky_only"))
+        app, workflow = self.make_denoise_app(project)
+        denoised = np.full_like(starless, 0.1)
+        policy = {"provider": "CPUExecutionProvider", "device": "cpu", "verified": True}
+
+        with (
+            patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", return_value=policy),
+            patch("startrails.workflow.finish.GraXpertSession") as init_session,
+        ):
+            init_session.return_value.denoise_full_strength.return_value = denoised
+            app.activeOperation = None
+            workflow.do_denoise_starless()
+
+            endpoint_signature = compute_denoise_endpoint_signature("separation-a", graxpert_model_identity())
+            endpoint = project.current_artifact_path(
+                ROLE_DENOISED_STARLESS,
+                options={"separation_signature": "separation-a", "denoise_signature": endpoint_signature},
+            )
+            self.assertIsNotNone(endpoint)
+            self.assertEqual(project.denoise_signature, endpoint_signature)
+            endpoint_bytes = endpoint.read_bytes()
+            np.testing.assert_allclose(
+                imread(project.current_artifact_path(ROLE_FINISHED_STARLESS), to_rgb=True, as_float=True),
+                blend_denoise(starless, denoised, mask, 50.0, "sky_only"),
+                atol=0.5 / 65535,
+            )
+
+            project.update_settings(
+                replace(project.get_settings(), denoise_strength=100.0, denoise_scope=SCOPE_WHOLE_IMAGE)
+            )
+            workflow.do_denoise_starless()
+            self.assertEqual(init_session.call_count, 1)
+            self.assertEqual(endpoint.read_bytes(), endpoint_bytes)
+            np.testing.assert_allclose(
+                imread(project.current_artifact_path(ROLE_FINISHED_STARLESS), to_rgb=True, as_float=True),
+                blend_denoise(starless, denoised, None, 100.0, SCOPE_WHOLE_IMAGE),
+                atol=0.5 / 65535,
+            )
+
+        self.assertFalse(workflow.invalidate_if_graxpert_changed())
+        project.denoise_model_identity = "previous-graxpert-model"
+        self.assertTrue(workflow.invalidate_if_graxpert_changed())
+        self.assertIsNone(project.current_artifact_path(ROLE_DENOISED_STARLESS))
+        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
+
+    def test_workflow_reports_execution_provider_and_fallback_reason(self):
+        source = np.full((16, 24, 3), 0.4, np.float32)
+        starless = np.full((16, 24, 3), 0.3, np.float32)
+        project = self.prepare_separated_project(
+            "fallback_status",
+            source=source,
+            starless=starless,
+            stars=np.zeros_like(starless),
+            mask=np.ones((16, 24), np.float32),
+        )
+        project.update_settings(replace(project.get_settings(), denoise_strength=50.0, denoise_scope=SCOPE_WHOLE_IMAGE))
+        app, workflow = self.make_denoise_app(project)
+        policy = {"provider": "CUDAExecutionProvider", "device": "cuda", "verified": True}
+        fake_session = MagicMock()
+        fake_session.configured_provider = "CUDAExecutionProvider"
+        fake_session.execution_provider = "CPUExecutionProvider"
+        fake_session.fallback_reason = (
+            "CUDAExecutionProvider allocation failure: CUDA failure 2: out of memory; retried on CPUExecutionProvider."
+        )
+        fake_session.denoise_full_strength.return_value = np.full_like(starless, 0.1)
+
+        with (
+            patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", return_value=policy),
+            patch("startrails.workflow.finish.GraXpertSession", return_value=fake_session),
+        ):
+            workflow.do_denoise_starless()
+            status = workflow.get_graxpert_status()
+
+        # Configured provider remains the setup-owned policy value.
+        self.assertEqual(status["provider"], "CUDAExecutionProvider")
+        self.assertEqual(status["execution_provider"], "CPUExecutionProvider")
+        self.assertIn("out of memory", status["fallback_reason"])
+
+        # A session from a previous provider lane must not report stale execution state.
+        with patch(
+            "startrails.workflow.finish.resolve_graxpert_runtime_policy",
+            return_value={"provider": "CPUExecutionProvider", "device": "cpu", "verified": True},
+        ):
+            stale_status = workflow.get_graxpert_status()
+        self.assertEqual(stale_status["provider"], "CPUExecutionProvider")
+        self.assertIsNone(stale_status["execution_provider"])
+        self.assertIsNone(stale_status["fallback_reason"])
+
+    def test_workflow_recombine_uses_finished_plate_with_separated_negative_correction(self):
+        from startrails.lib.image_io import imread
+
+        source = np.full((16, 24, 3), 0.2, np.float32)
+        starless = np.full((16, 24, 3), 0.4, np.float32)
+        stars = np.full((16, 24, 3), 0.1, np.float32)
+        project = self.prepare_separated_project(
+            "finished_recombine",
+            source=source,
+            starless=starless,
+            stars=stars,
+            mask=np.ones((16, 24), np.float32),
+        )
+        project.update_settings(
+            replace(project.get_settings(), denoise_strength=100.0, denoise_scope=SCOPE_WHOLE_IMAGE)
+        )
+        app, workflow = self.make_denoise_app(project)
+        policy = {"provider": "CPUExecutionProvider", "device": "cpu", "verified": True}
+        denoised = np.full_like(starless, 0.5)
+
+        with (
+            patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", return_value=policy),
+            patch("startrails.workflow.finish.GraXpertSession") as init_session,
+        ):
+            init_session.return_value.denoise_full_strength.return_value = denoised
+            workflow.do_denoise_starless()
+            result = workflow.do_recombine()
+
+        self.assertIsNotNone(result)
+        # F = 0.5, S = 0.1, and N = min(0.2 - 0.4, 0) = -0.2 from the separated plate.
+        np.testing.assert_allclose(
+            imread(project.current_artifact_path(ROLE_FINISHED_COMPOSITE), to_rgb=True, as_float=True),
+            0.4,
+            atol=1.5 / 65535,
+        )
+
+    def test_workflow_cancelled_inference_preserves_previous_finished_plate(self):
+        from concurrent.futures import CancelledError
+        from startrails.lib.image_io import imread
+
+        source = np.full((16, 24, 3), 0.4, np.float32)
+        starless = np.full((16, 24, 3), 0.3, np.float32)
+        project = self.prepare_separated_project(
+            "stale_denoise",
+            source=source,
+            starless=starless,
+            stars=np.zeros_like(starless),
+            mask=np.ones((16, 24), np.float32),
+        )
+        project.update_settings(replace(project.get_settings(), denoise_strength=0.0))
+        app, workflow = self.make_denoise_app(project)
+        workflow.do_denoise_starless()
+        finished = project.current_artifact_path(ROLE_FINISHED_STARLESS)
+        previous_bytes = finished.read_bytes()
+        previous_pixels = imread(finished, to_rgb=True, as_float=True)
+        endpoint = project.artifact_path(ROLE_DENOISED_STARLESS, for_write=True)
+        self.assertFalse(endpoint.exists())
+
+        project.update_settings(replace(project.get_settings(), denoise_strength=75.0, denoise_scope=SCOPE_WHOLE_IMAGE))
+        policy = {"provider": "CPUExecutionProvider", "device": "cpu", "verified": True}
+        with (
+            patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", return_value=policy),
+            patch("startrails.workflow.finish.GraXpertSession") as init_session,
+        ):
+            init_session.return_value.denoise_full_strength.side_effect = CancelledError()
+            self.assertIsNone(workflow.do_denoise_starless())
+
+        self.assertEqual(finished.read_bytes(), previous_bytes)
+        np.testing.assert_array_equal(imread(finished, to_rgb=True, as_float=True), previous_pixels)
+        self.assertFalse(endpoint.exists())
+        self.assertFalse(list(finished.parent.glob(".artifact-*")))
 
     def test_workflow_starnet_adapter_restores_operation_and_publishes(self):
         from startrails.workflow.finish import FinishWorkflow

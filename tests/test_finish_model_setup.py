@@ -13,8 +13,8 @@ from unittest.mock import patch
 import numpy as np
 
 from startrails.lib.finish.graxpert import (
-    blend_graxpert_denoised,
     compute_graxpert_stats,
+    graxpert_model_identity,
     graxpert_tile_postprocess,
     graxpert_tile_preprocess,
     MIN_MAD_EPSILON,
@@ -337,23 +337,18 @@ class TestFinishModelSetup(unittest.TestCase):
         restored = graxpert_tile_postprocess(np.zeros_like(original), original, median, mad)
         np.testing.assert_allclose(restored, [[[0.2, 0.5, 0.8]]])
 
-    def test_graxpert_strength_blend_endpoints(self):
-        orig = np.full((64, 64, 3), 0.2, dtype=np.float32)
-        denoised = np.full((64, 64, 3), 0.1, dtype=np.float32)
+    def test_graxpert_postprocess_applies_highlight_gate_within_the_adapter(self):
         median = np.array([0.2, 0.2, 0.2], dtype=np.float32)
-        mad = np.array([0.05, 0.05, 0.05], dtype=np.float32)
+        mad = np.array([0.001, 0.001, 0.001], dtype=np.float32)
+        # With this MAD the highlight gate switches at 0.45.
+        original = np.array([[[0.1, 0.5, 0.8]]], dtype=np.float32)
+        # The model returns standardized-space samples; -6 restores to 0.05.
+        restored = graxpert_tile_postprocess(np.full_like(original, -6.0), original, median, mad)
+        np.testing.assert_allclose(restored, [[[0.05, 0.5, 0.8]]], atol=1e-6)
 
-        # Strength 0.0 must equal orig exactly
-        res_0 = blend_graxpert_denoised(orig, denoised, median, mad, strength=0.0)
-        np.testing.assert_array_equal(res_0, orig)
-
-        # Strength 1.0 must apply full denoise
-        res_1 = blend_graxpert_denoised(orig, denoised, median, mad, strength=1.0)
-        np.testing.assert_array_almost_equal(res_1, denoised)
-
-        # Strength 0.5 must be exact arithmetic midpoint
-        res_half = blend_graxpert_denoised(orig, denoised, median, mad, strength=0.5)
-        np.testing.assert_array_almost_equal(res_half, 0.15)
+        # Model identity keys endpoints but is independent of the selected provider.
+        self.assertEqual(graxpert_model_identity(), graxpert_model_identity())
+        self.assertIn("3.0.2", graxpert_model_identity())
 
 
 if __name__ == "__main__":

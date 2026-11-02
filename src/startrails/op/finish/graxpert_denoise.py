@@ -1,8 +1,9 @@
-"""Observable operation for executing GraXpert AI denoising on starless plates."""
+"""Observable operation for computing the full-strength GraXpert denoise endpoint."""
 
 from __future__ import annotations
 
 from concurrent.futures import CancelledError
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
@@ -16,7 +17,11 @@ from startrails.lib.util import Observable
 
 
 class GraXpertDenoise(Observable):
-    """Observable operation for full-frame tiled GraXpert denoising with smooth Hann blending."""
+    """Observable operation for full-frame tiled GraXpert inference with Hann blending.
+
+    This operation owns only the full-strength endpoint. Strength and scope are
+    applied by the composition blend owner so repeated adjustments reuse one result.
+    """
 
     def __init__(self, cancel_event=None, cancel_check=None):
         super().__init__(cancel_event, cancel_check)
@@ -26,25 +31,14 @@ class GraXpertDenoise(Observable):
         self,
         image: np.ndarray,
         *,
-        strength: float,
-        sky_mask: Optional[np.ndarray],
-        sky_only: bool,
-        session: Optional[GraXpertSession],
-        output_path: Optional[Union[str, Path]] = None,
-        bit_depth: int,
+        session: GraXpertSession,
         settings: FinishSettings,
+        bit_depth: int,
+        output_path: Optional[Union[str, Path]] = None,
+        artifacts: Optional[ArtifactTransaction] = None,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
-        """Denoise input image with Hann-window tiled blending, progress reporting, and optional masking."""
+        """Return the full-strength denoised image, optionally writing its endpoint."""
         validate_image_array(image)
-        if not np.isfinite(strength) or not 0 <= strength <= 1:
-            raise ValueError("Denoise strength must be between 0 and 1.")
-        if sky_only and strength > 0:
-            if sky_mask is None:
-                raise ValueError("Sky-only denoising requires a sky mask.")
-            if sky_mask.dtype != np.float32 or sky_mask.shape != image.shape[:2]:
-                raise ValueError("Sky mask dimensions must match the image.")
-            if not np.isfinite(sky_mask).all() or np.any(sky_mask < 0) or np.any(sky_mask > 1):
-                raise ValueError("Sky mask must be finite and in [0,1].")
         if self.shouldInterrupt():
             return None
         self._last_completed_tiles = 0
@@ -63,44 +57,39 @@ class GraXpertDenoise(Observable):
                 self.updateJob(delta, {"desc": desc})
 
         try:
-            if strength == 0:
-                denoised = image.copy()
-            else:
-                if session is None:
-                    raise ValueError("A configured GraXpert session is required for denoising.")
-                denoised = session.denoise_image(
-                    image, strength=strength, progress_bar=on_progress, should_interrupt=self.shouldInterrupt
-                )
+            denoised = session.denoise_full_strength(
+                image,
+                progress_bar=on_progress,
+                should_interrupt=self.shouldInterrupt,
+            )
         except CancelledError:
             return None
 
         if self.shouldInterrupt():
             return None
 
-        if sky_only and strength > 0:
-            weight = sky_mask[..., None]
-            denoised = image * (1 - weight) + denoised * weight
-
         written_path: Optional[Path] = None
         if output_path is not None:
             dest = Path(output_path).resolve()
-            try:
-                with ArtifactTransaction(self.shouldInterrupt) as transaction:
-                    staged = transaction.stage(dest)
-                    imwrite(
-                        staged,
-                        denoised,
-                        convertBGR=True,
-                        bit_depth=bit_depth,
-                        quality=settings.jpeg_quality,
-                        optimize=settings.jpeg_optimize,
-                        compression=settings.tiff_deflate_compression,
-                    )
-                    if self.shouldInterrupt():
-                        return None
+            transaction = artifacts or ArtifactTransaction(self.shouldInterrupt)
+            with nullcontext(transaction) if artifacts is not None else transaction:
+                staged = transaction.stage(dest)
+                written = imwrite(
+                    staged,
+                    denoised,
+                    convertBGR=True,
+                    bit_depth=bit_depth,
+                    quality=settings.jpeg_quality,
+                    optimize=settings.jpeg_optimize,
+                    compression=settings.tiff_deflate_compression,
+                )
+                if written != staged:
+                    written.unlink(missing_ok=True)
+                    raise OSError("Denoise staging path changed unexpectedly; output was not published.")
+                if self.shouldInterrupt():
+                    return None
+                if artifacts is None:
                     transaction.commit()
-            except CancelledError:
-                return None
             written_path = dest
 
         return denoised, written_path
