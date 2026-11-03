@@ -22,6 +22,7 @@ import numpy as np
 from startrails.lib.finish.composition import compute_denoise_endpoint_signature
 from startrails.lib.finish.defaults import (
     FINISH_DEFAULTS,
+    ROLE_DENOISE_ENDPOINT,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
@@ -803,7 +804,7 @@ class TestFinishDependencyUI(QtTestCase):
 
             endpoint_signature = compute_denoise_endpoint_signature("separation-a", graxpert_model_identity())
             endpoint = project.current_artifact_path(
-                ROLE_DENOISED_STARLESS,
+                ROLE_DENOISE_ENDPOINT,
                 options={"separation_signature": "separation-a", "denoise_signature": endpoint_signature},
             )
             self.assertIsNotNone(endpoint)
@@ -830,6 +831,7 @@ class TestFinishDependencyUI(QtTestCase):
         self.assertFalse(workflow.invalidate_if_graxpert_changed())
         project.denoise_model_identity = "previous-graxpert-model"
         self.assertTrue(workflow.invalidate_if_graxpert_changed())
+        self.assertIsNone(project.current_artifact_path(ROLE_DENOISE_ENDPOINT))
         self.assertIsNone(project.current_artifact_path(ROLE_DENOISED_STARLESS))
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
 
@@ -931,7 +933,7 @@ class TestFinishDependencyUI(QtTestCase):
         finished = project.current_artifact_path(ROLE_FINISHED_STARLESS)
         previous_bytes = finished.read_bytes()
         previous_pixels = imread(finished, to_rgb=True, as_float=True)
-        endpoint = project.artifact_path(ROLE_DENOISED_STARLESS, for_write=True)
+        endpoint = project.artifact_path(ROLE_DENOISE_ENDPOINT, for_write=True)
         self.assertFalse(endpoint.exists())
 
         project.update_settings(replace(project.get_settings(), denoise_strength=75.0, denoise_scope=SCOPE_WHOLE_IMAGE))

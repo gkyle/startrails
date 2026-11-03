@@ -421,6 +421,80 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         self.assertEqual(self.sidebar.recombineSettings.lbl_star_amount_value.text(), "35%")
         self.assertEqual(self.sidebar.recombineSettings.get_blend_mode(), "screen")
 
+    def test_recombine_slider_drag_holds_off_worker_until_release(self):
+        """While stars slider is held down (isSliderDown=True), recombine worker is held off until release."""
+        recombine_calls = []
+
+        def fake_recombine(**kwargs):
+            recombine_calls.append(True)
+            return (np.zeros((64, 64, 3)), self.composite_path)
+
+        slider = self.sidebar.recombineSettings.slider_star_amount
+        with patch.object(self.workflow, "do_recombine", side_effect=fake_recombine):
+            # 1. Mouse down / active drag
+            slider.setSliderDown(True)
+            slider.setValue(45)
+            QApplication.processEvents()
+
+            # Label updated immediately
+            self.assertEqual(self.sidebar.recombineSettings.lbl_star_amount_value.text(), "45%")
+            # Settings NOT yet committed, worker NOT executed
+            self.assertEqual(self.project.get_settings().star_amount, DEFAULT_STAR_AMOUNT_PERCENT)
+            self.assertEqual(recombine_calls, [])
+
+            # Even if timer was somehow started or timeout emits mid-drag, worker is held off
+            if self.view._recombine_timer is not None and self.view._recombine_timer.isActive():
+                self.view._recombine_timer.timeout.emit()
+                QApplication.processEvents()
+                self.assertEqual(recombine_calls, [])
+
+            # 2. Release slider
+            slider.setSliderDown(False)
+            slider.sliderReleased.emit()
+            QApplication.processEvents()
+
+            # Settings updated, debounce timer active
+            self.assertEqual(self.project.get_settings().star_amount, 45.0)
+            self.assertTrue(self.view._recombine_timer.isActive())
+            self.assertEqual(self.view._recombine_timer.interval(), 200)
+
+            # Timer fires after release
+            self.view._recombine_timer.timeout.emit()
+            QApplication.processEvents()
+            self.assertEqual(recombine_calls, [True])
+
+    def test_expanding_step4_card_triggers_recombination_when_composite_missing(self):
+        """Expanding Step 4 card triggers recombination when composite is not current."""
+        # Invalidate composite
+        self.project.invalidate_artifact_roles({ROLE_FINISHED_COMPOSITE})
+        self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
+        self.view.updateReadyStates()
+
+        recombine_calls = []
+
+        def fake_recombine(**kwargs):
+            recombine_calls.append(True)
+            self.project.record_artifact(
+                ROLE_FINISHED_COMPOSITE, self.composite_path, options={"separation_signature": "sep123"}
+            )
+            return (np.zeros((64, 64, 3)), self.composite_path)
+
+        with patch.object(self.workflow, "do_recombine", side_effect=fake_recombine):
+            # Expand recombine card
+            self.sidebar.recombineCard.setExpanded(True)
+            QApplication.processEvents()
+
+            self.assertIsNotNone(self.view._recombine_timer)
+            self.assertTrue(self.view._recombine_timer.isActive())
+
+            # Fire debounce timer
+            self.view._recombine_timer.timeout.emit()
+            QApplication.processEvents()
+
+            self.assertEqual(recombine_calls, [True])
+            self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
+            self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
+
 
 if __name__ == "__main__":
     import unittest

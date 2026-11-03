@@ -54,20 +54,20 @@ QRadioButton {
     font-weight: 500;
     spacing: 5px;
 }
-QPushButton#btn_run_denoise {
-    background-color: #0284c7;
-    color: #ffffff;
-    border-radius: 4px;
-    padding: 6px 12px;
-    font-weight: 600;
-    font-size: 12px;
+QRadioButton:focus {
+    border: none;
+    outline: none;
 }
-QPushButton#btn_run_denoise:hover {
-    background-color: #0369a1;
+QSlider {
+    border: none;
+    padding: 0px;
+    margin: 0px;
+    min-height: 20px;
+    max-height: 20px;
 }
-QPushButton#btn_run_denoise:disabled {
-    background-color: #cbd5e1;
-    color: #94a3b8;
+QSlider:focus {
+    border: none;
+    outline: none;
 }
 QPushButton#btn_reset {
     background-color: #ffffff;
@@ -84,6 +84,27 @@ QPushButton#btn_reset:disabled {
     background-color: #f8fafc;
     color: #cbd5e1;
     border-color: #e2e8f0;
+}
+QCheckBox#check_enable_denoise, QCheckBox#check_enable_sharpen {
+    spacing: 0px;
+    border: none;
+    padding: 0px;
+}
+QCheckBox#check_enable_denoise::indicator, QCheckBox#check_enable_sharpen::indicator {
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+}
+QCheckBox#check_enable_denoise::indicator:unchecked, QCheckBox#check_enable_sharpen::indicator:unchecked {
+    image: url(:/startrails/ui/switch_off.svg);
+}
+QCheckBox#check_enable_denoise::indicator:checked, QCheckBox#check_enable_sharpen::indicator:checked {
+    image: url(:/startrails/ui/switch_on.svg);
+}
+QCheckBox#check_enable_denoise:focus, QCheckBox#check_enable_sharpen:focus,
+QCheckBox#check_enable_denoise:focus:enabled, QCheckBox#check_enable_sharpen:focus:enabled {
+    border: none;
+    outline: none;
 }
 QLabel#lbl_status {
     color: #b91c1c;
@@ -188,6 +209,45 @@ QLabel#lbl_status {
       </item>
      </layout>
     </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="enableDenoiseRow">
+     <item>
+      <widget class="CheckboxLabel" name="lbl_enable_denoise">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #334155; font-size: 12px; font-weight: 600;</string>
+       </property>
+       <property name="text">
+        <string>Enable denoise</string>
+       </property>
+       <property name="buddy">
+        <cstring>check_enable_denoise</cstring>
+       </property>
+      </widget>
+     </item>
+     <item alignment="Qt::AlignmentFlag::AlignRight">
+      <widget class="QCheckBox" name="check_enable_denoise">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
+       </property>
+       <property name="accessibleName">
+        <string>Enable denoise</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QWidget" name="strength_container" native="true">
@@ -325,6 +385,45 @@ QLabel#lbl_status {
     </widget>
    </item>
    <item>
+    <layout class="QHBoxLayout" name="enableSharpenRow">
+     <item>
+      <widget class="CheckboxLabel" name="lbl_enable_sharpen">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #334155; font-size: 12px; font-weight: 600;</string>
+       </property>
+       <property name="text">
+        <string>Enable sharpen</string>
+       </property>
+       <property name="buddy">
+        <cstring>check_enable_sharpen</cstring>
+       </property>
+      </widget>
+     </item>
+     <item alignment="Qt::AlignmentFlag::AlignRight">
+      <widget class="QCheckBox" name="check_enable_sharpen">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
+       </property>
+       <property name="accessibleName">
+        <string>Enable sharpen</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
     <widget class="QWidget" name="structure_container" native="true">
      <layout class="QVBoxLayout" name="structure_layout">
       <property name="spacing">
@@ -458,19 +557,6 @@ QLabel#lbl_status {
       <number>6</number>
      </property>
      <item>
-      <widget class="QPushButton" name="btn_run_denoise">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="cursor">
-        <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="text">
-        <string>Run Denoise</string>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QPushButton" name="btn_reset">
        <property name="cursor">
         <cursorShape>PointingHandCursor</cursorShape>
@@ -494,6 +580,15 @@ QLabel#lbl_status {
    </item>
   </layout>
  </widget>
- <resources/>
+ <customwidgets>
+  <customwidget>
+   <class>CheckboxLabel</class>
+   <extends>QLabel</extends>
+   <header>startrails.ui.checkbox_label</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

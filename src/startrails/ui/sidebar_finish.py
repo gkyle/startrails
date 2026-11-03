@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 from startrails.lib.finish.defaults import (
     DEFAULT_BLEND_MODE,
     DEFAULT_STAR_AMOUNT_PERCENT,
+    ROLE_DENOISE_ENDPOINT,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
@@ -44,6 +45,7 @@ class FinishRecombineSettings(QWidget):
 
     star_amount_changed = Signal(float)
     blend_mode_changed = Signal(str)
+    slider_dragging = Signal()
     settings_changed = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -73,6 +75,10 @@ class FinishRecombineSettings(QWidget):
         self.slider_star_amount.setSingleStep(1)
         self.slider_star_amount.setPageStep(10)
         self.slider_star_amount.setValue(int(DEFAULT_STAR_AMOUNT_PERCENT))
+        self.slider_star_amount.setStyleSheet(
+            "QSlider { border: none; padding: 0px; margin: 0px; min-height: 20px; max-height: 20px; }"
+            "QSlider:focus { border: none; outline: none; }"
+        )
         layout.addWidget(self.slider_star_amount)
 
         fin_mode_layout = QHBoxLayout()
@@ -82,7 +88,8 @@ class FinishRecombineSettings(QWidget):
         self.combo_star_blend_mode.addItem("Add", "add")
         self.combo_star_blend_mode.addItem("Screen", "screen")
         self.combo_star_blend_mode.setStyleSheet(
-            "background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-size: 11px; color: #1e293b;"
+            "QComboBox { background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 6px; font-size: 11px; color: #1e293b; min-height: 20px; max-height: 24px; }"
+            "QComboBox:focus { border: 1px solid #0369a1; outline: none; }"
         )
         fin_mode_layout.addWidget(lbl_fin_mode)
         fin_mode_layout.addWidget(self.combo_star_blend_mode)
@@ -107,12 +114,27 @@ class FinishRecombineSettings(QWidget):
 
     def _init_events(self) -> None:
         self.slider_star_amount.valueChanged.connect(self._on_star_amount_changed)
+        self.slider_star_amount.sliderPressed.connect(self.slider_dragging.emit)
+        self.slider_star_amount.sliderReleased.connect(self._on_star_amount_slider_released)
         self.combo_star_blend_mode.currentIndexChanged.connect(self._on_star_blend_mode_changed)
 
     def _on_star_amount_changed(self, value: int) -> None:
         self.lbl_star_amount_value.setText(f"{value}%")
-        self.star_amount_changed.emit(float(value))
+        if self.slider_star_amount.isSliderDown():
+            self.slider_dragging.emit()
+        else:
+            self.star_amount_changed.emit(float(value))
+            self.settings_changed.emit()
+
+    def _on_star_amount_slider_released(self) -> None:
+        val = self.slider_star_amount.value()
+        self.lbl_star_amount_value.setText(f"{val}%")
+        self.star_amount_changed.emit(float(val))
         self.settings_changed.emit()
+
+    def is_slider_down(self) -> bool:
+        """Return True if the star amount slider is actively held down."""
+        return bool(self.slider_star_amount.isSliderDown())
 
     def _on_star_blend_mode_changed(self, index: int) -> None:
         data = self.combo_star_blend_mode.currentData()
@@ -267,6 +289,12 @@ class SidebarFinish(QWidget):
             if card is not expanded_card and card.ui.toggle.isChecked():
                 card.setExpanded(False)
 
+    def lock_output_files_height(self) -> None:
+        """Lock output files table to a constant 4-row height to prevent vertical position shifts."""
+        if hasattr(self, "outputFiles") and self.outputFiles.model.rowCount() > 0:
+            hh = self.outputFiles.ui.files.header().height() or 26
+            self.outputFiles.ui.files.setFixedHeight(hh + 4 * 24 + 4)
+
     def update_from_project(self, project: FinishProject, dimensions: Optional[tuple[int, int]]) -> None:
         """Update file sections and step prerequisites from active project."""
         self.separateSettings.set_stride(project.starnet_stride)
@@ -282,8 +310,16 @@ class SidebarFinish(QWidget):
         has_mask = project.current_artifact_path(ROLE_SKY_MASK) is not None
         has_starless = project.current_artifact_path(ROLE_SEPARATED_STARLESS) is not None
         has_stars = project.current_artifact_path(ROLE_SEPARATED_STARS) is not None
-        has_denoise_endpoint = project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
-        has_finished_starless = project.current_artifact_path(ROLE_FINISHED_STARLESS) is not None
+        settings = project.get_settings()
+        has_denoise_endpoint = (
+            project.current_artifact_path(ROLE_DENOISE_ENDPOINT) is not None
+            or project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
+        )
+        has_finished_starless = (
+            project.current_artifact_path(ROLE_FINISHED_STARLESS) is not None
+            if settings.enable_starless_sharpen
+            else project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
+        )
         has_composite = project.current_artifact_path(ROLE_FINISHED_COMPOSITE) is not None
 
         if hasattr(self, "skySettings"):

@@ -7,7 +7,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
-from PySide6.QtCore import QObject
+from PySide6.QtCore import QObject, QPoint
+from startrails.lib.file import OutputFile
 from startrails.lib.finish.defaults import (
     DEFAULT_DENOISE_SCOPE,
     DEFAULT_DENOISE_STRENGTH_PERCENT,
@@ -23,6 +24,7 @@ from startrails.lib.finish.defaults import (
     SCOPE_SKY_ONLY,
     SCOPE_WHOLE_IMAGE,
 )
+from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.image_io import imwrite
 from startrails.lib.project_finish import FinishProject
 from startrails.ui.canvasLabel import CanvasLabel
@@ -57,7 +59,10 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertEqual(self.widget.slider_detail.value(), 0)
         self.assertFalse(self.widget.unconfigured_box.isHidden())
         self.assertTrue(self.widget.configured_box.isHidden())
-        self.assertFalse(self.widget.btn_run_denoise.isEnabled())
+        self.assertTrue(self.widget.get_enable_denoise())
+        self.assertTrue(self.widget.get_enable_sharpen())
+        self.assertTrue(self.widget.check_enable_denoise.isChecked())
+        self.assertTrue(self.widget.check_enable_sharpen.isChecked())
 
     def test_strength_slider_interaction(self):
         """Dragging strength slider emits strength_changed and updates value label."""
@@ -118,15 +123,10 @@ class TestFinishStarlessSettings(QtTestCase):
 
     def test_button_signals(self):
         """Action buttons emit explicit requested signals."""
-        run_called = []
         reset_called = []
-        self.widget.run_denoise_requested.connect(lambda: run_called.append(True))
         self.widget.reset_requested.connect(lambda: reset_called.append(True))
 
-        self.widget.btn_run_denoise.setEnabled(True)
-        self.widget.btn_run_denoise.click()
         self.widget.btn_reset.click()
-        self.assertEqual(run_called, [True])
         self.assertEqual(reset_called, [True])
 
     def test_programmatic_setters_block_signals(self):
@@ -209,8 +209,65 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertEqual(self.widget.lbl_structure_value.text(), "33%")
         self.assertEqual(self.widget.lbl_detail_value.text(), "66%")
 
+    def test_enable_starless_toggle_and_control_enabling(self):
+        """Toggling check_enable_denoise and check_enable_sharpen enables/disables controls."""
+        self.assertTrue(self.widget.get_enable_denoise())
+        self.assertTrue(self.widget.get_enable_sharpen())
+        self.assertTrue(self.widget.check_enable_denoise.isChecked())
+        self.assertTrue(self.widget.check_enable_sharpen.isChecked())
+        self.assertTrue(self.widget.slider_strength.isEnabled())
+        self.assertTrue(self.widget.slider_structure.isEnabled())
+        self.assertTrue(self.widget.slider_detail.isEnabled())
+        self.assertTrue(self.widget.radio_sky_only.isEnabled())
+        self.assertTrue(self.widget.btn_reset.isEnabled())
+
+        denoise_sigs = []
+        sharpen_sigs = []
+        self.widget.enable_denoise_changed.connect(denoise_sigs.append)
+        self.widget.enable_sharpen_changed.connect(sharpen_sigs.append)
+
+        # Uncheck denoise
+        self.widget.check_enable_denoise.setChecked(False)
+        self.assertFalse(self.widget.get_enable_denoise())
+        self.assertEqual(denoise_sigs, [False])
+        self.assertFalse(self.widget.slider_strength.isEnabled())
+        self.assertFalse(self.widget.radio_sky_only.isEnabled())
+        self.assertFalse(self.widget.radio_whole_image.isEnabled())
+        self.assertTrue(self.widget.slider_structure.isEnabled())
+        self.assertTrue(self.widget.slider_detail.isEnabled())
+        self.assertTrue(self.widget.check_enable_denoise.isEnabled())
+        self.assertTrue(self.widget.btn_reset.isEnabled())
+
+        # Uncheck sharpen
+        self.widget.check_enable_sharpen.setChecked(False)
+        self.assertFalse(self.widget.get_enable_sharpen())
+        self.assertEqual(sharpen_sigs, [False])
+        self.assertFalse(self.widget.slider_structure.isEnabled())
+        self.assertFalse(self.widget.slider_detail.isEnabled())
+
+        # Programmatic setters block signals
+        self.widget.set_enable_denoise(True)
+        self.widget.set_enable_sharpen(True)
+        self.assertTrue(self.widget.get_enable_denoise())
+        self.assertTrue(self.widget.get_enable_sharpen())
+        self.assertTrue(self.widget.slider_strength.isEnabled())
+        self.assertTrue(self.widget.slider_structure.isEnabled())
+        self.assertEqual(denoise_sigs, [False])
+        self.assertEqual(sharpen_sigs, [False])
+
+        # Reset action also resets enable_denoise and enable_sharpen to True
+        self.widget.check_enable_denoise.setChecked(False)
+        self.widget.check_enable_sharpen.setChecked(False)
+        self.assertFalse(self.widget.get_enable_denoise())
+        self.assertFalse(self.widget.get_enable_sharpen())
+        self.widget.btn_reset.click()
+        self.assertTrue(self.widget.get_enable_denoise())
+        self.assertTrue(self.widget.get_enable_sharpen())
+        self.assertTrue(self.widget.check_enable_denoise.isChecked())
+        self.assertTrue(self.widget.check_enable_sharpen.isChecked())
+
     def test_refresh_status_verified_cuda(self):
-        """Verified CUDA policy displays provider info badge and enables Run Denoise."""
+        """Verified CUDA policy displays provider info badge."""
         status = {
             "policy": {"provider": "CUDAExecutionProvider", "variant": "cu133", "verified": True},
             "model_ready": True,
@@ -221,10 +278,9 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertTrue(self.widget.unconfigured_box.isHidden())
         self.assertFalse(self.widget.configured_box.isHidden())
         self.assertIn("CUDA (GPU)", self.widget.lbl_provider_info.text())
-        self.assertTrue(self.widget.btn_run_denoise.isEnabled())
 
     def test_refresh_status_verified_cpu(self):
-        """Verified CPU policy displays CPU badge and enables Run Denoise."""
+        """Verified CPU policy displays CPU badge."""
         status = {
             "policy": {"provider": "CPUExecutionProvider", "variant": "cpu", "verified": True},
             "model_ready": True,
@@ -235,7 +291,6 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertTrue(self.widget.unconfigured_box.isHidden())
         self.assertFalse(self.widget.configured_box.isHidden())
         self.assertIn("CPU", self.widget.lbl_provider_info.text())
-        self.assertTrue(self.widget.btn_run_denoise.isEnabled())
 
     def test_refresh_status_displays_fallback_and_configured_provider(self):
         """When execution_provider and fallback_reason are present, UI displays actual provider, fallback, and configured."""
@@ -254,50 +309,38 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertIn("CUDA out of memory", info_text)
         self.assertTrue(self.widget.unconfigured_box.isHidden())
         self.assertFalse(self.widget.configured_box.isHidden())
-        self.assertTrue(self.widget.btn_run_denoise.isEnabled())
 
-    def test_refresh_status_missing_model_disables_positive_strength_only(self):
-        """Missing GraXpert model shows warning and disables positive strength, but 0% is usable."""
+    def test_refresh_status_missing_model_shows_warning(self):
+        """Missing GraXpert model shows unconfigured warning."""
         status = {
             "policy": None,
             "model_ready": False,
             "setup_error": "Model file not found",
         }
-        # Strength > 0 and model missing -> button disabled
-        self.widget.set_strength(50.0)
         self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
         self.assertFalse(self.widget.unconfigured_box.isHidden())
         self.assertTrue(self.widget.configured_box.isHidden())
-        self.assertFalse(self.widget.btn_run_denoise.isEnabled())
 
-        # Zero-strength identity is safe even without GraXpert
-        self.widget.set_strength(0.0)
-        self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
-        self.assertTrue(self.widget.btn_run_denoise.isEnabled())
-
-    def test_cached_endpoint_enables_run_denoise_even_if_model_missing(self):
-        """When a cached endpoint exists, Run Denoise is enabled and surfaces cached blending."""
+    def test_cached_endpoint_surfaces_cached_blending_message(self):
+        """When a cached endpoint exists, notice indicates cached endpoint is available for blending."""
         status = {
             "policy": None,
             "model_ready": False,
             "setup_error": "Model file missing",
         }
-        self.widget.set_strength(60.0)
         self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=True)
 
         self.assertFalse(self.widget.unconfigured_box.isHidden())
         self.assertIn("Cached denoise endpoint is available for blending", self.widget.lbl_unconf_msg.text())
-        self.assertTrue(self.widget.btn_run_denoise.isEnabled())
 
-    def test_refresh_status_missing_prerequisites_disables_button(self):
-        """Missing prerequisites disables Run Denoise and adjustment sliders regardless of readiness."""
+    def test_refresh_status_missing_prerequisites_disables_controls(self):
+        """Missing prerequisites disables adjustment sliders regardless of readiness."""
         status = {
             "policy": {"provider": "CUDAExecutionProvider", "verified": True},
             "model_ready": True,
             "setup_error": None,
         }
         self.widget.refresh_status(status, has_prerequisites=False, has_endpoint=False)
-        self.assertFalse(self.widget.btn_run_denoise.isEnabled())
         self.assertFalse(self.widget.slider_strength.isEnabled())
         self.assertFalse(self.widget.radio_sky_only.isEnabled())
         self.assertFalse(self.widget.slider_structure.isEnabled())
@@ -510,11 +553,11 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             patch.object(FinishWorkflow, "do_recombine", side_effect=mock_recombine) as mock_r,
             patch.object(FinishWorkflow, "save_project") as mock_save,
         ):
-            self.sidebar.starlessSettings.btn_run_denoise.click()
+            self.view.on_run_denoise()
             self.qt.processEvents()
 
             mock_d.assert_called_once()
-            mock_r.assert_called_once()
+            mock_r.assert_not_called()
             mock_save.assert_called()
 
         # Check persisted project settings
@@ -559,7 +602,7 @@ class TestFinishViewStarlessInteraction(QtTestCase):
         self.assertEqual(self.project.get_settings().denoise_strength, 85.0)
 
     def test_strength_change_without_endpoint_does_not_infer_unless_zero(self):
-        """Changing strength without cached endpoint does not implicitly run inference when strength > 0."""
+        """Changing strength without cached endpoint does not implicitly run inference when strength > 0 and GraXpert unconfigured."""
         # Ensure no cached endpoint
         self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
 
@@ -569,8 +612,20 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             recompute_called.append(True)
             return None
 
-        with patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise):
-            # Move slider to 40% (positive, no endpoint -> no inference)
+        with (
+            patch.object(
+                FinishWorkflow,
+                "get_graxpert_status",
+                return_value={
+                    "policy": None,
+                    "model_ready": False,
+                    "setup_error": "Model missing",
+                    "configured": False,
+                },
+            ),
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise),
+        ):
+            # Move slider to 40% (positive, no endpoint and unconfigured -> no inference)
             self.sidebar.starlessSettings.slider_strength.setValue(40)
             if self.view._denoise_timer is not None:
                 self.view._denoise_timer.timeout.emit()
@@ -768,7 +823,7 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             self.assertFalse(self.view._denoise_timer.isActive())
 
     def test_structure_detail_change_without_endpoint_does_not_infer_unless_zero(self):
-        """Without cached endpoint, structure/detail changes do not run inference when strength > 0, but do when strength == 0."""
+        """Without cached endpoint, structure/detail changes do not run inference when strength > 0 and GraXpert unconfigured."""
         self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
         self.assertEqual(self.project.get_settings().denoise_strength, DEFAULT_DENOISE_STRENGTH_PERCENT)  # 50.0
 
@@ -778,8 +833,20 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             recompute_called.append(True)
             return None
 
-        with patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise):
-            # Change structure to 30% (positive strength, no endpoint -> no inference)
+        with (
+            patch.object(
+                FinishWorkflow,
+                "get_graxpert_status",
+                return_value={
+                    "policy": None,
+                    "model_ready": False,
+                    "setup_error": "Model missing",
+                    "configured": False,
+                },
+            ),
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise),
+        ):
+            # Change structure to 30% (positive strength, no endpoint and unconfigured -> no inference)
             self.sidebar.starlessSettings.slider_structure.setValue(30)
             if self.view._denoise_timer is not None and self.view._denoise_timer.isActive():
                 self.view._denoise_timer.timeout.emit()
@@ -787,7 +854,7 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             self.assertEqual(recompute_called, [])
             self.assertEqual(self.project.get_settings().structure_amount, 30.0)
 
-            # Change detail to 45% (positive strength, no endpoint -> no inference)
+            # Change detail to 45% (positive strength, no endpoint and unconfigured -> no inference)
             self.sidebar.starlessSettings.slider_detail.setValue(45)
             if self.view._denoise_timer is not None and self.view._denoise_timer.isActive():
                 self.view._denoise_timer.timeout.emit()
@@ -860,7 +927,7 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             patch.object(FinishWorkflow, "do_recombine"),
         ):
             self.sidebar.starlessSettings.set_strength(60.0)
-            self.sidebar.starlessSettings.btn_run_denoise.click()
+            self.view.on_run_denoise()
             self.qt.processEvents()
 
         self.assertEqual(recompute_called, [True])
@@ -941,6 +1008,198 @@ class TestFinishViewStarlessInteraction(QtTestCase):
         output_operations = [f.operation for f in self.sidebar.outputFiles.model.files]
         self.assertNotIn("Finished Starless", output_operations)
         self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+
+    def test_independent_toggles_switch_between_stored_outputs_without_worker(self):
+        """Toggling enable_denoise and enable_sharpen switches preview with zero recomputation."""
+        self.project.update_settings(replace(self.project.get_settings(), structure_amount=30.0))
+
+        denoised_path = self.root / "denoised_starless.tif"
+        imwrite(denoised_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, denoised_path)
+
+        finished_path = self.root / "finished_starless.tif"
+        imwrite(finished_path, np.full((512, 512, 3), 22000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(
+            ROLE_FINISHED_STARLESS, finished_path, options={"starless_filter_version": STARLESS_FILTER_VERSION}
+        )
+        self.view.updateReadyStates()
+
+        fin_file = OutputFile(basename=finished_path.name, path=str(finished_path), operation="Finished Starless")
+        self.view.showFile(fin_file)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        worker_called = []
+        with patch.object(FinishWorkflow, "do_denoise_starless", side_effect=lambda **kw: worker_called.append(True)):
+            # 1. Toggle Sharpen OFF -> immediately displays Denoised Starless
+            self.sidebar.starlessSettings.check_enable_sharpen.setChecked(False)
+            self.qt.processEvents()
+            self.assertEqual(Path(self.canvas.file.path).resolve(), denoised_path.resolve())
+            self.assertEqual(worker_called, [])
+
+            # 2. Toggle Sharpen back ON -> immediately displays Finished Starless without recomputation
+            self.sidebar.starlessSettings.check_enable_sharpen.setChecked(True)
+            self.qt.processEvents()
+            self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+            self.assertEqual(worker_called, [])
+
+            # 3. Toggle Denoise OFF -> immediately displays Starless
+            self.sidebar.starlessSettings.check_enable_denoise.setChecked(False)
+            self.qt.processEvents()
+            self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+            self.assertEqual(worker_called, [])
+
+            # 4. Toggle Denoise back ON -> immediately displays Finished Starless
+            self.sidebar.starlessSettings.check_enable_denoise.setChecked(True)
+            self.qt.processEvents()
+            self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+            self.assertEqual(worker_called, [])
+
+            # Artifacts remain valid on disk and in manifest
+            self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
+            self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+
+    def test_slider_interaction_produces_zero_vertical_reflow(self):
+        """Focusing, clicking, and updating sliders (and invalidating/publishing outputs) produces zero vertical shift."""
+        self.sidebar.starlessCard.setExpanded(True)
+        self.sidebar.recombineCard.setExpanded(True)
+        self.qt.processEvents()
+
+        # Capture initial vertical positions of all sliders mapped to sidebar coordinates
+        init_strength_y = self.sidebar.starlessSettings.slider_strength.mapTo(self.sidebar, QPoint(0, 0)).y()
+        init_structure_y = self.sidebar.starlessSettings.slider_structure.mapTo(self.sidebar, QPoint(0, 0)).y()
+        init_detail_y = self.sidebar.starlessSettings.slider_detail.mapTo(self.sidebar, QPoint(0, 0)).y()
+        init_star_amount_y = self.sidebar.recombineSettings.slider_star_amount.mapTo(self.sidebar, QPoint(0, 0)).y()
+
+        # Simulate slider interactions, focus transitions, and output invalidations
+        self.sidebar.starlessSettings.slider_strength.setFocus()
+        self.view.on_denoise_strength_changed(75.0)
+        self.qt.processEvents()
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_strength.mapTo(self.sidebar, QPoint(0, 0)).y(), init_strength_y
+        )
+
+        self.sidebar.starlessSettings.slider_structure.setFocus()
+        self.view.on_structure_amount_changed(40.0)
+        self.qt.processEvents()
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_structure.mapTo(self.sidebar, QPoint(0, 0)).y(), init_structure_y
+        )
+
+        self.sidebar.starlessSettings.slider_detail.setFocus()
+        self.view.on_detail_amount_changed(50.0)
+        self.qt.processEvents()
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_detail.mapTo(self.sidebar, QPoint(0, 0)).y(), init_detail_y
+        )
+
+        self.sidebar.recombineSettings.slider_star_amount.setFocus()
+        self.view.on_star_amount_changed(80.0)
+        self.qt.processEvents()
+        self.assertEqual(
+            self.sidebar.recombineSettings.slider_star_amount.mapTo(self.sidebar, QPoint(0, 0)).y(),
+            init_star_amount_y,
+        )
+
+        # Re-publish outputs and verify again
+        finished_path = self.root / "finished_starless.tif"
+        imwrite(finished_path, np.full((512, 512, 3), 22000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(
+            ROLE_FINISHED_STARLESS, finished_path, options={"starless_filter_version": STARLESS_FILTER_VERSION}
+        )
+        self.view.updateReadyStates()
+        self.qt.processEvents()
+
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_strength.mapTo(self.sidebar, QPoint(0, 0)).y(), init_strength_y
+        )
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_structure.mapTo(self.sidebar, QPoint(0, 0)).y(), init_structure_y
+        )
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_detail.mapTo(self.sidebar, QPoint(0, 0)).y(), init_detail_y
+        )
+        self.assertEqual(
+            self.sidebar.recombineSettings.slider_star_amount.mapTo(self.sidebar, QPoint(0, 0)).y(),
+            init_star_amount_y,
+        )
+
+    def test_canvas_stays_on_starless_image_when_changing_sliders(self):
+        """Slider changes invalidate Finished Starless but do NOT cause canvas to revert to source.tif."""
+        finished_path = self.root / "finished_starless.tif"
+        imwrite(finished_path, np.full((512, 512, 3), 22000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(
+            ROLE_FINISHED_STARLESS, finished_path, options={"starless_filter_version": STARLESS_FILTER_VERSION}
+        )
+        self.view.updateReadyStates()
+
+        fin_file = OutputFile(basename=finished_path.name, path=str(finished_path), operation="Finished Starless")
+        self.view.showFile(fin_file)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # Change strength: update_settings invalidates ROLE_FINISHED_STARLESS
+        self.view.on_denoise_strength_changed(75.0)
+        self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
+        # Canvas MUST stay on finished_starless.tif (not jumping to source.tif)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # Change structure
+        self.view.on_structure_amount_changed(40.0)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # Change detail
+        self.view.on_detail_amount_changed(30.0)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # If finished_starless.tif was deleted on disk, updateReadyStates falls back to Starless
+        finished_path.unlink()
+        self.view.updateReadyStates()
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+
+    def test_active_slider_drag_holds_off_worker_execution_until_release(self):
+        """While a slider is actively held down (isSliderDown=True), worker execution is held off until release."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        recompute_calls = []
+
+        def mock_denoise(**kwargs):
+            recompute_calls.append(True)
+            return np.zeros((512, 512, 3), dtype=np.float32), endpoint_path
+
+        slider = self.sidebar.starlessSettings.slider_strength
+        with patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise):
+            # 1. Mouse down / active drag starts
+            slider.setSliderDown(True)
+            slider.setValue(85)
+            self.qt.processEvents()
+
+            # Value label updated immediately for responsive visual feedback
+            self.assertEqual(self.sidebar.starlessSettings.lbl_strength_value.text(), "85%")
+            # Settings NOT yet committed, worker NOT executed
+            self.assertEqual(self.project.get_settings().denoise_strength, DEFAULT_DENOISE_STRENGTH_PERCENT)
+            self.assertEqual(recompute_calls, [])
+
+            # Even if timer was somehow started or timeout emits mid-drag, worker is held off
+            if self.view._denoise_timer is not None and self.view._denoise_timer.isActive():
+                self.view._denoise_timer.timeout.emit()
+                self.qt.processEvents()
+                self.assertEqual(recompute_calls, [])
+
+            # 2. Release slider
+            slider.setSliderDown(False)
+            slider.sliderReleased.emit()
+            self.qt.processEvents()
+
+            # Settings updated, debounce timer active
+            self.assertEqual(self.project.get_settings().denoise_strength, 85.0)
+            self.assertTrue(self.view._denoise_timer.isActive())
+            self.assertEqual(self.view._denoise_timer.interval(), 200)
+
+            # Timer fires after release
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_calls, [True])
 
 
 __all__ = [

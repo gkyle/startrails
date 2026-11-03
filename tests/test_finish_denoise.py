@@ -13,6 +13,7 @@ from PySide6.QtCore import QObject
 from startrails.lib.finish.composition import blend_denoise, compute_denoise_endpoint_signature
 from startrails.lib.finish.defaults import (
     FINISH_EXT,
+    ROLE_DENOISE_ENDPOINT,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
@@ -121,15 +122,23 @@ class TestFinishDenoise(QtTestCase):
             self.assertIsNotNone(result)
             self.assertEqual(inference_calls, 1)
 
-            endpoint_p = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
+            endpoint_p = self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT)
+            denoised_p = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
             finished_p = self.project.current_artifact_path(ROLE_FINISHED_STARLESS)
             self.assertIsNotNone(endpoint_p)
+            self.assertIsNotNone(denoised_p)
             self.assertIsNotNone(finished_p)
             self.assertTrue(endpoint_p.is_file())
+            self.assertTrue(denoised_p.is_file())
             self.assertTrue(finished_p.is_file())
 
             endpoint_pixels = imread(endpoint_p, to_rgb=True, as_float=True)
             np.testing.assert_allclose(endpoint_pixels, 0.45, atol=1e-3)
+            np.testing.assert_allclose(
+                imread(denoised_p, to_rgb=True, as_float=True),
+                imread(finished_p, to_rgb=True, as_float=True),
+                atol=1 / 65535,
+            )
 
             # Step 2: Change strength to 80% and run again
             settings = self.project.get_settings()
@@ -146,6 +155,11 @@ class TestFinishDenoise(QtTestCase):
             mask = self.workflow.get_current_mask()
             expected = blend_denoise(base_pixels, endpoint_pixels, mask, 80.0, SCOPE_SKY_ONLY)
             np.testing.assert_allclose(finished_pixels, expected, atol=1e-3)
+            np.testing.assert_allclose(
+                imread(denoised_p, to_rgb=True, as_float=True),
+                expected,
+                atol=1e-3,
+            )
 
             # Step 3: Change scope to whole_image
             settings = self.project.get_settings()
@@ -169,11 +183,16 @@ class TestFinishDenoise(QtTestCase):
 
         self.assertIsNotNone(result)
         finished_p = self.project.current_artifact_path(ROLE_FINISHED_STARLESS)
+        denoised_p = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
         separated_p = self.project.current_artifact_path(ROLE_SEPARATED_STARLESS)
         self.assertIsNotNone(finished_p)
+        self.assertIsNotNone(denoised_p)
+        self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT))
         finished = imread(finished_p, to_rgb=True, as_float=True)
+        denoised = imread(denoised_p, to_rgb=True, as_float=True)
         separated = imread(separated_p, to_rgb=True, as_float=True)
         np.testing.assert_allclose(finished, separated, atol=1e-4)
+        np.testing.assert_allclose(denoised, separated, atol=1e-4)
 
     def test_separation_change_invalidates_denoise_endpoint(self):
         """Re-running separation invalidates the denoise endpoint and finished starless."""
@@ -191,10 +210,11 @@ class TestFinishDenoise(QtTestCase):
         ):
             self.workflow.do_denoise_starless()
 
+        self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT))
         self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
         self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
 
-        # Re-running separation must invalidate denoise artifacts
+        # Re-running separation must invalidate all denoise artifacts
         def fake_starnet(executable, input_p, output_p, **kwargs):
             source = imread(input_p, to_rgb=True, as_float=False)
             model = (source.astype(np.float32) * 0.7).astype(np.uint16)
@@ -204,6 +224,7 @@ class TestFinishDenoise(QtTestCase):
         with patch.object(RunStarNet, "run", side_effect=fake_starnet):
             self.workflow.do_separate_stars(stride=128)
 
+        self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT))
         self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
         self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
 
@@ -223,17 +244,21 @@ class TestFinishDenoise(QtTestCase):
         ):
             self.workflow.do_denoise_starless()
 
-        endpoint_before = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
+        endpoint_before = self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT)
+        denoised_before = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
         finished_before = self.project.current_artifact_path(ROLE_FINISHED_STARLESS)
         self.assertIsNotNone(endpoint_before)
+        self.assertIsNotNone(denoised_before)
         self.assertIsNotNone(finished_before)
 
         # Reopen project from disk
         reloaded = jsonpickle.decode(self.proj_path.read_text(encoding="utf-8"))
-        endpoint_after = reloaded.current_artifact_path(ROLE_DENOISED_STARLESS)
+        endpoint_after = reloaded.current_artifact_path(ROLE_DENOISE_ENDPOINT)
+        denoised_after = reloaded.current_artifact_path(ROLE_DENOISED_STARLESS)
         finished_after = reloaded.current_artifact_path(ROLE_FINISHED_STARLESS)
 
         self.assertEqual(endpoint_before, endpoint_after)
+        self.assertEqual(denoised_before, denoised_after)
         self.assertEqual(finished_before, finished_after)
 
     def test_ui_denoise_card_status_and_prerequisites(self):
@@ -279,7 +304,8 @@ class TestFinishDenoise(QtTestCase):
         view.updateReadyStates()
         self.assertEqual(sidebar.starlessCard.status, "ready")
         self.assertEqual(sidebar.starlessCard.ui.subtitle.text(), "Ready to finish starless")
-        self.assertTrue(sidebar.starlessSettings.btn_run_denoise.isEnabled())
+        self.assertTrue(sidebar.starlessSettings.check_enable_denoise.isEnabled())
+        self.assertTrue(sidebar.starlessSettings.check_enable_sharpen.isEnabled())
 
         # Test slider updates settings
         sidebar.starlessSettings.slider_denoise_strength.setValue(72)
@@ -297,8 +323,8 @@ class TestFinishDenoise(QtTestCase):
         self.assertEqual(sidebar.starlessSettings.slider_denoise_strength.value(), 50)
         self.assertTrue(sidebar.starlessSettings.radio_sky_only.isChecked())
 
-    def test_workflow_applies_structure_and_detail_from_separated_base(self):
-        """Sharpening reruns from the separated plate and persists both amounts."""
+    def test_workflow_applies_structure_and_detail_to_denoised_plate(self):
+        """Sharpening reruns from the denoised plate and persists both amounts."""
         self.prepare_separated_project()
         separated_p = self.project.current_artifact_path(ROLE_SEPARATED_STARLESS)
         mask = self.workflow.get_current_mask()
@@ -307,11 +333,14 @@ class TestFinishDenoise(QtTestCase):
         settings = self.project.get_settings()
         self.project.update_settings(replace(settings, denoise_strength=0.0, structure_amount=100.0, detail_amount=0.0))
         self.assertIsNotNone(self.workflow.do_denoise_starless())
+        denoised_p = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
         finished_p = self.project.current_artifact_path(ROLE_FINISHED_STARLESS)
+        denoised = imread(denoised_p, to_rgb=True, as_float=True)
+        np.testing.assert_allclose(denoised, base, atol=1e-4)
         structure_output = imread(finished_p, to_rgb=True, as_float=True)
         np.testing.assert_allclose(
             structure_output,
-            sharpen_starless(base, mask, 100.0, 0.0),
+            sharpen_starless(denoised, mask, 100.0, 0.0),
             atol=1.5 / 65535,
         )
         options = self.project.artifact_manifest[ROLE_FINISHED_STARLESS]["options"]
@@ -321,16 +350,79 @@ class TestFinishDenoise(QtTestCase):
         self.project.update_settings(replace(self.project.get_settings(), structure_amount=0.0, detail_amount=100.0))
         self.assertIsNotNone(self.workflow.do_denoise_starless())
         detail_output = imread(self.project.current_artifact_path(ROLE_FINISHED_STARLESS), to_rgb=True, as_float=True)
-        # A second run starts from the separated plate, not the first sharpened result.
+        # A second run starts from the denoised plate, not the first sharpened result.
         np.testing.assert_allclose(
             detail_output,
-            sharpen_starless(base, mask, 0.0, 100.0),
+            sharpen_starless(denoised, mask, 0.0, 100.0),
             atol=1.5 / 65535,
         )
         self.assertGreater(float(np.max(np.abs(detail_output - structure_output))), 0.0)
         options = self.project.artifact_manifest[ROLE_FINISHED_STARLESS]["options"]
         self.assertEqual(options["structure_amount"], 0.0)
         self.assertEqual(options["detail_amount"], 100.0)
+
+    def test_structure_change_reuses_cached_denoised_plate_and_endpoint(self):
+        """Structure/Detail edits sharpen the retained denoised plate without re-blending."""
+        self.prepare_separated_project()
+        fake_session = MagicMock()
+        fake_session.denoise_full_strength.return_value = np.full((512, 512, 3), 0.45, dtype=np.float32)
+        real_imread = imread
+        read_paths: list[Path] = []
+
+        def tracking_imread(path, *args, **kwargs):
+            read_paths.append(Path(path).resolve())
+            return real_imread(path, *args, **kwargs)
+
+        with (
+            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
+            patch(
+                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
+                return_value={"provider": "CPUExecutionProvider"},
+            ),
+            patch("startrails.workflow.finish.imread", side_effect=tracking_imread),
+            patch("startrails.workflow.finish.blend_denoise", wraps=blend_denoise) as blend_mock,
+        ):
+            self.project.update_settings(
+                replace(
+                    self.project.get_settings(),
+                    denoise_strength=50.0,
+                    denoise_scope=SCOPE_SKY_ONLY,
+                    structure_amount=100.0,
+                    detail_amount=0.0,
+                )
+            )
+            self.assertIsNotNone(self.workflow.do_denoise_starless())
+            denoised_p = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
+            endpoint_p = self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT)
+            self.assertIsNotNone(denoised_p)
+            self.assertIsNotNone(endpoint_p)
+            denoised_bytes = denoised_p.read_bytes()
+            endpoint_bytes = endpoint_p.read_bytes()
+            denoised_pixels = imread(denoised_p, to_rgb=True, as_float=True)
+            self.assertEqual(blend_mock.call_count, 1)
+
+            read_paths.clear()
+            self.project.update_settings(
+                replace(self.project.get_settings(), structure_amount=40.0, detail_amount=60.0)
+            )
+            self.assertIsNotNone(self.workflow.do_denoise_starless())
+
+        self.assertEqual(fake_session.denoise_full_strength.call_count, 1)
+        self.assertEqual(blend_mock.call_count, 1)
+        self.assertEqual(read_paths, [])
+        self.assertEqual(self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT), endpoint_p)
+        self.assertEqual(self.project.current_artifact_path(ROLE_DENOISED_STARLESS), denoised_p)
+        self.assertEqual(denoised_p.read_bytes(), denoised_bytes)
+        self.assertEqual(endpoint_p.read_bytes(), endpoint_bytes)
+        np.testing.assert_allclose(
+            imread(
+                self.project.current_artifact_path(ROLE_FINISHED_STARLESS),
+                to_rgb=True,
+                as_float=True,
+            ),
+            sharpen_starless(denoised_pixels, self.workflow.get_current_mask(), 40.0, 60.0),
+            atol=1.5 / 65535,
+        )
 
     def test_workflow_sharpens_after_cached_denoise_blend_without_reinference(self):
         """Sharpening is applied to B + a*W*(D-B) and reuses the cached endpoint."""
@@ -377,6 +469,109 @@ class TestFinishDenoise(QtTestCase):
                 atol=1.5 / 65535,
             )
 
+    def test_recombine_respects_independent_starless_toggles(self):
+        """Recombination selects finished, denoised, or separated plate from the toggles."""
+        self.prepare_separated_project()
+        self.project.update_settings(replace(self.project.get_settings(), star_amount=0.0))
+        separated_p = self.project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+        self.assertIsNotNone(separated_p)
+        separated_pixels = imread(separated_p, to_rgb=True, as_float=True)
+
+        denoised_p = self.project.artifact_path(ROLE_DENOISED_STARLESS, for_write=True)
+        imwrite(denoised_p, np.full((512, 512, 3), 0.30, np.float32), convertBGR=False, bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, denoised_p)
+        finished_p = self.project.artifact_path(ROLE_FINISHED_STARLESS, for_write=True)
+        imwrite(finished_p, np.full((512, 512, 3), 0.25, np.float32), convertBGR=False, bit_depth=16)
+        self.project.record_artifact(
+            ROLE_FINISHED_STARLESS,
+            finished_p,
+            options={
+                "separation_signature": self.project.separation_signature,
+                "starless_filter_version": STARLESS_FILTER_VERSION,
+            },
+        )
+
+        expectations = (
+            (True, True, 0.25),
+            (True, False, 0.30),
+            (False, False, None),
+            (False, True, 0.25),
+        )
+        for enable_denoise, enable_sharpen, expected in expectations:
+            with self.subTest(enable_denoise=enable_denoise, enable_sharpen=enable_sharpen):
+                self.project.update_settings(
+                    replace(
+                        self.project.get_settings(),
+                        enable_starless_denoise=enable_denoise,
+                        enable_starless_sharpen=enable_sharpen,
+                    )
+                )
+                self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+                self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
+                with self.assertRaisesRegex(ValueError, "No current composite"):
+                    self.workflow.do_export_composite(self.root / "stale_toggle.tif")
+                self.assertIsNotNone(self.workflow.do_recombine())
+
+                composite = imread(
+                    self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE),
+                    to_rgb=True,
+                    as_float=True,
+                )
+                if expected is None:
+                    np.testing.assert_allclose(composite, separated_pixels, atol=1.5 / 65535)
+                else:
+                    np.testing.assert_allclose(composite, expected, atol=1.5 / 65535)
+
+                options = self.project.artifact_manifest[ROLE_FINISHED_COMPOSITE]["options"]
+                self.assertEqual(options["enable_starless_denoise"], enable_denoise)
+                self.assertEqual(options["enable_starless_sharpen"], enable_sharpen)
+                self.assertEqual(
+                    self.workflow.active_starless_role(),
+                    ROLE_FINISHED_STARLESS
+                    if enable_sharpen
+                    else (ROLE_DENOISED_STARLESS if enable_denoise else ROLE_SEPARATED_STARLESS),
+                )
+
+    def test_repeated_denoise_adjustments_reuse_decoded_plates(self):
+        """Cached endpoint adjustments do not decode the separated or endpoint plates again."""
+        self.prepare_separated_project()
+        fake_session = MagicMock()
+        fake_session.denoise_full_strength.return_value = np.full((512, 512, 3), 0.45, dtype=np.float32)
+        real_imread = imread
+        read_paths: list[Path] = []
+
+        def tracking_imread(path, *args, **kwargs):
+            read_paths.append(Path(path).resolve())
+            return real_imread(path, *args, **kwargs)
+
+        with (
+            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
+            patch(
+                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
+                return_value={"provider": "CPUExecutionProvider"},
+            ),
+            patch("startrails.workflow.finish.imread", side_effect=tracking_imread),
+        ):
+            self.assertIsNotNone(self.workflow.do_denoise_starless())
+            separated_p = self.project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+            endpoint_p = self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT)
+            self.assertIsNotNone(separated_p)
+            self.assertIsNotNone(endpoint_p)
+            self.assertIn(separated_p, read_paths)
+            # The newly computed endpoint is cached directly instead of decoded back.
+            self.assertNotIn(endpoint_p, read_paths)
+
+            read_paths.clear()
+            self.project.update_settings(replace(self.project.get_settings(), denoise_strength=80.0))
+            self.assertIsNotNone(self.workflow.do_denoise_starless())
+            self.project.update_settings(replace(self.project.get_settings(), denoise_scope=SCOPE_WHOLE_IMAGE))
+            self.assertIsNotNone(self.workflow.do_denoise_starless())
+
+        self.assertEqual(fake_session.denoise_full_strength.call_count, 1)
+        self.assertNotIn(separated_p, read_paths)
+        self.assertNotIn(endpoint_p, read_paths)
+        self.assertEqual(read_paths, [])
+
     def test_filter_version_change_invalidates_finished_descendants_only(self):
         """A new sharpening algorithm rebuilds the finished plate from the cached endpoint."""
         self.prepare_separated_project()
@@ -403,8 +598,10 @@ class TestFinishDenoise(QtTestCase):
             export_path = self.create_synthetic_image("version_export.tif")
             self.project.record_export(export_path)
 
-            endpoint = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
+            endpoint = self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT)
+            denoised = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
             self.assertIsNotNone(endpoint)
+            self.assertIsNotNone(denoised)
             self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
             self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
             self.assertIsNotNone(self.project.current_export_path())
@@ -413,7 +610,8 @@ class TestFinishDenoise(QtTestCase):
 
             self.project.artifact_manifest[ROLE_FINISHED_STARLESS]["options"]["starless_filter_version"] = 0
             self.assertTrue(self.workflow.invalidate_if_starless_filter_changed())
-            self.assertEqual(self.project.current_artifact_path(ROLE_DENOISED_STARLESS), endpoint)
+            self.assertEqual(self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT), endpoint)
+            self.assertEqual(self.project.current_artifact_path(ROLE_DENOISED_STARLESS), denoised)
             self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
             self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
             self.assertIsNone(self.project.current_export_path())
@@ -449,13 +647,16 @@ class TestFinishDenoise(QtTestCase):
             self.assertIsNotNone(self.workflow.do_denoise_starless())
             self.assertIsNotNone(self.workflow.do_recombine())
             self.project.record_export(self.create_synthetic_image("stale_export.tif"))
-            endpoint = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
+            endpoint = self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT)
+            denoised = self.project.current_artifact_path(ROLE_DENOISED_STARLESS)
             self.assertIsNotNone(endpoint)
+            self.assertIsNotNone(denoised)
             self.assertEqual(fake_session.denoise_full_strength.call_count, 1)
 
             self.project.artifact_manifest[ROLE_FINISHED_STARLESS]["options"]["starless_filter_version"] = 0
             self.assertIsNone(self.workflow.do_recombine())
-            self.assertEqual(self.project.current_artifact_path(ROLE_DENOISED_STARLESS), endpoint)
+            self.assertEqual(self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT), endpoint)
+            self.assertEqual(self.project.current_artifact_path(ROLE_DENOISED_STARLESS), denoised)
             self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
             self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
             self.assertIsNone(self.project.current_export_path())
@@ -468,7 +669,8 @@ class TestFinishDenoise(QtTestCase):
             self.project.artifact_manifest[ROLE_FINISHED_STARLESS]["options"]["starless_filter_version"] = 0
             with self.assertRaisesRegex(ValueError, "No current composite"):
                 self.workflow.do_export_composite(self.root / "never_written.tif")
-            self.assertEqual(self.project.current_artifact_path(ROLE_DENOISED_STARLESS), endpoint)
+            self.assertEqual(self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT), endpoint)
+            self.assertEqual(self.project.current_artifact_path(ROLE_DENOISED_STARLESS), denoised)
             self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
             self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
             self.assertIsNone(self.project.current_export_path())
@@ -499,7 +701,12 @@ class TestFinishDenoise(QtTestCase):
                             self.workflow.do_export_composite(destination)
                         self.assertFalse(destination.exists())
 
-                    for role in (ROLE_DENOISED_STARLESS, ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE):
+                    for role in (
+                        ROLE_DENOISE_ENDPOINT,
+                        ROLE_DENOISED_STARLESS,
+                        ROLE_FINISHED_STARLESS,
+                        ROLE_FINISHED_COMPOSITE,
+                    ):
                         self.assertIsNone(self.project.current_artifact_path(role))
                     self.assertIsNotNone(self.project.current_artifact_path(ROLE_SEPARATED_STARLESS))
 

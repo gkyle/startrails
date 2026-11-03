@@ -14,6 +14,7 @@ from support import QtTestCase
 from startrails.lib.finish.defaults import (
     BLEND_SCREEN,
     FINISH_DEFAULTS,
+    ROLE_DENOISE_ENDPOINT,
     ROLE_DENOISED_STARLESS,
     FINISH_EXT,
     ROLE_FINISHED_COMPOSITE,
@@ -148,6 +149,9 @@ class TestFinishProject(QtTestCase):
         # are the only star-layer controls.
         self.assertEqual(FINISH_DEFAULTS.star_amount, 100.0)
         self.assertEqual(FINISH_DEFAULTS.blend_mode, "add")
+        self.assertTrue(FINISH_DEFAULTS.enable_starless_denoise)
+        self.assertTrue(FINISH_DEFAULTS.enable_starless_sharpen)
+        self.assertIn("enable_starless_finishing", RETIRED_FINISH_SETTING_NAMES)
         self.assertFalse(set(RETIRED_FINISH_SETTING_NAMES) & set(FINISH_DEFAULTS.__dataclass_fields__))
         for removed in RETIRED_FINISH_SETTING_NAMES:
             self.assertNotIn(removed, FINISH_DEFAULTS.__dataclass_fields__)
@@ -325,37 +329,110 @@ class TestFinishProject(QtTestCase):
         starless = self.create_synthetic_image("settings.finish/starless.tif", bit_depth=16)
         stars = self.create_synthetic_image("settings.finish/stars.tif", bit_depth=16)
         composite = self.create_synthetic_image("settings.finish/composite.tif", bit_depth=16)
+        endpoint = self.create_synthetic_image("settings.finish/denoise_endpoint.tif", bit_depth=16)
         denoised = self.create_synthetic_image("settings.finish/denoised.tif", bit_depth=16)
         finished_starless = self.create_synthetic_image("settings.finish/finished_starless.tif", bit_depth=16)
         export = self.create_synthetic_image("settings.finish/export.tif", bit_depth=16)
         project.record_artifact(ROLE_SEPARATED_STARLESS, starless)
         project.record_artifact(ROLE_SEPARATED_STARS, stars)
+        project.record_artifact(ROLE_DENOISE_ENDPOINT, endpoint)
         project.record_artifact(ROLE_DENOISED_STARLESS, denoised)
         project.record_artifact(ROLE_FINISHED_STARLESS, finished_starless)
         project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
         project.record_export(export)
 
         project.update_settings(replace(project.get_settings(), jpeg_quality=90))
-        self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
-        self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
-        self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
+        for role in (
+            ROLE_SEPARATED_STARLESS,
+            ROLE_DENOISE_ENDPOINT,
+            ROLE_DENOISED_STARLESS,
+            ROLE_FINISHED_STARLESS,
+            ROLE_FINISHED_COMPOSITE,
+        ):
+            self.assertIsNotNone(project.current_artifact_path(role))
         self.assertIsNone(project.current_export_path())
 
         project.record_export(export)
         project.update_settings(replace(project.get_settings(), blend_mode=BLEND_SCREEN))
-        self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
-        self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
+        for role in (
+            ROLE_SEPARATED_STARLESS,
+            ROLE_DENOISE_ENDPOINT,
+            ROLE_DENOISED_STARLESS,
+            ROLE_FINISHED_STARLESS,
+        ):
+            self.assertIsNotNone(project.current_artifact_path(role))
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
         self.assertIsNone(project.current_export_path())
 
         project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
         project.update_settings(replace(project.get_settings(), structure_amount=10.0))
         self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_DENOISE_ENDPOINT))
         self.assertIsNotNone(project.current_artifact_path(ROLE_DENOISED_STARLESS))
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
 
-    def test_denoise_publication_persists_endpoint_and_invalidates_composite_export(self):
+        project.record_artifact(ROLE_FINISHED_STARLESS, finished_starless)
+        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
+        project.update_settings(replace(project.get_settings(), denoise_strength=60.0))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_DENOISE_ENDPOINT))
+        self.assertIsNone(project.current_artifact_path(ROLE_DENOISED_STARLESS))
+        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
+        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
+        self.assertIsNone(project.current_export_path())
+
+    def test_toggling_starless_stages_preserves_stored_starless_layers(self):
+        """Denoise and sharpen toggles are composite-only; stored plates survive."""
+        project = FinishProject(project_file=str(self.root / f"starless_toggle{FINISH_EXT}"))
+        source = self.create_synthetic_image("toggle_source.tif")
+        project.set_source_image(source)
+        starless = self.create_synthetic_image("toggle.finish/starless.tif", bit_depth=16)
+        stars = self.create_synthetic_image("toggle.finish/stars.tif", bit_depth=16)
+        endpoint = self.create_synthetic_image("toggle.finish/denoise_endpoint.tif", bit_depth=16)
+        denoised = self.create_synthetic_image("toggle.finish/denoised.tif", bit_depth=16)
+        finished_starless = self.create_synthetic_image("toggle.finish/finished_starless.tif", bit_depth=16)
+        composite = self.create_synthetic_image("toggle.finish/composite.tif", bit_depth=16)
+        export = self.create_synthetic_image("toggle.finish/export.tif", bit_depth=16)
+        project.record_artifact(ROLE_SEPARATED_STARLESS, starless)
+        project.record_artifact(ROLE_SEPARATED_STARS, stars)
+        project.record_artifact(ROLE_DENOISE_ENDPOINT, endpoint)
+        project.record_artifact(ROLE_DENOISED_STARLESS, denoised)
+        project.record_artifact(ROLE_FINISHED_STARLESS, finished_starless)
+        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
+        project.record_export(export)
+
+        self.assertTrue(FINISH_DEFAULTS.enable_starless_denoise)
+        self.assertTrue(FINISH_DEFAULTS.enable_starless_sharpen)
+        for enable_denoise in (False, True):
+            for enable_sharpen in (False, True):
+                with self.subTest(enable_denoise=enable_denoise, enable_sharpen=enable_sharpen):
+                    if project.current_artifact_path(ROLE_FINISHED_COMPOSITE) is None:
+                        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
+                    project.record_export(export)
+                    self.assertIsNotNone(project.current_export_path())
+
+                    project.update_settings(
+                        replace(
+                            project.get_settings(),
+                            enable_starless_denoise=enable_denoise,
+                            enable_starless_sharpen=enable_sharpen,
+                        )
+                    )
+
+                    settings = project.get_settings()
+                    self.assertEqual(settings.enable_starless_denoise, enable_denoise)
+                    self.assertEqual(settings.enable_starless_sharpen, enable_sharpen)
+                    self.assertEqual(project.current_artifact_path(ROLE_SEPARATED_STARLESS), starless)
+                    self.assertEqual(project.current_artifact_path(ROLE_DENOISE_ENDPOINT), endpoint)
+                    self.assertEqual(project.current_artifact_path(ROLE_DENOISED_STARLESS), denoised)
+                    self.assertEqual(project.current_artifact_path(ROLE_FINISHED_STARLESS), finished_starless)
+                    self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
+                    self.assertIsNone(project.current_export_path())
+                    # All stored plates remain on disk for instant comparison.
+                    for path in (starless, endpoint, denoised, finished_starless):
+                        self.assertTrue(path.is_file(), path)
+
+    def test_denoise_publication_persists_separate_outputs_and_invalidates_composite_export(self):
         project = FinishProject(project_file=str(self.root / f"denoise{FINISH_EXT}"))
         source = self.create_synthetic_image("denoise_source.tif")
         project.set_source_image(source)
@@ -377,12 +454,13 @@ class TestFinishProject(QtTestCase):
         project.record_export(export)
         self.assertIsNotNone(project.current_export_path())
 
-        endpoint = self.create_synthetic_image("denoise.finish/denoised.tif", bit_depth=16)
-        finished = self.create_synthetic_image("denoise.finish/finished.tif", bit_depth=16)
+        endpoint = self.create_synthetic_image("denoise.finish/denoise_endpoint.tif", bit_depth=16)
+        denoised = self.create_synthetic_image("denoise.finish/denoised_starless.tif", bit_depth=16)
+        finished = self.create_synthetic_image("denoise.finish/finished_starless.tif", bit_depth=16)
         revision = project.processing_revision
         self.assertTrue(
             project.publish_denoise_results(
-                finished,
+                denoised,
                 separation_signature="separation-a",
                 expected_revision=revision,
                 strength=50.0,
@@ -390,6 +468,7 @@ class TestFinishProject(QtTestCase):
                 structure_amount=35.0,
                 detail_amount=15.0,
                 starless_filter_version=STARLESS_FILTER_VERSION,
+                finished_starless_path=finished,
                 endpoint_path=endpoint,
                 endpoint_signature="endpoint-key",
                 model_identity="graxpert-model",
@@ -397,22 +476,54 @@ class TestFinishProject(QtTestCase):
         )
         self.assertEqual(project.denoise_signature, "endpoint-key")
         self.assertEqual(project.denoise_model_identity, "graxpert-model")
-        self.assertEqual(project.current_artifact_path(ROLE_DENOISED_STARLESS), endpoint)
+        self.assertEqual(project.current_artifact_path(ROLE_DENOISE_ENDPOINT), endpoint)
+        self.assertEqual(project.current_artifact_path(ROLE_DENOISED_STARLESS), denoised)
         self.assertEqual(project.current_artifact_path(ROLE_FINISHED_STARLESS), finished)
+
+        endpoint_options = project.artifact_manifest[ROLE_DENOISE_ENDPOINT]["options"]
+        self.assertEqual(endpoint_options["separation_signature"], "separation-a")
+        self.assertEqual(endpoint_options["denoise_signature"], "endpoint-key")
+        self.assertNotIn("structure_amount", endpoint_options)
+
+        denoised_options = project.artifact_manifest[ROLE_DENOISED_STARLESS]["options"]
+        self.assertEqual(denoised_options["denoise_strength"], 50.0)
+        self.assertEqual(denoised_options["denoise_scope"], "sky_only")
+        self.assertNotIn("structure_amount", denoised_options)
+        self.assertNotIn("starless_filter_version", denoised_options)
+
         finished_options = project.artifact_manifest[ROLE_FINISHED_STARLESS]["options"]
+        self.assertEqual(finished_options["denoise_strength"], 50.0)
+        self.assertEqual(finished_options["denoise_scope"], "sky_only")
         self.assertEqual(finished_options["structure_amount"], 35.0)
         self.assertEqual(finished_options["detail_amount"], 15.0)
         self.assertEqual(finished_options["starless_filter_version"], STARLESS_FILTER_VERSION)
-        self.assertNotIn("structure_amount", project.artifact_manifest[ROLE_DENOISED_STARLESS]["options"])
-        self.assertNotIn("starless_filter_version", project.artifact_manifest[ROLE_DENOISED_STARLESS]["options"])
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
         self.assertIsNone(project.current_export_path())
+
+        # Publishing only the denoised plate preserves an already-current finished plate.
+        finished_record = project.artifact_manifest[ROLE_FINISHED_STARLESS]
+        self.assertTrue(
+            project.publish_denoise_results(
+                denoised,
+                separation_signature="separation-a",
+                expected_revision=project.processing_revision,
+                strength=50.0,
+                scope="sky_only",
+                structure_amount=35.0,
+                detail_amount=15.0,
+                starless_filter_version=STARLESS_FILTER_VERSION,
+                endpoint_signature="endpoint-key",
+                model_identity="graxpert-model",
+            )
+        )
+        self.assertEqual(project.artifact_manifest[ROLE_FINISHED_STARLESS], finished_record)
+        self.assertEqual(project.current_artifact_path(ROLE_FINISHED_STARLESS), finished)
 
         # A stale job cannot replace the just-published plates.
         stale_revision = revision - 1
         self.assertFalse(
             project.publish_denoise_results(
-                finished,
+                denoised,
                 separation_signature="separation-a",
                 expected_revision=stale_revision,
                 strength=100.0,
@@ -420,11 +531,17 @@ class TestFinishProject(QtTestCase):
                 structure_amount=100.0,
                 detail_amount=100.0,
                 starless_filter_version=STARLESS_FILTER_VERSION,
+                finished_starless_path=finished,
             )
         )
 
         project.invalidate_denoise_descendants()
-        for role in (ROLE_DENOISED_STARLESS, ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE):
+        for role in (
+            ROLE_DENOISE_ENDPOINT,
+            ROLE_DENOISED_STARLESS,
+            ROLE_FINISHED_STARLESS,
+            ROLE_FINISHED_COMPOSITE,
+        ):
             self.assertIsNone(project.current_artifact_path(role))
         self.assertIsNone(project.denoise_signature)
         self.assertIsNone(project.denoise_model_identity)

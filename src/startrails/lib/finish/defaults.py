@@ -22,6 +22,7 @@ ROLE_SKY_MASK: Final[str] = "sky_mask"
 ROLE_UNMASKED_STARLESS: Final[str] = "unmasked_starless"
 ROLE_SEPARATED_STARLESS: Final[str] = "separated_starless"
 ROLE_SEPARATED_STARS: Final[str] = "separated_stars"
+ROLE_DENOISE_ENDPOINT: Final[str] = "denoise_endpoint"
 ROLE_DENOISED_STARLESS: Final[str] = "denoised_starless"
 ROLE_FINISHED_STARLESS: Final[str] = "finished_starless"
 ROLE_FINISHED_COMPOSITE: Final[str] = "finished_composite"
@@ -41,6 +42,8 @@ DEFAULT_STRUCTURE_AMOUNT_PERCENT: Final[float] = 0.0
 DEFAULT_DETAIL_AMOUNT_PERCENT: Final[float] = 0.0
 DEFAULT_STAR_AMOUNT_PERCENT: Final[float] = 100.0
 DEFAULT_BLEND_MODE: Final[str] = BLEND_ADD
+DEFAULT_ENABLE_STARLESS_DENOISE: Final[bool] = True
+DEFAULT_ENABLE_STARLESS_SHARPEN: Final[bool] = True
 
 # Settings retired by Step 10B and removed with Finish Stars in Step 10R. Old
 # development projects may still contain them; loading drops them instead of
@@ -57,12 +60,17 @@ RETIRED_FINISH_SETTING_NAMES: Final[Tuple[str, ...]] = (
     "glow_star_count",
     "original_stars_amount",
     "original_stars_blend_mode",
+    "enable_starless_finishing",
 )
 
 # Recombination controls change the composite only; stored layers stay valid.
+# Toggling Denoise or Sharpen keeps all three starless plates on disk so the user
+# can compare them without recomputing, and each toggle selects which plate is used.
 COMPOSITION_ONLY_SETTING_NAMES: Final[Tuple[str, ...]] = (
     "star_amount",
     "blend_mode",
+    "enable_starless_denoise",
+    "enable_starless_sharpen",
 )
 
 # Lossless intermediates preserve soft mask/model precision even for 8-bit sources.
@@ -101,13 +109,16 @@ class FinishSettings:
     # Denoise step
     denoise_strength: float = DEFAULT_DENOISE_STRENGTH_PERCENT
     denoise_scope: DenoiseScopeType = DEFAULT_DENOISE_SCOPE
+    enable_starless_denoise: bool = DEFAULT_ENABLE_STARLESS_DENOISE
 
     # Starless sharpening
     structure_amount: float = DEFAULT_STRUCTURE_AMOUNT_PERCENT
     detail_amount: float = DEFAULT_DETAIL_AMOUNT_PERCENT
+    enable_starless_sharpen: bool = DEFAULT_ENABLE_STARLESS_SHARPEN
 
     # Recombination & Export. The separated stars layer is used unchanged;
-    # Stars Amount and the blend mode are its only controls.
+    # Stars Amount and the blend mode are its only controls, while the starless
+    # toggles select which stored plate recombination uses.
     star_amount: float = DEFAULT_STAR_AMOUNT_PERCENT
     blend_mode: BlendModeType = DEFAULT_BLEND_MODE
     jpeg_quality: int = DEFAULT_JPEG_QUALITY

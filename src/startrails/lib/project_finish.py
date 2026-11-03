@@ -30,6 +30,7 @@ from startrails.lib.finish.defaults import (
     ROLE_UNMASKED_STARLESS,
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
+    ROLE_DENOISE_ENDPOINT,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
@@ -47,6 +48,7 @@ _ARTIFACT_FILENAMES: Dict[str, str] = {
     ROLE_UNMASKED_STARLESS: "unmasked_starless.tif",
     ROLE_SEPARATED_STARLESS: "starless.tif",
     ROLE_SEPARATED_STARS: "stars.tif",
+    ROLE_DENOISE_ENDPOINT: "denoise_endpoint.tif",
     ROLE_DENOISED_STARLESS: "denoised_starless.tif",
     ROLE_FINISHED_STARLESS: "finished_starless.tif",
     ROLE_FINISHED_COMPOSITE: "composite.tif",
@@ -58,6 +60,7 @@ _ARTIFACT_PATH_FIELDS: Dict[str, str] = {
     ROLE_UNMASKED_STARLESS: "unmasked_starless_path",
     ROLE_SEPARATED_STARLESS: "separated_starless_path",
     ROLE_SEPARATED_STARS: "separated_stars_path",
+    ROLE_DENOISE_ENDPOINT: "denoise_endpoint_path",
     ROLE_DENOISED_STARLESS: "denoised_starless_path",
     ROLE_FINISHED_STARLESS: "finished_starless_path",
     ROLE_FINISHED_COMPOSITE: "composite_path",
@@ -172,6 +175,7 @@ class FinishProject(Unpickle):
         unmasked_starless_path: Optional[Union[str, Path]] = None,
         separated_starless_path: Optional[Union[str, Path]] = None,
         separated_stars_path: Optional[Union[str, Path]] = None,
+        denoise_endpoint_path: Optional[Union[str, Path]] = None,
         denoised_starless_path: Optional[Union[str, Path]] = None,
         finished_starless_path: Optional[Union[str, Path]] = None,
         composite_path: Optional[Union[str, Path]] = None,
@@ -192,6 +196,7 @@ class FinishProject(Unpickle):
         self.unmasked_starless_path: Optional[Union[str, Path]] = unmasked_starless_path
         self.separated_starless_path: Optional[Union[str, Path]] = separated_starless_path
         self.separated_stars_path: Optional[Union[str, Path]] = separated_stars_path
+        self.denoise_endpoint_path: Optional[Union[str, Path]] = denoise_endpoint_path
         self.denoised_starless_path: Optional[Union[str, Path]] = denoised_starless_path
         self.finished_starless_path: Optional[Union[str, Path]] = finished_starless_path
         self.composite_path: Optional[Union[str, Path]] = composite_path
@@ -451,6 +456,7 @@ class FinishProject(Unpickle):
         if role in (
             ROLE_SEPARATED_STARLESS,
             ROLE_SEPARATED_STARS,
+            ROLE_DENOISE_ENDPOINT,
             ROLE_DENOISED_STARLESS,
             ROLE_FINISHED_STARLESS,
             ROLE_FINISHED_COMPOSITE,
@@ -459,12 +465,9 @@ class FinishProject(Unpickle):
             artifact_signature = record.get("options", {}).get("separation_signature")
             if artifact_signature is not None and artifact_signature != self.separation_signature:
                 return False
-        if role == ROLE_DENOISED_STARLESS:
+        if role in (ROLE_DENOISE_ENDPOINT, ROLE_DENOISED_STARLESS, ROLE_FINISHED_STARLESS):
             artifact_signature = record.get("options", {}).get("denoise_signature")
             if artifact_signature is not None and artifact_signature != self.denoise_signature:
-                return False
-            sep_signature = record.get("options", {}).get("separation_signature")
-            if sep_signature is not None and sep_signature != self.separation_signature:
                 return False
         return bool(
             record["source"] == self._source_key()
@@ -557,6 +560,7 @@ class FinishProject(Unpickle):
         """Discard outputs derived from the separated layers without invalidating them."""
         with self._state_lock:
             descendant_roles = (
+                ROLE_DENOISE_ENDPOINT,
                 ROLE_DENOISED_STARLESS,
                 ROLE_FINISHED_STARLESS,
                 ROLE_FINISHED_COMPOSITE,
@@ -570,16 +574,23 @@ class FinishProject(Unpickle):
             self.invalidate_export()
 
     def invalidate_denoise_descendants(self) -> None:
-        """Discard the cached denoise endpoint and the plates built from it."""
+        """Discard the internal endpoint and the plates built from it."""
         self.invalidate_artifact_roles(
-            {ROLE_DENOISED_STARLESS, ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE}
+            {
+                ROLE_DENOISE_ENDPOINT,
+                ROLE_DENOISED_STARLESS,
+                ROLE_FINISHED_STARLESS,
+                ROLE_FINISHED_COMPOSITE,
+                _EXPORT_ROLE,
+            }
         )
 
     def invalidate_starless_filter_descendants(self) -> None:
         """Discard finished plates built by another sharpening algorithm version.
 
-        The full-strength denoise endpoint is independent of Structure/Detail and
-        remains a valid base for rebuilding the finished plate.
+        Both the internal endpoint and the user-blended denoised plate are
+        independent of Structure/Detail and remain valid bases for rebuilding
+        the finished plate.
         """
         self.invalidate_artifact_roles({ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
 
@@ -599,7 +610,7 @@ class FinishProject(Unpickle):
                 elif role in _ARTIFACT_PATH_FIELDS:
                     setattr(self, _ARTIFACT_PATH_FIELDS[role], None)
                 self.artifact_manifest.pop(role, None)
-            if ROLE_DENOISED_STARLESS in roles:
+            if ROLE_DENOISE_ENDPOINT in roles:
                 self.denoise_signature = None
                 self.denoise_model_identity = None
             if ROLE_FINISHED_COMPOSITE in roles:
@@ -673,7 +684,7 @@ class FinishProject(Unpickle):
 
     def publish_denoise_results(
         self,
-        finished_path: Union[str, Path],
+        denoised_starless_path: Optional[Union[str, Path]] = None,
         *,
         separation_signature: str,
         expected_revision: int,
@@ -682,19 +693,21 @@ class FinishProject(Unpickle):
         structure_amount: float,
         detail_amount: float,
         starless_filter_version: int,
+        finished_starless_path: Optional[Union[str, Path]] = None,
         endpoint_path: Optional[Union[str, Path]] = None,
         endpoint_signature: Optional[str] = None,
         model_identity: Optional[str] = None,
         transaction: Optional[ArtifactTransaction] = None,
     ) -> bool:
-        """Atomically publish a finished-starless blend and, when computed, its endpoint.
+        """Publish any updated starless denoise outputs in one transaction.
 
-        The full-strength endpoint is keyed by its inference signature. Strength,
-        scope, Structure and Detail only describe the finished blend, so changing
-        them never requires a new endpoint. The finished artifact records the
-        Structure/Detail amounts and sharpening algorithm version that produced it.
-        A new finished starless plate invalidates the previous composite and export
-        because both were built from the replaced plate.
+        Denoise and sharpening are independent stages: the internal full-strength
+        endpoint, the user-blended denoised plate, and the sharpened finished plate
+        each have their own artifact. Callers pass only the plates that changed;
+        omitted roles keep their existing records, so a sharpening-only update
+        preserves a current denoised plate and a denoise-only update preserves any
+        current finished plate. Every published plate invalidates the composite and
+        export derived from it.
         """
         with self._state_lock:
             if not np.isfinite(structure_amount) or not 0 <= structure_amount <= PERCENT_SCALE:
@@ -710,55 +723,60 @@ class FinishProject(Unpickle):
             ):
                 return False
 
-            finished = Path(finished_path).resolve()
-            finished_stamp = _file_stamp(finished)
-            if finished_stamp is None:
-                raise FileNotFoundError(f"Cannot register a missing finished starless image: {finished}")
+            published: Dict[str, Path] = {}
+            for role, value in (
+                (ROLE_DENOISE_ENDPOINT, endpoint_path),
+                (ROLE_DENOISED_STARLESS, denoised_starless_path),
+                (ROLE_FINISHED_STARLESS, finished_starless_path),
+            ):
+                if value is None:
+                    continue
+                path = Path(value).resolve()
+                if path in published.values():
+                    raise ValueError("Denoise endpoint, denoised starless and finished starless paths must differ.")
+                published[role] = path
 
-            endpoint: Optional[Path] = None
-            endpoint_stamp = None
-            if endpoint_path is not None:
-                if endpoint_signature is None or model_identity is None:
-                    raise ValueError("A published denoise endpoint requires its signature and model identity.")
-                endpoint = Path(endpoint_path).resolve()
-                if endpoint == finished:
-                    raise ValueError("Denoise endpoint and finished starless paths must differ.")
-                endpoint_stamp = _file_stamp(endpoint)
-                if endpoint_stamp is None:
-                    raise FileNotFoundError(f"Cannot register a missing denoise endpoint: {endpoint}")
+            if ROLE_DENOISE_ENDPOINT in published and (endpoint_signature is None or model_identity is None):
+                raise ValueError("A published denoise endpoint requires its signature and model identity.")
+
+            stamps = {role: _file_stamp(path) for role, path in published.items()}
+            missing = [str(path) for role, path in published.items() if stamps[role] is None]
+            if missing:
+                raise FileNotFoundError(f"Cannot register missing denoise outputs: {', '.join(missing)}")
 
             source = self._source_key()
             common_options = {
                 "separation_signature": separation_signature,
                 "denoise_signature": endpoint_signature,
             }
-            if endpoint is not None:
-                self.artifact_manifest[ROLE_DENOISED_STARLESS] = {
-                    "source": source,
-                    "file": list(endpoint_stamp),
-                    "revision": self.processing_revision,
-                    "options": dict(common_options),
-                }
-                setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_DENOISED_STARLESS], str(endpoint))
+            if endpoint_signature is not None and model_identity is not None:
                 self.denoise_signature = endpoint_signature
                 self.denoise_model_identity = model_identity
 
-            self.artifact_manifest[ROLE_FINISHED_STARLESS] = {
-                "source": source,
-                "file": list(finished_stamp),
-                "revision": self.processing_revision,
-                "options": dict(
-                    common_options,
-                    strength=float(strength),
-                    scope=scope,
-                    structure_amount=float(structure_amount),
-                    detail_amount=float(detail_amount),
-                    starless_filter_version=starless_filter_version,
-                ),
-            }
-            setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_STARLESS], str(finished))
+            for role, path in published.items():
+                options = dict(common_options)
+                if role == ROLE_DENOISED_STARLESS:
+                    options.update(
+                        denoise_strength=float(strength),
+                        denoise_scope=scope,
+                    )
+                elif role == ROLE_FINISHED_STARLESS:
+                    options.update(
+                        denoise_strength=float(strength),
+                        denoise_scope=scope,
+                        structure_amount=float(structure_amount),
+                        detail_amount=float(detail_amount),
+                        starless_filter_version=starless_filter_version,
+                    )
+                self.artifact_manifest[role] = {
+                    "source": source,
+                    "file": list(stamps[role]),
+                    "revision": self.processing_revision,
+                    "options": options,
+                }
+                setattr(self, _ARTIFACT_PATH_FIELDS[role], str(path))
 
-            # Composite and export were derived from the previous finished plate.
+            # Composite and export were derived from the previous starless plates.
             setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_COMPOSITE], None)
             self.final_output_path = None
             self.artifact_manifest.pop(ROLE_FINISHED_COMPOSITE, None)
@@ -816,11 +834,24 @@ class FinishProject(Unpickle):
                 self.invalidate_results(preserve_unmasked=True)
             else:
                 invalidated_roles: set[str] = set()
-                if changed & {"denoise_strength", "denoise_scope", "structure_amount", "detail_amount"}:
+                if changed & {"denoise_strength", "denoise_scope"}:
+                    # Rebuild the user-blended plate from the retained endpoint,
+                    # then any finished plate that was derived from it.
+                    invalidated_roles.update(
+                        {
+                            ROLE_DENOISED_STARLESS,
+                            ROLE_FINISHED_STARLESS,
+                            ROLE_FINISHED_COMPOSITE,
+                            _EXPORT_ROLE,
+                        }
+                    )
+                if changed & {"structure_amount", "detail_amount"}:
+                    # Sharpen only: both the endpoint and the denoised plate stay
+                    # current, so the finished plate is rebuilt from them.
                     invalidated_roles.update({ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
                 if changed & set(COMPOSITION_ONLY_SETTING_NAMES):
-                    # Stars Amount and blend mode change recombination only; the
-                    # finished starless plate remains a valid base.
+                    # Starless toggles and recombination controls change the
+                    # composite only; all three stored starless plates remain valid.
                     invalidated_roles.update({ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
                 if changed & {"jpeg_quality", "jpeg_optimize", "tiff_deflate_compression"}:
                     invalidated_roles.add(_EXPORT_ROLE)

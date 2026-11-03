@@ -6,7 +6,7 @@ from concurrent.futures import CancelledError
 from dataclasses import replace
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Final, Optional
 
 from PySide6.QtCore import QSignalBlocker, QTimer
 from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox, QWidget
@@ -18,8 +18,11 @@ from startrails.lib.finish.defaults import (
     DEFAULT_DENOISE_SCOPE,
     DEFAULT_DENOISE_STRENGTH_PERCENT,
     DEFAULT_DETAIL_AMOUNT_PERCENT,
+    DEFAULT_ENABLE_STARLESS_DENOISE,
+    DEFAULT_ENABLE_STARLESS_SHARPEN,
     DEFAULT_STAR_AMOUNT_PERCENT,
     DEFAULT_STRUCTURE_AMOUNT_PERCENT,
+    ROLE_DENOISE_ENDPOINT,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
@@ -42,6 +45,7 @@ if TYPE_CHECKING:
 _SOURCE_IMAGE_FILTER = (
     "Supported Images (*.jpg *.jpeg *.tif *.tiff);;TIFF (*.tif *.tiff);;JPEG (*.jpg *.jpeg);;All Files (*)"
 )
+FINISH_SLIDER_DEBOUNCE_MS: Final[int] = 200
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +124,15 @@ class FinishView(ModeView):
             self.connect_signal(self.sidebar.separateSettings.stride_changed, self.on_starnet_stride_changed)
 
         if hasattr(self.sidebar, "starlessSettings"):
+            if hasattr(self.sidebar.starlessSettings, "enable_denoise_changed"):
+                self.connect_signal(
+                    self.sidebar.starlessSettings.enable_denoise_changed, self.on_enable_denoise_changed
+                )
+            if hasattr(self.sidebar.starlessSettings, "enable_sharpen_changed"):
+                self.connect_signal(
+                    self.sidebar.starlessSettings.enable_sharpen_changed, self.on_enable_sharpen_changed
+                )
+            self.connect_signal(self.sidebar.starlessSettings.enable_starless_changed, self.on_enable_starless_changed)
             self.connect_signal(self.sidebar.starlessSettings.run_denoise_requested, self.on_run_denoise)
             self.connect_signal(
                 self.sidebar.starlessSettings.denoise_strength_changed, self.on_denoise_strength_changed
@@ -129,11 +142,19 @@ class FinishView(ModeView):
                 self.sidebar.starlessSettings.structure_amount_changed, self.on_structure_amount_changed
             )
             self.connect_signal(self.sidebar.starlessSettings.detail_amount_changed, self.on_detail_amount_changed)
+            self.connect_signal(self.sidebar.starlessSettings.slider_dragging, self._on_starless_slider_dragging)
             self.connect_signal(self.sidebar.starlessSettings.reset_requested, self.on_reset_starless)
+
+        if hasattr(self.sidebar, "starlessCard"):
+            self.connect_signal(self.sidebar.starlessCard.expanded, self._on_starless_card_expanded)
 
         if hasattr(self.sidebar, "recombineSettings"):
             self.connect_signal(self.sidebar.recombineSettings.star_amount_changed, self.on_star_amount_changed)
             self.connect_signal(self.sidebar.recombineSettings.blend_mode_changed, self.on_blend_mode_changed)
+            self.connect_signal(self.sidebar.recombineSettings.slider_dragging, self._on_recombine_slider_dragging)
+
+        if hasattr(self.sidebar, "recombineCard"):
+            self.connect_signal(self.sidebar.recombineCard.expanded, self._on_recombine_card_expanded)
 
     def teardown(self) -> None:
         """Disconnect signals and clean up canvas and mask controller state."""
@@ -294,6 +315,7 @@ class FinishView(ModeView):
             self.sidebar.update_from_project(self._project, dimensions)
             self.sidebar.inputFiles.set_files(self.app.workflow.getInputFileList())
             self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
+            self.sidebar.lock_output_files_height()
             if self._project.source_is_current() and self._project.source_file is not None:
                 self.sidebar.inputFiles.focus_file(self._project.source_file)
             if hasattr(self.sidebar, "skySettings"):
@@ -330,9 +352,10 @@ class FinishView(ModeView):
                 self.app.workflow.invalidate_if_starless_filter_changed()
             self.sidebar.inputFiles.set_files(self.app.workflow.getInputFileList())
             self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
+            self.sidebar.lock_output_files_height()
             self.sidebar.update_prerequisites(self._project)
             # If the canvas is showing a file that is no longer available, fall
-            # back to the source so the user isn't left on a stale preview.
+            # back cleanly without unnecessarily reverting to source.
             canvas = getattr(self.shell, "canvas_main", None)
             current_file = getattr(canvas, "file", None) if canvas is not None else None
             if current_file is not None:
@@ -341,8 +364,66 @@ class FinishView(ModeView):
                     getattr(f, "path", None)
                     for f in self.sidebar.inputFiles.model.files + self.sidebar.outputFiles.model.files
                 }
-                if current_path not in available and self._project.source_is_current():
-                    self.showFile(self._project.source_file, preserve_view=True)
+                if current_path not in available:
+                    curr_p = None
+                    try:
+                        if current_path:
+                            curr_p = Path(current_path).resolve()
+                    except Exception:
+                        pass
+
+                    separated_starless_path = self._project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+                    has_separated_starless = separated_starless_path is not None
+
+                    is_fin_starless = False
+                    is_comp = False
+                    is_starless_artifact = False
+                    try:
+                        if curr_p is not None:
+                            fin_starless_p = self._project.artifact_path(ROLE_FINISHED_STARLESS).resolve()
+                            comp_p = self._project.artifact_path(ROLE_FINISHED_COMPOSITE).resolve()
+                            denoised_starless_p = self._project.artifact_path(ROLE_DENOISED_STARLESS).resolve()
+                            sep_starless_p = self._project.artifact_path(ROLE_SEPARATED_STARLESS).resolve()
+
+                            is_fin_starless = (
+                                curr_p == fin_starless_p
+                                or curr_p
+                                == self._project.artifact_path(ROLE_FINISHED_STARLESS, for_write=True).resolve()
+                                or curr_p.name == "finished_starless.tif"
+                            )
+                            is_comp = (
+                                curr_p == comp_p
+                                or curr_p
+                                == self._project.artifact_path(ROLE_FINISHED_COMPOSITE, for_write=True).resolve()
+                                or curr_p.name == "composite.tif"
+                            )
+                            is_starless_artifact = (
+                                is_fin_starless
+                                or is_comp
+                                or curr_p in (denoised_starless_p, sep_starless_p)
+                                or curr_p.name in ("denoised_starless.tif", "starless.tif")
+                            )
+                    except Exception:
+                        pass
+
+                    file_exists = curr_p.exists() if curr_p is not None else False
+
+                    if (is_fin_starless or is_comp) and file_exists and has_separated_starless:
+                        # Leave the current starless (or composite) image on the canvas
+                        pass
+                    elif is_starless_artifact and not file_exists:
+                        if has_separated_starless:
+                            starless_file = OutputFile(
+                                basename=separated_starless_path.name,
+                                path=str(separated_starless_path),
+                                operation="Starless",
+                            )
+                            self.sidebar.outputFiles.focus_file(starless_file)
+                            self.showFile(starless_file, preserve_view=True)
+                        elif self._project.source_is_current():
+                            self.showFile(self._project.source_file, preserve_view=True)
+                    elif self._project.source_is_current():
+                        self.showFile(self._project.source_file, preserve_view=True)
 
     def on_import_source(self) -> None:
         """Prompt user for a source image and import/replace it in the project."""
@@ -574,7 +655,10 @@ class FinishView(ModeView):
         if self._denoise_timer is not None and self._denoise_timer.isActive():
             self._denoise_timer.stop()
 
-        has_endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
+        has_endpoint = (
+            self._project.current_artifact_path(ROLE_DENOISE_ENDPOINT) is not None
+            or self._project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
+        )
 
         if hasattr(self.sidebar, "starlessSettings"):
             strength = self.sidebar.starlessSettings.get_strength()
@@ -609,13 +693,10 @@ class FinishView(ModeView):
 
         def on_done():
             self.updateReadyStates()
-            p = self._project.current_artifact_path(ROLE_FINISHED_STARLESS) or self._project.current_artifact_path(
-                ROLE_DENOISED_STARLESS
-            )
-            if p:
-                denoised_file = OutputFile(basename=p.name, path=str(p), operation="Finished Starless")
-                self.sidebar.outputFiles.focus_file(denoised_file)
-                self.showFile(denoised_file, preserve_view=True, reload=True)
+            active_file = self._active_starless_output_file()
+            if active_file is not None and Path(active_file.path).exists():
+                self.sidebar.outputFiles.focus_file(active_file)
+                self.showFile(active_file, preserve_view=True, reload=True)
 
         def on_cancelled():
             self._show_task_error("finish_denoise", "Cancelled")
@@ -630,7 +711,6 @@ class FinishView(ModeView):
             )
             result = workflow.do_denoise_starless(progress_bar=progress_updater.tick)
             if result is not None:
-                workflow.do_recombine()
                 deliver_result(on_done)
             else:
                 deliver_result(on_cancelled)
@@ -651,8 +731,7 @@ class FinishView(ModeView):
         self._project.update_settings(replace(settings, denoise_strength=value))
         self.app.workflow.save_project()
         self.updateReadyStates()
-        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
-        if endpoint is not None or value == 0.0:
+        if settings.enable_starless_denoise:
             self._debounce_denoise_preview()
 
     def on_denoise_scope_changed(self, scope: str) -> None:
@@ -663,8 +742,7 @@ class FinishView(ModeView):
         self._project.update_settings(replace(settings, denoise_scope=scope))
         self.app.workflow.save_project()
         self.updateReadyStates()
-        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
-        if endpoint is not None or settings.denoise_strength == 0.0:
+        if settings.enable_starless_denoise:
             self._debounce_denoise_preview()
 
     def on_structure_amount_changed(self, value: float) -> None:
@@ -675,8 +753,7 @@ class FinishView(ModeView):
         self._project.update_settings(replace(settings, structure_amount=value))
         self.app.workflow.save_project()
         self.updateReadyStates()
-        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
-        if endpoint is not None or settings.denoise_strength == 0.0:
+        if settings.enable_starless_sharpen:
             self._debounce_denoise_preview()
 
     def on_detail_amount_changed(self, value: float) -> None:
@@ -687,8 +764,98 @@ class FinishView(ModeView):
         self._project.update_settings(replace(settings, detail_amount=value))
         self.app.workflow.save_project()
         self.updateReadyStates()
-        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
-        if endpoint is not None or settings.denoise_strength == 0.0:
+        if settings.enable_starless_sharpen:
+            self._debounce_denoise_preview()
+
+    def _active_starless_output_file(self) -> Optional[OutputFile]:
+        """Return the OutputFile that matches the active denoise and sharpen toggle state."""
+        settings = self._project.get_settings()
+        enable_denoise = settings.enable_starless_denoise
+        enable_sharpen = settings.enable_starless_sharpen
+
+        sep_p = self._project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+        denoised_p = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
+        finished_p = self._project.current_artifact_path(ROLE_FINISHED_STARLESS)
+
+        if not enable_denoise:
+            if sep_p:
+                return OutputFile(basename=sep_p.name, path=str(sep_p), operation="Starless")
+            return None
+
+        # Denoise is enabled:
+        if enable_sharpen and finished_p:
+            return OutputFile(basename=finished_p.name, path=str(finished_p), operation="Finished Starless")
+
+        if denoised_p:
+            return OutputFile(basename=denoised_p.name, path=str(denoised_p), operation="Denoised Starless")
+
+        if sep_p:
+            return OutputFile(basename=sep_p.name, path=str(sep_p), operation="Starless")
+
+        return None
+
+    def on_enable_denoise_changed(self, enabled: bool) -> None:
+        """Toggle starless denoising and switch canvas preview without recomputation when current."""
+        settings = self._project.get_settings()
+        self._project.update_settings(replace(settings, enable_starless_denoise=enabled))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+
+        active_file = self._active_starless_output_file()
+        if active_file is not None and Path(active_file.path).exists():
+            self.sidebar.outputFiles.focus_file(active_file)
+            self.showFile(active_file, preserve_view=True)
+        elif enabled:
+            self._debounce_denoise_preview()
+
+    def on_enable_sharpen_changed(self, enabled: bool) -> None:
+        """Toggle starless sharpening and switch canvas preview without recomputation when current."""
+        settings = self._project.get_settings()
+        self._project.update_settings(replace(settings, enable_starless_sharpen=enabled))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+
+        active_file = self._active_starless_output_file()
+        if active_file is not None and Path(active_file.path).exists():
+            self.sidebar.outputFiles.focus_file(active_file)
+            self.showFile(active_file, preserve_view=True)
+        elif enabled:
+            self._debounce_denoise_preview()
+
+    def on_enable_starless_changed(self, enabled: bool) -> None:
+        """Compatibility handler for enable_starless_changed signal."""
+        self.on_enable_denoise_changed(enabled)
+
+    def _on_starless_card_expanded(self) -> None:
+        """When Starless card is expanded, ensure active starless output is displayed or computed."""
+        if not self._project or not self._project.source_is_current():
+            return
+        if self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is None:
+            return
+
+        active_file = self._active_starless_output_file()
+        if active_file is not None and Path(active_file.path).exists():
+            self.sidebar.outputFiles.focus_file(active_file)
+            self.showFile(active_file, preserve_view=True)
+            return
+
+        settings = self._project.get_settings()
+        enable_denoise = settings.enable_starless_denoise
+        enable_sharpen = settings.enable_starless_sharpen
+
+        graxpert_status = (
+            self.app.workflow.get_graxpert_status() if hasattr(self.app.workflow, "get_graxpert_status") else {}
+        )
+        graxpert_ready = bool(
+            graxpert_status.get("configured") or (graxpert_status.get("model_ready") and graxpert_status.get("policy"))
+        )
+        has_endpoint = (
+            self._project.current_artifact_path(ROLE_DENOISE_ENDPOINT) is not None
+            or self._project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
+        )
+        can_denoise = enable_denoise and (graxpert_ready or has_endpoint or settings.denoise_strength == 0.0)
+
+        if can_denoise or enable_sharpen:
             self._debounce_denoise_preview()
 
     def on_reset_starless(self) -> None:
@@ -697,6 +864,8 @@ class FinishView(ModeView):
         self._project.update_settings(
             replace(
                 settings,
+                enable_starless_denoise=DEFAULT_ENABLE_STARLESS_DENOISE,
+                enable_starless_sharpen=DEFAULT_ENABLE_STARLESS_SHARPEN,
                 denoise_strength=DEFAULT_DENOISE_STRENGTH_PERCENT,
                 denoise_scope=DEFAULT_DENOISE_SCOPE,
                 structure_amount=DEFAULT_STRUCTURE_AMOUNT_PERCENT,
@@ -707,9 +876,7 @@ class FinishView(ModeView):
         if hasattr(self.sidebar, "starlessSettings"):
             self.sidebar.starlessSettings.set_from_project(self._project)
         self.updateReadyStates()
-        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
-        if endpoint is not None:
-            self._debounce_denoise_preview()
+        self._debounce_denoise_preview()
 
     def _debounce_denoise_preview(self) -> None:
         """Debounce rapid slider interactions before updating blend and composite."""
@@ -717,10 +884,13 @@ class FinishView(ModeView):
             self._denoise_timer = QTimer(self.sidebar)
             self._denoise_timer.setSingleShot(True)
             self._denoise_timer.timeout.connect(self._apply_interactive_denoise)
-        self._denoise_timer.start(100)
+        self._denoise_timer.start(FINISH_SLIDER_DEBOUNCE_MS)
 
     def _apply_interactive_denoise(self) -> None:
         """Apply strength/scope blending from cached endpoint and recompose preview."""
+        if self._is_starless_slider_down():
+            self._debounce_denoise_preview()
+            return
         if not self._result_guard()():
             return
         if not self._project or not self._project.source_is_current():
@@ -728,8 +898,23 @@ class FinishView(ModeView):
         if self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is None:
             return
 
-        endpoint = self._project.current_artifact_path(ROLE_DENOISED_STARLESS)
-        if endpoint is None and self._project.get_settings().denoise_strength > 0.0:
+        settings = self._project.get_settings()
+        endpoint = self._project.current_artifact_path(ROLE_DENOISE_ENDPOINT) or self._project.current_artifact_path(
+            ROLE_DENOISED_STARLESS
+        )
+        graxpert_status = (
+            self.app.workflow.get_graxpert_status() if hasattr(self.app.workflow, "get_graxpert_status") else {}
+        )
+        graxpert_ready = bool(
+            graxpert_status.get("configured") or (graxpert_status.get("model_ready") and graxpert_status.get("policy"))
+        )
+        enable_denoise = settings.enable_starless_denoise
+        enable_sharpen = settings.enable_starless_sharpen
+
+        if enable_denoise:
+            if not (endpoint is not None or settings.denoise_strength == 0.0 or graxpert_ready):
+                return
+        elif not enable_sharpen:
             return
 
         deliver_result = self._get_post_result()
@@ -738,13 +923,10 @@ class FinishView(ModeView):
 
         def on_done():
             self.updateReadyStates()
-            p = self._project.current_artifact_path(ROLE_FINISHED_STARLESS) or self._project.current_artifact_path(
-                ROLE_DENOISED_STARLESS
-            )
-            if p:
-                denoised_file = OutputFile(basename=p.name, path=str(p), operation="Finished Starless")
-                self.sidebar.outputFiles.focus_file(denoised_file)
-                self.showFile(denoised_file, preserve_view=True, reload=True)
+            active_file = self._active_starless_output_file()
+            if active_file is not None and Path(active_file.path).exists():
+                self.sidebar.outputFiles.focus_file(active_file)
+                self.showFile(active_file, preserve_view=True, reload=True)
 
         def on_cancelled():
             pass
@@ -759,7 +941,6 @@ class FinishView(ModeView):
             )
             result = workflow.do_denoise_starless(progress_bar=progress_updater.tick)
             if result is not None:
-                workflow.do_recombine()
                 deliver_result(on_done)
             else:
                 deliver_result(on_cancelled)
@@ -794,6 +975,45 @@ class FinishView(ModeView):
         self.updateReadyStates()
         self._debounce_recombine()
 
+    def _is_starless_slider_down(self) -> bool:
+        if self.sidebar and hasattr(self.sidebar, "starlessSettings"):
+            return self.sidebar.starlessSettings.is_slider_down()
+        return False
+
+    def _is_recombine_slider_down(self) -> bool:
+        if self.sidebar and hasattr(self.sidebar, "recombineSettings"):
+            return self.sidebar.recombineSettings.is_slider_down()
+        return False
+
+    def _on_starless_slider_dragging(self) -> None:
+        if self._denoise_timer is not None and self._denoise_timer.isActive():
+            self._denoise_timer.start(FINISH_SLIDER_DEBOUNCE_MS)
+
+    def _on_recombine_slider_dragging(self) -> None:
+        if self._recombine_timer is not None and self._recombine_timer.isActive():
+            self._recombine_timer.start(FINISH_SLIDER_DEBOUNCE_MS)
+
+    def _on_recombine_card_expanded(self) -> None:
+        """When Recombine card is expanded, ensure composite is built and displayed."""
+        if not self._project or not self._project.source_is_current():
+            return
+        has_starless = self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is not None
+        has_stars = self._project.current_artifact_path(ROLE_SEPARATED_STARS) is not None
+        composite_path = self._project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
+
+        if has_starless and has_stars:
+            if composite_path is None:
+                self._debounce_recombine()
+            else:
+                composite_file = OutputFile(
+                    basename=composite_path.name, path=str(composite_path), operation="Composite"
+                )
+                self.sidebar.outputFiles.focus_file(composite_file)
+                canvas = getattr(self.shell, "canvas_main", None)
+                if canvas is not None and hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
+                    return
+                self.showFile(composite_file, preserve_view=True)
+
     def _debounce_recombine(self) -> None:
         """Debounce rapid slider interactions before updating recombine composite."""
         if self._disposed or self.sidebar is None:
@@ -802,10 +1022,13 @@ class FinishView(ModeView):
             self._recombine_timer = QTimer(self.sidebar)
             self._recombine_timer.setSingleShot(True)
             self._recombine_timer.timeout.connect(self._apply_interactive_recombine)
-        self._recombine_timer.start(100)
+        self._recombine_timer.start(FINISH_SLIDER_DEBOUNCE_MS)
 
     def _apply_interactive_recombine(self) -> None:
         """Execute fullres layer recombination outside GUI thread and update composite preview."""
+        if self._is_recombine_slider_down():
+            self._debounce_recombine()
+            return
         if not self._result_guard()():
             return
         if not self._project or not self._project.source_is_current():
