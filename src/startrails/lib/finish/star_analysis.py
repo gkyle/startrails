@@ -179,6 +179,19 @@ def _component_extent(seed: np.ndarray, cy: float, cx: float, y0: int, x0: int) 
     return float(np.max(np.hypot(ys + y0 - cy, xs + x0 - cx)))
 
 
+def _local_peak_mask(luminance: np.ndarray, core_mask: np.ndarray, threshold: float) -> np.ndarray:
+    """Return the detector's smoothed local-max mask inside a core disk."""
+    smooth = cv2.GaussianBlur(luminance, (0, 0), 0.7)
+    local_max = (smooth == cv2.dilate(smooth, _DILATE_KERNEL)) & core_mask
+    if np.any(core_mask):
+        secondary_floor = max(
+            SECONDARY_PEAK_FRACTION * float(smooth[core_mask].max()),
+            SECONDARY_PEAK_NOISE_MULT * threshold,
+        )
+        local_max &= smooth >= secondary_floor
+    return local_max
+
+
 def _build_candidate(
     stars: np.ndarray,
     source: np.ndarray,
@@ -253,13 +266,7 @@ def _build_candidate(
 
     # Resolved companions and unresolved equal-brightness pairs.
     lum_stamp = luminance[iy0:iy1, ix0:ix1] if luminance is not None else stamp.max(axis=2)
-    smooth = cv2.GaussianBlur(lum_stamp, (0, 0), 0.7)
-    local_max = (smooth == cv2.dilate(smooth, _DILATE_KERNEL)) & core_inside
-    if np.any(core_inside):
-        secondary_floor = max(
-            SECONDARY_PEAK_FRACTION * float(smooth[core_inside].max()), SECONDARY_PEAK_NOISE_MULT * threshold
-        )
-        local_max &= smooth >= secondary_floor
+    local_max = _local_peak_mask(lum_stamp, core_inside, threshold)
     is_blended = int(local_max.sum()) > 1
 
     reason = ""

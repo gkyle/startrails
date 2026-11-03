@@ -11,8 +11,8 @@ from unittest.mock import patch
 import numpy as np
 
 from startrails.lib.finish.defaults import FinishSettings
-from startrails.lib.finish.star_analysis import analyze_stars
-from startrails.lib.finish.star_catalog import build_catalog, included_mask
+from startrails.lib.finish.star_analysis import StarCandidate, analyze_stars
+from startrails.lib.finish.star_catalog import build_catalog, included_mask, measure_catalog
 from startrails.lib.finish.star_effects import (
     GLOW_PYRAMID_RADIUS_PX,
     STAR_EFFECT_VERSION,
@@ -20,7 +20,10 @@ from startrails.lib.finish.star_effects import (
     _blur_glow_seed,
     _footprint_flux,
     _measure_local,
-    _round_eligible,
+    _neighbors,
+    _round_gates,
+    _round_one_owned,
+    _victim_reach,
     build_round_delta,
     compose_star_layer,
     load_round_delta,
@@ -219,12 +222,16 @@ class TestStarCatalogEffects(unittest.TestCase):
         self.assertTrue(np.any(changed))
         flux_before = _footprint_flux(stars, candidate.x, candidate.y, candidate.footprint_radius_px)
         color_before = flux_before / max(float(flux_before.sum()), 1e-9)
+        _, _, ellipticity_before = _measure_local(stars, candidate.x, candidate.y, candidate.core_radius_px)
         for amount in (25.0, 50.0, 75.0):
             with self.subTest(amount=amount):
                 partial = _compose(stars, catalog, delta, None, amount=amount, cutoff=None)
                 np.testing.assert_allclose(
                     (partial - stars)[changed], (amount / 100.0) * full_delta[changed], atol=1e-6, rtol=0.0
                 )
+                # Isolated star: its owned region covers this core, so the
+                # documented amount-aware owned-ellipticity bound applies to
+                # this same-region before/after measurement.
                 cy, cx, ellipticity_after = _measure_local(partial, candidate.x, candidate.y, candidate.core_radius_px)
                 self.assertLessEqual(float(np.hypot(cy - candidate.y, cx - candidate.x)), 0.5)
                 flux_after = _footprint_flux(partial, candidate.x, candidate.y, candidate.footprint_radius_px)
@@ -236,7 +243,7 @@ class TestStarCatalogEffects(unittest.TestCase):
                 expected_ratio = 1.0 - (1.0 - 0.75) * (amount / 100.0)
                 self.assertLessEqual(
                     ellipticity_after,
-                    max(0.10, expected_ratio * candidate.ellipticity) + 0.01,
+                    max(0.10, expected_ratio * ellipticity_before),
                 )
 
     def test_round_skips_saturated_border_blended_and_noise(self):
@@ -277,29 +284,69 @@ class TestStarCatalogEffects(unittest.TestCase):
         self.assertTrue(np.array_equal(_compose(noise, noise_catalog, noise_delta, None, cutoff=None), noise))
         self.assertEqual(int(noise_delta.offsets[-1]), 0)
 
-    def test_round_protects_overlapping_and_skipped_neighbor_cores(self):
+    def test_round_resolves_included_overlap_and_protects_saturated_neighbor(self):
         stars = np.zeros(self.shape, np.float32)
         source = np.zeros_like(stars)
         _add_gaussian(stars, 45, 55, 3.0, 1.5, 0.2, [0.5, 0.5, 0.5])
         _add_gaussian(stars, 65, 55, 3.0, 1.5, 0.2, [0.5, 0.5, 0.5])
         source[:] = np.clip(stars + 0.1, 0.0, 1.0)
-        overlap_catalog, overlap_delta = _round_layers(self, stars, source, self.mask, cutoff=None)
-        self.assertEqual(int(overlap_delta.offsets[-1]), 0)
-        self.assertTrue(any(reason.startswith("blocked:") for reason in overlap_delta.decision))
-        self.assertTrue(np.array_equal(_compose(stars, overlap_catalog, overlap_delta, None, cutoff=None), stars))
+        catalog, delta = _round_layers(self, stars, source, self.mask, cutoff=None)
+        self.assertGreaterEqual(int(np.sum(delta.decision == "corrected")), 2)
+        result = _compose(stars, catalog, delta, None, cutoff=None)
+        self.assertFalse(np.array_equal(result, stars))
+        candidates = [c for c in catalog.analysis.candidates if c.is_valid]
+        after = analyze_stars(result, source, self.mask)
+        self.assertIsNotNone(after)
+        nearest = []
+        for original in candidates:
+            updated = _nearest(after.candidates, original.x, original.y)
+            nearest.append(id(updated))
+            self.assertLess(np.hypot(updated.x - original.x, updated.y - original.y), 0.5)
+        self.assertEqual(len(set(nearest)), len(candidates))
+        inclusion = _inclusion(catalog, None)
+        for index in range(len(delta.y0)):
+            ys = int(delta.y0[index]) + delta.local_y[int(delta.offsets[index]) : int(delta.offsets[index + 1])]
+            xs = int(delta.x0[index]) + delta.local_x[int(delta.offsets[index]) : int(delta.offsets[index + 1])]
+            self.assertTrue(np.all(inclusion[ys, xs] > 0.0))
 
-        src_stars = np.zeros(self.shape, np.float32)
-        src_source = np.zeros_like(src_stars)
-        _add_gaussian(src_stars, 55, 60, 3.0, 1.4, 0.4, [0.5, 0.5, 0.5])
-        _add_gaussian(src_stars, 75, 60, 2.7, 1.3, 0.4, [0.30, 0.30, 0.30])
-        _add_gaussian(src_source, 55, 60, 3.0, 1.4, 0.4, [0.6, 0.6, 0.6])
-        _add_gaussian(src_source, 75, 60, 2.7, 1.3, 0.4, [1.4, 1.4, 1.4])
-        np.clip(src_source, 0.0, 1.0, out=src_source)
-        protected_catalog, protected_delta = _round_layers(self, src_stars, src_source, self.mask, cutoff=None)
-        self.assertEqual(int(protected_delta.offsets[-1]), 0)
-        self.assertTrue(
-            np.array_equal(_compose(src_stars, protected_catalog, protected_delta, None, cutoff=None), src_stars)
+        for amount in (25.0, 50.0, 75.0):
+            partial = _compose(stars, catalog, delta, None, amount=amount, cutoff=None)
+            for original in candidates:
+                cy, cx, e_after = _measure_local(partial, original.x, original.y, original.core_radius_px)
+                self.assertLessEqual(float(np.hypot(cy - original.y, cx - original.x)), 0.5)
+                flux_before = _footprint_flux(stars, original.x, original.y, original.footprint_radius_px)
+                flux_after = _footprint_flux(partial, original.x, original.y, original.footprint_radius_px)
+                self.assertLessEqual(
+                    float(np.max(np.abs(flux_after - flux_before) / np.maximum(np.abs(flux_before), 1e-9))),
+                    0.01,
+                )
+                color_before = flux_before / max(float(flux_before.sum()), 1e-9)
+                color_after = flux_after / max(float(flux_after.sum()), 1e-9)
+                self.assertLessEqual(
+                    float(np.max(np.abs(color_after - color_before) / np.maximum(np.abs(color_before), 1e-9))),
+                    0.01,
+                )
+                # Ellipticity is an owned-region contract; this whole-core
+                # measurement is deliberately not asserted here.
+
+        # A saturated neighbour's measured core must remain untouched even when
+        # the target is considered.
+        sat_stars = np.zeros(self.shape, np.float32)
+        sat_source = np.zeros_like(sat_stars)
+        _add_gaussian(sat_stars, 60, 80, 3.4, 1.5, 0.2, [0.5, 0.5, 0.5])
+        _add_gaussian(sat_source, 60, 80, 3.4, 1.5, 0.2, [0.6, 0.6, 0.6])
+        _add_gaussian(sat_stars, 82, 80, 2.8, 1.4, 0.2, [0.32, 0.32, 0.32])
+        _add_gaussian(sat_source, 82, 80, 2.8, 1.4, 0.2, [1.5, 1.5, 1.5])
+        np.clip(sat_source, 0.0, 1.0, out=sat_source)
+        sat_catalog, sat_delta = _round_layers(self, sat_stars, sat_source, self.mask, cutoff=None)
+        saturated = min(
+            (c for c in sat_catalog.analysis.candidates if c.is_saturated),
+            key=lambda c: (c.x - 82) ** 2 + (c.y - 80) ** 2,
         )
+        sat_result = _compose(sat_stars, sat_catalog, sat_delta, None, cutoff=None)
+        yy, xx = np.mgrid[0 : self.shape[0], 0 : self.shape[1]]
+        core = (yy - saturated.y) ** 2 + (xx - saturated.x) ** 2 <= saturated.core_radius_px**2
+        self.assertEqual(float(np.max(np.abs(sat_result[core] - sat_stars[core]))), 0.0)
 
     def test_round_owner_query_includes_competitor_within_two_radii(self):
         probe = np.zeros(self.shape, np.float32)
@@ -328,7 +375,7 @@ class TestStarCatalogEffects(unittest.TestCase):
         self.assertGreater(float(stars[py, px].max()), 1e-5)
         self.assertLess(float(np.abs(result[py, px] - stars[py, px]).max()), 1e-8)
 
-    def test_round_mask_ramp_verifies_masked_centroid_flux_color_and_ellipticity(self):
+    def test_round_mask_ramp_verifies_masked_centroid_flux_and_color(self):
         width = self.shape[1]
         ramp = np.tile(np.linspace(0.0, 1.0, width, dtype=np.float32), (self.shape[0], 1))
         changed_levels = 0
@@ -354,7 +401,8 @@ class TestStarCatalogEffects(unittest.TestCase):
             color_after = f_after / max(float(f_after.sum()), 1e-9)
             color_drift = np.abs(color_after - color_before) / np.maximum(np.abs(color_before), 1e-9)
             self.assertLessEqual(float(color_drift.max()), 0.01)
-            self.assertLessEqual(e_after, max(0.10, candidate.ellipticity))
+            # Ellipticity is owned-region-only and is covered by the isolated
+            # amount test; the ramp whole-core measurement is not asserted.
         self.assertGreater(changed_levels, 0)
 
         zero_mask = np.zeros(self.shape[:2], np.float32)
@@ -365,6 +413,141 @@ class TestStarCatalogEffects(unittest.TestCase):
         zero_catalog, zero_delta = _round_layers(self, stars, source, zero_mask, cutoff=None)
         zero = _compose(stars, zero_catalog, zero_delta, None, cutoff=None)
         self.assertTrue(np.array_equal(zero, stars))
+
+    def test_unresolved_same_component_multipeak_is_unchanged(self):
+        stars = np.zeros(self.shape, np.float32)
+        source = np.zeros_like(stars)
+        _add_gaussian(stars, 76.5, 80, 3.0, 1.4, 0.2, [0.5, 0.5, 0.5])
+        _add_gaussian(stars, 83.5, 80, 3.0, 1.4, 0.2, [0.5, 0.5, 0.5])
+        _add_gaussian(source, 76.5, 80, 3.0, 1.4, 0.2, [0.6, 0.6, 0.6])
+        _add_gaussian(source, 83.5, 80, 3.0, 1.4, 0.2, [0.6, 0.6, 0.6])
+        np.clip(source, 0.0, 1.0, out=source)
+        catalog, delta = _round_layers(self, stars, source, self.mask, cutoff=None)
+        self.assertEqual(len(catalog.analysis.candidates), 1)
+        self.assertTrue(bool(catalog.intrinsic_blended[0]))
+        self.assertEqual(delta.decision[0], "ineligible:multi_peak_component")
+        self.assertEqual(int(delta.offsets[-1]), 0)
+        self.assertTrue(np.array_equal(_compose(stars, catalog, delta, None, cutoff=None), stars))
+        hidden_mask = self.mask.copy()
+        hidden_mask[:, 80:] = 0.0
+        hidden_delta = build_round_delta(stars, self.mask, catalog, cutoff=None, inclusion_mask=hidden_mask)
+        self.assertIsNotNone(hidden_delta)
+        self.assertEqual(hidden_delta.decision[0], "ineligible:multi_peak_component")
+        self.assertEqual(int(hidden_delta.offsets[-1]), 0)
+
+    def test_owned_peak_gate_rejects_mask_removed_core_peak(self):
+        stars = np.zeros(self.shape, np.float32)
+        source = np.zeros_like(stars)
+        _add_gaussian(stars, 64, 64, 3.2, 1.5, 0.4, [0.55, 0.34, 0.22])
+        _add_gaussian(source, 64, 64, 3.2, 1.5, 0.4, [0.65, 0.44, 0.32])
+        catalog = _catalog(self, stars, source, self.mask, None)
+        candidate = _nearest(catalog.analysis.candidates, 64, 64)
+        yy, xx = np.mgrid[0 : self.shape[0], 0 : self.shape[1]]
+        hole = (yy - candidate.y) ** 2 + (xx - candidate.x) ** 2 <= 2.0**2
+        inclusion = np.ones(self.shape[:2], np.float32)
+        inclusion[hole] = 0.0
+        out = stars.copy()
+        status, support = _round_one_owned(
+            out,
+            candidate,
+            0,
+            [],
+            self.mask,
+            inclusion,
+            True,
+            catalog.threshold,
+        )
+        self.assertEqual(status, "rejected:no_owned_peak")
+        self.assertIsNone(support)
+        self.assertTrue(np.array_equal(out, stars))
+
+    def test_large_diagonal_included_core_is_subtracted_beyond_two_radii(self):
+        stars = np.zeros((160, 160, 3), np.float32)
+        source = np.zeros_like(stars)
+        _add_gaussian(stars, 40, 80, 1.5, 1.2, 0.0, [0.5, 0.5, 0.5])
+        _add_gaussian(source, 40, 80, 1.5, 1.2, 0.0, [0.6, 0.6, 0.6])
+        offset = 22.0 / np.sqrt(2.0)
+        _add_gaussian(stars, 40 + offset, 80 + offset, 5.0, 4.0, 0.2, [0.32, 0.32, 0.32])
+        _add_gaussian(source, 40 + offset, 80 + offset, 5.0, 4.0, 0.2, [1.5, 1.5, 1.5])
+        np.clip(source, 0.0, 1.0, out=source)
+        catalog = _catalog(self, stars, source, np.ones((160, 160), np.float32), None)
+        inclusion = np.ones(stars.shape[:2], np.float32)
+        delta = build_round_delta(
+            stars, np.ones((160, 160), np.float32), catalog, cutoff=None, inclusion_mask=inclusion
+        )
+        self.assertIsNotNone(delta)
+        target = _nearest(catalog.analysis.candidates, 40, 80)
+        target_rank = catalog.analysis.candidates.index(target)
+        self.assertEqual(delta.decision[target_rank], "corrected")
+        saturated = min(
+            (c for c in catalog.analysis.candidates if c.is_saturated),
+            key=lambda c: (c.x - 40 - offset) ** 2 + (c.y - 80 - offset) ** 2,
+        )
+        result = _compose(stars, catalog, delta, None, cutoff=None)
+        yy, xx = np.mgrid[0:160, 0:160]
+        core = (yy - saturated.y) ** 2 + (xx - saturated.x) ** 2 <= saturated.core_radius_px**2
+        self.assertEqual(float(np.max(np.abs(result[core] - stars[core]))), 0.0)
+
+    def test_excluded_neighbor_is_corrected_without_touching_its_label_pixels(self):
+        stars = np.zeros(self.shape, np.float32)
+        source = np.zeros_like(stars)
+        _add_gaussian(stars, 45, 64, 5.0, 2.0, 0.0, [0.60, 0.60, 0.60])
+        _add_gaussian(source, 45, 64, 5.0, 2.0, 0.0, [0.70, 0.70, 0.70])
+        _add_gaussian(stars, 65, 64, 1.2, 1.1, 0.0, [0.20, 0.20, 0.20])
+        _add_gaussian(source, 65, 64, 1.2, 1.1, 0.0, [0.25, 0.25, 0.25])
+        stars_before = stars.copy()
+        catalog = _catalog(self, stars, source, self.mask, 1)
+        inclusion = _inclusion(catalog, 1)
+        excluded_label = catalog.labels == int(catalog.component_ids[1])
+        self.assertGreater(int(np.count_nonzero(excluded_label)), 0)
+        self.assertTrue(np.all(inclusion[excluded_label] == 0.0))
+
+        delta = build_round_delta(stars, self.mask, catalog, cutoff=1, inclusion_mask=inclusion)
+        self.assertIsNotNone(delta)
+        self.assertEqual(delta.decision[0], "corrected")
+        self.assertEqual(delta.decision[1], "excluded")
+        self.assertGreater(int(delta.offsets[-1]), 0)
+        result = _compose(stars, catalog, delta, None, amount=100.0, cutoff=1)
+        base = inclusion[..., None] * stars
+        self.assertTrue(np.array_equal(result[excluded_label], base[excluded_label]))
+        self.assertTrue(np.array_equal(stars, stars_before))
+        for index in range(len(delta.y0)):
+            ys = int(delta.y0[index]) + delta.local_y[int(delta.offsets[index]) : int(delta.offsets[index + 1])]
+            xs = int(delta.x0[index]) + delta.local_x[int(delta.offsets[index]) : int(delta.offsets[index + 1])]
+            self.assertTrue(np.all(inclusion[ys, xs] > 0.0))
+
+    def test_square_centroid_stamp_reach_covers_diagonal_corners(self):
+        candidate = StarCandidate(
+            y=10.0,
+            x=10.0,
+            flux=1.0,
+            peak_brightness=0.5,
+            color_ratio=(1 / 3, 1 / 3, 1 / 3),
+            ellipticity=0.2,
+            orientation_rad=0.0,
+            footprint_radius_px=5.0,
+            core_radius_px=10.0,
+        )
+        self.assertAlmostEqual(_victim_reach(candidate), np.sqrt(2.0) * 11.0)
+        self.assertEqual(_victim_reach(candidate), max(5.0, np.sqrt(2.0) * 11.0))
+
+    def test_cutoff_history_produces_identical_round_delta(self):
+        stars = np.zeros(self.shape, np.float32)
+        source = np.zeros_like(stars)
+        for index, x in enumerate((45, 80, 115)):
+            _add_gaussian(stars, x, 80, 3.2, 1.4, 0.2, [0.5 - 0.05 * index] * 3)
+            _add_gaussian(source, x, 80, 3.2, 1.4, 0.2, [0.6 - 0.05 * index] * 3)
+        fresh = _catalog(self, stars, source, self.mask, None)
+        partial = _catalog(self, stars, source, self.mask, 2)
+        grown = measure_catalog(partial, stars, source, self.mask, cutoff=None)
+        self.assertIsNotNone(grown)
+        fresh_delta = build_round_delta(stars, self.mask, fresh, cutoff=None, inclusion_mask=_inclusion(fresh, None))
+        grown_delta = build_round_delta(stars, self.mask, grown, cutoff=None, inclusion_mask=_inclusion(grown, None))
+        self.assertIsNotNone(fresh_delta)
+        self.assertIsNotNone(grown_delta)
+        np.testing.assert_array_equal(fresh_delta.decision, grown_delta.decision)
+        for name in ("y0", "x0", "height", "width", "offsets", "local_y", "local_x", "values"):
+            np.testing.assert_array_equal(getattr(fresh_delta, name), getattr(grown_delta, name))
 
     def test_cutoff_exclusion_records_decisions_and_compare_returns_s_inc(self):
         stars = np.zeros(self.shape, np.float32)
@@ -422,32 +605,47 @@ class TestStarCatalogEffects(unittest.TestCase):
         self.assertEqual(len(delta.decision), len(catalog.analysis.candidates))
         self.assertFalse(np.any(delta.decision == "excluded"))
         for candidate, decision in zip(catalog.analysis.candidates, delta.decision):
-            if _round_eligible(candidate):
-                self.assertTrue(decision.startswith(("corrected", "blocked:", "rejected:")), decision)
+            if _round_gates(candidate):
+                self.assertTrue(
+                    decision.startswith(
+                        (
+                            "corrected",
+                            "blocked:",
+                            "rejected:",
+                            "ineligible:multi_peak_component",
+                            "ineligible:unattributed_peak",
+                            "ineligible:blended",
+                        )
+                    ),
+                    decision,
+                )
             else:
                 self.assertTrue(decision.startswith("ineligible:"), decision)
         self.assertTrue(np.any(delta.decision == "corrected"))
-        self.assertTrue(np.any(delta.decision == "ineligible:blended"))
+        self.assertTrue(np.any(np.char.startswith(delta.decision.astype(str), "ineligible:")))
         self.assertTrue(np.all([reason for reason in delta.decision]))
 
-    def test_excluded_neighbor_core_still_blocks_before_step_10c(self):
+    def test_excluded_core_m_sliver_no_longer_blocks_and_zero_m_pixels_stay_clean(self):
         stars = np.zeros(self.shape, np.float32)
         source = np.zeros_like(stars)
         _add_gaussian(stars, 45, 64, 5.0, 2.0, 0.0, [0.60, 0.60, 0.60])
         _add_gaussian(source, 45, 64, 5.0, 2.0, 0.0, [0.70, 0.70, 0.70])
-        probe_catalog = _catalog(self, stars, source, self.mask, None)
-        primary = _nearest(probe_catalog.analysis.candidates, 45, 64)
-        neighbor_distance = primary.footprint_radius_px + 2.0
-        _add_gaussian(stars, 45 + neighbor_distance, 64, 1.2, 1.1, 0.0, [0.20, 0.20, 0.20])
-        _add_gaussian(source, 45 + neighbor_distance, 64, 1.2, 1.1, 0.0, [0.25, 0.25, 0.25])
+        _add_gaussian(stars, 65, 64, 1.2, 1.1, 0.0, [0.20, 0.20, 0.20])
+        _add_gaussian(source, 65, 64, 1.2, 1.1, 0.0, [0.25, 0.25, 0.25])
+        catalog = _catalog(self, stars, source, self.mask, 1)
+        inclusion = _inclusion(catalog, 1)
+        excluded = catalog.analysis_for_cutoff(1).candidates[1]
+        sliver = inclusion.copy()
+        sliver[int(round(excluded.y)), int(round(excluded.x))] = 1.0
 
-        catalog, delta = _round_layers(self, stars, source, self.mask, cutoff=1)
-        self.assertEqual(catalog.included_count(1), 1)
-        self.assertLess(np.hypot(catalog.analysis.candidates[0].x - 45, catalog.analysis.candidates[0].y - 64), 2.0)
-        self.assertTrue(delta.decision[0].startswith("blocked:"), delta.decision[0])
-        self.assertIn("neighbor_core", delta.decision[0])
-        self.assertEqual(delta.decision[1], "excluded")
-        self.assertEqual(int(delta.offsets[-1]), 0)
+        delta = build_round_delta(stars, self.mask, catalog, cutoff=1, inclusion_mask=sliver)
+        self.assertIsNotNone(delta)
+        self.assertEqual(delta.decision[0], "corrected")
+        self.assertGreater(int(delta.offsets[-1]), 0)
+        for index in range(len(delta.y0)):
+            ys = int(delta.y0[index]) + delta.local_y[int(delta.offsets[index]) : int(delta.offsets[index + 1])]
+            xs = int(delta.x0[index]) + delta.local_x[int(delta.offsets[index]) : int(delta.offsets[index + 1])]
+            self.assertTrue(np.all(sliver[ys, xs] > 0.0))
 
     def test_sparse_round_delta_save_load_and_validation(self):
         stars = np.zeros(self.shape, np.float32)
@@ -666,7 +864,7 @@ class TestStarCatalogEffects(unittest.TestCase):
         )
 
     def test_tiny_and_constant_inputs_are_identity_and_versioned(self):
-        self.assertEqual(STAR_EFFECT_VERSION, 2)
+        self.assertEqual(STAR_EFFECT_VERSION, 4)
         for shape in ((8, 8, 3), (32, 32, 3)):
             stars = np.full(shape, 0.3, np.float32)
             source = np.full(shape, 0.5, np.float32)

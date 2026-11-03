@@ -16,11 +16,15 @@ import cv2
 import numpy as np
 from scipy.spatial import cKDTree
 
-from startrails.lib.finish.star_analysis import StarCandidate
+from startrails.lib.finish.star_analysis import (
+    StarCandidate,
+    _local_peak_mask,
+    _second_moments,
+)
 from startrails.lib.finish.star_catalog import RankedStarCatalog
 from startrails.lib.image_io import validate_image_array
 
-STAR_EFFECT_VERSION: Final[int] = 2
+STAR_EFFECT_VERSION: Final[int] = 4
 
 # Round Stars gates and reconstruction constants. These are policy for the
 # isolated-star feature, not user-facing settings.
@@ -33,6 +37,12 @@ MAX_VERIFY_FLUX_ERROR: Final[float] = 0.01
 MAX_VERIFY_COLOR_DRIFT: Final[float] = 0.01
 VERIFY_ELLIPTICITY_RATIO_AT_FULL: Final[float] = 0.75
 MIN_FEATHER_SCALE: Final[float] = 0.35
+MIN_OWNED_CORE_COVERAGE: Final[float] = 0.5
+OWNERSHIP_FEATHER_PX: Final[float] = 2.0
+TRADITIONAL_GATE_ROUNDS: Final[int] = 8
+
+
+ROUND_GATE_FRACTIONS: Final[Tuple[float, ...]] = (0.25, 0.5, 0.75, 1.0)
 
 # Star Glow spatial profile and rendering policy.
 GLOW_SIGMA_FRACTION: Final[float] = 1.0 / 3.0
@@ -93,93 +103,18 @@ def _footprint_flux(stars: np.ndarray, x: float, y: float, radius: float) -> np.
     return stars[y0:y1, x0:x1][inside].sum(axis=0, dtype=np.float64)
 
 
-def _build_owner_mask(
-    star: StarCandidate,
-    neighbors: Sequence[Tuple[float, float]],
-    yy: np.ndarray,
-    xx: np.ndarray,
-) -> np.ndarray:
-    own = np.ones(yy.shape, dtype=bool)
-    for nx, ny in neighbors:
-        if nx == star.x and ny == star.y:
-            continue
-        d_self = (xx - star.x) ** 2 + (yy - star.y) ** 2
-        d_other = (xx - nx) ** 2 + (yy - ny) ** 2
-        own &= d_self <= d_other
-    return own
+@dataclass(frozen=True)
+class _Support:
+    rank: int
+    rect: Tuple[int, int, int, int]
+    local_y: np.ndarray
+    local_x: np.ndarray
+    values: np.ndarray
 
 
-def _overlapping_indices(candidates: Sequence[StarCandidate]) -> set[int]:
-    """Return indices whose correction footprints overlap another candidate.
-
-    Overlapping corrections are skipped rather than deblended. This guarantees
-    that a later accepted correction cannot alter an earlier star's verified
-    centroid or footprint flux.
-    """
-    count = len(candidates)
-    if count < 2:
-        return set()
-    points = np.array([[c.x, c.y] for c in candidates], dtype=np.float64)
-    radii = np.array([c.footprint_radius_px for c in candidates], dtype=np.float64)
-    tree = cKDTree(points)
-    pairs = tree.query_pairs(float(2.0 * max(1.0, radii.max())), output_type="ndarray")
-    parents = list(range(count))
-
-    def find(node: int) -> int:
-        while parents[node] != node:
-            parents[node] = parents[parents[node]]
-            node = parents[node]
-        return node
-
-    for i, j in pairs:
-        if float(np.hypot(*(points[i] - points[j]))) < radii[i] + radii[j]:
-            root_i, root_j = find(int(i)), find(int(j))
-            if root_i != root_j:
-                parents[root_j] = root_i
-
-    component_sizes: dict[int, int] = {}
-    for index in range(count):
-        root = find(index)
-        component_sizes[root] = component_sizes.get(root, 0) + 1
-    return {index for index in range(count) if component_sizes[find(index)] > 1}
-
-
-def _protected_core_blocked(
-    candidates: Sequence[StarCandidate],
-    all_candidates: Sequence[StarCandidate],
-) -> set[int]:
-    """Skip candidates whose write footprint intersects a neighbour protected core.
-
-    Protected neighbours include skipped, blended, invalid and saturated
-    detections, including excluded ranks. A nearest-centre bisector does not
-    reliably protect a larger neighbour core when the two stars have different
-    radii, so the conservative policy is: if this footprint can reach any
-    neighbour core, do not correct this candidate. Ownership masking still
-    protects remaining neighbours.
-    """
-    if not candidates or not all_candidates:
-        return set()
-    points = np.array([[c.x, c.y] for c in all_candidates], dtype=np.float64)
-    cores = np.array([max(c.core_radius_px, 1.0) for c in all_candidates], dtype=np.float64)
-    tree = cKDTree(points)
-    max_core = float(cores.max())
-    blocked: set[int] = set()
-    for index, candidate in enumerate(candidates):
-        reach = candidate.footprint_radius_px + max_core
-        for other_index in tree.query_ball_point([candidate.x, candidate.y], r=reach):
-            if all_candidates[other_index] is candidate:
-                continue
-            distance = float(np.hypot(candidate.x - points[other_index, 0], candidate.y - points[other_index, 1]))
-            if distance < candidate.footprint_radius_px + cores[other_index]:
-                blocked.add(index)
-                break
-    return blocked
-
-
-def _round_eligible(candidate: StarCandidate) -> bool:
+def _round_gates(candidate: StarCandidate) -> bool:
     return (
         candidate.is_valid
-        and not candidate.is_blended
         and not candidate.is_saturated
         and not candidate.is_border
         and candidate.ellipticity >= CORRECT_MIN_ELLIPTICITY
@@ -190,8 +125,6 @@ def _round_eligible(candidate: StarCandidate) -> bool:
 def _ineligible_reason(candidate: StarCandidate) -> str:
     if not candidate.is_valid:
         return candidate.skip_reason or "invalid"
-    if candidate.is_blended:
-        return "blended"
     if candidate.is_saturated:
         return "saturated"
     if candidate.is_border:
@@ -203,38 +136,173 @@ def _ineligible_reason(candidate: StarCandidate) -> str:
     return "ineligible"
 
 
-def _round_one(
-    out: np.ndarray,
+def _component_peak_counts(
+    stars: np.ndarray,
     candidate: StarCandidate,
-    neighbors: Sequence[Tuple[float, float]],
-    sky_mask: np.ndarray,
-) -> bool:
-    """Apply and verify one full-strength masked radial circularization.
+    rect: Tuple[int, int, int, int],
+    threshold: float,
+    labels: np.ndarray,
+    component_id: int,
+) -> Tuple[int, int, int]:
+    """Count core local maxima in this component / other components / unknown."""
+    y0, x0, y1, x1 = rect
+    yy, xx = np.mgrid[y0:y1, x0:x1]
+    core = (yy - candidate.y) ** 2 + (xx - candidate.x) ** 2 <= candidate.core_radius_px**2
+    luminance = stars[y0:y1, x0:x1].max(axis=2)
+    local_max = _local_peak_mask(luminance, core, threshold)
+    peak_labels = labels[y0:y1, x0:x1][local_max]
+    own = int(np.count_nonzero(peak_labels == component_id))
+    other = int(np.count_nonzero((peak_labels > 0) & (peak_labels != component_id)))
+    unknown = int(np.count_nonzero(peak_labels == 0))
+    return own, other, unknown
 
-    False means rejected; the patch is restored exactly. Correction is computed
-    at 100% only; composition scales the stored delta linearly.
-    """
-    height, width = out.shape[:2]
+
+def _neighbors(
+    candidate: StarCandidate,
+    rank: int,
+    candidates: Sequence[StarCandidate],
+    included_count: int,
+    tree: Optional[cKDTree],
+    cores: np.ndarray,
+    max_core: float,
+) -> list[Tuple[StarCandidate, bool]]:
+    if tree is None:
+        return []
     radius = candidate.footprint_radius_px
-    core_radius = candidate.core_radius_px
-    iy0 = max(0, int(np.floor(candidate.y - radius)))
-    iy1 = min(height, int(np.ceil(candidate.y + radius)) + 1)
-    ix0 = max(0, int(np.floor(candidate.x - radius)))
-    ix1 = min(width, int(np.ceil(candidate.x + radius)) + 1)
-    if iy0 >= iy1 or ix0 >= ix1:
-        return False
-    stamp = out[iy0:iy1, ix0:ix1].astype(np.float64)
-    before_patch = out[iy0:iy1, ix0:ix1].copy()
-    yy, xx = np.mgrid[iy0:iy1, ix0:ix1]
-    dy = yy - candidate.y
-    dx = xx - candidate.x
-    distance = np.hypot(dy, dx)
-    own = _build_owner_mask(candidate, neighbors, yy, xx)
+    reach = max(2.0 * radius, radius + max_core)
+    result = []
+    for index in tree.query_ball_point([candidate.x, candidate.y], r=float(reach)):
+        if index == rank:
+            continue
+        distance = float(np.hypot(candidate.x - candidates[index].x, candidate.y - candidates[index].y))
+        if distance < 2.0 * radius or distance < radius + cores[index]:
+            result.append((candidates[index], index < included_count))
+    return result
 
-    ring = (distance >= 0.8 * radius) & (distance <= radius) & own
-    ring_values = stamp[ring]
+
+def _strict_owner_mask(
+    candidate: StarCandidate,
+    neighbors: Sequence[Tuple[StarCandidate, bool]],
+    yy: np.ndarray,
+    xx: np.ndarray,
+    inclusion_patch: np.ndarray,
+) -> np.ndarray:
+    own = np.ones(yy.shape, dtype=bool)
+    for other, included in neighbors:
+        if other.x == candidate.x and other.y == candidate.y:
+            continue
+        d_self = (xx - candidate.x) ** 2 + (yy - candidate.y) ** 2
+        d_other = (xx - other.x) ** 2 + (yy - other.y) ** 2
+        own &= d_self < d_other
+        if included:
+            own &= d_other > max(other.core_radius_px, 1.0) ** 2
+    own &= inclusion_patch > 0.0
+    return own
+
+
+def _ownership_feather(
+    candidate: StarCandidate,
+    neighbors: Sequence[Tuple[StarCandidate, bool]],
+    inclusion_mask: np.ndarray,
+    rect: Tuple[int, int, int, int],
+) -> np.ndarray:
+    y0, x0, y1, x1 = rect
+    pad = int(np.ceil(OWNERSHIP_FEATHER_PX)) + 1
+    height, width = inclusion_mask.shape
+    ey0, ey1 = max(0, y0 - pad), min(height, y1 + pad)
+    ex0, ex1 = max(0, x0 - pad), min(width, x1 + pad)
+    yy, xx = np.mgrid[ey0:ey1, ex0:ex1]
+    cell = _strict_owner_mask(
+        candidate,
+        neighbors,
+        yy,
+        xx,
+        inclusion_mask[ey0:ey1, ex0:ex1],
+    )
+    distance = cv2.distanceTransform(cell.astype(np.uint8), cv2.DIST_L2, 5)
+    t = np.clip(distance / OWNERSHIP_FEATHER_PX, 0.0, 1.0)
+    feather = (t * t * (3.0 - 2.0 * t)).astype(np.float64)
+    return feather[y0 - ey0 : y0 - ey0 + (y1 - y0), x0 - ex0 : x0 - ex0 + (x1 - x0)]
+
+
+def _owned_moments_patch(
+    window: np.ndarray,
+    candidate: StarCandidate,
+    own: np.ndarray,
+    center_y: float,
+    center_x: float,
+    y0: int,
+    x0: int,
+) -> Tuple[float, float, float, float, float]:
+    y1 = y0 + window.shape[0]
+    x1 = x0 + window.shape[1]
+    yy, xx = np.mgrid[y0:y1, x0:x1]
+    data = window.astype(np.float64)
+    ring = (
+        ((yy - center_y) ** 2 + (xx - center_x) ** 2 >= 0.8 * candidate.footprint_radius_px**2)
+        & ((yy - center_y) ** 2 + (xx - center_x) ** 2 <= candidate.footprint_radius_px**2)
+        & own
+    )
+    ring_values = data[ring]
     background = np.median(ring_values, axis=0) if ring_values.size else np.zeros(3)
     background = np.maximum(background, 0.0)
+    weights = np.maximum(data - background, 0.0).max(axis=2) * own
+    if float(weights.sum()) <= 0.0:
+        return center_y, center_x, candidate.major_sigma_px, candidate.minor_sigma_px, candidate.ellipticity
+    return _second_moments(
+        weights,
+        np.arange(y0, y1, dtype=np.float64),
+        np.arange(x0, x1, dtype=np.float64),
+    )[:5]
+
+
+def _owned_moments(
+    image: np.ndarray,
+    candidate: StarCandidate,
+    own: np.ndarray,
+    rect: Tuple[int, int, int, int],
+    center_y: float,
+    center_x: float,
+) -> Tuple[float, float, float, float, float]:
+    y0, x0, y1, x1 = rect
+    return _owned_moments_patch(
+        image[y0:y1, x0:x1],
+        candidate,
+        own,
+        center_y,
+        center_x,
+        y0,
+        x0,
+    )
+
+
+def _owned_flux(
+    image: np.ndarray,
+    candidate: StarCandidate,
+    radius: float,
+    own: np.ndarray,
+    rect: Tuple[int, int, int, int],
+) -> np.ndarray:
+    y0, x0, y1, x1 = rect
+    yy, xx = np.mgrid[y0:y1, x0:x1]
+    selected = ((yy - candidate.y) ** 2 + (xx - candidate.x) ** 2 <= radius * radius) & own
+    if not np.any(selected):
+        return np.zeros(3)
+    return image[y0:y1, x0:x1][selected].sum(axis=0, dtype=np.float64)
+
+
+def _radial_model(
+    stamp: np.ndarray,
+    own: np.ndarray,
+    dy: np.ndarray,
+    dx: np.ndarray,
+    distance: np.ndarray,
+    radius: float,
+    candidate: StarCandidate,
+    major_sigma: float,
+    minor_sigma: float,
+    background: np.ndarray,
+) -> np.ndarray:
     signal = np.maximum(stamp - background, 0.0) * own[..., None]
 
     bin_count = int(np.ceil(radius)) + 1
@@ -248,7 +316,7 @@ def _round_one(
             counts[bin_number] = float(selected.sum())
     valid_bins = np.where(counts > 0)[0]
     if valid_bins.size < 2:
-        return False
+        return np.zeros_like(stamp)
     for channel in range(3):
         profile[:, channel] = np.interp(
             np.arange(bin_count, dtype=np.float64),
@@ -260,12 +328,11 @@ def _round_one(
         profile[bin_number] = np.minimum(profile[bin_number], profile[bin_number - 1])
     profile = np.maximum(profile, 0.0)
 
-    azimuthal_sigma = float(np.sqrt((candidate.major_sigma_px**2 + candidate.minor_sigma_px**2) / 2.0))
-    target_sigma = float(np.sqrt(candidate.major_sigma_px * candidate.minor_sigma_px))
+    azimuthal_sigma = float(np.sqrt((major_sigma**2 + minor_sigma**2) / 2.0))
+    target_sigma = float(np.sqrt(major_sigma * minor_sigma))
     radial_scale = float(np.clip(target_sigma / max(azimuthal_sigma, 1e-6), MIN_FEATHER_SCALE, 1.0))
     peak_limit = min(1.0, max(PEAK_HEADROOM_FACTOR * candidate.peak_brightness, CORRECT_MIN_PEAK))
-    peak_unscaled = float(profile.max())
-    radial_scale = max(radial_scale, float(np.sqrt(peak_unscaled / max(peak_limit, 1e-6))))
+    radial_scale = max(radial_scale, float(np.sqrt(float(profile.max()) / max(peak_limit, 1e-6))))
     radial_scale = float(np.clip(radial_scale, MIN_FEATHER_SCALE, 1.0))
 
     sample_radius = np.clip(distance / radial_scale, 0.0, bin_count - 1.0001)
@@ -274,39 +341,115 @@ def _round_one(
     fraction = (sample_radius - lower)[..., None]
     model = profile[lower] * (1.0 - fraction) + profile[upper] * fraction
     model = np.maximum(model, 0.0) / (radial_scale * radial_scale)
+    return model
+
+
+def _round_one_owned(
+    out: np.ndarray,
+    candidate: StarCandidate,
+    rank: int,
+    neighbors: Sequence[Tuple[StarCandidate, bool]],
+    sky_mask: np.ndarray,
+    inclusion_mask: np.ndarray,
+    remeasure: bool,
+    threshold: float,
+) -> Tuple[str, Optional[_Support]]:
+    height, width = out.shape[:2]
+    radius = candidate.footprint_radius_px
+    core_radius = candidate.core_radius_px
+    rect = _candidate_rect(candidate, (height, width))
+    if rect is None:
+        return "ineligible:no_patch", None
+    iy0, ix0, iy1, ix1 = rect
+    stamp = out[iy0:iy1, ix0:ix1].astype(np.float64)
+    before_patch = out[iy0:iy1, ix0:ix1].copy()
+    yy, xx = np.mgrid[iy0:iy1, ix0:ix1]
+    own = _strict_owner_mask(candidate, neighbors, yy, xx, inclusion_mask[iy0:iy1, ix0:ix1])
+    own &= (yy - candidate.y) ** 2 + (xx - candidate.x) ** 2 <= radius * radius
+    if not np.any(own):
+        return "rejected:no_owned_support", None
+    ring = (
+        ((yy - candidate.y) ** 2 + (xx - candidate.x) ** 2 >= 0.8 * radius**2)
+        & ((yy - candidate.y) ** 2 + (xx - candidate.x) ** 2 <= radius**2)
+        & own
+    )
+    ring_values = stamp[ring]
+    background = np.median(ring_values, axis=0) if ring_values.size else np.zeros(3)
+    background = np.maximum(background, 0.0)
+    if remeasure:
+        center_y, center_x, major_sigma, minor_sigma, _ = _owned_moments(
+            out, candidate, own, rect, candidate.y, candidate.x
+        )
+    else:
+        center_y, center_x = candidate.y, candidate.x
+        major_sigma, minor_sigma = candidate.major_sigma_px, candidate.minor_sigma_px
+    dy = yy - center_y
+    dx = xx - center_x
+    distance = np.hypot(dy, dx)
+    core_total = distance <= core_radius
+    core_inside = core_total & own
+    coverage = float(core_inside.sum()) / float(core_total.sum()) if np.any(core_total) else 0.0
+    if coverage < MIN_OWNED_CORE_COVERAGE:
+        return "blocked:owned_core_coverage", None
+    if remeasure:
+        luminance = out[iy0:iy1, ix0:ix1].max(axis=2)
+        owned_peaks = int(_local_peak_mask(luminance, core_inside, threshold).sum())
+        if owned_peaks == 0:
+            return "rejected:no_owned_peak", None
+        if owned_peaks > 1:
+            return "ineligible:multi_peak_owned", None
+    model = _radial_model(
+        stamp,
+        own,
+        dy,
+        dx,
+        distance,
+        radius,
+        candidate,
+        major_sigma,
+        minor_sigma,
+        background,
+    )
+    if not np.any(model):
+        return "rejected:no_owned_support", None
 
     weight = _feather_weights(dy, dx, radius)[..., None] * own[..., None]
+    weight *= _ownership_feather(candidate, neighbors, inclusion_mask, rect)[..., None]
     delta = weight * (model + background - stamp)
     denominator = float(weight.sum())
-    if denominator > 0.0:
-        delta -= (delta.sum(axis=(0, 1)) / denominator)[None, None, :] * weight
-
-    mask_patch = sky_mask[iy0:iy1, ix0:ix1]
-    delta *= mask_patch[..., None]
+    if denominator <= 0.0:
+        return "rejected:no_owned_support", None
+    delta -= (delta.sum(axis=(0, 1)) / denominator)[None, None, :] * weight
+    delta *= sky_mask[iy0:iy1, ix0:ix1, None]
     if not np.any(delta):
-        return False
+        return "rejected:no_owned_support", None
 
-    cy_before, cx_before, e_before = _measure_local(out, candidate.x, candidate.y, core_radius)
-    flux_before = _footprint_flux(out, candidate.x, candidate.y, radius)
-    out[iy0:iy1, ix0:ix1] = np.clip(stamp + delta, 0.0, 1.0)
-    cy_after, cx_after, e_after = _measure_local(out, candidate.x, candidate.y, core_radius)
-    flux_after = _footprint_flux(out, candidate.x, candidate.y, radius)
+    cy_before, cx_before, _, _, e_before = _owned_moments(out, candidate, own, rect, candidate.y, candidate.x)
+    flux_before = _owned_flux(out, candidate, radius, own, rect)
+    corrected_patch = np.clip(stamp + delta, 0.0, 1.0).astype(np.float32)
+    out[iy0:iy1, ix0:ix1][own] = corrected_patch[own]
+    cy_after, cx_after, _, _, e_after = _owned_moments(out, candidate, own, rect, candidate.y, candidate.x)
+    flux_after = _owned_flux(out, candidate, radius, own, rect)
     shift = float(np.hypot(cy_after - cy_before, cx_after - cx_before))
     flux_error = float(np.max(np.abs(flux_after - flux_before) / np.maximum(np.abs(flux_before), 1e-9)))
     total_before = float(flux_before.sum())
     total_after = float(flux_after.sum())
     if total_before > 0.0 and total_after > 0.0:
-        color_before = flux_before / total_before
-        color_after = flux_after / total_after
-        color_drift = float(np.max(np.abs(color_after - color_before) / np.maximum(np.abs(color_before), 1e-9)))
+        color_drift = float(
+            np.max(
+                np.abs(flux_after / total_after - flux_before / total_before)
+                / np.maximum(np.abs(flux_before / total_before), 1e-9)
+            )
+        )
     else:
         color_drift = 0.0
-
-    core_inside = (distance <= core_radius) & own
-    mean_mask = float(mask_patch[core_inside].mean()) if np.any(core_inside) else 0.0
+    core_after = (distance <= core_radius) & own
+    mean_mask = float(sky_mask[iy0:iy1, ix0:ix1][core_after].mean()) if np.any(core_after) else 0.0
     amount_effective = max(0.0, min(1.0, mean_mask))
-    expected_ratio = 1.0 - (1.0 - VERIFY_ELLIPTICITY_RATIO_AT_FULL) * amount_effective
-    e_limit = max(0.10, expected_ratio * e_before)
+    e_limit = max(
+        0.10,
+        (1.0 - (1.0 - VERIFY_ELLIPTICITY_RATIO_AT_FULL) * amount_effective) * e_before,
+    )
     if (
         not np.isfinite(shift)
         or not np.isfinite(flux_error)
@@ -317,8 +460,33 @@ def _round_one(
         or e_after > e_limit
     ):
         out[iy0:iy1, ix0:ix1] = before_patch
-        return False
-    return True
+        return "rejected:verification", None
+
+    for amount in ROUND_GATE_FRACTIONS:
+        partial = before_patch.astype(np.float64)
+        partial[own] = np.clip(stamp[own] + amount * delta[own], 0.0, 1.0)
+        _, _, _, _, e_intermediate = _owned_moments_patch(partial, candidate, own, candidate.y, candidate.x, iy0, ix0)
+        intermediate_amount = amount * amount_effective
+        limit = max(
+            0.10,
+            (1.0 - (1.0 - VERIFY_ELLIPTICITY_RATIO_AT_FULL) * intermediate_amount) * e_before,
+        )
+        if e_intermediate > limit:
+            out[iy0:iy1, ix0:ix1] = before_patch
+            return "rejected:amount_verification", None
+
+    difference = out[iy0:iy1, ix0:ix1] - before_patch
+    local_y, local_x = np.nonzero(np.any(difference != 0.0, axis=2))
+    return (
+        "corrected",
+        _Support(
+            rank=rank,
+            rect=rect,
+            local_y=local_y.astype(np.int32),
+            local_x=local_x.astype(np.int32),
+            values=difference[local_y, local_x].astype(np.float32),
+        ),
+    )
 
 
 def _validate_image_and_mask(stars: np.ndarray, sky_mask: np.ndarray) -> None:
@@ -570,12 +738,10 @@ def load_round_delta(path: Union[str, Path], *, identity: str) -> SparseRoundDel
     return delta
 
 
-def _pack_round_delta(
-    base: np.ndarray,
-    corrected: np.ndarray,
-    regions: Sequence[Tuple[Tuple[int, int, int, int], StarCandidate]],
-    rank: np.ndarray,
-    decision: np.ndarray,
+def _pack_supports(
+    supports: Sequence[_Support],
+    decisions: Sequence[str],
+    image_shape: Tuple[int, int],
 ) -> SparseRoundDelta:
     y0_parts: list[np.ndarray] = []
     x0_parts: list[np.ndarray] = []
@@ -585,25 +751,18 @@ def _pack_round_delta(
     local_x_parts: list[np.ndarray] = []
     value_parts: list[np.ndarray] = []
     offsets = [0]
-    for (py0, px0, py1, px1), candidate in regions:
-        difference = corrected[py0:py1, px0:px1] - base[py0:py1, px0:px1]
-        yy, xx = np.mgrid[py0:py1, px0:px1]
-        inside = (yy - candidate.y) ** 2 + (xx - candidate.x) ** 2 <= candidate.footprint_radius_px**2
-        # Bounding rectangles can overlap diagonally even though accepted
-        # circular correction supports do not. Clip each extraction to its own
-        # candidate support so a neighbouring correction is never copied twice.
-        support = np.any(difference != 0.0, axis=2) & inside
-        if not np.any(support):
+    for support in supports:
+        if support.local_y.size == 0:
             continue
-        local_y, local_x = np.nonzero(support)
-        y0_parts.append(np.asarray([py0], dtype=np.int32))
-        x0_parts.append(np.asarray([px0], dtype=np.int32))
-        height_parts.append(np.asarray([py1 - py0], dtype=np.int32))
-        width_parts.append(np.asarray([px1 - px0], dtype=np.int32))
-        local_y_parts.append(local_y.astype(np.int32))
-        local_x_parts.append(local_x.astype(np.int32))
-        value_parts.append(difference[local_y, local_x].astype(np.float32))
-        offsets.append(offsets[-1] + int(local_y.shape[0]))
+        y0, x0, y1, x1 = support.rect
+        y0_parts.append(np.asarray([y0], np.int32))
+        x0_parts.append(np.asarray([x0], np.int32))
+        height_parts.append(np.asarray([y1 - y0], np.int32))
+        width_parts.append(np.asarray([x1 - x0], np.int32))
+        local_y_parts.append(support.local_y)
+        local_x_parts.append(support.local_x)
+        value_parts.append(support.values)
+        offsets.append(offsets[-1] + int(support.local_y.size))
 
     def joined(parts: list[np.ndarray], dtype) -> np.ndarray:
         return np.concatenate(parts).astype(dtype, copy=False) if parts else np.empty(0, dtype=dtype)
@@ -621,10 +780,94 @@ def _pack_round_delta(
             if value_parts
             else np.empty((0, 3), dtype=np.float32)
         ),
-        image_shape=(int(base.shape[0]), int(base.shape[1])),
-        rank=np.asarray(rank, dtype=np.int32),
-        decision=np.asarray(decision, dtype=np.str_),
+        image_shape=(int(image_shape[0]), int(image_shape[1])),
+        rank=np.arange(len(decisions), dtype=np.int32),
+        decision=np.asarray(decisions, dtype=np.str_),
     )
+
+
+def _assemble_supports(
+    base: np.ndarray,
+    supports: Sequence[_Support],
+    amount: float = 1.0,
+) -> np.ndarray:
+    out = base.copy()
+    for support in supports:
+        y0, x0, _, _ = support.rect
+        out[y0 + support.local_y, x0 + support.local_x] += amount * support.values
+    np.clip(out, 0.0, 1.0, out=out)
+    return out
+
+
+def _victim_reach(candidate: StarCandidate) -> float:
+    square_stamp = float(np.sqrt(2.0) * (np.ceil(candidate.core_radius_px) + 1.0))
+    return max(candidate.footprint_radius_px, square_stamp)
+
+
+def _traditional_gate(
+    base: np.ndarray,
+    candidates: Sequence[StarCandidate],
+    supports: Sequence[_Support],
+    points: np.ndarray,
+    reaches: np.ndarray,
+    tree: Optional[cKDTree],
+    interrupt: Callable[[], bool],
+) -> Optional[set[int]]:
+    """Return correction ranks that must be rejected to satisfy the hard gate."""
+    active = [support.rank for support in supports]
+    if not active or tree is None:
+        return set()
+    max_reach = float(reaches.max())
+    writers_by_victim: dict[int, set[int]] = {rank: {rank} for rank in active}
+    victims = set(active)
+    for writer in active:
+        candidate = candidates[writer]
+        reach = float(candidate.footprint_radius_px + max_reach)
+        for other in tree.query_ball_point([candidate.x, candidate.y], reach):
+            other = int(other)
+            if other == writer:
+                continue
+            if (
+                float(np.hypot(candidate.x - points[other, 0], candidate.y - points[other, 1]))
+                < candidate.footprint_radius_px + reaches[other]
+            ):
+                victims.add(other)
+                writers_by_victim.setdefault(other, set()).add(writer)
+
+    reject: set[int] = set()
+    for amount in ROUND_GATE_FRACTIONS:
+        assembled = _assemble_supports(base, supports, amount)
+        for index, rank in enumerate(sorted(victims)):
+            if (index & (_INTERRUPT_INTERVAL - 1)) == 0 and interrupt():
+                return None
+            candidate = candidates[rank]
+            cy_before, cx_before, _ = _measure_local(base, candidate.x, candidate.y, candidate.core_radius_px)
+            cy_after, cx_after, _ = _measure_local(assembled, candidate.x, candidate.y, candidate.core_radius_px)
+            flux_before = _footprint_flux(base, candidate.x, candidate.y, candidate.footprint_radius_px)
+            flux_after = _footprint_flux(assembled, candidate.x, candidate.y, candidate.footprint_radius_px)
+            shift = float(np.hypot(cy_after - cy_before, cx_after - cx_before))
+            flux_error = float(np.max(np.abs(flux_after - flux_before) / np.maximum(np.abs(flux_before), 1e-9)))
+            total_before = float(flux_before.sum())
+            total_after = float(flux_after.sum())
+            if total_before > 0.0 and total_after > 0.0:
+                colour_error = float(
+                    np.max(
+                        np.abs(flux_after / total_after - flux_before / total_before)
+                        / np.maximum(np.abs(flux_before / total_before), 1e-9)
+                    )
+                )
+            else:
+                colour_error = 0.0
+            if (
+                not np.isfinite(shift)
+                or not np.isfinite(flux_error)
+                or not np.isfinite(colour_error)
+                or shift > MAX_VERIFY_CENTROID_SHIFT_PX
+                or flux_error > MAX_VERIFY_FLUX_ERROR
+                or colour_error > MAX_VERIFY_COLOR_DRIFT
+            ):
+                reject.update(writers_by_victim.get(rank, set()))
+    return reject
 
 
 def build_round_delta(
@@ -637,11 +880,12 @@ def build_round_delta(
     should_interrupt: Optional[Callable[[], bool]] = None,
     progress_callback: Optional[ProgressCallback] = None,
 ) -> Optional[SparseRoundDelta]:
-    """Build the full-strength Round Stars delta for included ranked stars.
+    """Build the full-strength owned-region Round Stars delta.
 
-    ``inclusion_mask`` is the workflow-owned ``M`` for this catalog and cutoff.
-    All detections, including excluded ranks, protect their neighbour cores.
-    The conservative Step 10 gates and verification tolerances are unchanged.
+    Corrections are written only in disjoint owned pixels, then every included
+    measured star affected at 25/50/75/100% is gated against the original
+    ``S_inc``. Conflicting corrections are rejected deterministically; if the
+    bounded gate cannot converge, all remaining corrections are dropped.
     """
     _validate_image_and_mask(stars, sky_mask)
     _validate_inclusion_mask(inclusion_mask, stars)
@@ -650,90 +894,119 @@ def build_round_delta(
         return None
     candidates = catalog.analysis_for_cutoff(cutoff).candidates
     included_count = catalog.included_count(cutoff)
-    eligible = [
-        (rank, candidate) for rank, candidate in enumerate(candidates[:included_count]) if _round_eligible(candidate)
-    ]
-
-    blocked_overlap = _overlapping_indices([candidate for _, candidate in eligible])
-    blocked_core = _protected_core_blocked([candidate for _, candidate in eligible], candidates)
-    accepted = [
-        (rank, candidate)
-        for position, (rank, candidate) in enumerate(eligible)
-        if position not in blocked_overlap and position not in blocked_core
-    ]
-    # Ranking selects the budget, not the correction order. Preserve Step 10's
-    # component order: square measurement windows can see a neighbouring support
-    # even when the protected circular supports are disjoint.
+    points = np.asarray([[c.x, c.y] for c in candidates], dtype=np.float64)
+    cores = np.asarray([max(c.core_radius_px, 1.0) for c in candidates], dtype=np.float64)
+    max_core = float(cores.max()) if len(cores) else 0.0
+    tree = cKDTree(points) if len(points) else None
+    included_points = points[:included_count]
+    included_reaches = np.asarray(
+        [_victim_reach(candidate) for candidate in candidates[:included_count]],
+        dtype=np.float64,
+    )
+    included_tree = cKDTree(included_points) if len(included_points) else None
+    decisions = ["excluded"] * len(candidates)
+    accepted: list[Tuple[int, StarCandidate, bool]] = []
+    for rank in range(included_count):
+        if (rank & (_INTERRUPT_INTERVAL - 1)) == 0 and interrupt():
+            return None
+        candidate = candidates[rank]
+        if not _round_gates(candidate):
+            decisions[rank] = f"ineligible:{_ineligible_reason(candidate)}"
+            continue
+        # 10D: an excluded detection never blocks an included correction. Its
+        # own label-owned pixels have M == 0 by ownership, so no correction can
+        # write there and its thresholded flux stays in read-only Original
+        # Stars. Packed support is asserted to have M > 0 below. Excluded ranks
+        # still take part in bisector ownership and remain report-only in the
+        # neighbour gate. Trade-off: an excluded neighbour's sub-threshold wings
+        # inside a corrected star's owned region may be redistributed.
+        remeasure = False
+        if candidate.is_blended or bool(catalog.intrinsic_blended[rank]):
+            rect = _candidate_rect(candidate, stars.shape[:2])
+            if rect is None:
+                decisions[rank] = "ineligible:no_patch"
+                continue
+            own_peaks, other_peaks, unknown_peaks = _component_peak_counts(
+                stars,
+                candidate,
+                rect,
+                catalog.threshold,
+                catalog.labels,
+                int(catalog.component_ids[rank]),
+            )
+            if unknown_peaks:
+                decisions[rank] = "ineligible:unattributed_peak"
+                continue
+            if own_peaks != 1:
+                decisions[rank] = "ineligible:multi_peak_component"
+                continue
+            remeasure = True
+        accepted.append((rank, candidate, remeasure))
     accepted.sort(key=lambda item: int(catalog.component_ids[item[0]]))
 
-    decisions = ["excluded"] * len(candidates)
-    eligible_positions = {rank: position for position, (rank, _) in enumerate(eligible)}
-    for rank, candidate in enumerate(candidates):
-        if rank >= included_count:
-            decisions[rank] = "excluded"
-        elif rank not in eligible_positions:
-            decisions[rank] = f"ineligible:{_ineligible_reason(candidate)}"
-    for position, (rank, _) in enumerate(eligible):
-        reasons = []
-        if position in blocked_overlap:
-            reasons.append("overlap")
-        if position in blocked_core:
-            reasons.append("neighbor_core")
-        if reasons:
-            decisions[rank] = "blocked:" + ",".join(reasons)
-
     base = inclusion_mask[..., None] * stars
-    corrected = base.copy()
-    if not accepted:
-        return _pack_round_delta(
-            base,
-            corrected,
-            [],
-            np.arange(len(candidates), dtype=np.int32),
-            np.asarray(decisions),
-        )
-
-    all_points = np.array([[c.x, c.y] for c in candidates], dtype=np.float64)
-    tree = cKDTree(all_points) if len(all_points) else None
-    catalog_position = {id(candidate): index for index, candidate in enumerate(candidates)}
-    accepted_regions: list[Tuple[Tuple[int, int, int, int], StarCandidate]] = []
-
+    out = base.copy()
+    supports: list[_Support] = []
     if progress_callback is not None:
         progress_callback(0, len(accepted), "Rounding included stars...")
-    for index, (rank, candidate) in enumerate(accepted):
+    for index, (rank, candidate, remeasure) in enumerate(accepted):
         if (index & (_INTERRUPT_INTERVAL - 1)) == 0 and interrupt():
             return None
-        neighbors = []
-        if tree is not None:
-            neighbor_indices = tree.query_ball_point(
-                [candidate.x, candidate.y], r=float(2.0 * candidate.footprint_radius_px)
-            )
-            center_index = catalog_position[id(candidate)]
-            neighbors = [
-                (candidates[other_index].x, candidates[other_index].y)
-                for other_index in neighbor_indices
-                if other_index != center_index
-            ]
-        corrected_before = _candidate_rect(candidate, base.shape[:2])
-        if corrected_before is None:
-            decisions[rank] = "ineligible:no_patch"
-            continue
-        if _round_one(corrected, candidate, neighbors, sky_mask):
-            decisions[rank] = "corrected"
-            accepted_regions.append((corrected_before, candidate))
-        else:
-            decisions[rank] = "rejected:verification"
+        neighbors = _neighbors(candidate, rank, candidates, included_count, tree, cores, max_core)
+        status, support = _round_one_owned(
+            out,
+            candidate,
+            rank,
+            neighbors,
+            sky_mask,
+            inclusion_mask,
+            remeasure,
+            catalog.threshold,
+        )
+        decisions[rank] = status
+        if support is not None:
+            supports.append(support)
         if progress_callback is not None and ((index & (_INTERRUPT_INTERVAL - 1)) == 0 or index + 1 == len(accepted)):
             progress_callback(index + 1, len(accepted), f"Rounding stars: {index + 1:,} / {len(accepted):,}")
     if interrupt():
         return None
-    return _pack_round_delta(
-        base,
-        corrected,
-        accepted_regions,
-        np.arange(len(candidates), dtype=np.int32),
-        np.asarray(decisions),
-    )
+
+    for support in supports:
+        y0, x0, _, _ = support.rect
+        ys = y0 + support.local_y
+        xs = x0 + support.local_x
+        if np.any(inclusion_mask[ys, xs] <= 0.0):
+            raise ValueError("round delta support lies outside the inclusion mask.")
+    active = list(supports)
+    for _ in range(TRADITIONAL_GATE_ROUNDS):
+        if not active or interrupt():
+            if interrupt():
+                return None
+            break
+        reject = _traditional_gate(
+            base,
+            candidates,
+            active,
+            included_points,
+            included_reaches,
+            included_tree,
+            interrupt,
+        )
+        if reject is None:
+            return None
+        if not reject:
+            break
+        for support in active:
+            if support.rank in reject:
+                decisions[support.rank] = "rejected:neighbor_quality"
+        active = [support for support in active if support.rank not in reject]
+    else:
+        for support in active:
+            decisions[support.rank] = "rejected:neighbor_quality"
+        active = []
+    if interrupt():
+        return None
+    return _pack_supports(active, decisions, stars.shape[:2])
 
 
 def _selected_glow_candidates(
