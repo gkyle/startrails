@@ -23,8 +23,7 @@ class Recombine(Observable):
     def recombine(
         self,
         finished_starless: np.ndarray,
-        original_stars: np.ndarray,
-        finished_stars: np.ndarray,
+        stars: np.ndarray,
         negative_residual: np.ndarray,
         settings: FinishSettings,
         *,
@@ -32,14 +31,13 @@ class Recombine(Observable):
         output_path: Optional[Union[str, Path]] = None,
         artifacts: Optional[ArtifactTransaction] = None,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
-        """Execute two-layer recombination and optionally write output.
+        """Execute single-layer recombination and optionally write output.
 
         Args:
             finished_starless: Clamped starless array (H, W, 3).
-            original_stars: Full separated positive star layer S (H, W, 3).
-            finished_stars: Finished positive star layer S_fin (H, W, 3).
+            stars: Separated positive star layer S (H, W, 3), used unchanged.
             negative_residual: Unscaled negative residual array (H, W, 3).
-            settings: Resolved Finish settings with both layer amounts, modes and codec options.
+            settings: Resolved Finish settings with Stars Amount, blend mode and codec options.
             bit_depth: Required source bit depth for export; caller chooses the source-matching output path.
             output_path: Optional file path to export image artifact.
             artifacts: Optional transaction to stage and commit output.
@@ -53,11 +51,8 @@ class Recombine(Observable):
 
         composite = recombine_layers(
             finished_starless,
-            original_stars,
-            finished_stars,
+            stars,
             negative_residual,
-            settings.original_stars_amount,
-            settings.original_stars_blend_mode,
             settings.star_amount,
             settings.blend_mode,
         )

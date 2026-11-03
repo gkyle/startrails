@@ -63,95 +63,60 @@ def blend_denoise(
     return base + a * w_weight * (full_denoised - base)
 
 
-def _blend_star_layer(
-    base: np.ndarray,
-    stars: np.ndarray,
-    amount_percent: float,
-    blend_mode: BlendModeType,
-    negative_residual: Optional[np.ndarray] = None,
-) -> np.ndarray:
-    """Blend one amount-scaled star layer onto a base chunk."""
-    if amount_percent == 0.0:
-        return base.copy()
-    amount = float(amount_percent) / PERCENT_SCALE
-    if blend_mode == BLEND_ADD:
-        blended = base + amount * stars
-        if negative_residual is not None:
-            blended += amount * negative_residual
-        np.clip(blended, 0.0, 1.0, out=blended)
-        return blended
-    contribution = np.clip(amount * stars, 0.0, 1.0)
-    return 1.0 - (1.0 - base) * (1.0 - contribution)
-
-
 def recombine_layers(
     finished_starless: np.ndarray,
-    original_stars: np.ndarray,
-    finished_stars: np.ndarray,
+    stars: np.ndarray,
     negative_residual: np.ndarray,
-    original_stars_amount_percent: float,
-    original_stars_blend_mode: BlendModeType,
-    finished_stars_amount_percent: float,
-    finished_stars_blend_mode: BlendModeType,
+    star_amount_percent: float,
+    blend_mode: BlendModeType,
     *,
     chunk_rows: int = RECOMBINE_CHUNK_ROWS,
 ) -> np.ndarray:
-    """Recombine finished starless with two independently controlled star layers.
+    """Recombine finished starless with the separated positive star layer.
 
-    Endpoint contracts:
-      a_o = original_stars_amount_percent / 100.0
-      a_f = finished_stars_amount_percent / 100.0
-      C1 = blend(F, a_o * S, mode_o)
-      C  = blend(C1, a_f * S_fin, mode_f)
+    Endpoint contract:
+      a = star_amount_percent / 100.0
+      Add:    C = clip(F + a * S + a * N, 0, 1)
+      Screen: C = 1 - (1 - F) * (1 - clip(a * S, 0, 1))
 
-    The negative residual follows Finished Stars Add only, as a_f * N. Both
-    layers use their own Add/Screen mode. Original defaults are resolved by
-    FinishSettings; this function always requires explicit amounts and modes.
+    The negative residual N follows Add only, scaled by star amount as part of
+    the original separation residual. Screen uses the positive layer and does
+    not promise to reconstruct the source. ``FinishSettings`` resolves the
+    amount and mode; this function always requires explicit values.
 
     Invariants:
-      Both amounts at 0% return finished_starless exactly, in either mode.
-      With neutral starless (F=B), unadjusted finished stars (S_fin=S),
-      Finished Add 100% and Original 0%, Add reconstructs source I within
+      At 0% the result is finished_starless exactly, in either mode.
+      With neutral starless (F=B), 100% Add reconstructs source I within
       float32 precision.
     """
     expected_shape = finished_starless.shape
     for label, array in (
-        ("original_stars", original_stars),
-        ("finished_stars", finished_stars),
+        ("stars", stars),
         ("negative_residual", negative_residual),
     ):
         if array.shape != expected_shape:
             raise ValueError(f"finished_starless and {label} shapes must match.")
     if chunk_rows <= 0:
         raise ValueError("chunk_rows must be positive.")
-    for label, amount, mode in (
-        ("Original Stars amount", original_stars_amount_percent, original_stars_blend_mode),
-        ("Finished Stars amount", finished_stars_amount_percent, finished_stars_blend_mode),
-    ):
-        if not np.isfinite(amount) or not 0 <= amount <= PERCENT_SCALE:
-            raise ValueError(f"{label} must be in range [0.0, 100.0], got {amount}")
-        if mode not in (BLEND_ADD, BLEND_SCREEN):
-            raise ValueError(f"Unknown blend mode '{mode}'. Must be one of {(BLEND_ADD, BLEND_SCREEN)}.")
+    if not np.isfinite(star_amount_percent) or not 0 <= star_amount_percent <= PERCENT_SCALE:
+        raise ValueError(f"Stars Amount must be in range [0.0, 100.0], got {star_amount_percent}")
+    if blend_mode not in (BLEND_ADD, BLEND_SCREEN):
+        raise ValueError(f"Unknown blend mode '{blend_mode}'. Must be one of {(BLEND_ADD, BLEND_SCREEN)}.")
 
-    if original_stars_amount_percent == 0.0 and finished_stars_amount_percent == 0.0:
+    if star_amount_percent == 0.0:
         return finished_starless.copy()
 
+    amount = float(star_amount_percent) / PERCENT_SCALE
     composite = np.empty_like(finished_starless)
     for start in range(0, expected_shape[0], chunk_rows):
         end = min(start + chunk_rows, expected_shape[0])
-        stage = _blend_star_layer(
-            finished_starless[start:end],
-            original_stars[start:end],
-            float(original_stars_amount_percent),
-            original_stars_blend_mode,
-        )
-        stage = _blend_star_layer(
-            stage,
-            finished_stars[start:end],
-            float(finished_stars_amount_percent),
-            finished_stars_blend_mode,
-            negative_residual=negative_residual[start:end] if finished_stars_blend_mode == BLEND_ADD else None,
-        )
+        base = finished_starless[start:end]
+        if blend_mode == BLEND_ADD:
+            stage = base + amount * stars[start:end] + amount * negative_residual[start:end]
+            np.clip(stage, 0.0, 1.0, out=stage)
+        else:
+            contribution = np.clip(amount * stars[start:end], 0.0, 1.0)
+            stage = 1.0 - (1.0 - base) * (1.0 - contribution)
         composite[start:end] = stage
     return composite
 

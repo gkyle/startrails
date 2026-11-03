@@ -282,7 +282,7 @@ class ProjectWelcomeOverlay(QWidget):
         layout_fn.addWidget(lbl_fn_title)
 
         lbl_fn_desc = QLabel(
-            "Star separation with AI starless denoise, star rounding, glow, and recombination.",
+            "Star separation with AI starless denoise and recombination.",
             self.card_finish,
         )
         lbl_fn_desc.setObjectName("CardDescription")

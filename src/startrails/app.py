@@ -259,6 +259,8 @@ class App:
             loaded_proj.relocate(str(path))
         else:
             loaded_proj.projectFile = str(path)
+        if isinstance(loaded_proj, FinishProject):
+            loaded_proj.remove_retired_star_effect_caches()
 
         # Validation succeeded: safely replace active project and workflow
         self.project = loaded_proj

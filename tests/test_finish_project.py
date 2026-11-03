@@ -13,26 +13,18 @@ from PySide6.QtCore import QObject
 from support import QtTestCase
 from startrails.lib.finish.defaults import (
     BLEND_SCREEN,
-    FINISHED_STARS_COMPOSITION_SETTING_NAMES,
     FINISH_DEFAULTS,
-    GLOW_STAR_COUNT_PRESETS,
     ROLE_DENOISED_STARLESS,
     FINISH_EXT,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
-    ROLE_FINISHED_STARS,
-    ROLE_ROUND_DELTA,
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
     ROLE_SKY_MASK,
     ROLE_SOURCE_SNAPSHOT,
-    ROLE_STAR_CATALOG,
     ROLE_UNMASKED_STARLESS,
-    STAR_COUNT_CUTOFF_PRESETS,
+    RETIRED_FINISH_SETTING_NAMES,
 )
-from startrails.lib.finish.star_analysis import STAR_ANALYSIS_VERSION
-from startrails.lib.finish.star_catalog import STAR_CATALOG_VERSION
-from startrails.lib.finish.star_effects import STAR_EFFECT_VERSION
 from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.image_io import imwrite
 from startrails.lib.project import Project
@@ -134,14 +126,6 @@ class TestFinishProject(QtTestCase):
         project.star_amount = 0.0
         project.structure_amount = 25.0
         project.detail_amount = 15.0
-        project.star_count_cutoff = None
-        project.glow_star_count = 375
-        project.round_stars_enabled = True
-        project.round_stars_amount = 0.0
-        project.star_glow_enabled = True
-        project.star_glow_amount = 40.0
-        project.original_stars_amount = 0.0
-        project.original_stars_blend_mode = BLEND_SCREEN
         project.blend_mode = BLEND_SCREEN
         project.jpeg_quality = 90
         project.starnet_stride = 128
@@ -156,47 +140,135 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(reloaded.star_amount, 0.0)
         self.assertEqual(reloaded.structure_amount, 25.0)
         self.assertEqual(reloaded.detail_amount, 15.0)
-        self.assertIsNone(reloaded.star_count_cutoff)
-        self.assertEqual(reloaded.glow_star_count, 375)
-        self.assertTrue(reloaded.round_stars_enabled)
-        self.assertEqual(reloaded.round_stars_amount, 0.0)
-        self.assertTrue(reloaded.star_glow_enabled)
-        self.assertEqual(reloaded.star_glow_amount, 40.0)
-        self.assertEqual(reloaded.original_stars_amount, 0.0)
-        self.assertEqual(reloaded.original_stars_blend_mode, BLEND_SCREEN)
         self.assertEqual(reloaded.blend_mode, BLEND_SCREEN)
         self.assertEqual(reloaded.jpeg_quality, 90)
         self.assertEqual(reloaded.starnet_stride, 128)
 
-        # Authoritative defaults and preset policy have one owner.
+        # Authoritative defaults have one owner; Stars Amount and blend mode
+        # are the only star-layer controls.
         self.assertEqual(FINISH_DEFAULTS.star_amount, 100.0)
-        self.assertEqual(FINISH_DEFAULTS.original_stars_amount, 0.0)
         self.assertEqual(FINISH_DEFAULTS.blend_mode, "add")
-        self.assertEqual(FINISH_DEFAULTS.original_stars_blend_mode, "add")
-        self.assertEqual(FINISH_DEFAULTS.star_count_cutoff, 10000)
-        self.assertEqual(FINISH_DEFAULTS.glow_star_count, 100)
-        self.assertEqual(STAR_COUNT_CUTOFF_PRESETS, (None, 100000, 10000, 1000))
-        self.assertEqual(GLOW_STAR_COUNT_PRESETS, (25, 100, 500))
+        self.assertFalse(set(RETIRED_FINISH_SETTING_NAMES) & set(FINISH_DEFAULTS.__dataclass_fields__))
+        for removed in RETIRED_FINISH_SETTING_NAMES:
+            self.assertNotIn(removed, FINISH_DEFAULTS.__dataclass_fields__)
 
     def test_old_projects_drop_retired_settings_and_inherit_new_defaults(self):
         project = FinishProject(project_file=str(self.root / f"legacy{FINISH_EXT}"))
         encoded = jsonpickle.encode(project)
         state = json.loads(encoded)
         persisted = state["py/state"]
-        persisted["faint_star_suppression"] = True
-        persisted["faint_star_amount"] = 65.0
-        for name in ("original_stars_amount", "original_stars_blend_mode", "star_count_cutoff", "glow_star_count"):
+        for name in RETIRED_FINISH_SETTING_NAMES:
+            persisted[name] = "retired-value"
+        for name in ("star_amount", "blend_mode"):
             persisted.pop(name, None)
 
         reloaded = jsonpickle.decode(json.dumps(state))
 
         self.assertIsInstance(reloaded, FinishProject)
-        self.assertFalse(hasattr(reloaded, "faint_star_suppression"))
-        self.assertFalse(hasattr(reloaded, "faint_star_amount"))
-        self.assertEqual(reloaded.original_stars_amount, FINISH_DEFAULTS.original_stars_amount)
-        self.assertEqual(reloaded.original_stars_blend_mode, FINISH_DEFAULTS.original_stars_blend_mode)
-        self.assertEqual(reloaded.star_count_cutoff, FINISH_DEFAULTS.star_count_cutoff)
-        self.assertEqual(reloaded.glow_star_count, FINISH_DEFAULTS.glow_star_count)
+        for name in RETIRED_FINISH_SETTING_NAMES:
+            self.assertFalse(hasattr(reloaded, name), name)
+        self.assertEqual(reloaded.star_amount, FINISH_DEFAULTS.star_amount)
+        self.assertEqual(reloaded.blend_mode, FINISH_DEFAULTS.blend_mode)
+
+    def test_legacy_load_discards_star_effect_records_and_only_owned_caches(self):
+        proj_file = self.root / f"effects_legacy{FINISH_EXT}"
+        output_dir = get_project_output_dir(proj_file)
+        output_dir.mkdir(parents=True)
+        project = FinishProject(project_file=str(proj_file))
+        state = json.loads(jsonpickle.encode(project))
+        persisted = state["py/state"]
+
+        owned_catalog = output_dir / "catalog.npz"
+        owned_finished = output_dir / "finished_stars.tif"
+        owned_catalog.write_bytes(b"owned catalog")
+        owned_finished.write_bytes(b"owned finished stars")
+
+        external_dir = self.root / "external"
+        external_dir.mkdir()
+        external_round = external_dir / "round_delta.npz"
+        external_finished = external_dir / "finished_stars.tif"
+        external_round.write_bytes(b"external round")
+        external_finished.write_bytes(b"external finished")
+        # The canonical cache name is a symlink to an external file: never follow it.
+        (output_dir / "round_delta.npz").symlink_to(external_round)
+
+        persisted["star_catalog_path"] = str(owned_catalog)
+        persisted["round_delta_path"] = str(external_round)
+        persisted["finished_stars_path"] = str(external_finished)
+        persisted["composite_path"] = str(output_dir / "composite.tif")
+        persisted["final_output_path"] = str(self.root / "export.tif")
+        persisted["composite_signature"] = "legacy-composite"
+        for role in ("star_catalog", "round_delta", "finished_stars"):
+            persisted["artifact_manifest"][role] = {
+                "source": [1, [0, 1]],
+                "file": [0, 1],
+                "revision": 0,
+                "options": {},
+            }
+        for role in ("finished_composite", "export"):
+            persisted["artifact_manifest"][role] = {
+                "source": [1, [0, 1]],
+                "file": [0, 1],
+                "revision": 0,
+                "options": {},
+            }
+
+        proj_file.write_text(json.dumps(state), encoding="utf-8")
+
+        # Decoding (as type detection and recent-project listing do) drops the
+        # records but must not delete files.
+        reloaded = jsonpickle.decode(json.dumps(state))
+        self.assertEqual(detect_project_type_from_path(proj_file), TYPE_FINISH)
+        self.assertTrue(owned_catalog.exists())
+        self.assertTrue(owned_finished.exists())
+        for role in ("star_catalog", "round_delta", "finished_stars", "finished_composite", "export"):
+            self.assertNotIn(role, reloaded.artifact_manifest)
+        self.assertIsNone(reloaded.composite_path)
+        self.assertIsNone(reloaded.final_output_path)
+        self.assertIsNone(reloaded.composite_signature)
+        for field in ("star_catalog_path", "round_delta_path", "finished_stars_path"):
+            self.assertFalse(hasattr(reloaded, field), field)
+
+        # Opening the project removes only caches it owns.
+        app = self.make_app(FinishProject(project_file=str(self.root / f"active{FINISH_EXT}")))
+        app.loadProject(str(proj_file))
+
+        self.assertFalse(owned_catalog.exists())
+        self.assertFalse(owned_finished.exists())
+        # A symlinked cache is not owned data and its external target is untouched.
+        self.assertTrue((output_dir / "round_delta.npz").is_symlink())
+        self.assertEqual(external_round.read_bytes(), b"external round")
+        self.assertEqual(external_finished.read_bytes(), b"external finished")
+
+        # A symlinked output directory points at external user data. Canonical
+        # filenames there are not project-owned; records are dropped but files stay.
+        external_output = self.root / "external_output"
+        external_output.mkdir()
+        external_catalog = external_output / "catalog.npz"
+        external_owned_name = external_output / "finished_stars.tif"
+        external_catalog.write_bytes(b"external catalog")
+        external_owned_name.write_bytes(b"external finished stars")
+        symlink_project_file = self.root / f"symlink_effects{FINISH_EXT}"
+        symlink_output_dir = get_project_output_dir(symlink_project_file)
+        symlink_output_dir.symlink_to(external_output, target_is_directory=True)
+
+        symlink_project = FinishProject(project_file=str(symlink_project_file))
+        symlink_state = json.loads(jsonpickle.encode(symlink_project))
+        symlink_persisted = symlink_state["py/state"]
+        symlink_persisted["round_stars_enabled"] = True
+        symlink_persisted["artifact_manifest"]["star_catalog"] = {
+            "source": [1, [0, 1]],
+            "file": [0, 1],
+            "revision": 0,
+            "options": {},
+        }
+        symlink_reloaded = jsonpickle.decode(json.dumps(symlink_state))
+        symlink_reloaded.remove_retired_star_effect_caches()
+
+        self.assertTrue(symlink_output_dir.is_symlink())
+        self.assertNotIn("star_catalog", symlink_reloaded.artifact_manifest)
+        self.assertEqual(external_catalog.read_bytes(), b"external catalog")
+        self.assertEqual(external_owned_name.read_bytes(), b"external finished stars")
 
     def test_operation_snapshot_isolates_mutable_artifact_state(self):
         project = FinishProject(project_file=str(self.root / f"snapshot{FINISH_EXT}"))
@@ -231,7 +303,7 @@ class TestFinishProject(QtTestCase):
         self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
 
         # An unrelated invalidation advances the revision but keeps the separation current.
-        project.invalidate_artifact_roles({ROLE_FINISHED_STARS})
+        project.invalidate_artifact_roles({ROLE_FINISHED_COMPOSITE})
         self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
 
         self.assertFalse(
@@ -255,13 +327,11 @@ class TestFinishProject(QtTestCase):
         composite = self.create_synthetic_image("settings.finish/composite.tif", bit_depth=16)
         denoised = self.create_synthetic_image("settings.finish/denoised.tif", bit_depth=16)
         finished_starless = self.create_synthetic_image("settings.finish/finished_starless.tif", bit_depth=16)
-        finished_stars = self.create_synthetic_image("settings.finish/finished_stars.tif", bit_depth=16)
         export = self.create_synthetic_image("settings.finish/export.tif", bit_depth=16)
         project.record_artifact(ROLE_SEPARATED_STARLESS, starless)
         project.record_artifact(ROLE_SEPARATED_STARS, stars)
         project.record_artifact(ROLE_DENOISED_STARLESS, denoised)
         project.record_artifact(ROLE_FINISHED_STARLESS, finished_starless)
-        project.record_artifact(ROLE_FINISHED_STARS, finished_stars)
         project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
         project.record_export(export)
 
@@ -269,12 +339,12 @@ class TestFinishProject(QtTestCase):
         self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
         self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
         self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
-        self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_STARS))
         self.assertIsNone(project.current_export_path())
 
         project.record_export(export)
         project.update_settings(replace(project.get_settings(), blend_mode=BLEND_SCREEN))
         self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
+        self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
         self.assertIsNone(project.current_export_path())
 
@@ -283,164 +353,7 @@ class TestFinishProject(QtTestCase):
         self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
         self.assertIsNotNone(project.current_artifact_path(ROLE_DENOISED_STARLESS))
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
-        self.assertIsNotNone(project.current_artifact_path(ROLE_FINISHED_STARS))
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
-
-    def publish_star_layers(self, project: FinishProject, *, suffix: str = "") -> tuple[Path, Path, Path]:
-        directory = self.root / f"stars{suffix}.finish"
-        directory.mkdir(parents=True, exist_ok=True)
-        catalog = directory / "catalog.npz"
-        round_delta = directory / "round_delta.npz"
-        catalog.write_bytes(b"catalog-bytes")
-        round_delta.write_bytes(b"round-bytes")
-        finished = self.create_synthetic_image(f"stars{suffix}.finish/finished.tif", bit_depth=16)
-        self.assertTrue(
-            project.publish_star_effects(
-                catalog_path=catalog,
-                round_delta_path=round_delta,
-                finished_stars_path=finished,
-                separation_signature=project.separation_signature,
-                expected_revision=project.processing_revision,
-                catalog_identity="catalog-a",
-                round_identity="round-a",
-                star_effect_version=STAR_EFFECT_VERSION,
-                settings=project.get_settings(),
-                catalog_options={
-                    "analysis_version": STAR_ANALYSIS_VERSION,
-                    "catalog_version": STAR_CATALOG_VERSION,
-                    "source_id": project.source_file.sourceId,
-                    "cutoff": project.star_count_cutoff,
-                },
-                round_options={"cutoff": project.star_count_cutoff},
-            )
-        )
-        return catalog, round_delta, finished
-
-    def test_publish_star_effects_records_paths_metadata_and_rejects_stale_revision(self):
-        project = FinishProject(project_file=str(self.root / f"starpublish{FINISH_EXT}"))
-        source = self.create_synthetic_image("starpublish_source.tif")
-        project.set_source_image(source)
-        starless = self.create_synthetic_image("starpublish.finish/starless.tif", bit_depth=16)
-        stars = self.create_synthetic_image("starpublish.finish/stars.tif", bit_depth=16)
-        self.assertTrue(
-            project.publish_separation(
-                starless,
-                stars,
-                signature="separation-a",
-                model_identity="starnet-model",
-                expected_revision=project.processing_revision,
-            )
-        )
-
-        catalog, round_delta, finished = self.publish_star_layers(project)
-
-        self.assertEqual(project.current_artifact_path(ROLE_STAR_CATALOG), catalog)
-        self.assertEqual(project.current_artifact_path(ROLE_ROUND_DELTA), round_delta)
-        self.assertEqual(project.current_artifact_path(ROLE_FINISHED_STARS), finished)
-        self.assertEqual(project.artifact_manifest[ROLE_STAR_CATALOG]["options"]["catalog_identity"], "catalog-a")
-        self.assertEqual(project.artifact_manifest[ROLE_ROUND_DELTA]["options"]["round_identity"], "round-a")
-        self.assertEqual(
-            project.artifact_manifest[ROLE_STAR_CATALOG]["options"]["analysis_version"], STAR_ANALYSIS_VERSION
-        )
-        self.assertEqual(
-            project.artifact_manifest[ROLE_ROUND_DELTA]["options"]["star_effect_version"], STAR_EFFECT_VERSION
-        )
-        finished_options = project.artifact_manifest[ROLE_FINISHED_STARS]["options"]
-        for name in FINISHED_STARS_COMPOSITION_SETTING_NAMES:
-            self.assertEqual(finished_options[name], getattr(project.get_settings(), name))
-        # Records hold only paths/stamps/options, never array payloads.
-        for role in (ROLE_STAR_CATALOG, ROLE_ROUND_DELTA):
-            record = project.artifact_manifest[role]
-            self.assertEqual(set(record), {"source", "file", "revision", "options"})
-            self.assertTrue(all(not isinstance(value, np.ndarray) for value in record["options"].values()))
-
-        revision = project.processing_revision
-        project.invalidate_artifact_roles({ROLE_FINISHED_COMPOSITE})
-        self.assertFalse(
-            project.publish_star_effects(
-                catalog_path=catalog,
-                round_delta_path=round_delta,
-                finished_stars_path=finished,
-                separation_signature=project.separation_signature,
-                expected_revision=revision,
-                catalog_identity="catalog-b",
-                round_identity="round-b",
-                star_effect_version=STAR_EFFECT_VERSION,
-                settings=project.get_settings(),
-            )
-        )
-        self.assertEqual(project.artifact_manifest[ROLE_STAR_CATALOG]["options"]["catalog_identity"], "catalog-a")
-
-    def test_star_setting_invalidation_matrix_keeps_effect_layers_when_composition_only(self):
-        project = FinishProject(project_file=str(self.root / f"starmatrix{FINISH_EXT}"))
-        source = self.create_synthetic_image("starmatrix_source.tif")
-        project.set_source_image(source)
-        starless = self.create_synthetic_image("starmatrix.finish/starless.tif", bit_depth=16)
-        stars = self.create_synthetic_image("starmatrix.finish/stars.tif", bit_depth=16)
-        self.assertTrue(
-            project.publish_separation(
-                starless,
-                stars,
-                signature="separation-a",
-                model_identity="starnet-model",
-                expected_revision=project.processing_revision,
-            )
-        )
-        catalog, round_delta, finished = self.publish_star_layers(project)
-        composite = self.create_synthetic_image("starmatrix.finish/composite.tif", bit_depth=16)
-        export = self.create_synthetic_image("starmatrix.finish/export.tif", bit_depth=16)
-        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
-        project.record_export(export)
-
-        project.update_settings(replace(project.get_settings(), star_count_cutoff=1000))
-        self.assertEqual(project.current_artifact_path(ROLE_STAR_CATALOG), catalog)
-        self.assertIsNone(project.current_artifact_path(ROLE_ROUND_DELTA))
-        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_STARS))
-        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
-        self.assertIsNone(project.current_export_path())
-
-        catalog, round_delta, finished = self.publish_star_layers(project, suffix="_b")
-        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
-        project.record_export(export)
-        project.update_settings(replace(project.get_settings(), glow_star_count=25))
-        self.assertEqual(project.current_artifact_path(ROLE_STAR_CATALOG), catalog)
-        self.assertEqual(project.current_artifact_path(ROLE_ROUND_DELTA), round_delta)
-        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_STARS))
-        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
-        self.assertIsNone(project.current_export_path())
-
-        catalog, round_delta, finished = self.publish_star_layers(project, suffix="_c")
-        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
-        project.record_export(export)
-        project.update_settings(
-            replace(project.get_settings(), round_stars_enabled=True, round_stars_amount=0.0, star_amount=0.0)
-        )
-        self.assertEqual(project.current_artifact_path(ROLE_STAR_CATALOG), catalog)
-        self.assertEqual(project.current_artifact_path(ROLE_ROUND_DELTA), round_delta)
-        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_STARS))
-        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
-
-        catalog, round_delta, finished = self.publish_star_layers(project, suffix="_d")
-        project.record_artifact(ROLE_FINISHED_COMPOSITE, composite)
-        project.record_export(export)
-        project.update_settings(
-            replace(
-                project.get_settings(),
-                star_amount=0.0,
-                original_stars_amount=50.0,
-                original_stars_blend_mode=BLEND_SCREEN,
-            )
-        )
-        self.assertEqual(project.current_artifact_path(ROLE_STAR_CATALOG), catalog)
-        self.assertEqual(project.current_artifact_path(ROLE_ROUND_DELTA), round_delta)
-        self.assertEqual(project.current_artifact_path(ROLE_FINISHED_STARS), finished)
-        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
-
-        project.invalidate_star_effect_layers()
-        self.assertIsNotNone(project.current_artifact_path(ROLE_STAR_CATALOG))
-        self.assertIsNone(project.current_artifact_path(ROLE_ROUND_DELTA))
-        project.invalidate_star_effects_descendants()
-        self.assertIsNone(project.current_artifact_path(ROLE_STAR_CATALOG))
 
     def test_denoise_publication_persists_endpoint_and_invalidates_composite_export(self):
         project = FinishProject(project_file=str(self.root / f"denoise{FINISH_EXT}"))
@@ -538,12 +451,14 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(project.artifact_path(ROLE_SEPARATED_STARLESS), out_dir / "starless.tif")
         self.assertEqual(project.artifact_path(ROLE_SEPARATED_STARS), out_dir / "stars.tif")
         self.assertEqual(project.artifact_path(ROLE_SKY_MASK), out_dir / "sky_mask.png")
-        self.assertEqual(project.artifact_path(ROLE_STAR_CATALOG), out_dir / "catalog.npz")
-        self.assertEqual(project.artifact_path(ROLE_ROUND_DELTA), out_dir / "round_delta.npz")
         self.assertEqual(project.artifact_path(ROLE_FINISHED_COMPOSITE), out_dir / "composite.tif")
 
         with self.assertRaises(ValueError):
             project.artifact_path("invalid_role")
+        for removed_role in ("star_catalog", "round_delta", "finished_stars"):
+            with self.subTest(role=removed_role):
+                with self.assertRaises(ValueError):
+                    project.artifact_path(removed_role)
 
     def test_project_relocation_preserves_owned_inputs(self):
         old_dir = self.root / "old"
@@ -749,7 +664,6 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(sidebar.skyCard._status, "locked")
         self.assertEqual(sidebar.separateCard._status, "locked")
         self.assertEqual(sidebar.starlessCard._status, "locked")
-        self.assertEqual(sidebar.starsCard._status, "locked")
         self.assertEqual(sidebar.recombineCard._status, "locked")
         self.assertTrue(shell.canvas_main.pixmap.isNull())
 
@@ -795,7 +709,6 @@ class TestFinishProject(QtTestCase):
 
         self.assertEqual(sidebar.separateCard._status, "done")
         self.assertEqual(sidebar.starlessCard._status, "ready")
-        self.assertEqual(sidebar.starsCard._status, "ready")
         self.assertEqual(sidebar.recombineCard._status, "ready")
         self.assertEqual({f.operation for f in sidebar.outputFiles.model.files}, {"Starless", "Stars"})
         # Save explicitly recombines current layers when no composite is cached.

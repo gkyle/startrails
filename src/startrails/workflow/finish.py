@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 from pathlib import Path
 from contextlib import nullcontext
 from concurrent.futures import CancelledError
-import logging
 import tempfile
-from typing import TYPE_CHECKING, Any, Callable, Final, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Final, List, Optional, Tuple, Union
 
-import cv2
 import numpy as np
 
 from startrails.lib.artifacts import ArtifactTransaction
@@ -19,57 +16,29 @@ from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.finish.composition import (
     blend_denoise,
     compute_denoise_endpoint_signature,
-    recombine_layers,
 )
 from startrails.lib.finish.defaults import (
-    CATALOG_SETTING_NAMES,
-    COMPOSITION_ONLY_SETTING_NAMES,
-    GLOW_SETTING_NAMES,
     INTERMEDIATE_BIT_DEPTH,
     PERCENT_SCALE,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
     ROLE_FINISHED_STARLESS,
-    ROLE_FINISHED_STARS,
-    ROLE_ROUND_DELTA,
     ROLE_SEPARATED_STARLESS,
     ROLE_SEPARATED_STARS,
     ROLE_SKY_MASK,
-    ROLE_STAR_CATALOG,
     ROLE_UNMASKED_STARLESS,
     SCOPE_SKY_ONLY,
     SCOPE_WHOLE_IMAGE,
     SUPPORTED_CHANNELS,
-    FinishSettings,
 )
 from startrails.lib.finish.graxpert import graxpert_model_identity
 from startrails.lib.finish.separation import compute_separation_signature
-from startrails.lib.finish.star_analysis import STAR_ANALYSIS_VERSION
-from startrails.lib.finish.star_catalog import (
-    STAR_CATALOG_VERSION,
-    RankedStarCatalog,
-    build_catalog,
-    extend_catalog,
-    included_mask,
-    load_catalog,
-    save_catalog,
-)
-from startrails.lib.finish.star_effects import (
-    STAR_EFFECT_VERSION,
-    SparseRoundDelta,
-    build_round_delta,
-    compose_star_layer,
-    load_round_delta,
-    render_glow,
-    save_round_delta,
-)
 from startrails.lib.finish.starnet import MAX_STRIDE, MIN_STRIDE
 from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
-from startrails.lib.image_io import imread, imwrite, normalize_image
+from startrails.lib.image_io import imread, imwrite
 from startrails.lib.model_manifest import GRAXPERT_MANIFEST, PlatformNotSupportedError
 from startrails.lib.project_finish import FinishProject
-from startrails.lib.signatures import compute_signature, read_file_identity
 from startrails.lib.starnet_setup import (
     STARNET_TERMS_REVISION,
     STARNET_TERMS_SHA256,
@@ -85,7 +54,6 @@ from startrails.lib.starnet_setup import (
     record_starnet_installation,
     repair_starnet_installation,
 )
-from startrails.op.finish.finish_stars import FinishStars
 from startrails.op.finish.graxpert_denoise import GraXpertDenoise
 from startrails.op.finish.recombine import Recombine
 from startrails.op.finish.run_starnet import RunStarNet
@@ -97,8 +65,6 @@ from startrails.workflow.masking import SkyMaskingWorkflowMixin
 
 if TYPE_CHECKING:
     from startrails.app import App
-
-logger = logging.getLogger(__name__)
 
 
 # Shared scale for the separation task's phase progress. The view's progress
@@ -116,56 +82,6 @@ _STARLESS_PROGRESS_TOTAL: Final[int] = 100
 _STARLESS_DENOISE_PROGRESS_SPAN = (0, 90)
 _STARLESS_SHARPEN_PROGRESS_SPAN = (90, 9)
 _STARLESS_NO_PHASE_PROGRESS = 99
-
-# Star finishing also reserves the last unit for TIFF publication, so the inner
-# effect operation cannot report the task complete before its result is recorded.
-_STAR_FINISH_PROGRESS_TOTAL: Final[int] = 100
-_STAR_FINISH_PROGRESS_SPAN = (0, 99)
-
-# Work required when a star setting changes. Composition-only edits never run a
-# worker job; Glow geometry edits reuse the catalog and Round delta.
-StarRefreshAction = Literal["none", "composition", "glow", "effects"]
-STAR_PREVIEW_LAYERS: Final[Tuple[str, ...]] = (
-    "composite",
-    "finished_stars",
-    "original_stars",
-    "excluded_stars",
-)
-# Full-frame interactive previews use a reduced cached endpoint so a 66 MP
-# composition never allocates full-resolution RGB buffers on the GUI thread.
-STAR_PREVIEW_MAX_DIMENSION: Final[int] = 1600
-
-_STAR_SETTING_NAMES: Final[Tuple[str, ...]] = (
-    CATALOG_SETTING_NAMES + GLOW_SETTING_NAMES + COMPOSITION_ONLY_SETTING_NAMES
-)
-
-
-@dataclass(frozen=True)
-class StarFinishState:
-    """In-memory star layers required to compose or preview the finished stars."""
-
-    catalog: RankedStarCatalog
-    inclusion_mask: np.ndarray
-    round_delta: Optional[SparseRoundDelta]
-    glow: Optional[np.ndarray]
-    cutoff: Optional[int]
-    glow_star_count: int
-    glow_radius_px: float
-    identity: str
-
-
-@dataclass(frozen=True)
-class _ReducedStarPreview:
-    """Composition-only preview endpoint at a bounded resolution."""
-
-    key: Tuple[Any, ...]
-    stars: np.ndarray
-    included_stars: np.ndarray
-    round_component: np.ndarray
-    glow: np.ndarray
-    finished_starless: Optional[np.ndarray]
-    negative_residual: Optional[np.ndarray]
-    full_shape: Tuple[int, int]
 
 
 class _PhaseProgress:
@@ -233,380 +149,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self._project = app.project
         self._graxpert_session: Optional[GraXpertSession] = None
         self._graxpert_session_key: Optional[Tuple[str, str]] = None
-        self._catalog_cache: Optional[RankedStarCatalog] = None
-        self._catalog_key: Optional[str] = None
-        self._catalog_dirty: bool = False
-        self._round_delta_cache: Optional[SparseRoundDelta] = None
-        self._round_delta_key: Optional[str] = None
-        self._round_delta_dirty: bool = False
-        self._glow_cache: Optional[np.ndarray] = None
-        self._glow_key: Optional[str] = None
-        self._inclusion_mask_cache: Optional[np.ndarray] = None
-        self._inclusion_mask_key: Optional[Tuple[str, Optional[int]]] = None
-        self._reduced_preview: Optional[_ReducedStarPreview] = None
-        # Interactive previews reuse decoded layers. Each entry is keyed by file
-        # metadata so an externally replaced artifact is reloaded, never served
-        # from a stale cache.
-        self._image_cache: dict[Path, Tuple[Tuple[int, int, int], np.ndarray]] = {}
-        self._mask_cache: Optional[np.ndarray] = None
-        self._mask_cache_key: Optional[Tuple[str, int, int, int]] = None
-        self._negative_cache: Optional[np.ndarray] = None
-        self._negative_cache_key: Optional[Tuple[Any, Any]] = None
-
-    def _clear_image_caches(self) -> None:
-        """Drop decoded images and arrays derived from them."""
-        self._image_cache.clear()
-        self._mask_cache = None
-        self._mask_cache_key = None
-        self._negative_cache = None
-        self._negative_cache_key = None
-        self._reduced_preview = None
-
-    def _clear_star_caches(self) -> None:
-        """Drop in-memory catalog/effect layers after an ownership change."""
-        self._catalog_cache = None
-        self._catalog_key = None
-        self._catalog_dirty = False
-        self._round_delta_cache = None
-        self._round_delta_key = None
-        self._round_delta_dirty = False
-        self._glow_cache = None
-        self._glow_key = None
-        self._inclusion_mask_cache = None
-        self._inclusion_mask_key = None
-        self._clear_image_caches()
-
-    @staticmethod
-    def _file_cache_key(path: Path) -> Tuple[int, int, int]:
-        identity = read_file_identity(path)
-        return identity.size, identity.mtime_ns, identity.ctime_ns
-
-    def _cached_imread(self, path: Union[str, Path]) -> np.ndarray:
-        """Decode a normalized RGB image once per file identity."""
-        resolved = Path(path).resolve()
-        key = self._file_cache_key(resolved)
-        cached = self._image_cache.get(resolved)
-        if cached is not None and cached[0] == key:
-            return cached[1]
-        image = imread(resolved, to_rgb=True, as_float=True)
-        # A project has a small fixed set of layers; this only guards against
-        # accumulating old separation paths across repeated re-runs.
-        if len(self._image_cache) >= 8:
-            self._image_cache.pop(next(iter(self._image_cache)))
-        self._image_cache[resolved] = (key, image)
-        return image
-
-    def _current_mask_cached(self) -> Optional[np.ndarray]:
-        """Load and cache the current canonical mask for interactive previews."""
-        project = self.project
-        if not project.source_is_current():
-            return None
-        mask_path = project.current_artifact_path(ROLE_SKY_MASK)
-        if mask_path is None or not mask_path.is_file():
-            return None
-        identity = read_file_identity(mask_path)
-        key = (str(mask_path), identity.size, identity.mtime_ns, identity.ctime_ns)
-        if self._mask_cache is not None and self._mask_cache_key == key:
-            return self._mask_cache
-        dims = project.get_source_dimensions()
-        mask = MaskHandler.load_mask(mask_path)
-        if dims is None or mask.shape != dims:
-            return None
-        self._mask_cache = mask
-        self._mask_cache_key = key
-        return mask
-
-    @staticmethod
-    def _downsample_rgb(array: np.ndarray) -> np.ndarray:
-        height, width = array.shape[:2]
-        scale = min(1.0, STAR_PREVIEW_MAX_DIMENSION / float(max(height, width)))
-        if scale >= 1.0:
-            return array
-        return cv2.resize(
-            array,
-            (max(1, round(width * scale)), max(1, round(height * scale))),
-            interpolation=cv2.INTER_AREA,
-        ).astype(np.float32, copy=False)
-
-    def _preview_base_paths(self) -> Tuple[Optional[Path], Optional[Path]]:
-        project = self.project
-        separated = project.current_artifact_path(ROLE_SEPARATED_STARLESS)
-        finished = project.current_artifact_path(ROLE_FINISHED_STARLESS) or separated
-        return finished, separated
-
-    def _artifact_stamp(self, path: Optional[Path]) -> Optional[Tuple[int, int, int]]:
-        if path is None:
-            return None
-        try:
-            return self._file_cache_key(path)
-        except OSError:
-            return None
-
-    def _expected_preview_key(self, settings: FinishSettings) -> Optional[Tuple[Any, ...]]:
-        """Identify the cached preview endpoint without decoding any image."""
-        project = self.project
-        if project.current_artifact_path(ROLE_SEPARATED_STARS) is None:
-            return None
-        context = self._catalog_identity_context()
-        if context is None:
-            return None
-        catalog_identity, _, _ = context
-        base_path, separated_starless_path = self._preview_base_paths()
-        return (
-            f"{catalog_identity}|cutoff={settings.star_count_cutoff}",
-            settings.glow_star_count,
-            float(settings.star_glow_radius_px),
-            STAR_EFFECT_VERSION,
-            self._artifact_stamp(base_path),
-            self._artifact_stamp(separated_starless_path),
-        )
-
-    @staticmethod
-    def _state_matches_settings(state: StarFinishState, settings: FinishSettings) -> bool:
-        return (
-            state.cutoff == settings.star_count_cutoff
-            and state.glow_star_count == settings.glow_star_count
-            and state.glow_radius_px == float(settings.star_glow_radius_px)
-        )
-
-    def _build_reduced_preview(
-        self,
-        state: StarFinishState,
-        stars: np.ndarray,
-    ) -> Optional[_ReducedStarPreview]:
-        """Build the bounded composition endpoint once, never on a toggle."""
-        project = self.project
-        revision = project.processing_revision
-        settings = project.get_settings()
-        if self._request_is_stale(project, revision) or not self._state_matches_settings(state, settings):
-            return None
-        key = self._expected_preview_key(settings)
-        if key is None:
-            return None
-        stars_small = self._downsample_rgb(stars)
-        # Reduce the actual S_inc product, not M and S independently: reduction
-        # and multiplication do not commute at feathered footprint edges.
-        included_full = (state.inclusion_mask[..., None] * stars).astype(np.float32, copy=False)
-        included_small = self._downsample_rgb(included_full)
-        del included_full
-
-        round_component = np.zeros_like(included_small)
-        if state.round_delta is not None:
-            round_settings = replace(
-                settings,
-                round_stars_enabled=True,
-                round_stars_amount=100.0,
-                star_glow_enabled=False,
-                star_glow_amount=0.0,
-            )
-            rounded_full = compose_star_layer(
-                stars,
-                state.catalog,
-                state.round_delta,
-                None,
-                round_settings,
-                inclusion_mask=state.inclusion_mask,
-            )
-            round_component = (self._downsample_rgb(rounded_full) - included_small).astype(np.float32, copy=False)
-            del rounded_full
-
-        glow_small = self._downsample_rgb(state.glow) if state.glow is not None else np.zeros_like(stars_small)
-        base_path, separated_starless_path = self._preview_base_paths()
-        finished_starless: Optional[np.ndarray] = None
-        negative: Optional[np.ndarray] = None
-        if base_path is not None and separated_starless_path is not None:
-            finished_starless = self._downsample_rgb(self._cached_imread(base_path))
-            negative = self._downsample_rgb(
-                self._cached_negative_residual(self.project.source_file.path, separated_starless_path)
-            )
-
-        current_settings = project.get_settings()
-        if (
-            self._request_is_stale(project, revision)
-            or not self._state_matches_settings(state, current_settings)
-            or self._expected_preview_key(current_settings) != key
-        ):
-            return None
-        preview = _ReducedStarPreview(
-            key=key,
-            stars=stars_small,
-            included_stars=included_small,
-            round_component=round_component,
-            glow=glow_small,
-            finished_starless=finished_starless,
-            negative_residual=negative,
-            full_shape=(int(stars.shape[0]), int(stars.shape[1])),
-        )
-        self._reduced_preview = preview
-        return preview
-
-    def prepare_star_endpoints(
-        self,
-        *,
-        progress_bar: Optional[Any] = None,
-        should_interrupt: Optional[Callable[[], bool]] = None,
-    ) -> Optional[StarFinishState]:
-        """Ensure persisted catalog/Round/Glow endpoints and a bounded preview cache.
-
-        This is the background preparation boundary used after separation, on
-        reopen, and for explicit effect/Glow rebuilds. Rendering never performs
-        analysis or disk decoding on its own.
-        """
-        project = self.project
-        revision = project.processing_revision
-        settings = project.get_settings()
-        inputs = self._star_inputs()
-        if inputs is None:
-            return None
-        _, stars, _, _, _, _ = inputs
-        state = self.get_star_finish_state(should_interrupt=should_interrupt, _inputs=inputs)
-        if (
-            state is None
-            or self._request_is_stale(project, revision)
-            or not self._state_matches_settings(state, settings)
-        ):
-            return None
-
-        # A cache hit is not persistence truth: a prior cancellation, failed
-        # transaction or corrupt artifact can leave updated blobs only in memory.
-        if self._catalog_dirty or self._round_delta_dirty:
-            if self.do_finish_stars(progress_bar=progress_bar) is None:
-                return None
-            project = self.project
-            revision = project.processing_revision
-            settings = project.get_settings()
-            inputs = self._star_inputs()
-            if inputs is None:
-                return None
-            _, stars, _, _, _, _ = inputs
-            state = self.get_star_finish_state(should_interrupt=should_interrupt, _inputs=inputs)
-            if (
-                state is None
-                or self._request_is_stale(project, revision)
-                or not self._state_matches_settings(state, settings)
-            ):
-                return None
-
-        current_settings = project.get_settings()
-        if self._request_is_stale(project, revision) or not self._state_matches_settings(state, current_settings):
-            return None
-        key = self._expected_preview_key(current_settings)
-        if self._reduced_preview is None or self._reduced_preview.key != key:
-            if self._build_reduced_preview(state, stars) is None:
-                return None
-        if self._request_is_stale(project, revision) or not self._state_matches_settings(state, project.get_settings()):
-            return None
-        return state
-
-    def get_star_preview_status(self) -> str:
-        """Return ``ready``, ``cold``, ``stale`` or ``unavailable`` for the preview."""
-        project = self.project
-        if project.current_artifact_path(ROLE_SEPARATED_STARS) is None:
-            return "unavailable"
-        if not project.source_is_current():
-            return "stale"
-        settings = project.get_settings()
-        if self._expected_preview_key(settings) is None:
-            return "unavailable"
-        if self._reduced_preview is None:
-            return "cold"
-        return "ready" if self._reduced_preview.key == self._expected_preview_key(settings) else "stale"
-
-    def _compose_reduced_preview(
-        self,
-        layer: str,
-        settings: FinishSettings,
-        *,
-        compare: bool,
-    ) -> Optional[np.ndarray]:
-        preview = self._reduced_preview
-        if preview is None:
-            return None
-        included = preview.included_stars
-        if layer == "original_stars":
-            return preview.stars
-        if layer == "excluded_stars":
-            return preview.stars - included
-        if layer == "finished_stars":
-            if compare:
-                return included.copy()
-            finished = included.copy()
-            round_amount = float(settings.round_stars_amount) / PERCENT_SCALE
-            glow_amount = float(settings.star_glow_amount) / PERCENT_SCALE
-            if settings.round_stars_enabled and round_amount > 0.0:
-                finished += np.float32(round_amount) * preview.round_component
-            if settings.star_glow_enabled and glow_amount > 0.0:
-                finished += np.float32(glow_amount) * preview.glow
-            np.clip(finished, 0.0, 1.0, out=finished)
-            return finished
-        if preview.finished_starless is None or preview.negative_residual is None:
-            return None
-        finished = self._compose_reduced_preview("finished_stars", settings, compare=False)
-        if finished is None:
-            return None
-        return recombine_layers(
-            preview.finished_starless,
-            preview.stars,
-            finished,
-            preview.negative_residual,
-            settings.original_stars_amount,
-            settings.original_stars_blend_mode,
-            settings.star_amount,
-            settings.blend_mode,
-        )
-
-    def _region_from_reduced(
-        self,
-        preview: np.ndarray,
-        region: Tuple[int, int, int, int],
-    ) -> np.ndarray:
-        cached = self._reduced_preview
-        if cached is None:
-            return preview
-        full_h, full_w = cached.full_shape
-        y0, y1, x0, x1 = region
-        if y0 < 0 or x0 < 0 or y1 > full_h or x1 > full_w or y0 >= y1 or x0 >= x1:
-            raise ValueError(f"Invalid preview region {region!r} for shape {(full_h, full_w)}.")
-        small_h, small_w = preview.shape[:2]
-        sx = small_w / float(full_w)
-        sy = small_h / float(full_h)
-        sx0 = max(0, min(small_w - 1, int(np.floor(x0 * sx))))
-        sx1 = max(sx0 + 1, min(small_w, int(np.ceil(x1 * sx))))
-        sy0 = max(0, min(small_h - 1, int(np.floor(y0 * sy))))
-        sy1 = max(sy0 + 1, min(small_h, int(np.ceil(y1 * sy))))
-        cropped = preview[sy0:sy1, sx0:sx1]
-        target_w = x1 - x0
-        target_h = y1 - y0
-        bound = max(target_h, target_w)
-        if bound > STAR_PREVIEW_MAX_DIMENSION:
-            shrink = STAR_PREVIEW_MAX_DIMENSION / float(bound)
-            target_h = max(1, int(round(target_h * shrink)))
-            target_w = max(1, int(round(target_w * shrink)))
-        if cropped.shape[0] != target_h or cropped.shape[1] != target_w:
-            cropped = cv2.resize(cropped, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
-        return cropped.astype(np.float32, copy=False)
-
-    def _cached_negative_residual(
-        self,
-        source_path: Union[str, Path],
-        separated_starless_path: Union[str, Path],
-    ) -> np.ndarray:
-        """Compute ``min(I - B, 0)`` once per source/separated-starless identity."""
-        source_id = read_file_identity(Path(source_path).resolve())
-        starless_id = read_file_identity(Path(separated_starless_path).resolve())
-        key = (
-            (source_id.size, source_id.mtime_ns, source_id.ctime_ns),
-            (starless_id.size, starless_id.mtime_ns, starless_id.ctime_ns),
-        )
-        if self._negative_cache is not None and self._negative_cache_key == key:
-            return self._negative_cache
-        source = self._cached_imread(source_path)
-        separated_starless = self._cached_imread(separated_starless_path)
-        negative = np.subtract(source, separated_starless)
-        np.minimum(negative, 0.0, out=negative)
-        self._negative_cache = negative
-        self._negative_cache_key = key
-        return negative
 
     @property
     def project(self) -> FinishProject:
@@ -654,7 +196,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                 )
         if expected_signature == project.separation_signature and project.separation_model_identity == current_identity:
             return False
-        self._clear_star_caches()
         self.project.invalidate_results()
         self.save_project()
         return True
@@ -671,7 +212,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             (ROLE_SEPARATED_STARLESS, "Starless"),
             (ROLE_SEPARATED_STARS, "Stars"),
             (ROLE_FINISHED_STARLESS, "Finished Starless"),
-            (ROLE_FINISHED_STARS, "Finished Stars"),
             (ROLE_FINISHED_COMPOSITE, "Composite"),
         )
         for role, label in artifact_roles:
@@ -690,19 +230,16 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
 
     def do_import_source(self, path: Union[str, Path]) -> None:
         """Import a new source image and persist project state."""
-        self._clear_star_caches()
         self.project.set_source_image(path)
         self.save_project()
 
     def do_replace_source(self, path: Union[str, Path]) -> None:
         """Replace the current source image with a new one and persist project state."""
-        self._clear_star_caches()
         self.project.set_source_image(path)
         self.save_project()
 
     def do_clear_source(self) -> None:
         """Remove the selected source from the project, retaining its files on disk."""
-        self._clear_star_caches()
         self.project.clear_source_image()
         self.save_project()
 
@@ -736,7 +273,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                     raise ValueError("Project changed while saving the sky mask; retry the mask edit.")
         except CancelledError:
             raise ValueError("Project changed while saving the sky mask; retry the mask edit.") from None
-        self._clear_star_caches()
         self.save_project()
         return canonical_path
 
@@ -776,7 +312,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         """Export the current recombined composite using source-matching depth and format."""
         self.invalidate_if_graxpert_changed()
         self.invalidate_if_starless_filter_changed()
-        self.invalidate_if_star_effects_changed()
         project = self.project
         revision = project.processing_revision
         if not project.source_file or not project.source_file.path:
@@ -798,6 +333,13 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         if composite_artifact is None:
             raise ValueError("No current composite result to export; separate stars and recombine first.")
         settings = project.get_settings()
+        record_options = project.artifact_manifest.get(ROLE_FINISHED_COMPOSITE, {}).get("options", {})
+        if "star_amount" in record_options and (
+            record_options.get("star_amount") != settings.star_amount
+            or record_options.get("blend_mode") != settings.blend_mode
+        ):
+            # Never export a composite encoded from previous star settings.
+            raise ValueError("Composite does not match the current star settings; recombine before exporting.")
         separation_signature = project.separation_signature
         img = imread(composite_artifact, to_rgb=True, as_float=True)
 
@@ -930,79 +472,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self.save_project()
         return True
 
-    def invalidate_if_star_effects_changed(self) -> bool:
-        """Invalidate layers produced by older analysis/effect versions.
-
-        An analysis-version change invalidates the catalog and every layer derived
-        from it. An effect-version change keeps the catalog but rebuilds Round,
-        Glow and compositions. Separation, denoise and finished-starless results
-        are unaffected either way.
-        """
-        project = self.project
-        catalog_record = project.artifact_manifest.get(ROLE_STAR_CATALOG)
-        if catalog_record is not None:
-            options = catalog_record.get("options", {})
-            if (
-                options.get("analysis_version") != STAR_ANALYSIS_VERSION
-                or options.get("catalog_version") != STAR_CATALOG_VERSION
-            ):
-                self._clear_star_caches()
-                project.invalidate_star_effects_descendants()
-                self.save_project()
-                return True
-
-        changed = False
-        round_record = project.artifact_manifest.get(ROLE_ROUND_DELTA)
-        if round_record is not None:
-            if round_record.get("options", {}).get("star_effect_version") != STAR_EFFECT_VERSION:
-                changed = True
-        # A finished-stars TIFF is derived output, but a record produced by an
-        # older effect algorithm still identifies stale on-disk layers.
-        finished_record = project.artifact_manifest.get(ROLE_FINISHED_STARS)
-        if finished_record is not None:
-            if finished_record.get("options", {}).get("star_effect_version") != STAR_EFFECT_VERSION:
-                changed = True
-        if changed:
-            self._clear_star_caches()
-            project.invalidate_star_effect_layers()
-            self.save_project()
-        return changed
-
-    @staticmethod
-    def _star_effects_enabled(settings: FinishSettings) -> bool:
-        """Return whether an enabled effect has a non-zero amount.
-
-        A toggle left on at 0% is neutral and must not require an effect layer.
-        """
-        return bool(
-            (settings.round_stars_enabled and settings.round_stars_amount > 0)
-            or (settings.star_glow_enabled and settings.star_glow_amount > 0)
-        )
-
-    @classmethod
-    def _star_effects_required(cls, settings: FinishSettings) -> bool:
-        """Return whether effects can change the recombined output."""
-        return settings.star_amount > 0 and cls._star_effects_enabled(settings)
-
-    @staticmethod
-    def star_refresh_action(previous: FinishSettings, current: FinishSettings) -> StarRefreshAction:
-        """Classify the work needed for a star-settings change.
-
-        Composition-only controls never require a worker job. Glow geometry
-        changes only the rendered Glow component. The cutoff may need incremental
-        catalog measurements plus Round/Glow rebuilds.
-        """
-        changed = {name for name in _STAR_SETTING_NAMES if getattr(previous, name) != getattr(current, name)}
-        if not changed:
-            return "none"
-        if changed & set(CATALOG_SETTING_NAMES):
-            return "effects"
-        if changed & set(GLOW_SETTING_NAMES):
-            return "glow"
-        if changed & set(COMPOSITION_ONLY_SETTING_NAMES):
-            return "composition"
-        return "none"
-
     def _graxpert_session_for(self, policy: dict) -> GraXpertSession:
         """Reuse one verified inference session for the resolved provider policy.
 
@@ -1105,474 +574,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
 
         return cancelled
 
-    # -------------------------------------------------------------------------
-    # Ranked catalog and composable star layers
-    # -------------------------------------------------------------------------
-
-    @staticmethod
-    def _validate_star_cutoff(cutoff: Optional[int]) -> None:
-        if cutoff is None:
-            return
-        if type(cutoff) is not int or cutoff < 0:
-            raise ValueError(f"star_count_cutoff must be a non-negative integer or None, got {cutoff!r}")
-
-    @staticmethod
-    def _validate_glow_count(count: int) -> None:
-        if type(count) is not int or count < 0:
-            raise ValueError(f"glow_star_count must be a non-negative integer, got {count!r}")
-
-    @staticmethod
-    def _catalog_identity(separation_signature: str, source_id: str, mask_file: str) -> str:
-        return compute_signature(
-            {
-                "operation": "finish_star_catalog",
-                "catalog_version": STAR_CATALOG_VERSION,
-                "analysis_version": STAR_ANALYSIS_VERSION,
-                "separation": separation_signature,
-                "source": source_id,
-                "mask": mask_file,
-            }
-        )
-
-    @staticmethod
-    def _round_identity(catalog_identity: str, cutoff: Optional[int]) -> str:
-        return compute_signature(
-            {
-                "operation": "finish_round_delta",
-                "effect_version": STAR_EFFECT_VERSION,
-                "catalog": catalog_identity,
-                "cutoff": cutoff,
-            }
-        )
-
-    @staticmethod
-    def _glow_cache_key(catalog_identity: str, cutoff: Optional[int], count: int, radius_px: float) -> str:
-        return f"{catalog_identity}|cutoff={cutoff}|count={count}|radius={radius_px:g}|effect={STAR_EFFECT_VERSION}"
-
-    def _catalog_identity_context(self) -> Optional[Tuple[str, str, str]]:
-        """Return catalog identity/source/mask metadata without decoding images."""
-        project = self.project
-        if project.separation_signature is None or project.source_file is None or not project.source_is_current():
-            return None
-        mask_record = project.artifact_manifest.get(ROLE_SKY_MASK, {})
-        mask_file = str(mask_record.get("file", ""))
-        source_id = project.source_file.sourceId
-        identity = self._catalog_identity(project.separation_signature, source_id, mask_file)
-        return identity, source_id, mask_file
-
-    def _star_inputs(self) -> Optional[Tuple[Path, np.ndarray, np.ndarray, str, str, str]]:
-        """Load current separated stars and mask for catalog/effect work."""
-        project = self.project
-        stars_path = project.current_artifact_path(ROLE_SEPARATED_STARS)
-        if stars_path is None:
-            return None
-        context = self._catalog_identity_context()
-        if context is None:
-            return None
-        catalog_identity, source_id, mask_file = context
-        mask = self._current_mask_cached()
-        if mask is None:
-            return None
-        stars = self._cached_imread(stars_path)
-        return stars_path, stars, mask, catalog_identity, source_id, mask_file
-
-    def _read_catalog_source(self) -> np.ndarray:
-        project = self.project
-        if project.source_file is None or not project.source_file.path:
-            raise ValueError("Source image is unavailable.")
-        return self._cached_imread(project.source_file.path)
-
-    def _catalog_is_measured(self, catalog: RankedStarCatalog, cutoff: Optional[int]) -> bool:
-        total = len(catalog.analysis.candidates)
-        needed = total if cutoff is None else min(cutoff, total)
-        return int(np.count_nonzero(catalog.measured)) >= needed
-
-    def _catalog_persisted_current(self, identity: str) -> bool:
-        project = self.project
-        if project.current_artifact_path(ROLE_STAR_CATALOG) is None:
-            return False
-        record = project.artifact_manifest.get(ROLE_STAR_CATALOG, {})
-        options = record.get("options", {})
-        return (
-            options.get("catalog_identity") == identity
-            and options.get("analysis_version") == STAR_ANALYSIS_VERSION
-            and options.get("catalog_version") == STAR_CATALOG_VERSION
-        )
-
-    def _round_delta_persisted_current(self, identity: str, cutoff: Optional[int]) -> bool:
-        project = self.project
-        if project.current_artifact_path(ROLE_ROUND_DELTA) is None:
-            return False
-        options = project.artifact_manifest.get(ROLE_ROUND_DELTA, {}).get("options", {})
-        return (
-            options.get("round_identity") == identity
-            and options.get("cutoff") == cutoff
-            and options.get("star_effect_version") == STAR_EFFECT_VERSION
-        )
-
-    def _load_persisted_catalog(self, identity: str) -> Optional[RankedStarCatalog]:
-        project = self.project
-        path = project.current_artifact_path(ROLE_STAR_CATALOG)
-        if path is None:
-            return None
-        record = project.artifact_manifest.get(ROLE_STAR_CATALOG, {})
-        options = record.get("options", {})
-        if (
-            options.get("catalog_identity") != identity
-            or options.get("analysis_version") != STAR_ANALYSIS_VERSION
-            or options.get("catalog_version") != STAR_CATALOG_VERSION
-        ):
-            return None
-        try:
-            return load_catalog(path, identity=identity)
-        except (OSError, ValueError):
-            # Missing or corrupt caches are stale, never partially consumed.
-            return None
-
-    def _ensure_catalog(
-        self,
-        stars: np.ndarray,
-        mask: np.ndarray,
-        *,
-        cutoff: Optional[int],
-        identity: str,
-        should_interrupt: Optional[Callable[[], bool]] = None,
-        progress_callback: Optional[Callable[..., None]] = None,
-    ) -> Tuple[Optional[RankedStarCatalog], bool]:
-        """Load or build the catalog, extending measurements when the cutoff rose."""
-        self._validate_star_cutoff(cutoff)
-        if self._catalog_cache is not None and self._catalog_key == identity:
-            if self._catalog_is_measured(self._catalog_cache, cutoff):
-                dirty = self._catalog_dirty or not self._catalog_persisted_current(identity)
-                self._catalog_dirty = dirty
-                return self._catalog_cache, dirty
-        else:
-            persisted = self._load_persisted_catalog(identity)
-            if persisted is not None:
-                self._catalog_cache = persisted
-                self._catalog_key = identity
-                self._catalog_dirty = False
-                if self._catalog_is_measured(persisted, cutoff):
-                    return persisted, False
-
-        source = self._read_catalog_source()
-        if self._catalog_cache is not None and self._catalog_key == identity:
-            catalog = extend_catalog(
-                self._catalog_cache,
-                stars,
-                source,
-                mask,
-                cutoff=cutoff,
-                should_interrupt=should_interrupt,
-                progress_callback=progress_callback,
-            )
-        else:
-            catalog = build_catalog(
-                stars,
-                source,
-                mask,
-                cutoff=cutoff,
-                should_interrupt=should_interrupt,
-                progress_callback=progress_callback,
-            )
-        if catalog is None:
-            return None, False
-        self._catalog_cache = catalog
-        self._catalog_key = identity
-        self._catalog_dirty = True
-        return catalog, True
-
-    def _ensure_inclusion_mask(
-        self,
-        catalog: RankedStarCatalog,
-        *,
-        cutoff: Optional[int],
-        catalog_identity: str,
-    ) -> np.ndarray:
-        """Return the feathered included-star mask M, built once per catalog/cutoff."""
-        key = (catalog_identity, cutoff)
-        if self._inclusion_mask_cache is not None and self._inclusion_mask_key == key:
-            return self._inclusion_mask_cache
-        mask = included_mask(catalog, cutoff=cutoff)
-        self._inclusion_mask_cache = mask
-        self._inclusion_mask_key = key
-        return mask
-
-    def _ensure_round_delta(
-        self,
-        stars: np.ndarray,
-        mask: np.ndarray,
-        catalog: RankedStarCatalog,
-        *,
-        cutoff: Optional[int],
-        identity: str,
-        inclusion_mask: np.ndarray,
-        should_interrupt: Optional[Callable[[], bool]] = None,
-        progress_callback: Optional[Callable[..., None]] = None,
-    ) -> Tuple[Optional[SparseRoundDelta], bool]:
-        """Load or build the full-strength Round Stars delta, independent of toggles."""
-        if self._round_delta_cache is not None and self._round_delta_key == identity:
-            dirty = self._round_delta_dirty or not self._round_delta_persisted_current(identity, cutoff)
-            self._round_delta_dirty = dirty
-            return self._round_delta_cache, dirty
-
-        project = self.project
-        path = project.current_artifact_path(ROLE_ROUND_DELTA)
-        if path is not None:
-            record = project.artifact_manifest.get(ROLE_ROUND_DELTA, {})
-            options = record.get("options", {})
-            if options.get("round_identity") == identity and options.get("cutoff") == cutoff:
-                try:
-                    delta = load_round_delta(path, identity=identity)
-                except (OSError, ValueError):
-                    delta = None
-                if delta is not None:
-                    self._round_delta_cache = delta
-                    self._round_delta_key = identity
-                    self._round_delta_dirty = False
-                    return delta, False
-
-        delta = build_round_delta(
-            stars,
-            mask,
-            catalog,
-            cutoff=cutoff,
-            inclusion_mask=inclusion_mask,
-            should_interrupt=should_interrupt,
-            progress_callback=progress_callback,
-        )
-        if delta is None:
-            return None, False
-        self._round_delta_cache = delta
-        self._round_delta_key = identity
-        self._round_delta_dirty = True
-        return delta, True
-
-    def _ensure_glow(
-        self,
-        stars: np.ndarray,
-        mask: np.ndarray,
-        catalog: RankedStarCatalog,
-        *,
-        cutoff: Optional[int],
-        inclusion_mask: np.ndarray,
-        count: int,
-        radius_px: float,
-        catalog_identity: str,
-        should_interrupt: Optional[Callable[[], bool]] = None,
-    ) -> Optional[np.ndarray]:
-        """Render the Glow component in memory; it is never persisted."""
-        self._validate_glow_count(count)
-        key = self._glow_cache_key(catalog_identity, cutoff, count, float(radius_px))
-        if self._glow_cache is not None and self._glow_key == key:
-            return self._glow_cache
-        glow = render_glow(
-            stars,
-            mask,
-            catalog,
-            cutoff=cutoff,
-            inclusion_mask=inclusion_mask,
-            glow_star_count=count,
-            radius_px=float(radius_px),
-            should_interrupt=should_interrupt,
-        )
-        if glow is None:
-            return None
-        self._glow_cache = glow
-        self._glow_key = key
-        return glow
-
-    def get_star_finish_state(
-        self,
-        *,
-        ensure_round: bool = True,
-        ensure_glow: bool = True,
-        should_interrupt: Optional[Callable[[], bool]] = None,
-        progress_callback: Optional[Callable[..., None]] = None,
-        _inputs: Optional[Tuple[Path, np.ndarray, np.ndarray, str, str, str]] = None,
-    ) -> Optional[StarFinishState]:
-        """Return current catalog/effect layers, loading caches instead of re-analysis.
-
-        Both endpoints are built even when their toggles are off so later toggles
-        and amount changes are composition-only. Returns None when inputs are not
-        ready, interrupted or the project changed underneath the request.
-        """
-        project = self.project
-        revision = project.processing_revision
-        inputs = _inputs if _inputs is not None else self._star_inputs()
-        if inputs is None:
-            return None
-        _, stars, mask, catalog_identity, _, _ = inputs
-        settings = project.get_settings()
-        cutoff = settings.star_count_cutoff
-        self._validate_star_cutoff(cutoff)
-
-        catalog, _ = self._ensure_catalog(
-            stars,
-            mask,
-            cutoff=cutoff,
-            identity=catalog_identity,
-            should_interrupt=should_interrupt,
-            progress_callback=progress_callback,
-        )
-        if catalog is None or self._request_is_stale(project, revision):
-            return None
-        inclusion_mask = self._ensure_inclusion_mask(
-            catalog,
-            cutoff=cutoff,
-            catalog_identity=catalog_identity,
-        )
-
-        round_delta: Optional[SparseRoundDelta] = None
-        if ensure_round:
-            round_identity = self._round_identity(catalog_identity, cutoff)
-            round_delta, _ = self._ensure_round_delta(
-                stars,
-                mask,
-                catalog,
-                cutoff=cutoff,
-                identity=round_identity,
-                inclusion_mask=inclusion_mask,
-                should_interrupt=should_interrupt,
-                progress_callback=progress_callback,
-            )
-            if round_delta is None or self._request_is_stale(project, revision):
-                return None
-
-        glow: Optional[np.ndarray] = None
-        if ensure_glow:
-            glow = self._ensure_glow(
-                stars,
-                mask,
-                catalog,
-                cutoff=cutoff,
-                inclusion_mask=inclusion_mask,
-                count=settings.glow_star_count,
-                radius_px=settings.star_glow_radius_px,
-                catalog_identity=catalog_identity,
-                should_interrupt=should_interrupt,
-            )
-            if glow is None or self._request_is_stale(project, revision):
-                return None
-
-        return StarFinishState(
-            catalog=catalog,
-            inclusion_mask=inclusion_mask,
-            round_delta=round_delta,
-            glow=glow,
-            cutoff=cutoff,
-            glow_star_count=settings.glow_star_count,
-            glow_radius_px=float(settings.star_glow_radius_px),
-            identity=f"{catalog_identity}|cutoff={cutoff}",
-        )
-
-    def get_star_catalog_summary(self) -> Optional[dict]:
-        """Return counts from the prepared catalog cache without disk/analysis work."""
-        project = self.project
-        context = self._catalog_identity_context()
-        if context is None or project.current_artifact_path(ROLE_SEPARATED_STARS) is None:
-            return None
-        catalog_identity, _, _ = context
-        if self._catalog_cache is None or self._catalog_key != catalog_identity:
-            return None
-        settings = project.get_settings()
-        cutoff = settings.star_count_cutoff
-        self._validate_star_cutoff(cutoff)
-        catalog = self._catalog_cache
-        return {
-            "total_count": len(catalog.analysis.candidates),
-            "included_count": catalog.included_count(cutoff),
-            "cutoff_score": catalog.cutoff_score(cutoff),
-        }
-
-    def _request_is_stale(self, project: FinishProject, revision: int) -> bool:
-        return (
-            project is not self.app.project
-            or revision != project.processing_revision
-            or not project.source_is_current()
-        )
-
-    def render_star_preview(
-        self,
-        layer: str = "composite",
-        *,
-        region: Optional[Tuple[int, int, int, int]] = None,
-        compare: bool = False,
-        should_interrupt: Optional[Callable[[], bool]] = None,
-    ) -> Optional[np.ndarray]:
-        """Return a display-ready star preview without publishing or worker jobs.
-
-        ``layer`` is ``composite``, ``finished_stars``, ``original_stars`` or
-        ``excluded_stars``. ``region`` is a full-resolution ``(y0, y1, x0, x1)``
-        crop. ``compare`` returns ``S_inc`` without effects for finished stars.
-
-        Full-frame output is a reduced composition endpoint. Region output is a
-        reduced-endpoint crop upscaled to the requested size for Finished/Composite
-        layers; Original/Excluded use the exact cached full-resolution crop when
-        those arrays are still warm. It is not a true full-resolution 100% render
-        for Finished/Composite until a bounded full-res region compositor exists.
-        """
-        if layer not in STAR_PREVIEW_LAYERS:
-            raise ValueError(f"Unknown star preview layer '{layer}'.")
-        project = self.project
-        if not project.source_is_current():
-            return None
-        settings = project.get_settings()
-        self._validate_star_cutoff(settings.star_count_cutoff)
-        expected = self._expected_preview_key(settings)
-        if expected is None or self._reduced_preview is None or self._reduced_preview.key != expected:
-            # Cold/stale: the background preparation task owns all disk, mask,
-            # Round and Glow work. A toggle must never trigger it from the GUI.
-            return None
-        if should_interrupt is not None and should_interrupt():
-            return None
-        if region is not None and layer in ("original_stars", "excluded_stars"):
-            exact = self._exact_cached_star_crop(layer, region, settings)
-            if exact is not None:
-                return exact
-        composed = self._compose_reduced_preview(layer, settings, compare=compare)
-        if composed is None:
-            return None
-        if region is not None:
-            composed = self._region_from_reduced(composed, region)
-        return np.ascontiguousarray(composed, dtype=np.float32)
-
-    def _exact_cached_star_crop(
-        self,
-        layer: str,
-        region: Tuple[int, int, int, int],
-        settings: FinishSettings,
-    ) -> Optional[np.ndarray]:
-        """Return an exact cached full-resolution Original/Excluded crop if warm."""
-        project = self.project
-        stars_path = project.current_artifact_path(ROLE_SEPARATED_STARS)
-        if stars_path is None:
-            return None
-        cached = self._image_cache.get(stars_path)
-        if cached is None or cached[0] != self._file_cache_key(stars_path):
-            return None
-        stars = cached[1]
-        y0, y1, x0, x1 = region
-        if y0 < 0 or x0 < 0 or y1 > stars.shape[0] or x1 > stars.shape[1] or y0 >= y1 or x0 >= x1:
-            raise ValueError(f"Invalid preview region {region!r} for shape {stars.shape[:2]}.")
-        stars_crop = stars[y0:y1, x0:x1]
-        if layer == "original_stars":
-            return np.ascontiguousarray(stars_crop, dtype=np.float32)
-        context = self._catalog_identity_context()
-        if context is None:
-            return None
-        catalog_identity, _, _ = context
-        if self._inclusion_mask_cache is None or self._inclusion_mask_key != (
-            catalog_identity,
-            settings.star_count_cutoff,
-        ):
-            return None
-        mask_crop = self._inclusion_mask_cache[y0:y1, x0:x1]
-        return np.ascontiguousarray(
-            stars_crop - mask_crop[..., None] * stars_crop,
-            dtype=np.float32,
-        )
-
     @staticmethod
     def _validate_starnet_stride(stride: int) -> None:
         """Enforce the StarNet CLI stride contract before any cache lookup."""
@@ -1599,22 +600,18 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         composite_destination: Path,
         transaction: ArtifactTransaction,
         progress_bar: Optional[Any] = None,
-        finished_stars: Optional[np.ndarray] = None,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
         """Recombine the given layers into a staged composite without publishing it.
 
-        The negative correction always derives from the separated starless plate
-        passed as negative_base_path, never from a subsequently finished plate.
-        starless_path controls the visible base; in the Step 7 neutral case both
-        paths are the same separated plate. ``finished_stars`` is composed from
-        catalog layers by the caller; before star effects exist it is the original
-        separated star layer, matching the neutral Step 7 composite.
+        The signed negative correction always derives from the separated starless
+        plate passed as negative_base_path, never from a subsequently finished
+        plate. starless_path controls the visible base and is the same separated
+        plate when no starless finishing has run.
         """
         project = self.project
         source_arr = imread(project.source_file.path, to_rgb=True, as_float=True)
         starless_arr = imread(starless_path, to_rgb=True, as_float=True)
-        original_stars_arr = imread(stars_path, to_rgb=True, as_float=True)
-        finished_stars_arr = original_stars_arr if finished_stars is None else finished_stars
+        stars_arr = imread(stars_path, to_rgb=True, as_float=True)
 
         if negative_base_path == starless_path:
             negative_base_arr = starless_arr
@@ -1634,8 +631,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         try:
             result = op.recombine(
                 starless_arr,
-                original_stars_arr,
-                finished_stars_arr,
+                stars_arr,
                 neg_residual,
                 project.get_settings(),
                 bit_depth=INTERMEDIATE_BIT_DEPTH,
@@ -1880,7 +876,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         transaction=transaction,
                     ):
                         return None
-                    self._clear_star_caches()
                     self.save_project()
             except CancelledError:
                 return None
@@ -1896,254 +891,36 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             OutputFile(basename=stars_dest.name, path=str(stars_dest), operation="Stars"),
         )
 
-    def do_finish_stars(self, progress_bar: Optional[Any] = None) -> Optional[OutputFile]:
-        """Build/reuse catalog layers and publish the derived finished-stars TIFF.
-
-        Effect work is incremental: an unchanged catalog and Round/Glow layers are
-        reused, raising the cutoff extends measurements only, and a Glow geometry
-        change renders only Glow. Publication is atomic with the project record;
-        cancellation or a stale project leaves the previous result untouched.
-        """
-        self.invalidate_if_star_effects_changed()
-        project = self.project
-        revision = project.processing_revision
-        if not project.source_is_current():
-            raise ValueError("Source image is not current or unavailable.")
-        inputs = self._star_inputs()
-        if inputs is None:
-            if project.current_artifact_path(ROLE_SEPARATED_STARS) is None or project.separation_signature is None:
-                raise ValueError("Separate stars before finishing the stars layer.")
-            raise ValueError("A current sky mask is required to finish stars.")
-        _, stars, mask, catalog_identity, source_id, mask_file = inputs
-        separation_signature = project.separation_signature
-        if separation_signature is None:
-            raise ValueError("Separate stars before finishing the stars layer.")
-        settings = project.get_settings()
-        cutoff = settings.star_count_cutoff
-        self._validate_star_cutoff(cutoff)
-        self._validate_glow_count(settings.glow_star_count)
-        round_identity = self._round_identity(catalog_identity, cutoff)
-        finished_dest = project.artifact_path(ROLE_FINISHED_STARS, for_write=True)
-        catalog_dest = project.artifact_path(ROLE_STAR_CATALOG, for_write=True)
-        round_dest = project.artifact_path(ROLE_ROUND_DELTA, for_write=True)
-
-        phase_progress = (
-            _PhaseProgress(
-                progress_bar,
-                _STAR_FINISH_PROGRESS_SPAN,
-                scale=_STAR_FINISH_PROGRESS_TOTAL,
-            )
-            if progress_bar is not None
-            else None
-        )
-
-        def emit(unit: int, description: str, sub_fraction: float = 0.0) -> None:
-            if phase_progress is not None:
-                phase_progress(4, 0, unit, False, {"desc": description, "sub_fraction": sub_fraction})
-
-        def catalog_progress(current: int, total: int, description: str) -> None:
-            emit(0, description, current / total if total > 0 else 0.0)
-
-        def round_progress(current: int, total: int, description: str) -> None:
-            emit(1, description, current / total if total > 0 else 0.0)
-
-        op = self._new_operation(FinishStars)
-        self.app.activeOperation = op
-        try:
-            try:
-                with ArtifactTransaction(self._job_cancel_check(project, revision)) as transaction:
-                    catalog, catalog_dirty = self._ensure_catalog(
-                        stars,
-                        mask,
-                        cutoff=cutoff,
-                        identity=catalog_identity,
-                        should_interrupt=op.shouldInterrupt,
-                        progress_callback=catalog_progress,
-                    )
-                    if catalog is None or op.shouldInterrupt():
-                        return None
-                    inclusion_mask = self._ensure_inclusion_mask(
-                        catalog,
-                        cutoff=cutoff,
-                        catalog_identity=catalog_identity,
-                    )
-                    emit(1, "Star catalog ready")
-
-                    round_delta, round_dirty = self._ensure_round_delta(
-                        stars,
-                        mask,
-                        catalog,
-                        cutoff=cutoff,
-                        identity=round_identity,
-                        inclusion_mask=inclusion_mask,
-                        should_interrupt=op.shouldInterrupt,
-                        progress_callback=round_progress,
-                    )
-                    if round_delta is None or op.shouldInterrupt():
-                        return None
-                    emit(2, "Round Stars layer ready")
-
-                    glow = self._ensure_glow(
-                        stars,
-                        mask,
-                        catalog,
-                        cutoff=cutoff,
-                        inclusion_mask=inclusion_mask,
-                        count=settings.glow_star_count,
-                        radius_px=settings.star_glow_radius_px,
-                        catalog_identity=catalog_identity,
-                        should_interrupt=op.shouldInterrupt,
-                    )
-                    if glow is None or op.shouldInterrupt():
-                        return None
-                    emit(3, "Applying star glow...")
-
-                    catalog_path = project.current_artifact_path(ROLE_STAR_CATALOG)
-                    if catalog_dirty or catalog_path is None:
-                        staged_catalog = transaction.stage(catalog_dest)
-                        save_catalog(staged_catalog, catalog, identity=catalog_identity)
-                        catalog_path = catalog_dest
-                    round_path = project.current_artifact_path(ROLE_ROUND_DELTA)
-                    if round_dirty or round_path is None:
-                        staged_round = transaction.stage(round_dest)
-                        save_round_delta(staged_round, round_delta, identity=round_identity)
-                        round_path = round_dest
-
-                    finished_path = op.finish(
-                        stars,
-                        settings,
-                        catalog=catalog,
-                        inclusion_mask=inclusion_mask,
-                        round_delta=round_delta,
-                        glow=glow,
-                        output_path=finished_dest,
-                        artifacts=transaction,
-                    )
-                    if finished_path is None or op.shouldInterrupt() or self._request_is_stale(project, revision):
-                        return None
-                    if not project.publish_star_effects(
-                        catalog_path=catalog_path,
-                        round_delta_path=round_path,
-                        finished_stars_path=finished_path,
-                        separation_signature=separation_signature,
-                        expected_revision=revision,
-                        catalog_identity=catalog_identity,
-                        round_identity=round_identity,
-                        star_effect_version=STAR_EFFECT_VERSION,
-                        settings=settings,
-                        catalog_options={
-                            "analysis_version": STAR_ANALYSIS_VERSION,
-                            "catalog_version": STAR_CATALOG_VERSION,
-                            "source_id": source_id,
-                            "mask_file": mask_file,
-                            "cutoff": cutoff,
-                        },
-                        round_options={"cutoff": cutoff},
-                        transaction=transaction,
-                    ):
-                        return None
-                    self._catalog_dirty = False
-                    self._round_delta_dirty = False
-                    self.save_project()
-                    try:
-                        self._build_reduced_preview(
-                            StarFinishState(
-                                catalog=catalog,
-                                inclusion_mask=inclusion_mask,
-                                round_delta=round_delta,
-                                glow=glow,
-                                cutoff=cutoff,
-                                glow_star_count=settings.glow_star_count,
-                                glow_radius_px=float(settings.star_glow_radius_px),
-                                identity=f"{catalog_identity}|cutoff={cutoff}",
-                            ),
-                            stars,
-                        )
-                    except Exception as error:  # preview cache must not invalidate published effects
-                        logger.warning("Could not build reduced star preview: %s", error)
-                        self._reduced_preview = None
-            except CancelledError:
-                return None
-        finally:
-            if self.app.activeOperation is op:
-                self.app.activeOperation = self._session_operation
-            del stars, mask
-
-        if progress_bar is not None:
-            # Publication is complete; only now may the shared task report done.
-            final_increment = _STAR_FINISH_PROGRESS_TOTAL - (phase_progress.reported if phase_progress else 0)
-            if final_increment > 0:
-                progress_bar(
-                    _STAR_FINISH_PROGRESS_TOTAL,
-                    final_increment,
-                    _STAR_FINISH_PROGRESS_TOTAL,
-                    True,
-                    {"desc": "Star finishing complete."},
-                )
-
-        return OutputFile(
-            basename=finished_dest.name,
-            path=str(finished_dest),
-            operation="Finished Stars",
-        )
-
     def do_recombine(self, *, progress_bar: Optional[Any] = None) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
-        """Execute layer recombination and write internal composite artifact.
+        """Recombine the single star layer with the current starless base.
 
-        progress_bar observes the operation on its native job scale, or on the
-        shared separation scale when supplied by do_separate_stars.
+        This is the worker boundary for interactive amount/mode updates and for
+        full-resolution saving. It reads the separated positive stars and the
+        current starless base, derives the signed correction from the separated
+        starless plate, and publishes the composite transactionally using a
+        snapshot of the current settings. Cancellation or a stale revision leaves
+        the previous composite untouched.
         """
         if any(
             (
                 self.invalidate_if_graxpert_changed(),
                 self.invalidate_if_starless_filter_changed(),
-                self.invalidate_if_star_effects_changed(),
             )
         ):
             return None
         project = self.project
         if not project.source_is_current():
             return None
-        if project.current_artifact_path(ROLE_SEPARATED_STARS) is None:
-            return None
-        inputs = self._star_inputs()
-        if inputs is None:
-            return None
-        _, stars, _, _, _, _ = inputs
-        state = self.get_star_finish_state(_inputs=inputs)
-        if state is None:
-            return None
-        if self._catalog_dirty or self._round_delta_dirty:
-            # Persist repaired or newly extended endpoints even when stale
-            # artifact records still exist, so reopening skips analysis.
-            if self.do_finish_stars(progress_bar=progress_bar) is None:
-                return None
-            project = self.project
-            inputs = self._star_inputs()
-            if inputs is None:
-                return None
-            _, stars, _, _, _, _ = inputs
-            state = self.get_star_finish_state(_inputs=inputs)
-            if state is None:
-                return None
         revision = project.processing_revision
         separation_signature = project.separation_signature
         separated_starless_path = project.current_artifact_path(ROLE_SEPARATED_STARLESS)
         separated_stars_path = project.current_artifact_path(ROLE_SEPARATED_STARS)
         if separated_starless_path is None or separated_stars_path is None:
             return None
-        settings = project.get_settings()
-        finished_stars = compose_star_layer(
-            stars,
-            state.catalog,
-            state.round_delta,
-            state.glow,
-            settings,
-            inclusion_mask=state.inclusion_mask,
-        )
         # A current finished starless plate supersedes the separated plate for the
         # composite; the signed correction always derives from the separated plate.
         starless_path = project.current_artifact_path(ROLE_FINISHED_STARLESS) or separated_starless_path
+        settings = project.get_settings()
 
         composite_dest = project.artifact_path(ROLE_FINISHED_COMPOSITE, for_write=True)
         try:
@@ -2155,7 +932,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                     transaction=transaction,
                     progress_bar=progress_bar,
                     negative_base_path=separated_starless_path,
-                    finished_stars=finished_stars,
                 )
                 if result is None:
                     # Stale after a concurrent invalidation; keep the last valid composite.
@@ -2163,18 +939,17 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                 if not project.record_artifact(
                     ROLE_FINISHED_COMPOSITE,
                     composite_dest,
-                    options={"separation_signature": separation_signature},
+                    options={
+                        "separation_signature": separation_signature,
+                        "star_amount": settings.star_amount,
+                        "blend_mode": settings.blend_mode,
+                    },
                     expected_revision=revision,
                     expected_separation_signature=separation_signature,
                     transaction=transaction,
                 ):
                     return None
                 self.save_project()
-                try:
-                    self._build_reduced_preview(state, stars)
-                except Exception as error:  # preview cache must not invalidate the composite
-                    logger.warning("Could not refresh reduced star preview: %s", error)
-                    self._reduced_preview = None
         except CancelledError:
             return None
         return result
@@ -2374,4 +1149,4 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                 raise ValueError(f"{label} amount must be in range [0.0, 100.0], got {amount}")
 
 
-__all__ = ["FinishWorkflow", "STAR_PREVIEW_LAYERS", "StarFinishState", "StarRefreshAction"]
+__all__ = ["FinishWorkflow"]
