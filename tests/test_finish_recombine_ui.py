@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import numpy as np
 from PySide6.QtCore import QObject
 from PySide6.QtWidgets import QApplication
 
+from startrails.lib.file import OutputFile
 from startrails.lib.finish.defaults import (
     DEFAULT_BLEND_MODE,
     DEFAULT_STAR_AMOUNT_PERCENT,
@@ -106,6 +107,54 @@ class TestFinishRecombineSettings(QtTestCase):
         self.assertTrue(self.widget.slider_star_amount.isEnabled())
         self.assertTrue(self.widget.combo_star_blend_mode.isEnabled())
 
+    def test_compare_original_and_export_layers_controls(self):
+        """Pill switch and Export Layers button operate correctly with signals and prerequisites."""
+        self.assertFalse(self.widget.get_compare_original())
+
+        compare_sigs = []
+        export_sigs = []
+        self.widget.compare_original_toggled.connect(compare_sigs.append)
+        self.widget.export_layers_requested.connect(lambda: export_sigs.append(True))
+
+        # Toggle compare original on
+        self.widget.check_compare_original.setChecked(True)
+        self.assertEqual(compare_sigs, [True])
+        self.assertTrue(self.widget.get_compare_original())
+
+        # Programmatic setter blocks signals
+        compare_sigs.clear()
+        self.widget.set_compare_original(False)
+        self.assertEqual(compare_sigs, [])
+        self.assertFalse(self.widget.get_compare_original())
+
+        # Enable prerequisites to test click
+        self.widget.refresh_prerequisites(True)
+        self.assertTrue(self.widget.btn_export_layers.isEnabled())
+
+        # Click export layers
+        self.widget.btn_export_layers.click()
+        self.assertEqual(export_sigs, [True])
+
+        # refresh_prerequisites(False) disables controls and resets compare_original if checked
+        self.widget.set_compare_original(True)
+        self.widget.refresh_prerequisites(False)
+        self.assertFalse(self.widget.get_compare_original())
+        self.assertFalse(self.widget.check_compare_original.isEnabled())
+        self.assertFalse(self.widget.lbl_compare_original.isEnabled())
+        self.assertFalse(self.widget.btn_export_layers.isEnabled())
+
+        # refresh_prerequisites(True) re-enables controls
+        self.widget.refresh_prerequisites(True)
+        self.assertTrue(self.widget.check_compare_original.isEnabled())
+        self.assertTrue(self.widget.lbl_compare_original.isEnabled())
+        self.assertTrue(self.widget.btn_export_layers.isEnabled())
+
+        # Tooltip explains positive-only, negative correction, and reconstruction
+        tooltip = self.widget.btn_export_layers.toolTip()
+        self.assertIn("positive-only", tooltip)
+        self.assertIn("negative correction", tooltip)
+        self.assertIn("reconstruct", tooltip)
+
 
 class TestSidebarFinishRecombinePrerequisites(QtTestCase):
     """Test SidebarFinish Recombine & Save step prerequisite status progression and readiness."""
@@ -168,7 +217,18 @@ class TestSidebarFinishRecombinePrerequisites(QtTestCase):
         self.assertEqual(self.sidebar.recombineCard.status, "ready")
         self.assertEqual(self.sidebar.recombineCard.ui.subtitle.text(), "Ready to recombine")
         self.assertTrue(self.sidebar.btn_save_output.isEnabled())
+        self.assertTrue(self.sidebar.btn_export_layers.isEnabled())
         self.assertTrue(self.sidebar.slider_star_amount.isEnabled())
+
+        # 5. Record export -> done
+        export_p = self.root / "exported.tif"
+        imwrite(export_p, np.full((64, 64, 3), 25000, dtype=np.uint16), bit_depth=16)
+        self.project.record_export(export_p)
+        self.sidebar.update_prerequisites(self.project)
+        self.assertEqual(self.sidebar.recombineCard.status, "done")
+        self.assertEqual(self.sidebar.recombineCard.ui.subtitle.text(), "Finished image saved")
+        self.assertTrue(self.sidebar.btn_save_output.isEnabled())
+        self.assertTrue(self.sidebar.btn_export_layers.isEnabled())
 
 
 class TestFinishViewRecombineInteraction(QtTestCase):
@@ -494,6 +554,196 @@ class TestFinishViewRecombineInteraction(QtTestCase):
             self.assertEqual(recombine_calls, [True])
             self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
             self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
+
+    def test_compare_original_toggling_preserves_zoom_pan_and_syncs(self):
+        """check_compare_original toggles canvas between source and composite while keeping zoom/pan."""
+        self.canvas.zoom_factor = 2.5
+        self.canvas.posX = 35
+        self.canvas.posY = -20
+
+        # Initially composite is displayed
+        self.sidebar.outputFiles.showFile.emit(
+            OutputFile(basename=self.composite_path.name, path=str(self.composite_path), operation="Composite")
+        )
+        QApplication.processEvents()
+        self.assertFalse(self.sidebar.check_compare_original.isChecked())
+
+        # 1. Turn compare original ON -> shows source image
+        self.sidebar.check_compare_original.setChecked(True)
+        QApplication.processEvents()
+
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.source_path.resolve())
+        self.assertAlmostEqual(self.canvas.zoom_factor, 2.5)
+        self.assertEqual((self.canvas.posX, self.canvas.posY), (35, -20))
+        self.assertTrue(self.sidebar.inputFiles.ui.files.currentIndex().isValid())
+        self.assertFalse(self.sidebar.outputFiles.ui.files.currentIndex().isValid())
+        self.assertTrue(self.sidebar.recombineSettings.get_compare_original())
+
+        # 2. Turn compare original OFF -> returns to composite
+        self.sidebar.check_compare_original.setChecked(False)
+        QApplication.processEvents()
+
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
+        self.assertAlmostEqual(self.canvas.zoom_factor, 2.5)
+        self.assertEqual((self.canvas.posX, self.canvas.posY), (35, -20))
+        self.assertFalse(self.sidebar.inputFiles.ui.files.currentIndex().isValid())
+        self.assertTrue(self.sidebar.outputFiles.ui.files.currentIndex().isValid())
+        self.assertFalse(self.sidebar.recombineSettings.get_compare_original())
+
+    def test_selection_sync_between_input_and_output_files_and_mask_mode(self):
+        """Selecting an output file clears inputFiles; original comparison does NOT show green mask overlay."""
+        # 1. In Step 1 (skyCard expanded), viewing source shows mask overlay for editing
+        self.sidebar.skyCard.setExpanded(True)
+        self.sidebar.skySettings.ui.showMaskOverlay.setChecked(True)
+        self.view.showFile(self.project.source_file)
+        QApplication.processEvents()
+        self.assertTrue(self.canvas.is_mask_edit_mode())
+        self.assertFalse(self.sidebar.check_compare_original.isChecked())
+
+        # 2. Select Output File (Composite in Step 4) -> disables mask edit mode
+        self.sidebar.skyCard.setExpanded(False)
+        self.sidebar.recombineCard.setExpanded(True)
+        comp_file = OutputFile(basename=self.composite_path.name, path=str(self.composite_path), operation="Composite")
+        self.sidebar.outputFiles.showFile.emit(comp_file)
+        QApplication.processEvents()
+
+        self.assertTrue(self.sidebar.outputFiles.ui.files.currentIndex().isValid())
+        self.assertFalse(self.sidebar.inputFiles.ui.files.currentIndex().isValid())
+        self.assertFalse(self.canvas.is_mask_edit_mode())
+        self.assertFalse(self.sidebar.check_compare_original.isChecked())
+
+        # 3. Turn on Compare with original -> shows clean Original without green mask overlay
+        self.sidebar.check_compare_original.setChecked(True)
+        QApplication.processEvents()
+
+        self.assertTrue(self.sidebar.inputFiles.ui.files.currentIndex().isValid())
+        self.assertFalse(self.sidebar.outputFiles.ui.files.currentIndex().isValid())
+        self.assertTrue(self.sidebar.check_compare_original.isChecked())
+        self.assertFalse(self.canvas.is_mask_edit_mode())
+
+        # 4. Turn off Compare with original -> returns to Composite with mask overlay off
+        self.sidebar.check_compare_original.setChecked(False)
+        QApplication.processEvents()
+
+        self.assertTrue(self.sidebar.outputFiles.ui.files.currentIndex().isValid())
+        self.assertFalse(self.sidebar.inputFiles.ui.files.currentIndex().isValid())
+        self.assertFalse(self.canvas.is_mask_edit_mode())
+        self.assertFalse(self.sidebar.check_compare_original.isChecked())
+
+    def test_export_layers_action_success_cancel_and_error(self):
+        """Export layers prompts for directory, calls workflow.do_export_layers, and handles errors."""
+        export_dir = self.root / "exported_layers"
+        exported_map = {
+            ROLE_SEPARATED_STARLESS: export_dir / "starless.tif",
+            ROLE_SEPARATED_STARS: export_dir / "stars.tif",
+        }
+
+        # 1. Success path
+        self.shell.enqueued_tasks.clear()
+        with (
+            patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory", return_value=str(export_dir)),
+            patch.object(self.workflow, "do_export_layers", return_value=exported_map) as mock_exp,
+            patch("PySide6.QtWidgets.QMessageBox.information") as mock_info,
+        ):
+            self.sidebar.btn_export_layers.click()
+            QApplication.processEvents()
+
+            mock_exp.assert_called_once_with(output_dir=str(export_dir), progress_bar=ANY)
+            self.assertIn("finish_export_layers", self.shell.enqueued_tasks)
+            mock_info.assert_called_once()
+            self.assertIn("Layers Exported", mock_info.call_args[0])
+
+        # 2. Cancel path (empty directory selection)
+        with (
+            patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory", return_value=""),
+            patch.object(self.workflow, "do_export_layers") as mock_exp,
+        ):
+            self.sidebar.btn_export_layers.click()
+            QApplication.processEvents()
+            mock_exp.assert_not_called()
+
+        # 3. Error path (exception raised in task)
+        self.sidebar.recombineCard.setExpanded(True)
+        with (
+            patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory", return_value=str(export_dir)),
+            patch.object(self.workflow, "do_export_layers", side_effect=RuntimeError("Export device disconnected")),
+        ):
+            self.sidebar.btn_export_layers.click()
+            QApplication.processEvents()
+
+            self.assertFalse(self.sidebar.recombineSettings.lbl_status.isHidden())
+            self.assertIn("Export device disconnected", self.sidebar.recombineSettings.lbl_status.text())
+
+    def test_export_layers_prerequisite_validation(self):
+        """Export layers validates source image and separated layers before showing dialog."""
+        # 1. Missing separated layers
+        self.project.invalidate_artifact_roles({ROLE_SEPARATED_STARLESS})
+        with (
+            patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory") as mock_dialog,
+            patch("PySide6.QtWidgets.QMessageBox.information") as mock_info,
+        ):
+            self.view.on_export_layers()
+            mock_dialog.assert_not_called()
+            mock_info.assert_called_once()
+            self.assertEqual(mock_info.call_args[0][1], "Export Layers")
+            self.assertEqual(mock_info.call_args[0][2], "Separate stars before exporting layers.")
+
+        # 2. Missing source image
+        self.project.clear_source_image()
+        with (
+            patch("PySide6.QtWidgets.QFileDialog.getExistingDirectory") as mock_dialog,
+            patch("PySide6.QtWidgets.QMessageBox.information") as mock_info,
+        ):
+            self.view.on_export_layers()
+            mock_dialog.assert_not_called()
+            mock_info.assert_called_once()
+            self.assertIn("source image first", mock_info.call_args[0][2])
+
+    def test_step4_status_progression_after_save_export(self):
+        """Saving an export transitions Step 4 card status from 'ready' to 'done'."""
+        self.view.updateReadyStates()
+        self.assertEqual(self.sidebar.recombineCard.status, "ready")
+        self.assertEqual(self.sidebar.recombineCard.ui.subtitle.text(), "Ready to recombine")
+
+        export_path = self.root / "final_image.tif"
+        imwrite(export_path, np.full((64, 64, 3), 30000, dtype=np.uint16), bit_depth=16)
+        self.project.record_export(export_path)
+
+        self.view.updateReadyStates()
+        self.assertEqual(self.sidebar.recombineCard.status, "done")
+        self.assertEqual(self.sidebar.recombineCard.ui.subtitle.text(), "Finished image saved")
+
+    def test_compare_original_survives_late_recombine_callback(self):
+        """Late completion of interactive recombine does NOT overwrite canvas while compare switch is ON."""
+        # 1. Trigger recombine
+        self.view.on_star_amount_changed(75.0)
+        self.assertTrue(self.view._recombine_timer.isActive())
+
+        # 2. While recombine worker is pending/running, turn compare original ON
+        self.sidebar.check_compare_original.setChecked(True)
+        QApplication.processEvents()
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.source_path.resolve())
+        self.assertTrue(self.sidebar.recombineSettings.get_compare_original())
+
+        # 3. Fire recombine timer / complete late worker callback
+        def fake_recombine(**kwargs):
+            self.project.record_artifact(
+                ROLE_FINISHED_COMPOSITE, self.composite_path, options={"separation_signature": "sep123"}
+            )
+            return (np.zeros((64, 64, 3)), self.composite_path)
+
+        with patch.object(self.workflow, "do_recombine", side_effect=fake_recombine):
+            self.view._recombine_timer.timeout.emit()
+            QApplication.processEvents()
+
+        # Canvas STILL shows source image; compare switch remains ON
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.source_path.resolve())
+        self.assertTrue(self.sidebar.recombineSettings.get_compare_original())
+
+        # 4. Turn compare original OFF -> now shows the new composite
+        self.sidebar.check_compare_original.setChecked(False)
+        QApplication.processEvents()
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
 
 
 if __name__ == "__main__":

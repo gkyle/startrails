@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtCore import QSignalBlocker, Qt, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QFrame,
     QHBoxLayout,
@@ -29,6 +30,7 @@ from startrails.lib.finish.defaults import (
     ROLE_SEPARATED_STARS,
 )
 from startrails.lib.project_finish import FinishProject
+from startrails.ui.checkbox_label import CheckboxLabel
 from startrails.ui.file_manager import FileSection
 from startrails.ui.sky_mask_settings import SkyMaskSettings
 from startrails.ui.steps import StepCard
@@ -47,6 +49,8 @@ class FinishRecombineSettings(QWidget):
     blend_mode_changed = Signal(str)
     slider_dragging = Signal()
     settings_changed = Signal()
+    compare_original_toggled = Signal(bool)
+    export_layers_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -95,6 +99,28 @@ class FinishRecombineSettings(QWidget):
         fin_mode_layout.addWidget(self.combo_star_blend_mode)
         layout.addLayout(fin_mode_layout)
 
+        # Compare with original
+        compare_layout = QHBoxLayout()
+        self.lbl_compare_original = CheckboxLabel("Compare with original", self)
+        self.lbl_compare_original.setCursor(Qt.PointingHandCursor)
+        self.lbl_compare_original.setStyleSheet("font-size: 11px; font-weight: 500; color: #334155;")
+        self.check_compare_original = QCheckBox(self)
+        self.check_compare_original.setCursor(Qt.PointingHandCursor)
+        self.check_compare_original.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.check_compare_original.setChecked(False)
+        self.check_compare_original.setStyleSheet(
+            "QCheckBox { spacing: 0px; border: none; padding: 0px; background: transparent; }\n"
+            "QCheckBox::indicator { width: 36px; height: 20px; border-radius: 10px; }\n"
+            "QCheckBox::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
+            "QCheckBox::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }\n"
+            "QCheckBox:focus, QCheckBox:focus:enabled { border: none; outline: none; padding: 0px; }"
+        )
+        self.lbl_compare_original.setBuddy(self.check_compare_original)
+        compare_layout.addWidget(self.lbl_compare_original)
+        compare_layout.addStretch(1)
+        compare_layout.addWidget(self.check_compare_original)
+        layout.addLayout(compare_layout)
+
         # Status / error feedback label
         self.lbl_status = QLabel(self)
         self.lbl_status.setStyleSheet("color: #b91c1c; font-size: 11px;")
@@ -102,21 +128,40 @@ class FinishRecombineSettings(QWidget):
         self.lbl_status.hide()
         layout.addWidget(self.lbl_status)
 
-        # Action: Save Image
-        self.btn_save_output = QPushButton("Save Image", self)
-        self.btn_save_output.setCursor(Qt.PointingHandCursor)
-        self.btn_save_output.setStyleSheet(
-            "QPushButton { font-weight: 600; padding: 6px; background-color: #ffffff; color: #0284c7; border: 1px solid #0284c7; border-radius: 4px; font-size: 11px; }"
-            "QPushButton:hover { background-color: #f0f9ff; }"
+        # Actions: Save Image & Export Layers
+        actions_layout = QHBoxLayout()
+        actions_layout.setSpacing(6)
+
+        btn_style = (
+            "QPushButton { font-weight: 600; padding: 6px; background-color: #ffffff; color: #0284c7; border: 1px solid #0284c7; border-radius: 4px; font-size: 11px; }\n"
+            "QPushButton:hover { background-color: #f0f9ff; }\n"
             "QPushButton:disabled { background-color: #f8fafc; color: #cbd5e1; border-color: #e2e8f0; }"
         )
-        layout.addWidget(self.btn_save_output)
+
+        self.btn_save_output = QPushButton("Save Image", self)
+        self.btn_save_output.setCursor(Qt.PointingHandCursor)
+        self.btn_save_output.setStyleSheet(btn_style)
+        actions_layout.addWidget(self.btn_save_output)
+
+        self.btn_export_layers = QPushButton("Export Layers", self)
+        self.btn_export_layers.setCursor(Qt.PointingHandCursor)
+        self.btn_export_layers.setStyleSheet(btn_style)
+        self.btn_export_layers.setToolTip(
+            "Export separated and finished layers to disk. Stars is positive-only "
+            "(the internal Add negative correction is not exported), so external "
+            "layer recombination or JPEG export may not reconstruct the source exactly."
+        )
+        actions_layout.addWidget(self.btn_export_layers)
+
+        layout.addLayout(actions_layout)
 
     def _init_events(self) -> None:
         self.slider_star_amount.valueChanged.connect(self._on_star_amount_changed)
         self.slider_star_amount.sliderPressed.connect(self.slider_dragging.emit)
         self.slider_star_amount.sliderReleased.connect(self._on_star_amount_slider_released)
         self.combo_star_blend_mode.currentIndexChanged.connect(self._on_star_blend_mode_changed)
+        self.check_compare_original.toggled.connect(self.compare_original_toggled.emit)
+        self.btn_export_layers.clicked.connect(self.export_layers_requested.emit)
 
     def _on_star_amount_changed(self, value: int) -> None:
         self.lbl_star_amount_value.setText(f"{value}%")
@@ -170,9 +215,22 @@ class FinishRecombineSettings(QWidget):
         self.set_star_amount(settings.star_amount)
         self.set_blend_mode(settings.blend_mode)
 
+    def get_compare_original(self) -> bool:
+        return bool(self.check_compare_original.isChecked())
+
+    def set_compare_original(self, checked: bool) -> None:
+        with QSignalBlocker(self.check_compare_original):
+            self.check_compare_original.setChecked(checked)
+
     def refresh_prerequisites(self, has_prerequisites: bool = True) -> None:
         self.slider_star_amount.setEnabled(has_prerequisites)
         self.combo_star_blend_mode.setEnabled(has_prerequisites)
+        self.check_compare_original.setEnabled(has_prerequisites)
+        self.lbl_compare_original.setEnabled(has_prerequisites)
+        self.btn_save_output.setEnabled(has_prerequisites)
+        self.btn_export_layers.setEnabled(has_prerequisites)
+        if not has_prerequisites and self.check_compare_original.isChecked():
+            self.set_compare_original(False)
 
 
 class SidebarFinish(QWidget):
@@ -273,6 +331,8 @@ class SidebarFinish(QWidget):
         self.recombineSettings = FinishRecombineSettings(parent=self.content)
         self.recombineCard.add_body(self.recombineSettings)
         self.btn_save_output = self.recombineSettings.btn_save_output
+        self.btn_export_layers = self.recombineSettings.btn_export_layers
+        self.check_compare_original = self.recombineSettings.check_compare_original
         self.slider_star_amount = self.recombineSettings.slider_star_amount
         self.contentLayout.addWidget(self.recombineCard)
 
@@ -361,6 +421,7 @@ class SidebarFinish(QWidget):
             if hasattr(self, "recombineSettings"):
                 self.recombineSettings.refresh_prerequisites(has_prerequisites=False)
             self.btn_save_output.setEnabled(False)
+            self.btn_export_layers.setEnabled(False)
             return
 
         if has_mask:
@@ -375,6 +436,7 @@ class SidebarFinish(QWidget):
             if hasattr(self, "recombineSettings"):
                 self.recombineSettings.refresh_prerequisites(has_prerequisites=False)
             self.btn_save_output.setEnabled(False)
+            self.btn_export_layers.setEnabled(False)
             return
 
         if not (has_starless and has_stars):
@@ -387,6 +449,7 @@ class SidebarFinish(QWidget):
             if hasattr(self, "recombineSettings"):
                 self.recombineSettings.refresh_prerequisites(has_prerequisites=False)
             self.btn_save_output.setEnabled(False)
+            self.btn_export_layers.setEnabled(False)
             return
 
         policy = graxpert_status.get("policy")
@@ -406,8 +469,14 @@ class SidebarFinish(QWidget):
         if hasattr(self, "recombineSettings"):
             self.recombineSettings.refresh_prerequisites(has_prerequisites=True)
 
-        self.recombineCard.setStatus("ready", "Ready to recombine")
-        self.btn_save_output.setEnabled(has_source and has_mask and has_starless and has_stars)
+        if project.current_export_path() is not None:
+            self.recombineCard.setStatus("done", "Finished image saved")
+        else:
+            self.recombineCard.setStatus("ready", "Ready to recombine")
+
+        ready = has_source and has_mask and has_starless and has_stars
+        self.btn_save_output.setEnabled(ready)
+        self.btn_export_layers.setEnabled(ready)
 
 
 __all__ = ["FinishRecombineSettings", "SidebarFinish"]

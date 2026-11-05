@@ -1042,10 +1042,10 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
             self.assertEqual(worker_called, [])
 
-            # 3. Toggle Denoise OFF -> immediately displays Starless
+            # 3. Toggle Denoise OFF -> still displays Finished Starless (sharpen remains enabled)
             self.sidebar.starlessSettings.check_enable_denoise.setChecked(False)
             self.qt.processEvents()
-            self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+            self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
             self.assertEqual(worker_called, [])
 
             # 4. Toggle Denoise back ON -> immediately displays Finished Starless

@@ -71,6 +71,15 @@ _EXPORT_ROLE = "export"
 _SOURCE_FORMATS_BY_SUFFIX = {".jpg": "jpeg", ".jpeg": "jpeg", ".tif": "tiff", ".tiff": "tiff"}
 _UNSET = object()
 
+# User-facing layer exports keep the project stem and append a role-specific
+# tail so every separated or finished layer is identifiable after export.
+LAYER_EXPORT_SUFFIXES: Final[Dict[str, str]] = {
+    ROLE_SEPARATED_STARLESS: "_starless",
+    ROLE_SEPARATED_STARS: "_stars",
+    ROLE_DENOISED_STARLESS: "_denoised_starless",
+    ROLE_FINISHED_STARLESS: "_finished_starless",
+}
+
 # Finish Stars was removed in Step 10R before shipping. Development projects
 # may still carry its manifest roles, path fields and disposable caches. Decoding
 # discards the records; opening the project removes only cache files it owns.
@@ -321,6 +330,26 @@ class FinishProject(Unpickle):
             destination = (out_dir / f"{stem}{tail}{suffix}").resolve()
         return destination
 
+    def get_default_layer_export_path(
+        self,
+        role: str,
+        output_dir: Optional[Union[str, Path]] = None,
+    ) -> Path:
+        """Derive a source-matching export path for one stored layer."""
+        if role not in LAYER_EXPORT_SUFFIXES:
+            raise ValueError(f"Unsupported layer export role: {role}")
+        stem = self.get_project_stem()
+        base_dir = Path(output_dir).resolve() if output_dir is not None else self.get_output_dir()
+        suffix = Path(self.source_file.path).suffix.lower() if self.source_file and self.source_file.path else ".tif"
+        role_tail = LAYER_EXPORT_SUFFIXES[role]
+        destination = (base_dir / f"{stem}{role_tail}{suffix}").resolve()
+        protected = self._protected_image_paths()
+        counter = 0
+        while destination in protected:
+            counter += 1
+            destination = (base_dir / f"{stem}{role_tail}_{counter}{suffix}").resolve()
+        return destination
+
     def _protected_image_paths(self) -> set[Path]:
         """Reserve both owned destinations and referenced inputs/caches for processing."""
         paths = {self.artifact_path(role, for_write=True) for role in _ARTIFACT_FILENAMES}
@@ -422,6 +451,26 @@ class FinishProject(Unpickle):
         if transaction is not None:
             transaction.commit()
         return True
+
+    def commit_layer_export(
+        self,
+        transaction: ArtifactTransaction,
+        *,
+        expected_revision: int,
+        expected_separation_signature: Any,
+    ) -> bool:
+        """Commit external layer exports while project state is still current.
+
+        Layer exports are user-facing files, not project artifacts, so publishing
+        them records nothing in the manifest. Holding the state lock keeps the
+        revision/signature check and commit atomic with respect to project edits.
+        """
+        with self._state_lock:
+            return self._commit_if_current(
+                transaction,
+                expected_revision=expected_revision,
+                expected_separation_signature=expected_separation_signature,
+            )
 
     def record_artifact(
         self,
@@ -629,6 +678,7 @@ class FinishProject(Unpickle):
         expected_revision: int,
         composite_path: Optional[Union[str, Path]] = None,
         options: Optional[Dict[str, Any]] = None,
+        composite_options: Optional[Dict[str, Any]] = None,
         transaction: Optional[ArtifactTransaction] = None,
     ) -> bool:
         """Atomically publish separated layers and their initial composite for one revision."""
@@ -661,6 +711,9 @@ class FinishProject(Unpickle):
                 self.starnet_stride = int(options["stride"])
             source = self._source_key()
             artifact_options = {"separation_signature": signature}
+            composite_artifact_options = (
+                artifact_options if composite_options is None else {**artifact_options, **composite_options}
+            )
             for role, path in (
                 (ROLE_SEPARATED_STARLESS, starless),
                 (ROLE_SEPARATED_STARS, stars),
@@ -677,7 +730,7 @@ class FinishProject(Unpickle):
                     "source": source,
                     "file": list(composite_stamp),
                     "revision": self.processing_revision,
-                    "options": artifact_options,
+                    "options": composite_artifact_options,
                 }
                 setattr(self, _ARTIFACT_PATH_FIELDS[ROLE_FINISHED_COMPOSITE], str(composite))
             return True
@@ -892,6 +945,7 @@ class FinishProject(Unpickle):
 __all__ = [
     "COMPOSITION_ONLY_SETTING_NAMES",
     "FinishProject",
+    "LAYER_EXPORT_SUFFIXES",
     "RETIRED_FINISH_SETTING_NAMES",
     "probe_source_image",
 ]

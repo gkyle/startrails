@@ -7,7 +7,7 @@ from collections import OrderedDict
 from contextlib import nullcontext
 from concurrent.futures import CancelledError
 import tempfile
-from typing import TYPE_CHECKING, Any, Callable, Dict, Final, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Final, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -41,7 +41,7 @@ from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
 from startrails.lib.image_io import imread, imwrite
 from startrails.lib.model_manifest import GRAXPERT_MANIFEST, PlatformNotSupportedError
-from startrails.lib.project_finish import FinishProject
+from startrails.lib.project_finish import LAYER_EXPORT_SUFFIXES, FinishProject
 from startrails.lib.starnet_setup import (
     STARNET_TERMS_REVISION,
     STARNET_TERMS_SHA256,
@@ -88,9 +88,9 @@ _STARLESS_SHARPEN_PROGRESS_SPAN = (90, 9)
 _STARLESS_NO_PHASE_PROGRESS = 99
 
 # The interactive blend decodes the full-resolution starless plates on every
-# slider adjustment. Retaining the most recent endpoint, denoised and separated
-# arrays avoids that disk I/O while file identities still detect replacement.
-_STARLESS_ARRAY_CACHE_MAX_ENTRIES: Final[int] = 3
+# slider adjustment. Retaining the source, separated layers, endpoint, denoised
+# and finished plates avoids disk I/O while file identities detect replacement.
+_STARLESS_ARRAY_CACHE_MAX_ENTRIES: Final[int] = 6
 
 
 class _DecodedArrayCache:
@@ -245,6 +245,16 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             if denoised is not None:
                 return denoised
         return separated_starless_path
+
+    def _resolved_starless_role(self, settings: FinishSettings, separated_starless_path: Path) -> str:
+        """Identify which stored role backs the plate selected by the toggles."""
+        plate = self._starless_plate_path(settings, separated_starless_path)
+        project = self.project
+        if plate == project.current_artifact_path(ROLE_FINISHED_STARLESS):
+            return ROLE_FINISHED_STARLESS
+        if plate == project.current_artifact_path(ROLE_DENOISED_STARLESS):
+            return ROLE_DENOISED_STARLESS
+        return ROLE_SEPARATED_STARLESS
 
     def save_project(self) -> None:
         """Do not let a stale workflow persist a project that replaced it."""
@@ -440,6 +450,14 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             # Never export a composite encoded from previous star settings or
             # built from a different starless plate after toggling a stage.
             raise ValueError("Composite does not match the current star settings; recombine before exporting.")
+        if "starless_role" in record_options:
+            separated_starless_path = project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+            if separated_starless_path is None or record_options["starless_role"] != self._resolved_starless_role(
+                settings, separated_starless_path
+            ):
+                raise ValueError("Composite does not match the current starless layer; recombine before exporting.")
+            if project.current_artifact_path(record_options["starless_role"]) is None:
+                raise ValueError("Composite starless layer is no longer current; recombine before exporting.")
         separation_signature = project.separation_signature
         img = imread(composite_artifact, to_rgb=True, as_float=True)
 
@@ -474,6 +492,181 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             raise ValueError("Export was cancelled; no output was published.") from None
         self.save_project()
         return target_path
+
+    def _validate_layer_export_source(self) -> tuple[FinishProject, int, int]:
+        """Validate the shared source prerequisites for layer exports."""
+        project = self.project
+        revision = project.processing_revision
+        if not project.source_file or not project.source_file.path:
+            raise ValueError("No source image imported to export.")
+        source_path = Path(project.source_file.path)
+        if not source_path.exists():
+            raise FileNotFoundError(f"Source file not found: {source_path}")
+        if not project.source_is_current():
+            raise ValueError("Source image changed; import it again before exporting.")
+        depth = project.source_bit_depth
+        if depth not in (8, 16):
+            raise ValueError("Source bit depth is unknown; import the source again before exporting.")
+        return project, revision, depth
+
+    @staticmethod
+    def _validate_layer_export_options(
+        role: str,
+        record_options: Dict[str, Any],
+        settings: FinishSettings,
+    ) -> None:
+        """Reject a stored layer that was built from different visible settings."""
+        if role == ROLE_DENOISED_STARLESS:
+            expected = {
+                "denoise_strength": settings.denoise_strength,
+                "denoise_scope": settings.denoise_scope,
+            }
+            message = "Denoised starless layer does not match the current denoise settings; rebuild it."
+        elif role == ROLE_FINISHED_STARLESS:
+            expected = {
+                "denoise_strength": settings.denoise_strength,
+                "denoise_scope": settings.denoise_scope,
+                "structure_amount": settings.structure_amount,
+                "detail_amount": settings.detail_amount,
+            }
+            message = "Finished starless layer does not match the current starless settings; rebuild it."
+        else:
+            return
+        if any(key in record_options and record_options.get(key) != value for key, value in expected.items()):
+            raise ValueError(message)
+
+    def do_export_layer(
+        self,
+        role: str,
+        output_path: Optional[Union[str, Path]] = None,
+    ) -> Path:
+        """Export one current layer at full resolution using source-matching format and depth."""
+        if role == ROLE_FINISHED_COMPOSITE:
+            return self.do_export_composite(output_path=output_path)
+        if role not in LAYER_EXPORT_SUFFIXES:
+            raise ValueError(f"Unsupported layer export role: {role}")
+        self.invalidate_if_graxpert_changed()
+        self.invalidate_if_starless_filter_changed()
+        project, revision, depth = self._validate_layer_export_source()
+        separation_signature = project.separation_signature
+        settings = project.get_settings()
+        target_path = (
+            Path(output_path).resolve() if output_path is not None else project.get_default_layer_export_path(role)
+        )
+        project.validate_export_path(target_path)
+        artifact_path = project.current_artifact_path(role)
+        if artifact_path is None:
+            raise ValueError(f"No current '{role}' layer to export.")
+        record_options = project.artifact_manifest.get(role, {}).get("options", {})
+        self._validate_layer_export_options(role, record_options, settings)
+
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        img = self._load_starless_array(artifact_path)
+
+        try:
+            with ArtifactTransaction(self._job_cancel_check(project, revision)) as transaction:
+                staged_path = transaction.stage(target_path)
+                written = imwrite(
+                    staged_path,
+                    img,
+                    convertBGR=True,
+                    bit_depth=depth,
+                    quality=settings.jpeg_quality,
+                    optimize=settings.jpeg_optimize,
+                    compression=settings.tiff_deflate_compression,
+                )
+                if written != staged_path:
+                    raise OSError("Export staging path changed unexpectedly; output was not published.")
+                if not project.commit_layer_export(
+                    transaction,
+                    expected_revision=revision,
+                    expected_separation_signature=separation_signature,
+                ):
+                    raise ValueError("Project changed while saving; the layer export was not published.")
+        except CancelledError:
+            raise ValueError("Layer export was cancelled; no output was published.") from None
+        self.save_project()
+        return target_path
+
+    def do_export_layers(
+        self,
+        output_dir: Optional[Union[str, Path]] = None,
+        *,
+        roles: Optional[Sequence[str]] = None,
+        progress_bar: Optional[Any] = None,
+    ) -> Dict[str, Path]:
+        """Export the active separated/finished layers to one directory atomically."""
+        self.invalidate_if_graxpert_changed()
+        self.invalidate_if_starless_filter_changed()
+        project, revision, depth = self._validate_layer_export_source()
+        separation_signature = project.separation_signature
+        if (
+            project.current_artifact_path(ROLE_SEPARATED_STARLESS) is None
+            or project.current_artifact_path(ROLE_SEPARATED_STARS) is None
+        ):
+            raise ValueError("Separate stars before exporting layers.")
+
+        settings = project.get_settings()
+        base_dir = Path(output_dir).resolve() if output_dir is not None else project.get_output_dir()
+        if roles is None:
+            selected_roles: List[str] = [ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS]
+            if settings.enable_starless_denoise and project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None:
+                selected_roles.append(ROLE_DENOISED_STARLESS)
+            if settings.enable_starless_sharpen and project.current_artifact_path(ROLE_FINISHED_STARLESS) is not None:
+                selected_roles.append(ROLE_FINISHED_STARLESS)
+        else:
+            selected_roles = list(roles)
+
+        exports: Dict[str, tuple[Path, Path]] = {}
+        for role in selected_roles:
+            if role not in LAYER_EXPORT_SUFFIXES:
+                raise ValueError(f"Unsupported layer export role: {role}")
+            artifact_path = project.current_artifact_path(role)
+            if artifact_path is None:
+                raise ValueError(f"No current '{role}' layer to export.")
+            record_options = project.artifact_manifest.get(role, {}).get("options", {})
+            self._validate_layer_export_options(role, record_options, settings)
+            destination = project.get_default_layer_export_path(role, base_dir)
+            project.validate_export_path(destination)
+            exports[role] = (artifact_path, destination)
+
+        total = len(exports)
+        results: Dict[str, Path] = {}
+        try:
+            with ArtifactTransaction(self._job_cancel_check(project, revision)) as transaction:
+                for index, (role, (artifact_path, destination)) in enumerate(exports.items(), start=1):
+                    img = self._load_starless_array(artifact_path)
+                    staged_path = transaction.stage(destination)
+                    written = imwrite(
+                        staged_path,
+                        img,
+                        convertBGR=True,
+                        bit_depth=depth,
+                        quality=settings.jpeg_quality,
+                        optimize=settings.jpeg_optimize,
+                        compression=settings.tiff_deflate_compression,
+                    )
+                    if written != staged_path:
+                        raise OSError("Export staging path changed unexpectedly; output was not published.")
+                    results[role] = destination
+                    if progress_bar is not None:
+                        progress_bar(
+                            total,
+                            1,
+                            index,
+                            index == total,
+                            {"desc": f"Exported {LAYER_EXPORT_SUFFIXES[role].lstrip('_')} layer."},
+                        )
+                if not project.commit_layer_export(
+                    transaction,
+                    expected_revision=revision,
+                    expected_separation_signature=separation_signature,
+                ):
+                    raise ValueError("Project changed while saving; layer exports were not published.")
+        except CancelledError:
+            raise ValueError("Layer exports were cancelled; no outputs were published.") from None
+        self.save_project()
+        return results
 
     # -------------------------------------------------------------------------
     # Dependency Lifecycle & Operational Adapters (StarNet & GraXpert)
@@ -700,6 +893,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         negative_base_path: Path,
         composite_destination: Path,
         transaction: ArtifactTransaction,
+        settings: FinishSettings,
         progress_bar: Optional[Any] = None,
     ) -> Optional[Tuple[np.ndarray, Optional[Path]]]:
         """Recombine the given layers into a staged composite without publishing it.
@@ -707,23 +901,23 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         The signed negative correction always derives from the separated starless
         plate passed as negative_base_path, never from a subsequently finished
         plate. starless_path controls the visible base and is the same separated
-        plate when no starless finishing has run.
+        plate when no starless finishing has run. ``settings`` is the caller's
+        snapshot taken before the job starts, so mid-flight project edits cannot
+        change the recombination contract.
         """
         project = self.project
-        source_arr = imread(project.source_file.path, to_rgb=True, as_float=True)
-        starless_arr = imread(starless_path, to_rgb=True, as_float=True)
-        stars_arr = imread(stars_path, to_rgb=True, as_float=True)
+        source_arr = self._load_starless_array(Path(project.source_file.path))
+        starless_arr = self._load_starless_array(starless_path)
+        stars_arr = self._load_starless_array(stars_path)
 
         if negative_base_path == starless_path:
             negative_base_arr = starless_arr
         else:
-            negative_base_arr = imread(negative_base_path, to_rgb=True, as_float=True)
+            negative_base_arr = self._load_starless_array(negative_base_path)
 
-        neg_residual = source_arr
-        np.subtract(neg_residual, negative_base_arr, out=neg_residual)
-        np.minimum(neg_residual, 0, out=neg_residual)
-        if negative_base_arr is not starless_arr:
-            del negative_base_arr
+        # Cached plates are read-only; derive the signed correction into a new
+        # array instead of mutating the source buffer in place.
+        neg_residual = np.minimum(source_arr - negative_base_arr, 0.0).astype(np.float32, copy=False)
 
         op = self._new_operation(Recombine)
         if progress_bar is not None:
@@ -734,7 +928,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                 starless_arr,
                 stars_arr,
                 neg_residual,
-                project.get_settings(),
+                settings,
                 bit_depth=INTERMEDIATE_BIT_DEPTH,
                 output_path=composite_destination,
                 artifacts=transaction,
@@ -808,6 +1002,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         project_revision = project.processing_revision
         if not project.source_is_current():
             raise ValueError("Source image is not current or unavailable.")
+        settings = project.get_settings()
         dims = project.get_source_dimensions()
         min_dim = 256 if upsample else 512
         if dims is None or dims[0] < min_dim or dims[1] < min_dim:
@@ -927,7 +1122,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         starless_path=staged_starless,
                         stars_path=staged_stars,
                         chunk_rows=chunk_rows,
-                        settings=project.get_settings(),
+                        settings=settings,
                     )
                     if (
                         sep_result is None
@@ -956,6 +1151,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         composite_destination=composite_dest,
                         transaction=transaction,
                         progress_bar=recombine_progress,
+                        settings=settings,
                     )
                     if composite_result is None:
                         return None
@@ -974,6 +1170,14 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         expected_revision=project_revision,
                         composite_path=composite_dest,
                         options=separation_options,
+                        composite_options={
+                            "separation_signature": separation_signature,
+                            "starless_role": ROLE_SEPARATED_STARLESS,
+                            "enable_starless_denoise": settings.enable_starless_denoise,
+                            "enable_starless_sharpen": settings.enable_starless_sharpen,
+                            "star_amount": settings.star_amount,
+                            "blend_mode": settings.blend_mode,
+                        },
                         transaction=transaction,
                     ):
                         return None
@@ -1022,9 +1226,44 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         if separated_starless_path is None or separated_stars_path is None:
             return None
         settings = project.get_settings()
+
+        # Refresh a missing starless plate from cached separation/endpoint data
+        # before recombining. GraXpert inference is only reached when no
+        # endpoint exists; changed sliders rebuild from the cached endpoint.
+        will_sharpen = settings.structure_amount > 0.0 or settings.detail_amount > 0.0
+        has_endpoint = project.current_artifact_path(ROLE_DENOISE_ENDPOINT) is not None
+        has_denoised = project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
+        has_finished = project.current_artifact_path(ROLE_FINISHED_STARLESS) is not None
+        needs_denoise = (
+            settings.enable_starless_denoise
+            and not has_denoised
+            and (
+                has_endpoint or (settings.denoise_strength == 0.0 and will_sharpen and settings.enable_starless_sharpen)
+            )
+            and self.get_current_mask() is not None
+        )
+        needs_sharpen = (
+            settings.enable_starless_sharpen
+            and will_sharpen
+            and not has_finished
+            and (has_denoised or has_endpoint or settings.denoise_strength == 0.0)
+            and self.get_current_mask() is not None
+        )
+        if needs_denoise or needs_sharpen:
+            if self.do_denoise_starless() is None:
+                return None
+            revision = project.processing_revision
+            separation_signature = project.separation_signature
+            settings = project.get_settings()
+            separated_starless_path = project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+            separated_stars_path = project.current_artifact_path(ROLE_SEPARATED_STARS)
+            if separated_starless_path is None or separated_stars_path is None:
+                return None
+
         # The starless toggles select the stored plate used as the visible base;
         # the signed correction always derives from the separated plate.
         starless_path = self._starless_plate_path(settings, separated_starless_path)
+        starless_role = self._resolved_starless_role(settings, separated_starless_path)
 
         composite_dest = project.artifact_path(ROLE_FINISHED_COMPOSITE, for_write=True)
         try:
@@ -1036,6 +1275,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                     transaction=transaction,
                     progress_bar=progress_bar,
                     negative_base_path=separated_starless_path,
+                    settings=settings,
                 )
                 if result is None:
                     # Stale after a concurrent invalidation; keep the last valid composite.
@@ -1045,6 +1285,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                     composite_dest,
                     options={
                         "separation_signature": separation_signature,
+                        "starless_role": starless_role,
                         "enable_starless_denoise": settings.enable_starless_denoise,
                         "enable_starless_sharpen": settings.enable_starless_sharpen,
                         "star_amount": settings.star_amount,
