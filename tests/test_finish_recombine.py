@@ -431,6 +431,7 @@ class TestFinishRecombine(QtTestCase):
         settings = project.get_settings()
         composite_options = {
             "star_amount": settings.star_amount,
+            "star_threshold": settings.star_threshold,
             "blend_mode": settings.blend_mode,
             "enable_starless_denoise": settings.enable_starless_denoise,
             "enable_starless_sharpen": settings.enable_starless_sharpen,
@@ -522,6 +523,35 @@ class TestFinishRecombine(QtTestCase):
         self.assertEqual(finished_options["denoise_strength"], 25.0)
         exported = workflow.do_export_composite(self.root / "endpoint_refresh.tif")
         np.testing.assert_allclose(imread(exported, to_rgb=True, as_float=True), expected, atol=SAMPLE_TOLERANCE)
+
+    def test_star_threshold_filters_stars_and_invalidates_only_composite(self):
+        """Star threshold suppresses isolated weak stars, keeps bright star halos, and guards stale export."""
+        stars = np.zeros(self.shape, dtype=np.float32)
+        stars[:, :10, :] = 0.15
+        stars[:, 20:24, :] = 0.15
+        stars[:, 24:, :] = 0.60
+        project = self.prepare_separated_project(
+            "threshold",
+            source=np.clip(0.2 + stars, 0.0, 1.0),
+            starless=0.2,
+            stars=stars,
+            settings=replace(FINISH_DEFAULTS, star_amount=100.0, star_threshold=30.0, blend_mode=BLEND_ADD),
+        )
+        finished_path = self.write_finished_starless(project, 0.2)
+        workflow = self.make_workflow(project)
+        self.assertIsNotNone(workflow.do_recombine())
+
+        composite = self.read_composite(project)
+        np.testing.assert_allclose(composite[:, :10, :], 0.2, atol=SAMPLE_TOLERANCE)
+        np.testing.assert_allclose(composite[:, 20:24, :], 0.35, atol=SAMPLE_TOLERANCE)
+        np.testing.assert_allclose(composite[:, 24:, :], 0.8, atol=SAMPLE_TOLERANCE)
+        self.assertEqual(project.artifact_manifest[ROLE_FINISHED_COMPOSITE]["options"]["star_threshold"], 30.0)
+
+        project.update_settings(replace(project.get_settings(), star_threshold=10.0))
+        self.assertEqual(project.current_artifact_path(ROLE_FINISHED_STARLESS), finished_path)
+        self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
+        with self.assertRaisesRegex(ValueError, "No current composite"):
+            workflow.do_export_composite(self.root / "stale_threshold.tif")
 
 
 if __name__ == "__main__":

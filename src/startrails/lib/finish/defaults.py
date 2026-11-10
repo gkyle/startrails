@@ -41,6 +41,7 @@ DEFAULT_DENOISE_SCOPE: Final[str] = SCOPE_SKY_ONLY
 DEFAULT_STRUCTURE_AMOUNT_PERCENT: Final[float] = 0.0
 DEFAULT_DETAIL_AMOUNT_PERCENT: Final[float] = 0.0
 DEFAULT_STAR_AMOUNT_PERCENT: Final[float] = 100.0
+DEFAULT_STAR_THRESHOLD_PERCENT: Final[float] = 0.0
 DEFAULT_BLEND_MODE: Final[str] = BLEND_ADD
 DEFAULT_ENABLE_STARLESS_DENOISE: Final[bool] = True
 DEFAULT_ENABLE_STARLESS_SHARPEN: Final[bool] = True
@@ -68,6 +69,7 @@ RETIRED_FINISH_SETTING_NAMES: Final[Tuple[str, ...]] = (
 # can compare them without recomputing, and each toggle selects which plate is used.
 COMPOSITION_ONLY_SETTING_NAMES: Final[Tuple[str, ...]] = (
     "star_amount",
+    "star_threshold",
     "blend_mode",
     "enable_starless_denoise",
     "enable_starless_sharpen",
@@ -88,6 +90,7 @@ NEUTRAL_DENOISE_STRENGTH_PERCENT: Final[float] = 0.0
 NEUTRAL_STRUCTURE_AMOUNT_PERCENT: Final[float] = 0.0
 NEUTRAL_DETAIL_AMOUNT_PERCENT: Final[float] = 0.0
 NEUTRAL_STAR_AMOUNT_PERCENT: Final[float] = 100.0
+NEUTRAL_STAR_THRESHOLD_PERCENT: Final[float] = 0.0
 
 PERCENT_SCALE: Final[float] = 100.0
 SUPPORTED_SOURCE_FORMATS: Final[Tuple[str, ...]] = ("jpeg", "tiff")
@@ -118,10 +121,10 @@ class FinishSettings:
     detail_amount: float = DEFAULT_DETAIL_AMOUNT_PERCENT
     enable_starless_sharpen: bool = DEFAULT_ENABLE_STARLESS_SHARPEN
 
-    # Recombination & Export. The separated stars layer is used unchanged;
-    # Stars Amount and the blend mode are its only controls, while the starless
-    # toggles select which stored plate recombination uses.
+    # Recombination & Export. The separated stars layer is filtered by optional
+    # luminance threshold and scaled by Stars Amount before blending.
     star_amount: float = DEFAULT_STAR_AMOUNT_PERCENT
+    star_threshold: float = DEFAULT_STAR_THRESHOLD_PERCENT
     blend_mode: BlendModeType = DEFAULT_BLEND_MODE
     jpeg_quality: int = DEFAULT_JPEG_QUALITY
     jpeg_optimize: bool = DEFAULT_JPEG_OPTIMIZE

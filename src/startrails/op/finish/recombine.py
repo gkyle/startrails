@@ -55,6 +55,7 @@ class Recombine(Observable):
             negative_residual,
             settings.star_amount,
             settings.blend_mode,
+            star_threshold_percent=settings.star_threshold,
         )
 
         self.updateJob(1, {"desc": "Layers recombined."})

@@ -175,6 +175,48 @@ class TestFinishNumerical(unittest.TestCase):
         np.testing.assert_allclose(recombine_layers(hot, bright, zeros, 100, BLEND_ADD), 1.0)
         np.testing.assert_allclose(recombine_layers(hot, bright, zeros, 100, BLEND_SCREEN), 0.95)
 
+        # Star threshold suppresses weak stars while preserving the sub-threshold
+        # radiance/halo around surviving bright stars.
+        base = np.full((16, 32, 3), 0.2, dtype=np.float32)
+        stars_varied = np.zeros_like(base)
+        # Weak star on the left (peak 0.18 < 0.40 threshold) with halo.
+        stars_varied[6:10, 4:8, :] = 0.08
+        stars_varied[7:9, 5:7, :] = 0.18
+        # Bright star on the right (peak 0.75 > 0.40 threshold) surrounded by
+        # radial halo rings (0.25, 0.12, 0.04) that are all below threshold.
+        yy, xx = np.ogrid[:16, :32]
+        dist = np.hypot(yy - 8.0, xx - 24.0)
+        bright_halo = np.where(
+            dist <= 1.5,
+            0.75,
+            np.where(dist <= 3.0, 0.25, np.where(dist <= 5.0, 0.12, np.where(dist <= 7.0, 0.04, 0.0))),
+        ).astype(np.float32)
+        stars_varied[:, 16:, :] = bright_halo[:, 16:, np.newaxis]
+
+        zeros_varied = np.zeros_like(base)
+        filtered = recombine_layers(base, stars_varied, zeros_varied, 100, BLEND_ADD, star_threshold_percent=40.0)
+        expected_stars = np.zeros_like(stars_varied)
+        expected_stars[:, 16:, :] = stars_varied[:, 16:, :]
+        expected = base + expected_stars
+        np.testing.assert_allclose(filtered, expected, atol=1e-6)
+        # Sub-threshold halo pixels (0.04, 0.12, 0.25 <= 0.40) around the bright star remain intact.
+        self.assertGreater(float(filtered[8, 18, 0] - base[8, 18, 0]), 0.039)
+        # Chunked processing with small chunk_rows is bit-exact identical to full-frame.
+        chunked = recombine_layers(
+            base, stars_varied, zeros_varied, 100, BLEND_ADD, star_threshold_percent=40.0, chunk_rows=5
+        )
+        np.testing.assert_array_equal(chunked, filtered)
+
+        screened = recombine_layers(base, stars_varied, zeros_varied, 50, BLEND_SCREEN, star_threshold_percent=40.0)
+        np.testing.assert_allclose(screened, 1.0 - (1.0 - base) * (1.0 - 0.5 * expected_stars), atol=1e-6)
+        # 100% threshold excludes all star pixels (luminance cannot exceed 1.0).
+        np.testing.assert_allclose(
+            recombine_layers(base, np.ones_like(base), zeros_varied, 100, BLEND_ADD, star_threshold_percent=100.0),
+            base,
+        )
+        with self.assertRaises(ValueError):
+            recombine_layers(base, stars_varied, zeros_varied, 100, BLEND_ADD, star_threshold_percent=105.0)
+
     def test_observable_separation_cancellation_and_image_outputs(self):
         outputs = SeparateStars().separate(self.source, self.model, self.mask, **self.paths)
         self.assertEqual([f.operation for f in outputs], ["Starless", "Stars"])

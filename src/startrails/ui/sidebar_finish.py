@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 from startrails.lib.finish.defaults import (
     DEFAULT_BLEND_MODE,
     DEFAULT_STAR_AMOUNT_PERCENT,
+    DEFAULT_STAR_THRESHOLD_PERCENT,
     ROLE_DENOISE_ENDPOINT,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
@@ -46,6 +47,7 @@ class FinishRecombineSettings(QWidget):
     """Step 4 card body widget handling layer blending amounts, modes, and export."""
 
     star_amount_changed = Signal(float)
+    star_threshold_changed = Signal(float)
     blend_mode_changed = Signal(str)
     slider_dragging = Signal()
     settings_changed = Signal()
@@ -58,32 +60,45 @@ class FinishRecombineSettings(QWidget):
         self._init_events()
         self.refresh_prerequisites(False)
 
+    def _add_percent_slider(
+        self, layout: QVBoxLayout, title: str, initial_percent: float
+    ) -> tuple[QLabel, QLabel, QSlider]:
+        header = QHBoxLayout()
+        lbl_title = QLabel(title, self)
+        lbl_title.setStyleSheet("font-size: 11px; font-weight: 600; color: #475569;")
+        lbl_value = QLabel(f"{int(round(initial_percent))}%", self)
+        lbl_value.setStyleSheet("font-size: 11px; font-weight: 600; color: #0369a1;")
+        lbl_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        header.addWidget(lbl_title)
+        header.addWidget(lbl_value)
+        layout.addLayout(header)
+
+        slider = QSlider(Qt.Orientation.Horizontal, self)
+        slider.setRange(0, 100)
+        slider.setSingleStep(1)
+        slider.setPageStep(10)
+        slider.setValue(int(round(initial_percent)))
+        slider.setStyleSheet(
+            "QSlider { border: none; padding: 0px; margin: 0px; min-height: 20px; max-height: 20px; }"
+            "QSlider:focus { border: none; outline: none; }"
+        )
+        layout.addWidget(slider)
+        return lbl_title, lbl_value, slider
+
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(8)
 
-        # Stars section
-        fin_header = QHBoxLayout()
-        self.lbl_star_amount_title = QLabel("Stars", self)
-        self.lbl_star_amount_title.setStyleSheet("font-size: 11px; font-weight: 600; color: #475569;")
-        self.lbl_star_amount_value = QLabel(f"{int(DEFAULT_STAR_AMOUNT_PERCENT)}%", self)
-        self.lbl_star_amount_value.setStyleSheet("font-size: 11px; font-weight: 600; color: #0369a1;")
-        self.lbl_star_amount_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        fin_header.addWidget(self.lbl_star_amount_title)
-        fin_header.addWidget(self.lbl_star_amount_value)
-        layout.addLayout(fin_header)
-
-        self.slider_star_amount = QSlider(Qt.Orientation.Horizontal, self)
-        self.slider_star_amount.setRange(0, 100)
-        self.slider_star_amount.setSingleStep(1)
-        self.slider_star_amount.setPageStep(10)
-        self.slider_star_amount.setValue(int(DEFAULT_STAR_AMOUNT_PERCENT))
-        self.slider_star_amount.setStyleSheet(
-            "QSlider { border: none; padding: 0px; margin: 0px; min-height: 20px; max-height: 20px; }"
-            "QSlider:focus { border: none; outline: none; }"
+        # Stars amount & brightness threshold sections
+        self.lbl_star_amount_title, self.lbl_star_amount_value, self.slider_star_amount = self._add_percent_slider(
+            layout, "Stars", DEFAULT_STAR_AMOUNT_PERCENT
         )
-        layout.addWidget(self.slider_star_amount)
+        (
+            self.lbl_star_threshold_title,
+            self.lbl_star_threshold_value,
+            self.slider_star_threshold,
+        ) = self._add_percent_slider(layout, "Threshold", DEFAULT_STAR_THRESHOLD_PERCENT)
 
         fin_mode_layout = QHBoxLayout()
         lbl_fin_mode = QLabel("Blend Mode", self)
@@ -156,30 +171,34 @@ class FinishRecombineSettings(QWidget):
         layout.addLayout(actions_layout)
 
     def _init_events(self) -> None:
-        self.slider_star_amount.valueChanged.connect(self._on_star_amount_changed)
-        self.slider_star_amount.sliderPressed.connect(self.slider_dragging.emit)
-        self.slider_star_amount.sliderReleased.connect(self._on_star_amount_slider_released)
+        for slider, label, sig in (
+            (self.slider_star_amount, self.lbl_star_amount_value, self.star_amount_changed),
+            (self.slider_star_threshold, self.lbl_star_threshold_value, self.star_threshold_changed),
+        ):
+            slider.valueChanged.connect(lambda v, s=slider, l=label, sg=sig: self._on_percent_slider_changed(s, l, sg, v))
+            slider.sliderPressed.connect(self.slider_dragging.emit)
+            slider.sliderReleased.connect(lambda s=slider, l=label, sg=sig: self._on_percent_slider_released(s, l, sg))
         self.combo_star_blend_mode.currentIndexChanged.connect(self._on_star_blend_mode_changed)
         self.check_compare_original.toggled.connect(self.compare_original_toggled.emit)
         self.btn_export_layers.clicked.connect(self.export_layers_requested.emit)
 
-    def _on_star_amount_changed(self, value: int) -> None:
-        self.lbl_star_amount_value.setText(f"{value}%")
-        if self.slider_star_amount.isSliderDown():
+    def _on_percent_slider_changed(self, slider: QSlider, label: QLabel, signal: Signal, value: int) -> None:
+        label.setText(f"{value}%")
+        if slider.isSliderDown():
             self.slider_dragging.emit()
         else:
-            self.star_amount_changed.emit(float(value))
+            signal.emit(float(value))
             self.settings_changed.emit()
 
-    def _on_star_amount_slider_released(self) -> None:
-        val = self.slider_star_amount.value()
-        self.lbl_star_amount_value.setText(f"{val}%")
-        self.star_amount_changed.emit(float(val))
+    def _on_percent_slider_released(self, slider: QSlider, label: QLabel, signal: Signal) -> None:
+        val = slider.value()
+        label.setText(f"{val}%")
+        signal.emit(float(val))
         self.settings_changed.emit()
 
     def is_slider_down(self) -> bool:
-        """Return True if the star amount slider is actively held down."""
-        return bool(self.slider_star_amount.isSliderDown())
+        """Return True if any composition slider is actively held down."""
+        return bool(self.slider_star_amount.isSliderDown() or self.slider_star_threshold.isSliderDown())
 
     def _on_star_blend_mode_changed(self, index: int) -> None:
         data = self.combo_star_blend_mode.currentData()
@@ -190,12 +209,22 @@ class FinishRecombineSettings(QWidget):
     def get_star_amount(self) -> float:
         return float(self.slider_star_amount.value())
 
-    def set_star_amount(self, amount: float) -> None:
-        val = int(round(amount))
+    @staticmethod
+    def _set_percent_slider(slider: QSlider, label: QLabel, value: float) -> None:
+        val = int(round(value))
         val = max(0, min(100, val))
-        self.lbl_star_amount_value.setText(f"{val}%")
-        with QSignalBlocker(self.slider_star_amount):
-            self.slider_star_amount.setValue(val)
+        label.setText(f"{val}%")
+        with QSignalBlocker(slider):
+            slider.setValue(val)
+
+    def set_star_amount(self, amount: float) -> None:
+        self._set_percent_slider(self.slider_star_amount, self.lbl_star_amount_value, amount)
+
+    def get_star_threshold(self) -> float:
+        return float(self.slider_star_threshold.value())
+
+    def set_star_threshold(self, threshold: float) -> None:
+        self._set_percent_slider(self.slider_star_threshold, self.lbl_star_threshold_value, threshold)
 
     def get_blend_mode(self) -> str:
         data = self.combo_star_blend_mode.currentData()
@@ -213,6 +242,7 @@ class FinishRecombineSettings(QWidget):
     def set_from_project(self, project: FinishProject) -> None:
         settings = project.get_settings()
         self.set_star_amount(settings.star_amount)
+        self.set_star_threshold(settings.star_threshold)
         self.set_blend_mode(settings.blend_mode)
 
     def get_compare_original(self) -> bool:
@@ -224,6 +254,7 @@ class FinishRecombineSettings(QWidget):
 
     def refresh_prerequisites(self, has_prerequisites: bool = True) -> None:
         self.slider_star_amount.setEnabled(has_prerequisites)
+        self.slider_star_threshold.setEnabled(has_prerequisites)
         self.combo_star_blend_mode.setEnabled(has_prerequisites)
         self.check_compare_original.setEnabled(has_prerequisites)
         self.lbl_compare_original.setEnabled(has_prerequisites)
@@ -334,6 +365,7 @@ class SidebarFinish(QWidget):
         self.btn_export_layers = self.recombineSettings.btn_export_layers
         self.check_compare_original = self.recombineSettings.check_compare_original
         self.slider_star_amount = self.recombineSettings.slider_star_amount
+        self.slider_star_threshold = self.recombineSettings.slider_star_threshold
         self.contentLayout.addWidget(self.recombineCard)
 
         self._step_cards = (self.skyCard, self.separateCard, self.starlessCard, self.recombineCard)

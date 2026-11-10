@@ -153,6 +153,7 @@ class FinishView(ModeView):
 
         if hasattr(self.sidebar, "recombineSettings"):
             self.connect_signal(self.sidebar.recombineSettings.star_amount_changed, self.on_star_amount_changed)
+            self.connect_signal(self.sidebar.recombineSettings.star_threshold_changed, self.on_star_threshold_changed)
             self.connect_signal(self.sidebar.recombineSettings.blend_mode_changed, self.on_blend_mode_changed)
             self.connect_signal(self.sidebar.recombineSettings.slider_dragging, self._on_recombine_slider_dragging)
             self.connect_signal(
@@ -1227,6 +1228,16 @@ class FinishView(ModeView):
         if settings.star_amount == value:
             return
         self._project.update_settings(replace(settings, star_amount=value))
+        self.app.workflow.save_project()
+        self.updateReadyStates()
+        self._debounce_recombine()
+
+    def on_star_threshold_changed(self, value: float) -> None:
+        """Update Star Threshold and trigger debounced preview recombination."""
+        settings = self._project.get_settings()
+        if settings.star_threshold == value:
+            return
+        self._project.update_settings(replace(settings, star_threshold=value))
         self.app.workflow.save_project()
         self.updateReadyStates()
         self._debounce_recombine()

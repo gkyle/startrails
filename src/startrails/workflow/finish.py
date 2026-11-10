@@ -425,6 +425,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         record_options = project.artifact_manifest.get(ROLE_FINISHED_COMPOSITE, {}).get("options", {})
         if "star_amount" in record_options and (
             record_options.get("star_amount") != settings.star_amount
+            or ("star_threshold" in record_options and record_options.get("star_threshold") != settings.star_threshold)
             or record_options.get("blend_mode") != settings.blend_mode
             or record_options.get("enable_starless_denoise") != settings.enable_starless_denoise
             or record_options.get("enable_starless_sharpen") != settings.enable_starless_sharpen
@@ -1180,6 +1181,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         "enable_starless_denoise": settings.enable_starless_denoise,
                         "enable_starless_sharpen": settings.enable_starless_sharpen,
                         "star_amount": settings.star_amount,
+                        "star_threshold": settings.star_threshold,
                         "blend_mode": settings.blend_mode,
                     },
                     expected_revision=revision,

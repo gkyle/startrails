@@ -14,6 +14,7 @@ from startrails.lib.file import OutputFile
 from startrails.lib.finish.defaults import (
     DEFAULT_BLEND_MODE,
     DEFAULT_STAR_AMOUNT_PERCENT,
+    DEFAULT_STAR_THRESHOLD_PERCENT,
     FINISH_EXT,
     ROLE_FINISHED_COMPOSITE,
     ROLE_SEPARATED_STARLESS,
@@ -46,14 +47,19 @@ class TestFinishRecombineSettings(QtTestCase):
         self.assertEqual(self.widget.get_star_amount(), DEFAULT_STAR_AMOUNT_PERCENT)
         self.assertEqual(self.widget.lbl_star_amount_value.text(), "100%")
         self.assertEqual(self.widget.lbl_star_amount_title.text(), "Stars")
+        self.assertEqual(self.widget.get_star_threshold(), DEFAULT_STAR_THRESHOLD_PERCENT)
+        self.assertEqual(self.widget.lbl_star_threshold_value.text(), "0%")
+        self.assertEqual(self.widget.lbl_star_threshold_title.text(), "Threshold")
         self.assertEqual(self.widget.get_blend_mode(), DEFAULT_BLEND_MODE)
 
         self.widget.refresh_prerequisites(True)
         star_amount_sigs = []
+        star_threshold_sigs = []
         star_mode_sigs = []
         settings_sigs = []
 
         self.widget.star_amount_changed.connect(star_amount_sigs.append)
+        self.widget.star_threshold_changed.connect(star_threshold_sigs.append)
         self.widget.blend_mode_changed.connect(star_mode_sigs.append)
         self.widget.settings_changed.connect(lambda: settings_sigs.append(True))
 
@@ -61,26 +67,36 @@ class TestFinishRecombineSettings(QtTestCase):
         self.assertEqual(star_amount_sigs, [70.0])
         self.assertEqual(self.widget.lbl_star_amount_value.text(), "70%")
 
+        self.widget.slider_star_threshold.setValue(25)
+        self.assertEqual(star_threshold_sigs, [25.0])
+        self.assertEqual(self.widget.lbl_star_threshold_value.text(), "25%")
+
         self.widget.combo_star_blend_mode.setCurrentIndex(1)  # screen
         self.assertEqual(star_mode_sigs, ["screen"])
-        self.assertGreaterEqual(len(settings_sigs), 2)
+        self.assertGreaterEqual(len(settings_sigs), 3)
 
     def test_programmatic_setters_block_signals(self):
         """Programmatic setters update controls without emitting signals."""
         self.widget.refresh_prerequisites(True)
         star_amount_sigs = []
+        star_threshold_sigs = []
         star_mode_sigs = []
 
         self.widget.star_amount_changed.connect(star_amount_sigs.append)
+        self.widget.star_threshold_changed.connect(star_threshold_sigs.append)
         self.widget.blend_mode_changed.connect(star_mode_sigs.append)
 
         self.widget.set_star_amount(50.0)
+        self.widget.set_star_threshold(35.0)
         self.widget.set_blend_mode("screen")
 
         self.assertEqual(self.widget.get_star_amount(), 50.0)
         self.assertEqual(self.widget.lbl_star_amount_value.text(), "50%")
+        self.assertEqual(self.widget.get_star_threshold(), 35.0)
+        self.assertEqual(self.widget.lbl_star_threshold_value.text(), "35%")
         self.assertEqual(self.widget.get_blend_mode(), "screen")
         self.assertEqual(star_amount_sigs, [])
+        self.assertEqual(star_threshold_sigs, [])
         self.assertEqual(star_mode_sigs, [])
 
     def test_blend_mode_setters_reject_unsupported_values(self):
@@ -91,22 +107,26 @@ class TestFinishRecombineSettings(QtTestCase):
     def test_set_from_project_populates_controls(self):
         """set_from_project correctly reads project settings and updates controls."""
         proj = FinishProject(project_file=str(self.root / f"temp{FINISH_EXT}"))
-        settings = FinishSettings(star_amount=40.0, blend_mode="screen")
+        settings = FinishSettings(star_amount=40.0, star_threshold=15.0, blend_mode="screen")
         proj.update_settings(settings)
 
         self.widget.set_from_project(proj)
         self.assertEqual(self.widget.get_star_amount(), 40.0)
         self.assertEqual(self.widget.lbl_star_amount_value.text(), "40%")
+        self.assertEqual(self.widget.get_star_threshold(), 15.0)
+        self.assertEqual(self.widget.lbl_star_threshold_value.text(), "15%")
         self.assertEqual(self.widget.get_blend_mode(), "screen")
 
     def test_refresh_prerequisites_toggles_enabled_state(self):
-        """refresh_prerequisites enables/disables amount slider and blend mode combo."""
+        """refresh_prerequisites enables/disables amount slider, threshold slider, and blend mode combo."""
         self.widget.refresh_prerequisites(False)
         self.assertFalse(self.widget.slider_star_amount.isEnabled())
+        self.assertFalse(self.widget.slider_star_threshold.isEnabled())
         self.assertFalse(self.widget.combo_star_blend_mode.isEnabled())
 
         self.widget.refresh_prerequisites(True)
         self.assertTrue(self.widget.slider_star_amount.isEnabled())
+        self.assertTrue(self.widget.slider_star_threshold.isEnabled())
         self.assertTrue(self.widget.combo_star_blend_mode.isEnabled())
 
     def test_compare_original_and_export_layers_controls(self):
@@ -317,10 +337,13 @@ class TestFinishViewRecombineInteraction(QtTestCase):
             self.view.on_star_amount_changed(80.0)
             self.assertEqual(self.project.get_settings().star_amount, 80.0)
 
+            self.view.on_star_threshold_changed(25.0)
+            self.assertEqual(self.project.get_settings().star_threshold, 25.0)
+
             self.view.on_blend_mode_changed("screen")
             self.assertEqual(self.project.get_settings().blend_mode, "screen")
 
-        self.assertEqual(len(saved_calls), 2)
+        self.assertEqual(len(saved_calls), 3)
 
     def test_zero_star_amount_persists_and_triggers_recombine(self):
         """0% Stars Amount updates project settings and debounces recombine."""
@@ -490,12 +513,16 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         self.assertEqual((self.canvas.posX, self.canvas.posY), (50, -25))
 
     def test_reopen_project_restores_recombine_settings(self):
-        """Reopening project restores star amount and blend mode in sidebar controls."""
-        self.project.update_settings(replace(self.project.get_settings(), star_amount=35.0, blend_mode="screen"))
+        """Reopening project restores star amount, threshold, and blend mode in sidebar controls."""
+        self.project.update_settings(
+            replace(self.project.get_settings(), star_amount=35.0, star_threshold=18.0, blend_mode="screen")
+        )
         self.view.resetProjectView()
 
         self.assertEqual(self.sidebar.recombineSettings.get_star_amount(), 35.0)
         self.assertEqual(self.sidebar.recombineSettings.lbl_star_amount_value.text(), "35%")
+        self.assertEqual(self.sidebar.recombineSettings.get_star_threshold(), 18.0)
+        self.assertEqual(self.sidebar.recombineSettings.lbl_star_threshold_value.text(), "18%")
         self.assertEqual(self.sidebar.recombineSettings.get_blend_mode(), "screen")
 
     def test_recombine_slider_drag_holds_off_worker_until_release(self):
