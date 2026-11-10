@@ -357,7 +357,7 @@ class SidebarFinish(QWidget):
 
     def update_from_project(self, project: FinishProject, dimensions: Optional[tuple[int, int]]) -> None:
         """Update file sections and step prerequisites from active project."""
-        self.separateSettings.set_stride(project.starnet_stride)
+        self.separateSettings.set_from_project(project)
         if hasattr(self, "starlessSettings"):
             self.starlessSettings.set_from_project(project)
         if hasattr(self, "recombineSettings"):
@@ -385,17 +385,17 @@ class SidebarFinish(QWidget):
         if hasattr(self, "skySettings"):
             self.skySettings.refresh_inputs(has_source=has_source)
 
-        starnet_status = {}
+        star_removal_status = {}
         if (
             hasattr(self, "app")
             and self.app
             and hasattr(self.app, "workflow")
-            and hasattr(self.app.workflow, "get_starnet_status")
+            and hasattr(self.app.workflow, "get_star_removal_status")
         ):
-            starnet_status = self.app.workflow.get_starnet_status()
+            star_removal_status = self.app.workflow.get_star_removal_status()
 
         if hasattr(self, "separateSettings"):
-            self.separateSettings.refresh_status(starnet_status, has_prerequisites=has_source and has_mask)
+            self.separateSettings.refresh_status(star_removal_status, has_prerequisites=has_source and has_mask)
 
         graxpert_status = {}
         if (
@@ -440,8 +440,8 @@ class SidebarFinish(QWidget):
             return
 
         if not (has_starless and has_stars):
-            if not starnet_status.get("configured", False):
-                self.separateCard.setStatus("ready", "StarNet2 setup required")
+            if not star_removal_status.get("configured", False):
+                self.separateCard.setStatus("ready", "Star removal model missing")
             else:
                 self.separateCard.setStatus("ready", "Ready to separate stars")
             self.starlessCard.setStatus("locked", "Prerequisite: Separated starless required")

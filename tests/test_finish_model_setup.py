@@ -1,16 +1,10 @@
-"""Tests for Finish mode model setup, manifests, CLI contracts, and process boundaries."""
+"""Tests for Finish mode model manifests, Nox model contracts, and GraXpert normalization."""
 
-from concurrent.futures import CancelledError
-import json
-import os
 from pathlib import Path
 import tempfile
-import subprocess
-import sys
-from threading import Event, Timer
 import unittest
-from unittest.mock import patch
 import numpy as np
+import torch
 
 from startrails.lib.finish.graxpert import (
     compute_graxpert_stats,
@@ -19,292 +13,99 @@ from startrails.lib.finish.graxpert import (
     graxpert_tile_preprocess,
     MIN_MAD_EPSILON,
 )
-from startrails.lib.model_manifest import GRAXPERT_MANIFEST, PlatformNotSupportedError, get_starnet_package_for_platform
-from startrails.lib.signatures import verify_file_integrity
-from startrails.lib.starnet_setup import (
-    detect_platform_target,
-    validate_starnet_installation,
-    probe_starnet_installation,
-    StarNetSetupError,
+from startrails.lib.finish.nox import (
+    EXPECTED_PARAM_COUNT,
+    EXPECTED_WEIGHT_TENSOR_COUNT,
+    NoxColor,
+    RadialChromaConfig,
+    apply_radial_chroma_postfilter,
+    expected_state_dict_shapes,
+    load_nox_model,
+    nox_model_identity,
+    validate_separation_stride,
 )
-from startrails.lib.finish.starnet import (
-    build_starnet_cli_args,
-    parse_starnet_machine_info,
-    parse_starnet_progress_line,
-    run_starnet_process,
-    StarNetError,
-)
+from startrails.lib.model_manifest import GRAXPERT_MANIFEST, NOX_MANIFEST
 
 
 class TestFinishModelSetup(unittest.TestCase):
-    def test_detect_platform_target(self):
-        self.assertEqual(detect_platform_target("Linux", "x86_64"), "linux-x64")
-        self.assertEqual(detect_platform_target("Darwin", "arm64"), "macos-arm64")
-        self.assertEqual(detect_platform_target("Windows", "AMD64"), "windows-x64")
-
-        with self.assertRaises(PlatformNotSupportedError):
-            detect_platform_target("Darwin", "x86_64")
-
-        with self.assertRaises(PlatformNotSupportedError):
-            detect_platform_target("Linux", "armv7l")
-
-        with self.assertRaises(PlatformNotSupportedError):
-            detect_platform_target("FreeBSD", "x86_64")
-
-    def test_starnet_packages_manifest(self):
-        for pid in ("linux-x64", "macos-arm64", "windows-x64"):
-            pkg = get_starnet_package_for_platform(pid)
-            self.assertEqual(pkg.platform_id, pid)
-            self.assertEqual(pkg.version, "2.6.2")
-            self.assertEqual(pkg.build, "0242")
-            self.assertTrue(pkg.archive_url.startswith("https://"))
-            self.assertEqual(len(pkg.archive_sha256), 64)
-            self.assertGreater(pkg.archive_size_bytes, 100_000_000)
+    def test_bundled_model_manifests(self):
+        self.assertEqual(NOX_MANIFEST.version, "1.0.0")
+        self.assertEqual(NOX_MANIFEST.relative_path, "removeStars/nox_color_finetuned_best.pt")
+        self.assertEqual(len(NOX_MANIFEST.sha256), 64)
+        self.assertGreater(NOX_MANIFEST.size_bytes, 200_000_000)
+        self.assertIn(NOX_MANIFEST.version, nox_model_identity())
+        self.assertIn(NOX_MANIFEST.sha256, nox_model_identity())
 
         self.assertEqual(GRAXPERT_MANIFEST.version, "3.0.2")
         self.assertEqual(len(GRAXPERT_MANIFEST.sha256), 64)
         self.assertGreater(GRAXPERT_MANIFEST.size_bytes, 400_000_000)
 
-    def make_installation(self, root, platform_id, native):
-        package = get_starnet_package_for_platform(platform_id)
-        directory = root / "bin" if native else root
-        directory.mkdir(parents=True)
-        executable = directory / package.executable_relative_path
-        executable.write_text("placeholder executable")
-        executable.chmod(0o755)
-        weights = (root / "lib" / "starnet2" if native else root) / package.weights_relative_path
-        if weights.suffix == ".mlpackage":
-            weights.mkdir(parents=True)
-        else:
-            weights.parent.mkdir(parents=True, exist_ok=True)
-            weights.write_bytes(b"model")
-        return executable, weights
+    def test_nox_architecture_matches_expected_state_dict_and_param_count(self):
+        model = NoxColor()
+        expected = expected_state_dict_shapes()
+        actual = model.state_dict()
+        self.assertEqual(len(actual), EXPECTED_WEIGHT_TENSOR_COUNT)
+        self.assertEqual(list(actual.keys()), list(expected.keys()))
+        for key, shape in expected.items():
+            self.assertEqual(tuple(actual[key].shape), shape)
+        param_count = sum(p.numel() for p in model.parameters())
+        self.assertEqual(param_count, EXPECTED_PARAM_COUNT)
 
-    def test_discovers_portable_and_native_installations_for_each_platform(self):
+        batch = torch.full((1, 3, 256, 256), 0.25, dtype=torch.float32)
+        with torch.no_grad():
+            out = model(batch)
+        self.assertEqual(tuple(out.shape), (1, 3, 256, 256))
+        self.assertTrue(torch.isfinite(out).all())
+
+    def test_load_nox_model_rejects_missing_or_corrupt_weights(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            for platform_id in ("linux-x64", "windows-x64", "macos-arm64"):
-                for native in (False, True):
-                    with self.subTest(platform=platform_id, native=native):
-                        root = Path(tmpdir) / platform_id / str(native)
-                        executable, weights = self.make_installation(root, platform_id, native)
-                        for location in (root, executable.parent, executable):
-                            found = validate_starnet_installation(location, platform_id)
-                            self.assertEqual(found.executable, executable.resolve())
-                            self.assertEqual(found.weights, weights.resolve())
+            missing = Path(tmpdir) / "missing.pt"
+            with self.assertRaises(FileNotFoundError):
+                load_nox_model(missing, device="cpu")
 
-    def test_missing_components_and_ambiguous_installations_are_rejected(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            with self.assertRaisesRegex(StarNetSetupError, "Missing StarNet executable"):
-                validate_starnet_installation(root, "linux-x64")
-            executable, weights = self.make_installation(root / "first", "macos-arm64", False)
-            self.assertEqual(validate_starnet_installation(root, "macos-arm64").executable, executable)
-            weights.rmdir()
-            with self.assertRaisesRegex(StarNetSetupError, "Missing model weights"):
-                validate_starnet_installation(root, "macos-arm64")
-            weights.mkdir()
-            self.make_installation(root / "second", "macos-arm64", False)
-            with self.assertRaisesRegex(StarNetSetupError, "Multiple StarNet installations"):
-                validate_starnet_installation(root, "macos-arm64")
+            corrupt = Path(tmpdir) / "corrupt.pt"
+            corrupt.write_bytes(b"not a checkpoint")
+            with self.assertRaises(ValueError):
+                load_nox_model(corrupt, device="cpu")
 
-    def test_setup_probe_requires_pinned_identity_and_cli_contract(self):
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir) / "installation"
-            self.make_installation(root, "linux-x64", False)
-            installation = validate_starnet_installation(root, "linux-x64")
-            info = {
-                "product": "starnet2",
-                "schema": "starnetastro.cli.machine-info.v1",
-                "version": "2.6.2",
-                "build": "0242",
-                "backend": {"id": "ort"},
-                "features": {"highlight_protection": {"supported": True}},
-                "options": [
-                    {"name": name}
-                    for name in (
-                        "input",
-                        "output",
-                        "stride",
-                        "machine_progress",
-                        "upsample",
-                        "disable_highlights_protection",
-                    )
-                ],
-            }
-            with patch("startrails.lib.starnet_setup.run_starnet_process", return_value=(0, json.dumps(info), "")):
-                self.assertEqual(probe_starnet_installation(installation).build, "0242")
-            for changed in (info | {"version": "other"}, info | {"options": []}, info | {"product": "other"}):
-                with patch(
-                    "startrails.lib.starnet_setup.run_starnet_process", return_value=(0, json.dumps(changed), "")
-                ):
-                    with self.assertRaises(StarNetSetupError):
-                        probe_starnet_installation(installation)
+    def test_validate_separation_stride_contract(self):
+        validate_separation_stride(256)
+        validate_separation_stride(128)
+        validate_separation_stride(64)
+        validate_separation_stride(512)
+        for bad in (0, 1, 255, 600, 256.0, True, "256"):
+            with self.subTest(stride=bad), self.assertRaises(ValueError):
+                validate_separation_stride(bad)
 
-    def test_build_starnet_cli_args(self):
-        args = build_starnet_cli_args(
-            executable_path="/usr/bin/starnet2",
-            input_path="/tmp/in.tif",
-            output_path="/tmp/out.tif",
-            mask_path="/tmp/mask.tif",
-            stride=256,
-            disable_highlights=True,
-            upsample=False,
-            machine_progress=True,
+    def test_radial_chroma_postfilter_suppresses_halo_while_preserving_uniform_sky(self):
+        # Uniform image has no removed stars, so output matches starless unchanged.
+        uniform = np.full((64, 64, 3), 0.2, dtype=np.float32)
+        filtered_uniform, stats_uniform = apply_radial_chroma_postfilter(uniform, uniform)
+        self.assertEqual(stats_uniform.detected_stars, 0)
+        np.testing.assert_array_equal(filtered_uniform, uniform)
+
+        # Synthetic removed bright star with a colored residual halo in the starless output.
+        yy, xx = np.mgrid[0:64, 0:64].astype(np.float32)
+        dist2 = (yy - 32.0) ** 2 + (xx - 32.0) ** 2
+        star = np.exp(-dist2 / (2.0 * 1.6 ** 2))
+        sky = np.full((64, 64, 3), 0.12, dtype=np.float32)
+        source = np.clip(sky + star[:, :, None] * 0.75, 0.0, 1.0).astype(np.float32)
+
+        halo = np.exp(-dist2 / (2.0 * 4.0 ** 2))
+        starless = sky.copy()
+        starless[:, :, 0] += halo * 0.08  # magenta/red chroma halo around removed star
+        starless[:, :, 2] += halo * 0.08
+
+        filtered, stats = apply_radial_chroma_postfilter(
+            source,
+            starless,
+            RadialChromaConfig(peak_thresh=0.05),
         )
-        expected = [
-            "/usr/bin/starnet2",
-            "-i",
-            "/tmp/in.tif",
-            "-o",
-            "/tmp/out.tif",
-            "-s",
-            "256",
-            "-m",
-            "/tmp/mask.tif",
-            "-d",
-            "--machine-progress",
-        ]
-        self.assertEqual(args, expected)
-
-        # Invalid stride (odd)
-        with self.assertRaises(ValueError):
-            build_starnet_cli_args("/usr/bin/starnet2", "/tmp/in.tif", "/tmp/out.tif", stride=255)
-
-        for stride in (600, 256.0, True, "256"):
-            with self.subTest(stride=stride), self.assertRaises(ValueError):
-                build_starnet_cli_args("/usr/bin/starnet2", "/tmp/in.tif", "/tmp/out.tif", stride=stride)
-
-    def test_parse_starnet_machine_info(self):
-        sample_json = json.dumps(
-            {
-                "executable": "starnet2",
-                "version": "2.6.2",
-                "build": "0242",
-                "backend": {"id": "ort", "display_name": "ONNX Runtime"},
-                "features": {
-                    "highlight_protection": {"supported": True, "default": True},
-                    "linear_mtf": {"supported": True, "default": False},
-                },
-                "options": [{"name": "stride"}, {"name": "mask"}],
-            }
-        )
-        info = parse_starnet_machine_info(sample_json)
-        self.assertEqual(info.version, "2.6.2")
-        self.assertEqual(info.build, "0242")
-        self.assertEqual(info.backend_id, "ort")
-        self.assertTrue(info.highlight_protection_supported)
-        self.assertIn("stride", info.options)
-
-        with self.assertRaises(StarNetError):
-            parse_starnet_machine_info("Invalid JSON {")
-
-        with self.assertRaises(StarNetError):
-            parse_starnet_machine_info("123")
-
-        for malformed in (
-            {"backend": None},
-            {"features": []},
-            {"features": {"highlight_protection": None}},
-            {"features": {"linear_mtf": False}},
-            {"options": {}},
-            {"options": [None]},
-            {"options": [{"name": []}]},
-        ):
-            with self.subTest(malformed=malformed), self.assertRaises(StarNetError):
-                parse_starnet_machine_info(json.dumps(malformed))
-
-    def test_parse_starnet_progress_line(self):
-        valid_line = (
-            '{"schema": "starnetastro.cli.diagnostic.v1", "severity": "info", "code": "progress", "percent": 50}\n'
-        )
-        parsed = parse_starnet_progress_line(valid_line)
-        self.assertIsNotNone(parsed)
-        self.assertEqual(parsed["code"], "progress")
-        self.assertEqual(parsed["percent"], 50)
-
-        # Non-JSON lines
-        self.assertIsNone(parse_starnet_progress_line("Standard output message"))
-        self.assertIsNone(parse_starnet_progress_line("{ malformed json"))
-
-    def run_child(self, program, **kwargs):
-        # Bound regressions involving blocking pipes without leaking child processes.
-        processes = []
-        timed_out = Event()
-
-        def launch(*args, **options):
-            child = subprocess.Popen(*args, **options)
-            processes.append(child)
-            return child
-
-        def expire():
-            timed_out.set()
-            for child in processes:
-                if child.poll() is None:
-                    child.kill()
-
-        watchdog = Timer(10, expire)
-        watchdog.start()
-        try:
-            return run_starnet_process([sys.executable, "-c", program], process_runner=launch, **kwargs)
-        finally:
-            watchdog.cancel()
-            watchdog.join()
-            for child in processes:
-                if child.poll() is None:
-                    child.kill()
-                child.wait()
-                self.assertTrue(child.stdout.closed)
-                self.assertTrue(child.stderr.closed)
-            self.assertFalse(timed_out.is_set(), "StarNet subprocess handling stalled")
-
-    def test_process_drains_both_streams_and_delivers_final_progress(self):
-        events = []
-        _, stdout, stderr = self.run_child(
-            'import sys; sys.stdout.write("x" * 2000000); sys.stdout.flush(); '
-            'sys.stderr.write(\'{"event":"finish"}\\n\'); sys.stderr.flush()',
-            progress_callback=events.append,
-        )
-        self.assertEqual(len(stdout), 2000000)
-        self.assertIn('"finish"', stderr)
-        self.assertEqual(events, [{"event": "finish"}])
-
-    def test_process_cancels_silent_child(self):
-        with self.assertRaises(CancelledError):
-            run_starnet_process(["unused"], should_interrupt=lambda: True)
-        cancelled = Event()
-        timer = Timer(0.2, cancelled.set)
-        timer.start()
-        try:
-            with self.assertRaises(CancelledError):
-                self.run_child("import time; time.sleep(30)", should_interrupt=cancelled.is_set)
-        finally:
-            timer.cancel()
-            timer.join()
-
-    @unittest.skipIf(os.name == "nt", "POSIX signal escalation")
-    def test_process_escalates_and_reaps_uncooperative_child(self):
-        cancelled = Event()
-        with patch("startrails.lib.finish.starnet.PROCESS_TERMINATE_TIMEOUT_SECONDS", 0.1):
-            with self.assertRaises(CancelledError):
-                self.run_child(
-                    "import signal, sys, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
-                    'print(\'{"event":"ready"}\', file=sys.stderr, flush=True); time.sleep(30)',
-                    should_interrupt=cancelled.is_set,
-                    progress_callback=lambda _: cancelled.set(),
-                )
-
-    def test_process_failures_preserve_diagnostics_and_cleanup(self):
-        with self.assertRaisesRegex(StarNetError, "bad input"):
-            self.run_child('import sys; print("bad input", file=sys.stderr); sys.exit(2)')
-
-        def callback(_):
-            raise ValueError("callback failed")
-
-        with self.assertRaisesRegex(ValueError, "callback failed"):
-            self.run_child(
-                'import sys, time; print(\'{"event":"ready"}\', file=sys.stderr, flush=True); time.sleep(30)',
-                progress_callback=callback,
-            )
+        self.assertGreaterEqual(stats.detected_stars, 1)
+        # Chroma spread (max - min across channels) around the star center is reduced.
+        chroma_before = float(np.max(starless[28:36, 28:36]) - np.min(starless[28:36, 28:36]))
+        chroma_after = float(np.max(filtered[28:36, 28:36]) - np.min(filtered[28:36, 28:36]))
+        self.assertLess(chroma_after, chroma_before)
 
     def test_graxpert_stats_and_dark_channels(self):
         # Normal image

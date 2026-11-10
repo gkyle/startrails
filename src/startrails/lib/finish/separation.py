@@ -48,27 +48,23 @@ def compute_separation_signature(
     model_identity: str,
     *,
     stride: int,
-    upsample: bool,
-    linear: bool,
-    highlights_protection: bool,
+    chroma_postfilter: bool,
     mask_feather_radius_px: float,
 ) -> str:
-    """Hash source, effective-mask and CLI/package identities.
+    """Hash source, effective-mask, model identity, and separation options.
 
-    Caller resolves all options. model_identity includes the verified package,
-    model hash and selected platform backend. Bump schema when arithmetic changes.
+    Caller resolves all options. model_identity includes the pinned model
+    version and SHA-256. Bump schema when arithmetic changes.
     """
     return compute_signature(
         {
             "operation": "finish_separation",
-            "version": 2,
+            "version": 3,
             "source": source_id,
             "mask": mask_id,
             "model": model_identity,
             "stride": stride,
-            "upsample": upsample,
-            "linear": linear,
-            "highlights_protection": highlights_protection,
+            "chroma_postfilter": chroma_postfilter,
             "mask_feather_radius_px": mask_feather_radius_px,
         }
     )

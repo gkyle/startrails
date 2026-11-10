@@ -50,19 +50,12 @@ After preparing an environment and its bundled models, run the explicit Finish s
 smoke check before approving a platform release:
 
 ```sh
-.venv/bin/python src/setup/check_finish_models.py --variant cpu --show-starnet-terms
-.venv/bin/python src/setup/check_finish_models.py --variant cpu --accept-starnet-terms \
-  --starnet /path/to/trusted/starnet2 --image /path/to/sample.tif
+.venv/bin/python src/setup/check_finish_models.py --variant cpu --image /path/to/sample.tif
 ```
 
-Omit `--starnet` to test the bundled GraXpert model alone. `--image` is optional;
+Pass `--skip-nox` to test the bundled GraXpert model alone. `--image` is optional;
 without it the check uses a textured RGB sample that exercises actual model inference.
-The application carries the [full StarNet agreement](../src/startrails/lib/finish/STARNET_LICENSE.txt) as a required text resource and
-records its revision/hash after affirmative acceptance. StarNet is downloaded directly
-from the pinned official source; its executable, models and libraries are not bundled.
-Managed setup validates actual CLI inference and retains the prior installation for
-rollback. Automated macOS StarNet installation remains disabled until its trust route
-has been validated; users can select an official installation after normal macOS setup.
+Star removal uses the bundled PyTorch Nox model (`models/removeStars/nox_color_finetuned_best.pt`).
 
 Select exactly one dependency extra through the normal setup scripts. `cpu`, `cu118`,
 `cu124` and `mps` install CPU `onnxruntime==1.31.1`; `cu133` installs

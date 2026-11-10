@@ -81,6 +81,7 @@ DEFAULT_JPEG_QUALITY: Final[int] = 95
 DEFAULT_JPEG_OPTIMIZE: Final[bool] = True
 DEFAULT_TIFF_DEFLATE_COMPRESSION: Final[bool] = True
 DEFAULT_STARNET_STRIDE: Final[int] = 256
+DEFAULT_CHROMA_POSTFILTER: Final[bool] = True
 
 # Neutral identity settings
 NEUTRAL_DENOISE_STRENGTH_PERCENT: Final[float] = 0.0
@@ -105,6 +106,7 @@ class FinishSettings:
     mask_erosion_pixels: int = 5
     mask_foliage_protection: bool = True
     starnet_stride: int = DEFAULT_STARNET_STRIDE
+    chroma_postfilter: bool = DEFAULT_CHROMA_POSTFILTER
 
     # Denoise step
     denoise_strength: float = DEFAULT_DENOISE_STRENGTH_PERCENT

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Final, Optional
 
 from PySide6.QtCore import QSignalBlocker, QTimer
-from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox, QWidget
+from PySide6.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 from startrails.lib.denoise.defaults import DEFAULT_SKY_DETECTION_DEVICE
 from startrails.lib.file import File, OutputFile
@@ -34,7 +34,6 @@ from startrails.lib.project_finish import FinishProject
 from startrails.ui.progress import ProgressBarUpdater
 from startrails.ui.sidebar_finish import SidebarFinish
 from startrails.ui.sky_mask_controller import SkyMaskController
-from startrails.ui.starnet_dialog import StarNetSetupDialog, StarNetTermsDialog, choose_existing_starnet
 from startrails.ui.views.base import ModeView
 from startrails.workflow.finish import SEPARATION_PROGRESS_TOTAL
 
@@ -119,12 +118,11 @@ class FinishView(ModeView):
             self.mask_controller.bind()
 
         if hasattr(self.sidebar, "separateSettings"):
-            self.connect_signal(self.sidebar.separateSettings.setup_requested, self.on_setup_starnet)
-            self.connect_signal(self.sidebar.separateSettings.browse_requested, self.on_browse_starnet)
-            self.connect_signal(self.sidebar.separateSettings.repair_requested, self.on_repair_starnet)
-            self.connect_signal(self.sidebar.separateSettings.change_requested, self.on_browse_starnet)
             self.connect_signal(self.sidebar.separateSettings.run_separation_requested, self.on_run_separation)
             self.connect_signal(self.sidebar.separateSettings.stride_changed, self.on_starnet_stride_changed)
+            self.connect_signal(
+                self.sidebar.separateSettings.chroma_postfilter_changed, self.on_chroma_postfilter_changed
+            )
 
         if hasattr(self.sidebar, "starlessSettings"):
             if hasattr(self.sidebar.starlessSettings, "enable_denoise_changed"):
@@ -431,7 +429,7 @@ class FinishView(ModeView):
     def updateReadyStates(self, _=None) -> None:  # noqa: N802 - ModeView interface
         """Update file sections and step prerequisites based on project readiness."""
         if self.sidebar is not None and isinstance(self._project, FinishProject):
-            self.app.workflow.invalidate_if_starnet_changed()
+            self.app.workflow.invalidate_if_separation_changed()
             if hasattr(self.app.workflow, "invalidate_if_graxpert_changed"):
                 self.app.workflow.invalidate_if_graxpert_changed()
             if hasattr(self.app.workflow, "invalidate_if_starless_filter_changed"):
@@ -781,6 +779,7 @@ class FinishView(ModeView):
             return
 
         stride = self.sidebar.separateSettings.get_stride()
+        chroma_postfilter = self.sidebar.separateSettings.get_chroma_postfilter()
         if hasattr(self.sidebar.separateSettings, "lbl_status"):
             self.sidebar.separateSettings.lbl_status.hide()
 
@@ -810,7 +809,11 @@ class FinishView(ModeView):
                 desc="Separating stars from sky background...",
                 result_guard=result_guard,
             )
-            result = workflow.do_separate_stars(stride=stride, progress_bar=progress_updater.tick)
+            result = workflow.do_separate_stars(
+                stride=stride,
+                chroma_postfilter=chroma_postfilter,
+                progress_bar=progress_updater.tick,
+            )
             if result is not None:
                 deliver_result(on_done)
             else:
@@ -825,56 +828,17 @@ class FinishView(ModeView):
         )
 
     def on_starnet_stride_changed(self, stride: int) -> None:
-        """Persist the project-owned StarNet stride and invalidate old separation outputs."""
+        """Persist the project-owned separation stride without discarding cached layers."""
         settings = self._project.get_settings()
         self._project.update_settings(replace(settings, starnet_stride=stride))
         self.app.workflow.save_project()
         self.updateReadyStates()
 
-    def on_setup_starnet(self) -> None:
-        """Handle user request to download and set up managed StarNet."""
-        status = self.app.workflow.get_starnet_status()
-        if not status.get("terms_accepted", False):
-            terms_dlg = StarNetTermsDialog(self.sidebar)
-            if terms_dlg.exec() != QDialog.DialogCode.Accepted:
-                return
-            self.app.workflow.accept_starnet_terms()
-
-        setup_dlg = StarNetSetupDialog(self.sidebar)
-        setup_dlg.start()
-        if setup_dlg.exec() == QDialog.DialogCode.Accepted and setup_dlg.installation:
-            self.app.workflow.set_starnet_installation(setup_dlg.installation, managed=True, terms_accepted=True)
-            self.updateReadyStates()
-            QMessageBox.information(
-                self.sidebar,
-                "StarNet2 Setup Complete",
-                "StarNet2 was successfully installed, verified, and is ready for star separation.",
-            )
-
-    def on_browse_starnet(self) -> None:
-        """Handle user request to discover and validate an existing StarNet installation."""
-        choose_existing_starnet(
-            self.sidebar,
-            self.app.state,
-            on_installed=lambda inst: self.app.workflow.set_starnet_installation(
-                inst, managed=False, terms_accepted=True
-            ),
-        )
-        self.updateReadyStates()
-
-    def on_repair_starnet(self) -> None:
-        """Handle user request to repair or re-probe the active StarNet installation."""
-        status = self.app.workflow.get_starnet_status()
-        if not status["terms_accepted"]:
-            terms = StarNetTermsDialog(self.sidebar)
-            if terms.exec() != QDialog.DialogCode.Accepted:
-                return
-            self.app.workflow.accept_starnet_terms()
-        workflow = self.app.workflow
-        setup = StarNetSetupDialog(self.sidebar, operation=workflow.do_repair_starnet)
-        setup.start()
-        if setup.exec() == QDialog.DialogCode.Accepted and setup.installation is not None:
-            workflow.set_starnet_installation(setup.installation, managed=status["managed"], terms_accepted=True)
+    def on_chroma_postfilter_changed(self, enabled: bool) -> None:
+        """Persist the project-owned chroma postfilter setting."""
+        settings = self._project.get_settings()
+        self._project.update_settings(replace(settings, chroma_postfilter=bool(enabled)))
+        self.app.workflow.save_project()
         self.updateReadyStates()
 
     def on_run_denoise(self) -> None:

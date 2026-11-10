@@ -25,11 +25,8 @@ from startrails.lib.finish.defaults import (
 )
 from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION, sharpen_starless
 from startrails.lib.image_io import imread, imwrite
-from startrails.lib.model_manifest import get_starnet_package_for_platform
 from startrails.lib.project_finish import FinishProject
-from startrails.lib.starnet_setup import StarNetInstallation, detect_platform_target
 from startrails.op.finish.graxpert_denoise import GraXpertDenoise
-from startrails.op.finish.run_starnet import RunStarNet
 from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.sidebar_finish import SidebarFinish
 from startrails.ui.views.finish import FinishView
@@ -46,24 +43,13 @@ class TestFinishDenoise(QtTestCase):
         self.app = self.make_app(self.project)
         self.workflow = FinishWorkflow(self.app)
         self.app.workflow = self.workflow
-        self.configure_fake_starnet()
-
-    def configure_fake_starnet(self):
-        package = get_starnet_package_for_platform(detect_platform_target())
-        install_dir = self.root / "fake_starnet"
-        install_dir.mkdir(parents=True, exist_ok=True)
-        executable = install_dir / package.executable_relative_path
-        executable.write_bytes(b"#!/bin/sh\nexit 0\n")
-        executable.chmod(0o755)
-        weights = install_dir / package.weights_relative_path
-        if weights.suffix == ".mlpackage":
-            weights.mkdir(parents=True)
-            (weights / "Manifest.json").write_text("{}", encoding="utf-8")
-        else:
-            weights.write_bytes(b"dummy weights")
-        installation = StarNetInstallation(executable=executable, weights=weights, package=package)
-        self.workflow.accept_starnet_terms()
-        self.workflow.set_starnet_installation(installation, managed=False, terms_accepted=True)
+        self.enterContext(
+            patch.object(
+                self.workflow,
+                "get_star_removal_status",
+                return_value={"configured": True, "model_ready": True, "version": "1.0.0", "device": "cpu"},
+            )
+        )
 
     def create_synthetic_image(self, name: str = "source.tif", shape: tuple[int, int] = (512, 512)) -> Path:
         target = self.root / name
@@ -80,19 +66,19 @@ class TestFinishDenoise(QtTestCase):
         mask[height // 2 : height // 2 + 10, :] = 0.5
         return mask
 
+    @staticmethod
+    def make_fake_nox_session(scale: float = 0.8) -> MagicMock:
+        session = MagicMock()
+        session.remove_stars.side_effect = lambda image, **kwargs: (image * scale).astype(np.float32)
+        return session
+
     def prepare_separated_project(self) -> Path:
         source_path = self.create_synthetic_image("night_sky.tif")
         self.workflow.do_import_source(source_path)
         self.workflow.save_mask(self.create_gradient_mask())
 
-        def fake_starnet(executable, input_p, output_p, **kwargs):
-            source = imread(input_p, to_rgb=True, as_float=False)
-            model = (source.astype(np.float32) * 0.8).astype(np.uint16)
-            imwrite(output_p, model, convertBGR=False, bit_depth=16)
-            return Path(output_p), None
-
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
-            self.assertIsNotNone(self.workflow.do_separate_stars())
+        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
+            self.assertIsNotNone(self.workflow.do_separate_stars(chroma_postfilter=False))
         return source_path
 
     def test_end_to_end_denoise_endpoint_caching_and_strength_blending(self):
@@ -215,14 +201,8 @@ class TestFinishDenoise(QtTestCase):
         self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
 
         # Re-running separation must invalidate all denoise artifacts
-        def fake_starnet(executable, input_p, output_p, **kwargs):
-            source = imread(input_p, to_rgb=True, as_float=False)
-            model = (source.astype(np.float32) * 0.7).astype(np.uint16)
-            imwrite(output_p, model, convertBGR=False, bit_depth=16)
-            return Path(output_p), None
-
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
-            self.workflow.do_separate_stars(stride=128)
+        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.7)):
+            self.workflow.do_separate_stars(stride=128, chroma_postfilter=False)
 
         self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT))
         self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
@@ -292,14 +272,8 @@ class TestFinishDenoise(QtTestCase):
         self.assertEqual(sidebar.starlessCard.ui.subtitle.text(), "Prerequisite: Separated starless required")
 
         # Separate stars
-        def fake_starnet(executable, input_p, output_p, **kwargs):
-            source = imread(input_p, to_rgb=True, as_float=False)
-            model = (source.astype(np.float32) * 0.8).astype(np.uint16)
-            imwrite(output_p, model, convertBGR=False, bit_depth=16)
-            return Path(output_p), None
-
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
-            self.workflow.do_separate_stars()
+        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
+            self.workflow.do_separate_stars(chroma_postfilter=False)
 
         view.updateReadyStates()
         self.assertEqual(sidebar.starlessCard.status, "ready")

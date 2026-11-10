@@ -705,10 +705,13 @@ class FinishProject(Unpickle):
             self.separation_signature = signature
             self.separation_model_identity = model_identity
             self.separation_options = dict(options) if options is not None else None
-            if options is not None and "stride" in options:
-                # Persist the actual producing stride so reopening the project
-                # shows the setting that created these layers.
-                self.starnet_stride = int(options["stride"])
+            if options is not None:
+                if "stride" in options:
+                    # Persist the actual producing settings so reopening the project
+                    # shows the settings that created these layers.
+                    self.starnet_stride = int(options["stride"])
+                if "chroma_postfilter" in options:
+                    self.chroma_postfilter = bool(options["chroma_postfilter"])
             source = self._source_key()
             artifact_options = {"separation_signature": signature}
             composite_artifact_options = (
@@ -881,7 +884,7 @@ class FinishProject(Unpickle):
             changed = {name for name, value in asdict(settings).items() if value != getattr(previous, name)}
             if not changed:
                 return
-            # The effective StarNet options are recorded with each separation, so
+            # The effective separation options are recorded with each separation, so
             # changing the project default no longer discards valid outputs.
             if changed & {"mask_feather_radius_px"}:
                 self.invalidate_results(preserve_unmasked=True)

@@ -230,7 +230,7 @@ class TestFinishRecombine(QtTestCase):
         self.assertNotIn("Composite", operations)
 
         with (
-            patch.object(workflow, "do_run_starnet", side_effect=AssertionError("StarNet rerun")),
+            patch.object(workflow, "_nox_session_for", side_effect=AssertionError("Nox session")),
             patch.object(workflow, "_graxpert_session_for", side_effect=AssertionError("GraXpert session")),
         ):
             self.assertIsNotNone(workflow.do_recombine())
@@ -248,7 +248,7 @@ class TestFinishRecombine(QtTestCase):
 
         self.write_finished_starless(project, 0.25)
         with (
-            patch.object(workflow, "do_run_starnet", side_effect=AssertionError("StarNet rerun")),
+            patch.object(workflow, "_nox_session_for", side_effect=AssertionError("Nox session")),
             patch.object(workflow, "_graxpert_session_for", side_effect=AssertionError("GraXpert session")),
         ):
             self.assertIsNotNone(workflow.do_recombine())

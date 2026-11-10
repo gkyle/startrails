@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import cv2
 import jsonpickle
@@ -22,11 +22,8 @@ from startrails.lib.finish.defaults import (
     ROLE_UNMASKED_STARLESS,
 )
 from startrails.lib.image_io import imread, imwrite
-from startrails.lib.model_manifest import get_starnet_package_for_platform
 from startrails.lib.project_finish import FinishProject
-from startrails.lib.starnet_setup import StarNetInstallation, detect_platform_target
 from startrails.op.finish.recombine import Recombine
-from startrails.op.finish.run_starnet import RunStarNet
 from startrails.op.finish.separate_stars import SeparateStars
 from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.views.finish import FinishView
@@ -45,26 +42,13 @@ class TestFinishSeparation(QtTestCase):
         self.app = self.make_app(self.project)
         self.workflow = FinishWorkflow(self.app)
         self.app.workflow = self.workflow
-        self.configure_fake_starnet()
-
-    def configure_fake_starnet(self):
-        """Register an unmanaged fixture package matching this host's weights layout."""
-        package = get_starnet_package_for_platform(detect_platform_target())
-        install_dir = self.root / "fake_starnet"
-        install_dir.mkdir(parents=True, exist_ok=True)
-        executable = install_dir / package.executable_relative_path
-        executable.write_bytes(b"#!/bin/sh\nexit 0\n")
-        executable.chmod(0o755)
-        weights = install_dir / package.weights_relative_path
-        if weights.suffix == ".mlpackage":
-            weights.mkdir(parents=True)
-            (weights / "Manifest.json").write_text("{}", encoding="utf-8")
-        else:
-            weights.write_bytes(b"dummy weights")
-        installation = StarNetInstallation(executable=executable, weights=weights, package=package)
-        self.workflow.accept_starnet_terms()
-        # Unmanaged fixtures do not take the user-level managed-install lock.
-        self.workflow.set_starnet_installation(installation, managed=False, terms_accepted=True)
+        self.enterContext(
+            patch.object(
+                self.workflow,
+                "get_star_removal_status",
+                return_value={"configured": True, "model_ready": True, "version": "1.0.0", "device": "cpu"},
+            )
+        )
 
     def create_synthetic_image(
         self,
@@ -90,10 +74,21 @@ class TestFinishSeparation(QtTestCase):
         return mask
 
     @staticmethod
-    def write_model_output(input_path, output_path, scale: float = 0.8) -> None:
-        source = imread(input_path, to_rgb=True, as_float=False)
-        model = (source.astype(np.float32) * scale).astype(np.uint16)
-        imwrite(output_path, model, convertBGR=False, bit_depth=16)
+    def make_fake_nox_session(scale: float = 0.8, *, constant_value: float | None = None, strides: list[int] | None = None):
+        session = MagicMock()
+
+        def fake_remove_stars(image, *, stride, progress_bar=None, should_interrupt=None):
+            if strides is not None:
+                strides.append(stride)
+            if progress_bar is not None:
+                progress_bar(2, 1, 1, False, {"desc": "Separating stars tile 1/2..."})
+                progress_bar(2, 1, 2, True, {"desc": "Separating stars tile 2/2..."})
+            if constant_value is not None:
+                return np.full_like(image, constant_value, dtype=np.float32)
+            return (image * scale).astype(np.float32)
+
+        session.remove_stars.side_effect = fake_remove_stars
+        return session
 
     def test_end_to_end_separation_export_and_reopen(self):
         """Import, mask, separate, composite, export, and reopen persist one result."""
@@ -101,12 +96,9 @@ class TestFinishSeparation(QtTestCase):
         self.workflow.do_import_source(source_path)
         self.workflow.save_mask(self.create_gradient_mask())
 
-        def fake_starnet(executable, input_p, output_p, **kwargs):
-            self.write_model_output(input_p, output_p)
-            return Path(output_p), None
-
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
-            result = self.workflow.do_separate_stars()
+        session = self.make_fake_nox_session(0.8)
+        with patch.object(self.workflow, "_nox_session_for", return_value=session):
+            result = self.workflow.do_separate_stars(chroma_postfilter=False)
 
         self.assertIsNotNone(result)
         starless_out, stars_out = result
@@ -128,6 +120,7 @@ class TestFinishSeparation(QtTestCase):
         self.assertIn("Stars", operations)
         self.assertIn("Composite", operations)
         self.assertIsNotNone(self.project.separation_signature)
+        self.assertFalse(self.project.chroma_postfilter)
 
         export_file = self.workflow.do_export_composite()
         self.assertTrue(export_file.is_file())
@@ -141,23 +134,27 @@ class TestFinishSeparation(QtTestCase):
         self.assertIsNotNone(reopened.current_artifact_path(ROLE_SEPARATED_STARS))
         self.assertIsNotNone(reopened.current_artifact_path(ROLE_FINISHED_COMPOSITE))
         self.assertEqual(reopened.separation_signature, self.project.separation_signature)
+        self.assertFalse(reopened.chroma_postfilter)
 
-    def test_cache_reuses_unmasked_plate_and_tracks_stride_and_source(self):
-        """Mask edits reuse the StarNet plate; stride and source changes rebuild it."""
+    def test_cache_reuses_unmasked_plate_across_masks_and_postfilter_but_tracks_stride_and_source(self):
+        """Mask edits and chroma postfilter toggles reuse the Nox unmasked plate; stride/source rebuild it."""
         source1 = self.create_synthetic_image("source1.tif")
         self.workflow.do_import_source(source1)
         self.workflow.save_mask(self.create_gradient_mask())
 
-        strides = []
+        strides: list[int] = []
+        session = self.make_fake_nox_session(0.8, strides=strides)
 
-        def fake_starnet(executable, input_p, output_p, **kwargs):
-            strides.append(kwargs["stride"])
-            self.write_model_output(input_p, output_p)
-            return Path(output_p), None
-
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
-            self.assertIsNotNone(self.workflow.do_separate_stars())
+        with patch.object(self.workflow, "_nox_session_for", return_value=session):
+            self.assertIsNotNone(self.workflow.do_separate_stars(chroma_postfilter=True))
             self.assertEqual(strides, [DEFAULT_STARNET_STRIDE])
+            sig_with_postfilter = self.project.separation_signature
+
+            # Toggling chroma_postfilter reuses ROLE_UNMASKED_STARLESS and updates signature.
+            self.assertIsNotNone(self.workflow.do_separate_stars(chroma_postfilter=False))
+            self.assertEqual(strides, [DEFAULT_STARNET_STRIDE])
+            self.assertNotEqual(self.project.separation_signature, sig_with_postfilter)
+            self.assertFalse(self.project.chroma_postfilter)
 
             # A new mask invalidates separated layers but keeps the unmasked plate.
             self.workflow.save_mask(np.ones((512, 512), dtype=np.float32))
@@ -170,7 +167,7 @@ class TestFinishSeparation(QtTestCase):
             def record(total, increment, count, done, data=None):
                 progress.append((total, increment, count))
 
-            self.assertIsNotNone(self.workflow.do_separate_stars(progress_bar=record))
+            self.assertIsNotNone(self.workflow.do_separate_stars(chroma_postfilter=False, progress_bar=record))
             self.assertEqual(strides, [DEFAULT_STARNET_STRIDE])
             self.assertEqual({total for total, _, _ in progress}, {SEPARATION_PROGRESS_TOTAL})
             self.assertEqual(
@@ -179,7 +176,7 @@ class TestFinishSeparation(QtTestCase):
             )
             self.assertEqual(progress[-1][2], SEPARATION_PROGRESS_TOTAL)
 
-            # The project-owned nondefault stride is forwarded and invalidates the cache.
+            # The project-owned nondefault stride is forwarded and invalidates the unmasked cache.
             self.project.update_settings(replace(self.project.get_settings(), starnet_stride=NON_DEFAULT_STRIDE))
             self.assertIsNotNone(self.workflow.do_separate_stars())
             self.assertEqual(strides, [DEFAULT_STARNET_STRIDE, NON_DEFAULT_STRIDE])
@@ -191,20 +188,13 @@ class TestFinishSeparation(QtTestCase):
             self.assertIsNotNone(self.workflow.do_separate_stars())
             self.assertEqual(strides, [DEFAULT_STARNET_STRIDE, NON_DEFAULT_STRIDE, NON_DEFAULT_STRIDE])
 
-    def test_below_minimum_dimensions_rejected_unless_upsampled(self):
+    def test_arbitrary_dimensions_supported_by_nox_tiling(self):
         small_source = self.create_synthetic_image("small.tif", shape=(400, 400))
         self.workflow.do_import_source(small_source)
         self.workflow.do_all_sky_mask()
 
-        with self.assertRaisesRegex(ValueError, "below StarNet minimum supported dimensions"):
-            self.workflow.do_separate_stars(upsample=False)
-
-        def fake_starnet(executable, input_p, output_p, **kwargs):
-            self.write_model_output(input_p, output_p)
-            return Path(output_p), None
-
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
-            self.assertIsNotNone(self.workflow.do_separate_stars(upsample=True))
+        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
+            self.assertIsNotNone(self.workflow.do_separate_stars())
 
     def test_feathering_changes_separation_and_survives_reopening(self):
         source_path = self.root / "feather_source.tif"
@@ -215,48 +205,44 @@ class TestFinishSeparation(QtTestCase):
         mask_path = self.workflow.save_mask(mask)
         canonical_bytes = mask_path.read_bytes()
 
-        def fake_starnet(executable, input_p, output_p, **kwargs):
-            imwrite(output_p, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
-            return Path(output_p), None
-
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet) as run:
-            self.assertIsNotNone(self.workflow.do_separate_stars())
+        session = self.make_fake_nox_session(constant_value=20000.0 / 65535.0)
+        with (
+            patch.object(self.workflow, "_nox_session_for", return_value=session),
+            patch.object(FinishWorkflow, "get_star_removal_status", return_value={"configured": True, "model_ready": True}),
+        ):
+            self.assertIsNotNone(self.workflow.do_separate_stars(chroma_postfilter=False))
             original_signature = self.project.separation_signature
             self.project.update_settings(replace(self.project.get_settings(), mask_feather_radius_px=2.5))
-            self.assertIsNotNone(self.workflow.do_separate_stars())
-            self.assertEqual(run.call_count, 1)
+            self.assertIsNotNone(self.workflow.do_separate_stars(chroma_postfilter=False))
+            self.assertEqual(session.remove_stars.call_count, 1)
 
-        feathered = imread(self.project.current_artifact_path(ROLE_SEPARATED_STARLESS), as_float=False)
-        self.assertTrue(np.all(feathered[:250] == 20000))
-        self.assertTrue(np.all(feathered[260:] == 40000))
-        self.assertTrue(np.all((feathered[255:257] > 20000) & (feathered[255:257] < 40000)))
-        self.assertNotEqual(self.project.separation_signature, original_signature)
-        self.assertEqual(mask_path.read_bytes(), canonical_bytes)
-        np.testing.assert_array_equal(self.workflow.get_current_mask(), mask)
+            feathered = imread(self.project.current_artifact_path(ROLE_SEPARATED_STARLESS), as_float=False)
+            self.assertTrue(np.all(feathered[:250] == 20000))
+            self.assertTrue(np.all(feathered[260:] == 40000))
+            self.assertTrue(np.all((feathered[255:257] > 20000) & (feathered[255:257] < 40000)))
+            self.assertNotEqual(self.project.separation_signature, original_signature)
+            self.assertEqual(mask_path.read_bytes(), canonical_bytes)
+            np.testing.assert_array_equal(self.workflow.get_current_mask(), mask)
 
-        reopened = jsonpickle.decode(self.proj_path.read_text(encoding="utf-8"))
-        self.app.project = reopened
-        workflow = FinishWorkflow(self.app)
-        self.assertEqual(reopened.mask_feather_radius_px, 2.5)
-        self.assertFalse(workflow.invalidate_if_starnet_changed())
-        np.testing.assert_array_equal(
-            imread(reopened.current_artifact_path(ROLE_SEPARATED_STARLESS), as_float=False), feathered
-        )
-        # Revalidation checks the effective setting even if a caller bypasses update_settings.
-        reopened.mask_feather_radius_px = 0.0
-        self.assertTrue(workflow.invalidate_if_starnet_changed())
-        self.assertIsNone(reopened.current_artifact_path(ROLE_SEPARATED_STARLESS))
+            reopened = jsonpickle.decode(self.proj_path.read_text(encoding="utf-8"))
+            self.app.project = reopened
+            workflow = FinishWorkflow(self.app)
+            self.assertEqual(reopened.mask_feather_radius_px, 2.5)
+            self.assertFalse(workflow.invalidate_if_separation_changed())
+            np.testing.assert_array_equal(
+                imread(reopened.current_artifact_path(ROLE_SEPARATED_STARLESS), as_float=False), feathered
+            )
+            # Revalidation checks the effective setting even if a caller bypasses update_settings.
+            reopened.mask_feather_radius_px = 0.0
+            self.assertTrue(workflow.invalidate_if_separation_changed())
+            self.assertIsNone(reopened.current_artifact_path(ROLE_SEPARATED_STARLESS))
 
     def test_cancelled_or_stale_separation_does_not_replace_published_results(self):
         source_path = self.create_synthetic_image("cancel_test.tif")
         self.workflow.do_import_source(source_path)
         self.workflow.do_all_sky_mask()
 
-        def fake_starnet(executable, input_p, output_p, **kwargs):
-            self.write_model_output(input_p, output_p)
-            return Path(output_p), None
-
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
+        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
             self.assertIsNotNone(self.workflow.do_separate_stars())
 
         published = {}
@@ -311,12 +297,8 @@ class TestFinishSeparation(QtTestCase):
         self.workflow.do_import_source(source_path)
         self.workflow.do_all_sky_mask()
 
-        def fake_starnet(executable, input_p, output_p, **kwargs):
-            self.write_model_output(input_p, output_p)
-            return Path(output_p), None
-
         roles = (ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS, ROLE_FINISHED_COMPOSITE)
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
+        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
             self.assertIsNotNone(self.workflow.do_separate_stars())
 
         published = {}
@@ -343,19 +325,11 @@ class TestFinishSeparation(QtTestCase):
         self.workflow.do_all_sky_mask()
         events = []
 
-        def fake_process(cmd, cwd=None, progress_callback=None, should_interrupt=None):
-            if progress_callback:
-                progress_callback({"percent": 40})
-                progress_callback({"percent": 100})
-            input_path = Path(cmd[cmd.index("-i") + 1])
-            output_path = Path(cmd[cmd.index("-o") + 1])
-            self.write_model_output(input_path, output_path)
-
         def record(total, increment, count, done, data=None):
             events.append((total, increment, count))
 
-        with patch("startrails.op.finish.run_starnet.run_starnet_process", side_effect=fake_process):
-            result = self.workflow.do_separate_stars(progress_bar=record)
+        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
+            result = self.workflow.do_separate_stars(chroma_postfilter=False, progress_bar=record)
 
         self.assertIsNotNone(result)
         self.assertEqual({total for total, _, _ in events}, {SEPARATION_PROGRESS_TOTAL})
@@ -369,12 +343,8 @@ class TestFinishSeparation(QtTestCase):
         self.workflow.do_import_source(source_path)
         self.workflow.do_all_sky_mask()
 
-        def fake_starnet(executable, input_p, output_p, **kwargs):
-            self.write_model_output(input_p, output_p)
-            return Path(output_p), None
-
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
-            self.assertIsNotNone(self.workflow.do_separate_stars())
+        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
+            self.assertIsNotNone(self.workflow.do_separate_stars(chroma_postfilter=False))
 
         canvas = CanvasLabel()
         canvas.resize(600, 600)
@@ -454,9 +424,13 @@ class TestFinishSeparation(QtTestCase):
         canvas.posX = 50
         canvas.posY = -30
 
-        # Re-run from the Starless selection; the completed job must preserve the view transform.
+        # Toggling chroma postfilter in UI updates the project setting, and re-running
+        # from the Starless selection preserves the view transform.
+        self.assertFalse(sep_settings.get_chroma_postfilter())
+        sep_settings.check_chroma_postfilter.click()
+        self.assertTrue(self.project.chroma_postfilter)
         previous_display_file = canvas.file
-        with patch.object(RunStarNet, "run", side_effect=fake_starnet):
+        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
             sep_settings.btn_separate.click()
             self.qt.processEvents()
 

@@ -21,6 +21,8 @@ from startrails.lib.finish.defaults import (
     ROLE_SKY_MASK,
     FinishSettings,
 )
+from startrails.lib.finish.nox import DEFAULT_STRIDE, nox_model_identity
+from startrails.lib.finish.separation import compute_separation_signature
 from startrails.lib.image_io import imwrite
 from startrails.lib.project_finish import FinishProject
 from startrails.ui.canvasLabel import CanvasLabel
@@ -255,16 +257,31 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         self.stars_path = self.root / "stars.tif"
         imwrite(self.starless_path, np.full((64, 64, 3), 20000, dtype=np.uint16), bit_depth=16)
         imwrite(self.stars_path, np.full((64, 64, 3), 10000, dtype=np.uint16), bit_depth=16)
-        self.project.separation_signature = "sep123"
-        self.project.record_artifact(
-            ROLE_SEPARATED_STARLESS, self.starless_path, options={"separation_signature": "sep123"}
-        )
-        self.project.record_artifact(ROLE_SEPARATED_STARS, self.stars_path, options={"separation_signature": "sep123"})
-
         self.composite_path = self.root / "composite.tif"
         imwrite(self.composite_path, np.full((64, 64, 3), 25000, dtype=np.uint16), bit_depth=16)
-        self.project.record_artifact(
-            ROLE_FINISHED_COMPOSITE, self.composite_path, options={"separation_signature": "sep123"}
+        sep_options = {
+            "stride": DEFAULT_STRIDE,
+            "chroma_postfilter": self.project.chroma_postfilter,
+            "mask_feather_radius_px": self.project.mask_feather_radius_px,
+        }
+        mask_id = str(self.project.artifact_manifest[ROLE_SKY_MASK].get("file", ""))
+        model_id = nox_model_identity()
+        self.separation_signature = compute_separation_signature(
+            source_id=self.project.source_file.sourceId,
+            mask_id=mask_id,
+            model_identity=model_id,
+            stride=sep_options["stride"],
+            chroma_postfilter=sep_options["chroma_postfilter"],
+            mask_feather_radius_px=sep_options["mask_feather_radius_px"],
+        )
+        self.project.publish_separation(
+            self.starless_path,
+            self.stars_path,
+            signature=self.separation_signature,
+            model_identity=model_id,
+            expected_revision=self.project.processing_revision,
+            composite_path=self.composite_path,
+            options=sep_options,
         )
 
         self.canvas = CanvasLabel()
@@ -535,7 +552,9 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         def fake_recombine(**kwargs):
             recombine_calls.append(True)
             self.project.record_artifact(
-                ROLE_FINISHED_COMPOSITE, self.composite_path, options={"separation_signature": "sep123"}
+                ROLE_FINISHED_COMPOSITE,
+                self.composite_path,
+                options={"separation_signature": self.separation_signature},
             )
             return (np.zeros((64, 64, 3)), self.composite_path)
 
@@ -728,7 +747,9 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         # 3. Fire recombine timer / complete late worker callback
         def fake_recombine(**kwargs):
             self.project.record_artifact(
-                ROLE_FINISHED_COMPOSITE, self.composite_path, options={"separation_signature": "sep123"}
+                ROLE_FINISHED_COMPOSITE,
+                self.composite_path,
+                options={"separation_signature": self.separation_signature},
             )
             return (np.zeros((64, 64, 3)), self.composite_path)
 

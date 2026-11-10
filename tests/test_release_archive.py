@@ -69,17 +69,21 @@ class PublishedModelArchiveTests(unittest.TestCase):
 
 
 class ModelArchiveTests(unittest.TestCase):
-    def test_source_bundle_includes_the_starnet_terms_resource(self):
+    def test_source_bundle_copies_text_resources_and_skips_pycache(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            relative_path = Path("src/startrails/lib/finish/STARNET_LICENSE.txt")
+            relative_path = Path("src/startrails/lib/finish/NOTICE.txt")
             source = root / relative_path
             source.parent.mkdir(parents=True)
-            source.write_text("Full applicable terms", encoding="utf-8")
+            source.write_text("Model license notice", encoding="utf-8")
+            pycache_file = root / "src/startrails/lib/finish/__pycache__/nox.cpython-312.pyc"
+            pycache_file.parent.mkdir(parents=True)
+            pycache_file.write_bytes(b"bytecode")
             stage = root / "release"
             with patch.object(release, "ROOT", root):
                 release.copy_source_tree(stage)
-            self.assertEqual((stage / relative_path).read_text(), "Full applicable terms")
+            self.assertEqual((stage / relative_path).read_text(), "Model license notice")
+            self.assertFalse((stage / "src/startrails/lib/finish/__pycache__/nox.cpython-312.pyc").exists())
 
     def test_graxpert_bundle_requires_verified_weights_and_all_notices(self):
         with TemporaryDirectory() as temporary:

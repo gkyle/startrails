@@ -130,6 +130,7 @@ class TestFinishProject(QtTestCase):
         project.blend_mode = BLEND_SCREEN
         project.jpeg_quality = 90
         project.starnet_stride = 128
+        project.chroma_postfilter = False
 
         # Serialize and reload
         encoded = jsonpickle.encode(project)
@@ -144,11 +145,13 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(reloaded.blend_mode, BLEND_SCREEN)
         self.assertEqual(reloaded.jpeg_quality, 90)
         self.assertEqual(reloaded.starnet_stride, 128)
+        self.assertFalse(reloaded.chroma_postfilter)
 
         # Authoritative defaults have one owner; Stars Amount and blend mode
         # are the only star-layer controls.
         self.assertEqual(FINISH_DEFAULTS.star_amount, 100.0)
         self.assertEqual(FINISH_DEFAULTS.blend_mode, "add")
+        self.assertTrue(FINISH_DEFAULTS.chroma_postfilter)
         self.assertTrue(FINISH_DEFAULTS.enable_starless_denoise)
         self.assertTrue(FINISH_DEFAULTS.enable_starless_sharpen)
         self.assertIn("enable_starless_finishing", RETIRED_FINISH_SETTING_NAMES)

@@ -232,12 +232,12 @@ class TestFinishNumerical(unittest.TestCase):
         self.assertFalse(list(self.root.glob(".artifact-*")))
 
     def test_signatures_disambiguate_inputs_and_invalidate_options(self):
-        options = dict(stride=256, upsample=False, linear=False, highlights_protection=True, mask_feather_radius_px=0.0)
+        options = dict(stride=256, chroma_postfilter=True, mask_feather_radius_px=0.0)
         first = compute_separation_signature("a|mask:b", "c", "m", **options)
         self.assertNotEqual(first, compute_separation_signature("a", "b|mask:c", "m", **options))
         self.assertEqual(first, compute_separation_signature("a|mask:b", "c", "m", **options))
         for name, value in dict(
-            stride=128, upsample=True, linear=True, highlights_protection=False, mask_feather_radius_px=2.5
+            stride=128, chroma_postfilter=False, mask_feather_radius_px=2.5
         ).items():
             self.assertNotEqual(first, compute_separation_signature("a|mask:b", "c", "m", **(options | {name: value})))
         self.assertNotEqual(

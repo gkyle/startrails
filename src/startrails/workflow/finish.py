@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from collections import OrderedDict
-from contextlib import nullcontext
 from concurrent.futures import CancelledError
-import tempfile
 from typing import TYPE_CHECKING, Any, Callable, Dict, Final, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -35,31 +33,24 @@ from startrails.lib.finish.defaults import (
     FinishSettings,
 )
 from startrails.lib.finish.graxpert import graxpert_model_identity
+from startrails.lib.finish.nox import (
+    MAX_STRIDE,
+    MIN_STRIDE,
+    NoxSession,
+    apply_radial_chroma_postfilter,
+    nox_model_identity,
+    resolve_nox_device,
+    validate_separation_stride,
+)
 from startrails.lib.finish.separation import compute_separation_signature
-from startrails.lib.finish.starnet import MAX_STRIDE, MIN_STRIDE
 from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
 from startrails.lib.image_io import imread, imwrite
-from startrails.lib.model_manifest import GRAXPERT_MANIFEST, PlatformNotSupportedError
+from startrails.lib.model_manifest import GRAXPERT_MANIFEST, NOX_MANIFEST
 from startrails.lib.project_finish import LAYER_EXPORT_SUFFIXES, FinishProject
-from startrails.lib.starnet_setup import (
-    STARNET_TERMS_REVISION,
-    STARNET_TERMS_SHA256,
-    starnet_terms_accepted,
-    starnet_installation_lock,
-    get_starnet_storage_dir,
-    StarNetSetupError,
-    detect_platform_target,
-    managed_starnet_setup_notice,
-    StarNetInstallation,
-    get_active_starnet_installation,
-    install_starnet_managed,
-    record_starnet_installation,
-    repair_starnet_installation,
-)
 from startrails.op.finish.graxpert_denoise import GraXpertDenoise
 from startrails.op.finish.recombine import Recombine
-from startrails.op.finish.run_starnet import RunStarNet
+from startrails.op.finish.remove_stars import RemoveStars
 from startrails.op.finish.separate_stars import SeparateStars
 from startrails.op.finish.sharpen_starless import SharpenStarless
 from startrails.paths import APPLICATION_DIR
@@ -75,8 +66,8 @@ if TYPE_CHECKING:
 # updater and enqueue total must use the same value.
 SEPARATION_PROGRESS_TOTAL: Final[int] = 100
 
-# Phase spans on that scale (StarNet inference dominates runtime).
-_STARNET_PROGRESS_SPAN = (0, 80)
+# Phase spans on that scale (Nox inference dominates runtime).
+_NOX_PROGRESS_SPAN = (0, 80)
 _SEPARATION_PROGRESS_SPAN = (80, 17)
 _RECOMBINE_PROGRESS_SPAN = (97, 3)
 
@@ -170,22 +161,6 @@ class _PhaseProgress:
         self._observer(self._scale, max(0, delta), self._reported, task_done, data)
 
 
-def _starnet_identity(platform_id: str, version: str, build: str, backend_id: str, package_sha256: str) -> str:
-    return ":".join((platform_id, version, build, backend_id, package_sha256))
-
-
-def _starnet_model_identity(status: dict) -> Optional[str]:
-    if not status.get("configured"):
-        return None
-    return _starnet_identity(
-        str(status["platform_id"]),
-        str(status["version"]),
-        str(status["build"]),
-        str(status["backend_id"]),
-        str(status["package_sha256"]),
-    )
-
-
 class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
     """Workflow controller managing Finish mode project state, operations, and exports."""
 
@@ -194,6 +169,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
     def __init__(self, app: App):
         super().__init__(app)
         self._project = app.project
+        self._nox_session: Optional[NoxSession] = None
+        self._nox_session_key: Optional[str] = None
         self._graxpert_session: Optional[GraXpertSession] = None
         self._graxpert_session_key: Optional[Tuple[str, str]] = None
         self._starless_arrays = _DecodedArrayCache()
@@ -261,10 +238,10 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         if self._project is self.app.project:
             super().save_project()
 
-    def invalidate_if_starnet_changed(self) -> bool:
+    def invalidate_if_separation_changed(self) -> bool:
         """Invalidate separation when its saved inputs no longer match current project state."""
-        status = self.get_starnet_status()
-        current_identity = _starnet_model_identity(status)
+        status = self.get_star_removal_status()
+        current_identity = nox_model_identity() if status.get("configured") else None
         project = self.project
         if project.separation_signature is None:
             return False
@@ -280,27 +257,30 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             if current_identity is None:
                 return False
             options = project.separation_options
-            if options is None:
+            if options is None or "stride" not in options or "chroma_postfilter" not in options:
                 # A saved signature without its producing options cannot be
                 # revalidated; treat it as an invalid cache rather than guessing.
                 expected_signature = None
             else:
-                expected_signature = compute_separation_signature(
-                    source_id=project.source_file.sourceId,
-                    mask_id=str(mask_record.get("file", "")),
-                    model_identity=current_identity,
-                    stride=int(options["stride"]),
-                    upsample=bool(options["upsample"]),
-                    linear=bool(options["linear"]),
-                    highlights_protection=bool(options["highlights_protection"]),
-                    mask_feather_radius_px=project.mask_feather_radius_px,
-                )
+                try:
+                    expected_signature = compute_separation_signature(
+                        source_id=project.source_file.sourceId,
+                        mask_id=str(mask_record.get("file", "")),
+                        model_identity=current_identity,
+                        stride=int(options["stride"]),
+                        chroma_postfilter=bool(options["chroma_postfilter"]),
+                        mask_feather_radius_px=project.mask_feather_radius_px,
+                    )
+                except (TypeError, ValueError):
+                    expected_signature = None
         if expected_signature == project.separation_signature and project.separation_model_identity == current_identity:
             return False
         self._clear_starless_array_cache()
         self.project.invalidate_results()
         self.save_project()
         return True
+
+    invalidate_if_starnet_changed = invalidate_if_separation_changed
 
     def getInputFileList(self) -> List[InputFile]:  # noqa: N802 - standard host shell interface
         """Return list containing the single imported source image, if present."""
@@ -669,35 +649,36 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         return results
 
     # -------------------------------------------------------------------------
-    # Dependency Lifecycle & Operational Adapters (StarNet & GraXpert)
+    # Dependency Lifecycle & Operational Adapters (Nox & GraXpert)
     # -------------------------------------------------------------------------
 
-    def get_starnet_status(self) -> dict:
-        """Return the current installation, configuration, and terms status for StarNet."""
-        state = self.app.state
-        record = state.get("starnet", {})
-        if not isinstance(record, dict):
-            record = {}
-        terms_accepted = starnet_terms_accepted(state)
-        installation = get_active_starnet_installation(state)
-
+    def get_star_removal_status(self) -> dict:
+        """Return runtime device selection and model readiness for Nox star removal."""
+        model_path = APPLICATION_DIR / "models" / NOX_MANIFEST.relative_path
+        # Status is refreshed often; avoid rehashing the ~218 MB weights on every
+        # UI refresh while verify-time helpers check the full SHA-256 digest.
         try:
-            setup_notice = managed_starnet_setup_notice(detect_platform_target())
-        except PlatformNotSupportedError as error:
-            setup_notice = str(error)
+            model_ready = model_path.is_file() and model_path.stat().st_size == NOX_MANIFEST.size_bytes
+            setup_error = None if model_ready else f"Star removal model not found or invalid: {model_path}"
+        except OSError as error:
+            model_ready = False
+            setup_error = str(error)
+        try:
+            device = str(resolve_nox_device())
+        except (RuntimeError, OSError, ValueError) as error:
+            device = "cpu"
+            if setup_error is None:
+                setup_error = str(error)
+        session = self._nox_session
         return {
-            "setup_notice": setup_notice,
-            "configured": installation is not None and terms_accepted,
-            "installation": installation,
-            "managed": record.get("managed", False),
-            "executable": str(installation.executable) if installation else record.get("executable"),
-            "version": installation.package.version if installation else record.get("version"),
-            "build": installation.package.build if installation else record.get("build"),
-            "backend_id": installation.package.backend_id if installation else record.get("backend_id"),
-            "platform_id": installation.package.platform_id if installation else None,
-            "package_sha256": installation.package.archive_sha256 if installation else None,
-            "terms_accepted": terms_accepted,
-            "terms_revision": record.get("terms_revision"),
+            "configured": model_ready,
+            "model_ready": model_ready,
+            "model_path": str(model_path),
+            "version": NOX_MANIFEST.version,
+            "device": device,
+            "execution_device": session.execution_device if session is not None else None,
+            "fallback_reason": session.fallback_reason if session is not None else None,
+            "setup_error": setup_error,
         }
 
     def get_graxpert_status(self) -> dict:
@@ -766,6 +747,17 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self.save_project()
         return True
 
+    def _nox_session_for(self) -> NoxSession:
+        """Reuse one loaded Nox inference session for the pinned model identity."""
+        key = nox_model_identity()
+        session = self._nox_session
+        if session is not None and self._nox_session_key == key:
+            return session
+        session = NoxSession()
+        self._nox_session = session
+        self._nox_session_key = key
+        return session
+
     def _graxpert_session_for(self, policy: dict) -> GraXpertSession:
         """Reuse one verified inference session for the resolved provider policy.
 
@@ -783,78 +775,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self._graxpert_session_key = key
         return session
 
-    def accept_starnet_terms(self) -> None:
-        """Record affirmative terms acceptance in application state."""
-        record = self.app.state.setdefault("starnet", {})
-        record["terms_accepted"] = True
-        record["terms_revision"] = STARNET_TERMS_REVISION
-        record["terms_sha256"] = STARNET_TERMS_SHA256
-        self.app.saveAppState()
-
-    def set_starnet_installation(
-        self,
-        installation: StarNetInstallation,
-        *,
-        managed: bool,
-        terms_accepted: bool,
-    ) -> None:
-        """Persist verified StarNet installation in application state."""
-        project = self.project
-        new_identity = _starnet_identity(
-            installation.package.platform_id,
-            installation.package.version,
-            installation.package.build,
-            installation.package.backend_id,
-            installation.package.archive_sha256,
-        )
-        old_identity = _starnet_model_identity(self.get_starnet_status())
-        if old_identity is None:
-            # The recorded installation may be offline; the project still knows
-            # the identity that produced its current layers.
-            old_identity = project.separation_model_identity
-        invalidated_results = False
-        if (project.separation_signature is not None or old_identity is not None) and old_identity != new_identity:
-            project.invalidate_results()
-            invalidated_results = True
-        record_starnet_installation(
-            self.app.state,
-            installation,
-            managed=managed,
-            terms_accepted=terms_accepted,
-        )
-        self.app.saveAppState()
-        if invalidated_results:
-            self.save_project()
-
-    def do_install_starnet_managed(
-        self,
-        progress_callback: Optional[Callable[[int, int], None]] = None,
-        cancel_check: Optional[Callable[[], bool]] = None,
-    ) -> StarNetInstallation:
-        """Download, validate, probe, and atomically install managed StarNet."""
-        if not starnet_terms_accepted(self.app.state):
-            raise StarNetSetupError("Accept the current StarNet terms before installation.")
-        installation = install_starnet_managed(
-            progress_callback=progress_callback,
-            cancel_check=cancel_check,
-        )
-        self.set_starnet_installation(installation, managed=True, terms_accepted=True)
-        return installation
-
-    def do_repair_starnet(
-        self,
-        progress_callback: Optional[Callable[[int, int], None]] = None,
-        cancel_check: Optional[Callable[[], bool]] = None,
-    ) -> StarNetInstallation:
-        """Repair or re-probe the active StarNet installation."""
-        state = dict(self.app.state)
-        installation = repair_starnet_installation(
-            state,
-            progress_callback=progress_callback,
-            cancel_check=cancel_check,
-        )
-        return installation
-
     def _job_cancel_check(self, project: FinishProject, revision: int) -> Callable[[], bool]:
         """Return a cancellation guard bound to this job's project, revision, and session."""
 
@@ -869,21 +789,12 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         return cancelled
 
     @staticmethod
-    def _validate_starnet_stride(stride: int) -> None:
-        """Enforce the StarNet CLI stride contract before any cache lookup."""
-        if type(stride) is not int or stride < MIN_STRIDE or stride > MAX_STRIDE or stride % 2 != 0:
-            raise ValueError(f"Stride must be an even integer between {MIN_STRIDE} and {MAX_STRIDE}, got {stride}")
-
-    @staticmethod
-    def _validate_model_output(path: Path, dimensions: Tuple[int, int]) -> None:
-        """Reject a corrupt StarNet result before it is cached or normalized."""
-        model = imread(path, to_rgb=True, as_float=False)
-        if model.dtype not in (np.uint8, np.uint16):
-            raise ValueError(f"StarNet output must be uint8 or uint16, got {model.dtype}.")
+    def _validate_model_output(model: np.ndarray, dimensions: Tuple[int, int]) -> None:
+        """Reject a corrupt star removal result before downstream separation."""
         if model.ndim != 3 or model.shape[2] != SUPPORTED_CHANNELS or model.shape[:2] != dimensions:
-            raise ValueError(f"StarNet output shape {model.shape} does not match source dimensions {dimensions}.")
+            raise ValueError(f"Star removal output shape {model.shape} does not match source dimensions {dimensions}.")
         if not np.isfinite(model).all():
-            raise ValueError("StarNet output contains non-finite values.")
+            raise ValueError("Star removal output contains non-finite values.")
 
     def _recombine_into_transaction(
         self,
@@ -943,73 +854,33 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             return None
         return result
 
-    def do_run_starnet(
-        self,
-        input_image_path: Union[str, Path],
-        output_starless_path: Union[str, Path],
-        *,
-        output_stars_path: Optional[Union[str, Path]] = None,
-        stride: int,
-        disable_highlights: bool = False,
-        upsample: bool = False,
-        progress_bar: Optional[Any] = None,
-    ) -> Optional[Tuple[Path, Optional[Path]]]:
-        """Execute StarNet subprocess using the active verified installation."""
-        self._validate_starnet_stride(stride)
-        managed = self.app.state.get("starnet", {}).get("managed", False)
-        lock = starnet_installation_lock(get_starnet_storage_dir()) if managed else nullcontext()
-        with lock:
-            status = self.get_starnet_status()
-            if not status["configured"]:
-                raise RuntimeError("StarNet is not configured or terms have not been accepted.")
-            op = self._new_operation(RunStarNet)
-            if progress_bar is not None:
-                op.addObserver(progress_bar)
-            self.app.activeOperation = op
-            try:
-                return op.run(
-                    status["executable"],
-                    input_image_path,
-                    output_starless_path,
-                    output_stars_path=output_stars_path,
-                    stride=stride,
-                    disable_highlights=disable_highlights,
-                    upsample=upsample,
-                )
-            finally:
-                if self.app.activeOperation is op:
-                    self.app.activeOperation = self._session_operation
-                if progress_bar is not None:
-                    op.removeObserver(progress_bar)
-
     def do_separate_stars(
         self,
         *,
         stride: Optional[int] = None,
-        disable_highlights: bool = False,
-        upsample: bool = False,
+        chroma_postfilter: Optional[bool] = None,
         chunk_rows: int = 512,
         progress_bar: Optional[Any] = None,
     ) -> Optional[Tuple[OutputFile, OutputFile]]:
-        """Separate stars from sky background using StarNet and sky protection mask.
+        """Separate stars from sky background using Nox and sky protection mask.
 
         progress_bar, when given, receives each phase's progress mapped onto the
         shared SEPARATION_PROGRESS_TOTAL scale.
         """
         project = self.project
         stride = project.starnet_stride if stride is None else stride
-        self._validate_starnet_stride(stride)
+        validate_separation_stride(stride)
+        chroma_postfilter = project.chroma_postfilter if chroma_postfilter is None else chroma_postfilter
+        if type(chroma_postfilter) is not bool:
+            raise ValueError(f"chroma_postfilter must be a bool, got {chroma_postfilter!r}")
         project_revision = project.processing_revision
         if not project.source_is_current():
             raise ValueError("Source image is not current or unavailable.")
         settings = project.get_settings()
         dims = project.get_source_dimensions()
-        min_dim = 256 if upsample else 512
-        if dims is None or dims[0] < min_dim or dims[1] < min_dim:
+        if dims is None or dims[0] <= 0 or dims[1] <= 0:
             actual_dims = f"{dims[1]}x{dims[0]}" if dims else "0x0"
-            raise ValueError(
-                f"Image dimensions ({actual_dims}) are below StarNet minimum supported dimensions ({min_dim}x{min_dim})."
-            )
+            raise ValueError(f"Source image dimensions ({actual_dims}) are invalid for star separation.")
 
         mask = self.get_current_mask()
         if mask is None:
@@ -1021,59 +892,58 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         mask_record = project.artifact_manifest.get(ROLE_SKY_MASK, {})
         mask_id = str(mask_record.get("file", ""))
 
-        starnet_status = self.get_starnet_status()
-        if not starnet_status.get("configured", False):
-            raise RuntimeError("StarNet2 is not configured or terms have not been accepted.")
-        model_identity = _starnet_model_identity(starnet_status)
-        if model_identity is None:
+        star_removal_status = self.get_star_removal_status()
+        if not star_removal_status.get("configured", False):
             raise RuntimeError(
-                "StarNet2 package identity is unavailable; repair the installation before separating stars."
+                star_removal_status.get("setup_error")
+                or f"Star removal model is not available at {star_removal_status.get('model_path')}."
             )
+        model_identity = nox_model_identity()
 
         source_path = Path(project.source_file.path)
+        source_float = imread(source_path, to_rgb=True, as_float=True)
         unmasked_options = {
             "stride": stride,
-            "disable_highlights": disable_highlights,
-            "upsample": upsample,
-            "version": starnet_status.get("version"),
-            "build": starnet_status.get("build"),
-            "backend_id": starnet_status.get("backend_id"),
-            "platform_id": starnet_status.get("platform_id"),
-            "package_sha256": starnet_status.get("package_sha256"),
+            "model_identity": model_identity,
         }
         separation_options = {
             "stride": stride,
-            "upsample": upsample,
-            "linear": False,
-            "highlights_protection": not disable_highlights,
+            "chroma_postfilter": chroma_postfilter,
             "mask_feather_radius_px": feather_radius_px,
         }
 
         unmasked_path = project.current_artifact_path(ROLE_UNMASKED_STARLESS, options=unmasked_options)
+        raw_model_float: Optional[np.ndarray] = None
         if unmasked_path is None or not unmasked_path.is_file():
-            starnet_progress = (
-                _PhaseProgress(progress_bar, _STARNET_PROGRESS_SPAN) if progress_bar is not None else None
-            )
+            nox_progress = _PhaseProgress(progress_bar, _NOX_PROGRESS_SPAN) if progress_bar is not None else None
             unmasked_dest = project.artifact_path(ROLE_UNMASKED_STARLESS, for_write=True)
+            session = self._nox_session_for()
+            remove_op = self._new_operation(RemoveStars)
+            if nox_progress is not None:
+                remove_op.addObserver(nox_progress)
+            self.app.activeOperation = remove_op
             try:
-                with tempfile.TemporaryDirectory() as tmp_dir:
-                    tmp_input = Path(tmp_dir) / "starnet_input.tif"
-                    source_int = imread(source_path, to_rgb=True, as_float=False)
-                    imwrite(tmp_input, source_int, convertBGR=True, bit_depth=project.source_bit_depth)
-                    del source_int
+                try:
                     with ArtifactTransaction(self._job_cancel_check(project, project_revision)) as transaction:
-                        staged_unmasked = transaction.stage(unmasked_dest)
-                        run_res = self.do_run_starnet(
-                            tmp_input,
-                            staged_unmasked,
+                        remove_res = remove_op.remove_stars(
+                            source_float,
+                            session=session,
                             stride=stride,
-                            disable_highlights=disable_highlights,
-                            upsample=upsample,
-                            progress_bar=starnet_progress,
+                            settings=settings,
+                            bit_depth=INTERMEDIATE_BIT_DEPTH,
+                            output_path=unmasked_dest,
+                            artifacts=transaction,
                         )
-                        if run_res is None:
+                        if (
+                            remove_res is None
+                            or remove_op.shouldInterrupt()
+                            or project is not self.app.project
+                            or project_revision != project.processing_revision
+                            or not project.source_is_current()
+                        ):
                             return None
-                        self._validate_model_output(staged_unmasked, dims)
+                        raw_model_float = remove_res[0]
+                        self._validate_model_output(raw_model_float, dims)
                         if not project.record_artifact(
                             ROLE_UNMASKED_STARLESS,
                             unmasked_dest,
@@ -1082,22 +952,29 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                             transaction=transaction,
                         ):
                             return None
-                self.save_project()
-            except CancelledError:
-                return None
+                    self.save_project()
+                except CancelledError:
+                    return None
+            finally:
+                if self.app.activeOperation is remove_op:
+                    self.app.activeOperation = self._session_operation
+                if nox_progress is not None:
+                    remove_op.removeObserver(nox_progress)
             unmasked_path = unmasked_dest
         elif progress_bar is not None:
-            star_net_span = _STARNET_PROGRESS_SPAN[1]
+            nox_span = _NOX_PROGRESS_SPAN[1]
             progress_bar(
                 SEPARATION_PROGRESS_TOTAL,
-                star_net_span,
-                star_net_span,
+                nox_span,
+                nox_span,
                 False,
-                {"desc": "Using cached StarNet separation..."},
+                {"desc": "Using cached starless removal..."},
             )
 
-        source_float = imread(source_path, to_rgb=True, as_float=True)
-        model_float = imread(unmasked_path, to_rgb=True, as_float=True)
+        model_float = raw_model_float if raw_model_float is not None else imread(unmasked_path, to_rgb=True, as_float=True)
+        raw_model_float = None
+        if chroma_postfilter:
+            model_float, _ = apply_radial_chroma_postfilter(source_float, model_float)
 
         starless_dest = project.artifact_path(ROLE_SEPARATED_STARLESS, for_write=True)
         stars_dest = project.artifact_path(ROLE_SEPARATED_STARS, for_write=True)
