@@ -104,6 +104,17 @@ class TestFinishSeparation(QtTestCase):
         starless_out, stars_out = result
         self.assertTrue(Path(starless_out.path).is_file())
         self.assertTrue(Path(stars_out.path).is_file())
+        # Separation publishes only Starless and Stars; recombination is deferred until needed.
+        self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
+
+        operations = [record.operation for record in self.workflow.get_output_file_list()]
+        self.assertIn("Starless", operations)
+        self.assertIn("Stars", operations)
+        self.assertNotIn("Composite", operations)
+        self.assertIsNotNone(self.project.separation_signature)
+        self.assertFalse(self.project.chroma_postfilter)
+
+        self.assertIsNotNone(self.workflow.do_recombine())
         composite_path = self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
         self.assertIsNotNone(composite_path)
         self.assertTrue(composite_path.is_file())
@@ -114,13 +125,6 @@ class TestFinishSeparation(QtTestCase):
         # Neutral recombination restores the source, including untouched foreground.
         np.testing.assert_array_equal(composite[foreground], source[foreground])
         self.assertLessEqual(float(np.max(np.abs(composite - source))), 2.0 / 65535.0)
-
-        operations = [record.operation for record in self.workflow.get_output_file_list()]
-        self.assertIn("Starless", operations)
-        self.assertIn("Stars", operations)
-        self.assertIn("Composite", operations)
-        self.assertIsNotNone(self.project.separation_signature)
-        self.assertFalse(self.project.chroma_postfilter)
 
         export_file = self.workflow.do_export_composite()
         self.assertTrue(export_file.is_file())
@@ -247,7 +251,8 @@ class TestFinishSeparation(QtTestCase):
 
         published = {}
         published_paths = {}
-        for role in (ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS, ROLE_FINISHED_COMPOSITE):
+        roles = (ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS)
+        for role in roles:
             path = self.project.current_artifact_path(role)
             self.assertIsNotNone(path)
             published_paths[role] = path
@@ -287,37 +292,24 @@ class TestFinishSeparation(QtTestCase):
         with patch.object(SeparateStars, "separate", new=separate_then_edit_mask):
             self.assertIsNone(self.workflow.do_separate_stars())
 
-        for role in (ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS, ROLE_FINISHED_COMPOSITE):
+        for role in roles:
             self.assertIsNone(self.project.current_artifact_path(role))
             # Invalidation clears records, but the previously published bytes stay intact.
             self.assertEqual(published_paths[role].read_bytes(), published[role])
 
-    def test_recombine_failure_preserves_previous_published_outputs(self):
-        source_path = self.create_synthetic_image("recombine_failure.tif")
+    def test_separation_skips_recombine(self):
+        source_path = self.create_synthetic_image("skip_recombine.tif")
         self.workflow.do_import_source(source_path)
         self.workflow.do_all_sky_mask()
 
-        roles = (ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS, ROLE_FINISHED_COMPOSITE)
-        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
-            self.assertIsNotNone(self.workflow.do_separate_stars())
+        with (
+            patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)),
+            patch.object(Recombine, "recombine", side_effect=AssertionError("Recombine should not run during separation")),
+        ):
+            result = self.workflow.do_separate_stars(chroma_postfilter=False)
 
-        published = {}
-        published_paths = {}
-        for role in roles:
-            path = self.project.current_artifact_path(role)
-            self.assertIsNotNone(path)
-            published_paths[role] = path
-            published[role] = path.read_bytes()
-        separation_signature = self.project.separation_signature
-
-        with patch.object(Recombine, "recombine", return_value=None):
-            result = self.workflow.do_separate_stars()
-
-        self.assertIsNone(result)
-        for role in roles:
-            self.assertEqual(self.project.current_artifact_path(role), published_paths[role])
-            self.assertEqual(published_paths[role].read_bytes(), published[role])
-        self.assertEqual(self.project.separation_signature, separation_signature)
+        self.assertIsNotNone(result)
+        self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
 
     def test_progress_reports_all_phases_on_shared_scale(self):
         source_path = self.create_synthetic_image("progress.tif")
@@ -326,17 +318,36 @@ class TestFinishSeparation(QtTestCase):
         events = []
 
         def record(total, increment, count, done, data=None):
-            events.append((total, increment, count))
+            desc = data.get("desc") if isinstance(data, dict) else None
+            events.append((total, increment, count, desc))
 
         with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
-            result = self.workflow.do_separate_stars(chroma_postfilter=False, progress_bar=record)
+            result = self.workflow.do_separate_stars(chroma_postfilter=True, progress_bar=record)
 
         self.assertIsNotNone(result)
-        self.assertEqual({total for total, _, _ in events}, {SEPARATION_PROGRESS_TOTAL})
-        self.assertEqual(sum(increment for _, increment, _ in events), SEPARATION_PROGRESS_TOTAL)
-        counts = [count for _, _, count in events]
+        self.assertEqual({total for total, _, _, _ in events}, {SEPARATION_PROGRESS_TOTAL})
+        self.assertEqual(sum(increment for _, increment, _, _ in events), SEPARATION_PROGRESS_TOTAL)
+        counts = [count for _, _, count, _ in events]
         self.assertEqual(counts, sorted(counts))
         self.assertEqual(counts[-1], SEPARATION_PROGRESS_TOTAL)
+        descs = [desc for _, _, _, desc in events if desc]
+        self.assertTrue(any("Loading source image" in d for d in descs))
+        self.assertTrue(any("Removing stars" in d for d in descs))
+        self.assertTrue(any("chroma post-filter" in d.lower() for d in descs))
+        self.assertTrue(any("Calculating starless image" in d for d in descs))
+        self.assertTrue(any("Calculating stars image" in d for d in descs))
+
+        # Cached unmasked starless with chroma postfilter disabled also reaches total=100 cleanly.
+        cached_events = []
+        self.workflow.do_all_sky_mask()
+        with patch.object(self.workflow, "_nox_session_for", side_effect=AssertionError("Should use cache")):
+            result = self.workflow.do_separate_stars(
+                chroma_postfilter=False,
+                progress_bar=lambda total, inc, count, done, data=None: cached_events.append((total, inc, count)),
+            )
+        self.assertIsNotNone(result)
+        self.assertEqual(sum(inc for _, inc, _ in cached_events), SEPARATION_PROGRESS_TOTAL)
+        self.assertEqual(cached_events[-1][2], SEPARATION_PROGRESS_TOTAL)
 
     def test_ui_file_sections_selection_and_view_preservation(self):
         source_path = self.create_synthetic_image("ui_test.tif")
@@ -384,7 +395,7 @@ class TestFinishSeparation(QtTestCase):
         operations = [f.operation for f in outputs.model.files]
         self.assertIn("Starless", operations)
         self.assertIn("Stars", operations)
-        self.assertIn("Composite", operations)
+        self.assertNotIn("Composite", operations)
         self.assertNotIn("Original", operations)
 
         def select(section, file):
@@ -446,7 +457,6 @@ class TestFinishSeparation(QtTestCase):
             "mask": Path(self.project.artifact_path(ROLE_SKY_MASK)),
             "starless": Path(self.project.artifact_path(ROLE_SEPARATED_STARLESS)),
             "stars": Path(self.project.artifact_path(ROLE_SEPARATED_STARS)),
-            "composite": Path(self.project.artifact_path(ROLE_FINISHED_COMPOSITE)),
         }
         self.assertTrue(all(path.is_file() for path in retained.values()))
         retained_bytes = {name: path.read_bytes() for name, path in retained.items()}

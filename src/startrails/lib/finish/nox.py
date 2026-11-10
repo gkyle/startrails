@@ -334,6 +334,9 @@ def apply_radial_chroma_postfilter(
     inp: np.ndarray,
     pred: np.ndarray,
     config: Optional[RadialChromaConfig] = None,
+    *,
+    progress_bar: Optional[Callable[[int, int, int, bool, Optional[dict]], None]] = None,
+    should_interrupt: Optional[Callable[[], bool]] = None,
 ) -> Tuple[np.ndarray, PostfilterStats]:
     """Apply targeted radial chroma neutralization to pred given inp.
 
@@ -341,11 +344,16 @@ def apply_radial_chroma_postfilter(
     Pixels outside config.inner_radius of any detected removed star centroid
     are returned bit-exact identical to pred.
     """
+    if should_interrupt and should_interrupt():
+        raise CancelledError("Chroma post-filter cancelled before starting.")
     t0 = time.perf_counter()
     cfg = config or RadialChromaConfig()
     inp_f = np.asarray(inp, dtype=np.float32)
     pred_f = np.asarray(pred, dtype=np.float32)
     h, w = pred_f.shape[:2]
+
+    if progress_bar is not None:
+        progress_bar(1, 0, 0, False, {"desc": "Applying chroma post-filter: detecting star halos..."})
 
     centroids = detect_removed_star_centroids(
         inp_f,
@@ -353,7 +361,12 @@ def apply_radial_chroma_postfilter(
         peak_thresh=cfg.peak_thresh,
         nms_size=cfg.nms_size,
     )
-    if len(centroids) == 0:
+    if should_interrupt and should_interrupt():
+        raise CancelledError("Chroma post-filter cancelled after star detection.")
+    total_stars = int(len(centroids))
+    if total_stars == 0:
+        if progress_bar is not None:
+            progress_bar(1, 1, 1, True, {"desc": "Chroma post-filter complete (no bright halos)."})
         return pred_f.copy(), PostfilterStats(0, 0, 0.0, time.perf_counter() - t0)
 
     pred_clipped = np.clip(pred_f, 0.0, 1.0)
@@ -368,8 +381,12 @@ def apply_radial_chroma_postfilter(
     cb_sum = np.zeros((h, w), dtype=np.float32)
     w_sum = np.zeros((h, w), dtype=np.float32)
     applied = 0
+    report_interval = max(1, total_stars // 10)
+    last_reported = 0
 
-    for cy_i, cx_i in centroids:
+    for idx, (cy_i, cx_i) in enumerate(centroids, start=1):
+        if should_interrupt and should_interrupt():
+            raise CancelledError("Chroma post-filter cancelled.")
         cy, cx = int(cy_i), int(cx_i)
         y0, y1 = max(0, cy - pad), min(h, cy + pad + 1)
         x0, x1 = max(0, cx - pad), min(w, cx + pad + 1)
@@ -391,10 +408,23 @@ def apply_radial_chroma_postfilter(
         w_sum[y0:y1, x0:x1] += hw
         max_w[y0:y1, x0:x1] = np.maximum(max_w[y0:y1, x0:x1], hw)
         applied += 1
+        if progress_bar is not None and (idx - last_reported >= report_interval or idx == total_stars):
+            step = idx - last_reported
+            last_reported = idx
+            progress_bar(
+                total_stars,
+                step,
+                idx,
+                False,
+                {"desc": f"Applying chroma post-filter ({idx}/{total_stars} stars)..."},
+            )
 
     active = max_w > 0.0
     if not np.any(active):
-        return pred_f.copy(), PostfilterStats(len(centroids), applied, 0.0, time.perf_counter() - t0)
+        if progress_bar is not None:
+            remaining = max(0, total_stars - last_reported)
+            progress_bar(total_stars, remaining, total_stars, True, {"desc": "Chroma post-filter complete."})
+        return pred_f.copy(), PostfilterStats(total_stars, applied, 0.0, time.perf_counter() - t0)
 
     safe_w = np.maximum(w_sum, 1e-6)
     cr_target = np.where(w_sum > 1e-6, cr_sum / safe_w, cr_orig)
@@ -407,8 +437,11 @@ def apply_radial_chroma_postfilter(
     rgb_fixed = np.clip(cv2.cvtColor(yuv_fixed, cv2.COLOR_YCrCb2RGB), 0.0, 1.0)
 
     out = np.where(active[:, :, None], rgb_fixed, pred_f)
+    if progress_bar is not None:
+        remaining = max(0, total_stars - last_reported)
+        progress_bar(total_stars, remaining, total_stars, True, {"desc": "Chroma post-filter complete."})
     stats = PostfilterStats(
-        detected_stars=int(len(centroids)),
+        detected_stars=total_stars,
         applied_stars=applied,
         touched_fraction=float(np.mean(active)),
         elapsed_seconds=time.perf_counter() - t0,
@@ -653,7 +686,7 @@ class NoxSession:
                     step_tiles,
                     completed_tiles,
                     is_done,
-                    {"desc": f"Separating stars tile {completed_tiles}/{total_tiles}..."},
+                    {"desc": f"Removing stars (tile {completed_tiles}/{total_tiles})..."},
                 )
 
         if should_interrupt and should_interrupt():

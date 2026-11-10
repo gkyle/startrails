@@ -68,8 +68,8 @@ SEPARATION_PROGRESS_TOTAL: Final[int] = 100
 
 # Phase spans on that scale (Nox inference dominates runtime).
 _NOX_PROGRESS_SPAN = (0, 80)
-_SEPARATION_PROGRESS_SPAN = (80, 17)
-_RECOMBINE_PROGRESS_SPAN = (97, 3)
+_POSTFILTER_PROGRESS_SPAN = (80, 5)
+_SEPARATION_PROGRESS_SPAN = (85, 15)
 
 # Starless finishing reserves the last unit for publishing, so no inner
 # operation can report the whole task complete before sharpening ends.
@@ -901,6 +901,8 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         model_identity = nox_model_identity()
 
         source_path = Path(project.source_file.path)
+        if progress_bar is not None:
+            progress_bar(SEPARATION_PROGRESS_TOTAL, 0, 0, False, {"desc": "Loading source image..."})
         source_float = imread(source_path, to_rgb=True, as_float=True)
         unmasked_options = {
             "stride": stride,
@@ -917,7 +919,11 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         if unmasked_path is None or not unmasked_path.is_file():
             nox_progress = _PhaseProgress(progress_bar, _NOX_PROGRESS_SPAN) if progress_bar is not None else None
             unmasked_dest = project.artifact_path(ROLE_UNMASKED_STARLESS, for_write=True)
+            if progress_bar is not None and self._nox_session is None:
+                progress_bar(SEPARATION_PROGRESS_TOTAL, 0, 0, False, {"desc": "Loading star removal model..."})
             session = self._nox_session_for()
+            if progress_bar is not None:
+                progress_bar(SEPARATION_PROGRESS_TOTAL, 0, 0, False, {"desc": "Removing stars..."})
             remove_op = self._new_operation(RemoveStars)
             if nox_progress is not None:
                 remove_op.addObserver(nox_progress)
@@ -971,14 +977,45 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                 {"desc": "Using cached starless removal..."},
             )
 
-        model_float = raw_model_float if raw_model_float is not None else imread(unmasked_path, to_rgb=True, as_float=True)
-        raw_model_float = None
+        if raw_model_float is not None:
+            model_float = raw_model_float
+            raw_model_float = None
+        else:
+            if progress_bar is not None:
+                progress_bar(
+                    SEPARATION_PROGRESS_TOTAL,
+                    0,
+                    _NOX_PROGRESS_SPAN[1],
+                    False,
+                    {"desc": "Loading cached starless image..."},
+                )
+            model_float = imread(unmasked_path, to_rgb=True, as_float=True)
+
         if chroma_postfilter:
-            model_float, _ = apply_radial_chroma_postfilter(source_float, model_float)
+            postfilter_progress = (
+                _PhaseProgress(progress_bar, _POSTFILTER_PROGRESS_SPAN) if progress_bar is not None else None
+            )
+            try:
+                model_float, _ = apply_radial_chroma_postfilter(
+                    source_float,
+                    model_float,
+                    progress_bar=postfilter_progress,
+                    should_interrupt=self._job_cancel_check(project, project_revision),
+                )
+            except CancelledError:
+                return None
+        elif progress_bar is not None:
+            postfilter_span = _POSTFILTER_PROGRESS_SPAN[1]
+            progress_bar(
+                SEPARATION_PROGRESS_TOTAL,
+                postfilter_span,
+                _SEPARATION_PROGRESS_SPAN[0],
+                False,
+                {"desc": "Preparing separated layers..."},
+            )
 
         starless_dest = project.artifact_path(ROLE_SEPARATED_STARLESS, for_write=True)
         stars_dest = project.artifact_path(ROLE_SEPARATED_STARS, for_write=True)
-        composite_dest = project.artifact_path(ROLE_FINISHED_COMPOSITE, for_write=True)
 
         op = self._new_operation(SeparateStars)
         separation_progress = (
@@ -1012,26 +1049,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         # operation stage makes these results stale; never publish them.
                         return None
 
-                    # Release the separation working arrays before allocating the
-                    # composite buffers; the staged files are the authoritative inputs.
                     source_float = model_float = mask = None
-
-                    # Build the initial composite from the staged layers before
-                    # any new separated layer or metadata becomes visible.
-                    recombine_progress = (
-                        _PhaseProgress(progress_bar, _RECOMBINE_PROGRESS_SPAN) if progress_bar is not None else None
-                    )
-                    composite_result = self._recombine_into_transaction(
-                        staged_starless,
-                        staged_stars,
-                        negative_base_path=staged_starless,
-                        composite_destination=composite_dest,
-                        transaction=transaction,
-                        progress_bar=recombine_progress,
-                        settings=settings,
-                    )
-                    if composite_result is None:
-                        return None
 
                     separation_signature = compute_separation_signature(
                         source_id=source_id,
@@ -1045,16 +1063,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         signature=separation_signature,
                         model_identity=model_identity,
                         expected_revision=project_revision,
-                        composite_path=composite_dest,
                         options=separation_options,
-                        composite_options={
-                            "separation_signature": separation_signature,
-                            "starless_role": ROLE_SEPARATED_STARLESS,
-                            "enable_starless_denoise": settings.enable_starless_denoise,
-                            "enable_starless_sharpen": settings.enable_starless_sharpen,
-                            "star_amount": settings.star_amount,
-                            "blend_mode": settings.blend_mode,
-                        },
                         transaction=transaction,
                     ):
                         return None

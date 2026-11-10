@@ -45,13 +45,14 @@ class RemoveStars(Observable):
 
         def on_progress(total: int, step: int, current: int, is_done: bool, payload: Optional[dict]) -> None:
             nonlocal progress_started
-            if not progress_started and total > 0:
-                self.startJob(total)
+            total_steps = total + (1 if output_path is not None else 0)
+            if not progress_started and total_steps > 0:
+                self.startJob(total_steps)
                 progress_started = True
             delta = current - self._last_completed_tiles
             if delta > 0:
                 self._last_completed_tiles = current
-                desc = payload.get("desc") if payload else f"Separating stars tile {current}/{total}..."
+                desc = payload.get("desc") if payload else f"Removing stars (tile {current}/{total})..."
                 self.updateJob(delta, {"desc": desc})
 
         try:
@@ -69,6 +70,10 @@ class RemoveStars(Observable):
 
         written_path: Optional[Path] = None
         if output_path is not None:
+            if not progress_started:
+                self.startJob(1)
+                progress_started = True
+            self.updateJob(0, {"desc": "Saving unmasked starless cache..."})
             dest = Path(output_path).resolve()
             transaction = artifacts or ArtifactTransaction(self.shouldInterrupt)
             with nullcontext(transaction) if artifacts is not None else transaction:
@@ -90,6 +95,7 @@ class RemoveStars(Observable):
                 if artifacts is None:
                     transaction.commit()
             written_path = dest
+            self.updateJob(1, {"desc": "Unmasked starless cache saved."})
 
         return starless, written_path
 
