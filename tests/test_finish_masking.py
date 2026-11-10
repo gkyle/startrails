@@ -464,5 +464,46 @@ class TestFinishMasking(QtTestCase):
         self.assertFalse(shell.canvas_main.maskEditMode)
         self.assertIsNone(shell.canvas_main.get_denoise_mask())
 
+    def test_detect_sky_uses_active_workflow_after_project_switch(self):
+        """Replacing app.project/app.workflow on an active FinishView still runs Detect Sky."""
+        proj1 = FinishProject(project_file=str(self.root / f"first{FINISH_EXT}"))
+        app = self.make_app(proj1)
+        app.workflow = FinishWorkflow(app)
+        shell = self.make_shell()
+
+        view = FinishView(app, shell)
+        self.addCleanup(view.teardown)
+        sidebar = view.build_sidebar(shell.canvas_main)
+        self.addCleanup(sidebar.deleteLater)
+        view.bind()
+        view.resetProjectView()
+
+        # Simulate creating/opening a new Finish project without rebuilding FinishView
+        proj2_path = self.root / f"second{FINISH_EXT}"
+        app.newProject(str(proj2_path))
+        src_path = self.create_synthetic_image("switched_sky.tif", shape=(60, 60, 3))
+        app.workflow.do_import_source(src_path)
+        view.resetProjectView()
+
+        expected_mask = np.full((60, 60), 0.75, dtype=np.float32)
+        with (
+            patch(
+                "startrails.op.denoise.detect_sky.AutoSkyDetector.detect",
+                return_value=expected_mask,
+            ) as mock_detect,
+            patch(
+                "startrails.op.denoise.refine_mask.MaskRefiner.refine",
+                return_value=expected_mask,
+            ) as mock_refine,
+        ):
+            sidebar.btn_detect_sky.click()
+            self.qt.processEvents()
+
+        mock_detect.assert_called_once()
+        mock_refine.assert_called_once()
+        saved_mask = app.workflow.get_current_mask()
+        self.assertIsNotNone(saved_mask)
+        np.testing.assert_allclose(saved_mask, expected_mask, atol=1.0 / 255.0)
+
 
 __all__ = ["TestFinishMasking"]

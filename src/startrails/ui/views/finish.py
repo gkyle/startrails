@@ -95,18 +95,19 @@ class FinishView(ModeView):
         if hasattr(self.shell, "doOpenFinishProject"):
             self.connect_signal(self.sidebar.pushButton_openProject.clicked, self.shell.doOpenFinishProject)
 
-        # Wire reusable sky masking controller
+        # Wire reusable sky masking controller (resolve app.workflow dynamically so
+        # replacing/opening a Finish project keeps using the active workflow).
         if hasattr(self.sidebar, "skySettings"):
-            self.connect_signal(self.sidebar.skySettings.settings_changed, self.app.workflow.save_project)
+            self.connect_signal(self.sidebar.skySettings.settings_changed, lambda: self.app.workflow.save_project())
             self.mask_controller = SkyMaskController(
                 shell=self.shell,
                 settings_widget=self.sidebar.skySettings,
                 get_source_image=lambda: self._project.source_file if self._project.source_is_current() else None,
                 show_source_image=lambda: self.showFile(self._project.source_file, preserve_view=True),
-                get_saved_mask=self.app.workflow.get_current_mask,
+                get_saved_mask=lambda: self.app.workflow.get_current_mask(),
                 save_mask=self._save_mask_to_project,
-                detect_sky_fn=self.app.workflow.do_detect_sky,
-                refine_mask_fn=self.app.workflow.do_refine_mask,
+                detect_sky_fn=lambda *args, **kwargs: self.app.workflow.do_detect_sky(*args, **kwargs),
+                refine_mask_fn=lambda *args, **kwargs: self.app.workflow.do_refine_mask(*args, **kwargs),
                 enqueue_task=self._enqueue_task,
                 get_post_result=self._get_post_result,
                 get_result_guard=self._result_guard,

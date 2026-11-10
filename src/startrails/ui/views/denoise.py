@@ -203,9 +203,10 @@ class DenoiseView(ModeView):
             self.connect_signal(self.output_files.showFile, self.showFile)
             self.connect_signal(self.output_files.removeFile, self.remove_output_file)
 
-        # Connect operation actions
+        # Connect operation actions (resolve app.workflow dynamically so opening
+        # another Denoise project keeps using the active workflow).
         if self.sky_settings is not None:
-            self.connect_signal(self.sky_settings.settings_changed, self.app.workflow.save_project)
+            self.connect_signal(self.sky_settings.settings_changed, lambda: self.app.workflow.save_project())
             if self.mask_controller is not None:
                 self.mask_controller.teardown()
 
@@ -237,8 +238,8 @@ class DenoiseView(ModeView):
                 show_source_image=show_source,
                 get_saved_mask=self._find_existing_mask,
                 save_mask=self._save_mask_to_project,
-                detect_sky_fn=self.app.workflow.do_detect_sky,
-                refine_mask_fn=self.app.workflow.do_refine_mask,
+                detect_sky_fn=lambda *args, **kwargs: self.app.workflow.do_detect_sky(*args, **kwargs),
+                refine_mask_fn=lambda *args, **kwargs: self.app.workflow.do_refine_mask(*args, **kwargs),
                 enqueue_task=self._enqueue_task,
                 get_post_result=lambda: (lambda gen=self._generation: lambda cb: self._post_result(gen, cb))(),
                 get_result_guard=lambda: self._result_guard(self._generation),
