@@ -484,9 +484,7 @@ class SidebarFinish(QWidget):
             self.btn_export_layers.setEnabled(False)
             return
 
-        policy = graxpert_status.get("policy")
-        model_ready = graxpert_status.get("model_ready", False)
-        graxpert_ready = bool(model_ready and policy and policy.get("verified", False))
+        graxpert_ready = bool(graxpert_status.get("configured", graxpert_status.get("model_ready", False)))
 
         self.separateCard.setStatus("done", "Stars separated")
         if has_finished_starless:

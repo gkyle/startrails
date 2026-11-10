@@ -580,9 +580,7 @@ class FinishView(ModeView):
         graxpert_status = (
             self.app.workflow.get_graxpert_status() if hasattr(self.app.workflow, "get_graxpert_status") else {}
         )
-        graxpert_ready = bool(
-            graxpert_status.get("configured") or (graxpert_status.get("model_ready") and graxpert_status.get("policy"))
-        )
+        graxpert_ready = bool(graxpert_status.get("configured", graxpert_status.get("model_ready", False)))
         has_endpoint = (
             self._project.current_artifact_path(ROLE_DENOISE_ENDPOINT) is not None
             or self._project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
@@ -893,9 +891,7 @@ class FinishView(ModeView):
             structure = self.sidebar.starlessSettings.get_structure()
             detail = self.sidebar.starlessSettings.get_detail()
             status = self.app.workflow.get_graxpert_status()
-            policy = status.get("policy")
-            model_ready = status.get("model_ready", False)
-            is_ready = bool(model_ready and policy and policy.get("verified", False))
+            is_ready = bool(status.get("configured", status.get("model_ready", False)))
             if strength > 0 and not is_ready and not has_endpoint:
                 msg = status.get("setup_error") or "GraXpert AI model is unavailable or setup is incomplete."
                 QMessageBox.warning(self.sidebar, "GraXpert Unavailable", msg)
@@ -1058,9 +1054,7 @@ class FinishView(ModeView):
         graxpert_status = (
             self.app.workflow.get_graxpert_status() if hasattr(self.app.workflow, "get_graxpert_status") else {}
         )
-        graxpert_ready = bool(
-            graxpert_status.get("configured") or (graxpert_status.get("model_ready") and graxpert_status.get("policy"))
-        )
+        graxpert_ready = bool(graxpert_status.get("configured", graxpert_status.get("model_ready", False)))
         has_endpoint = (
             self._project.current_artifact_path(ROLE_DENOISE_ENDPOINT) is not None
             or self._project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
@@ -1164,9 +1158,7 @@ class FinishView(ModeView):
         graxpert_status = (
             self.app.workflow.get_graxpert_status() if hasattr(self.app.workflow, "get_graxpert_status") else {}
         )
-        graxpert_ready = bool(
-            graxpert_status.get("configured") or (graxpert_status.get("model_ready") and graxpert_status.get("policy"))
-        )
+        graxpert_ready = bool(graxpert_status.get("configured", graxpert_status.get("model_ready", False)))
         if not settings.enable_starless_denoise:
             return
         if not (endpoint is not None or settings.denoise_strength == 0.0 or graxpert_ready):

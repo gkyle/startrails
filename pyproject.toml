@@ -28,30 +28,25 @@ dependencies = [
 
 [project.optional-dependencies]
 cpu = [
-  "onnxruntime==1.31.1",
   "torch>=2.6.0",
   "torchvision>=0.21.0",
 ]
 cu118 = [
-  "onnxruntime==1.31.1",
   "torch>=2.6.0",
   "torchvision>=0.21.0",
   "cupy-cuda11x>=13.6.0",
 ]
 cu124 = [
-  "onnxruntime==1.31.1",
   "torch>=2.6.0",
   "torchvision>=0.21.0",
   "cupy-cuda12x>=14.2.0",
 ]
 cu133 = [
-  "onnxruntime-gpu==1.31.1",
   "torch>=2.6.0",
   "torchvision>=0.21.0",
   "cupy-cuda13x>=14.2.0",
 ]
 mps = [
-  "onnxruntime==1.31.1",
   "torch>=2.6.0",
   "torchvision>=0.21.0",
 ]

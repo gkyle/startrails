@@ -96,13 +96,7 @@ class TestFinishDenoise(QtTestCase):
         fake_session = MagicMock()
         fake_session.denoise_full_strength.side_effect = fake_denoise_inference
 
-        with (
-            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
-            patch(
-                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-                return_value={"provider": "CPUExecutionProvider"},
-            ),
-        ):
+        with patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session):
             # Step 1: Run denoise at default settings (50% strength, sky_only)
             result = self.workflow.do_denoise_starless()
             self.assertIsNotNone(result)
@@ -164,7 +158,7 @@ class TestFinishDenoise(QtTestCase):
         settings = self.project.get_settings()
         self.project.update_settings(replace(settings, denoise_strength=0.0))
 
-        with patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", side_effect=RuntimeError("no policy")):
+        with patch.object(self.workflow, "_graxpert_session_for", side_effect=RuntimeError("no model")):
             result = self.workflow.do_denoise_starless()
 
         self.assertIsNotNone(result)
@@ -187,13 +181,7 @@ class TestFinishDenoise(QtTestCase):
         fake_session = MagicMock()
         fake_session.denoise_full_strength.return_value = np.full((512, 512, 3), 0.5, dtype=np.float32)
 
-        with (
-            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
-            patch(
-                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-                return_value={"provider": "CPUExecutionProvider"},
-            ),
-        ):
+        with patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session):
             self.workflow.do_denoise_starless()
 
         self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT))
@@ -215,13 +203,7 @@ class TestFinishDenoise(QtTestCase):
         fake_session = MagicMock()
         fake_session.denoise_full_strength.return_value = np.full((512, 512, 3), 0.5, dtype=np.float32)
 
-        with (
-            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
-            patch(
-                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-                return_value={"provider": "CPUExecutionProvider"},
-            ),
-        ):
+        with patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session):
             self.workflow.do_denoise_starless()
 
         endpoint_before = self.project.current_artifact_path(ROLE_DENOISE_ENDPOINT)
@@ -349,10 +331,6 @@ class TestFinishDenoise(QtTestCase):
 
         with (
             patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
-            patch(
-                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-                return_value={"provider": "CPUExecutionProvider"},
-            ),
             patch("startrails.workflow.finish.imread", side_effect=tracking_imread),
             patch("startrails.workflow.finish.blend_denoise", wraps=blend_denoise) as blend_mock,
         ):
@@ -408,13 +386,7 @@ class TestFinishDenoise(QtTestCase):
 
         fake_session = MagicMock()
         fake_session.denoise_full_strength.return_value = denoised
-        with (
-            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
-            patch(
-                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-                return_value={"provider": "CPUExecutionProvider"},
-            ),
-        ):
+        with patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session):
             self.project.update_settings(
                 replace(
                     self.project.get_settings(),
@@ -533,10 +505,6 @@ class TestFinishDenoise(QtTestCase):
 
         with (
             patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
-            patch(
-                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-                return_value={"provider": "CPUExecutionProvider"},
-            ),
             patch("startrails.workflow.finish.imread", side_effect=tracking_imread),
         ):
             self.assertIsNotNone(self.workflow.do_denoise_starless())
@@ -564,13 +532,7 @@ class TestFinishDenoise(QtTestCase):
         self.prepare_separated_project()
         fake_session = MagicMock()
         fake_session.denoise_full_strength.return_value = np.full((512, 512, 3), 0.45, dtype=np.float32)
-        with (
-            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
-            patch(
-                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-                return_value={"provider": "CPUExecutionProvider"},
-            ),
-        ):
+        with patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session):
             self.project.update_settings(
                 replace(
                     self.project.get_settings(),
@@ -615,13 +577,7 @@ class TestFinishDenoise(QtTestCase):
         self.prepare_separated_project()
         fake_session = MagicMock()
         fake_session.denoise_full_strength.return_value = np.full((512, 512, 3), 0.45, dtype=np.float32)
-        with (
-            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
-            patch(
-                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-                return_value={"provider": "CPUExecutionProvider"},
-            ),
-        ):
+        with patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session):
             self.project.update_settings(
                 replace(
                     self.project.get_settings(),
@@ -667,13 +623,7 @@ class TestFinishDenoise(QtTestCase):
         self.prepare_separated_project()
         fake_session = MagicMock()
         fake_session.denoise_full_strength.return_value = np.full((512, 512, 3), 0.45, dtype=np.float32)
-        with (
-            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
-            patch(
-                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-                return_value={"provider": "CPUExecutionProvider"},
-            ),
-        ):
+        with patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session):
             for consumer in ("recombine", "export"):
                 with self.subTest(consumer=consumer):
                     self.assertIsNotNone(self.workflow.do_denoise_starless())
@@ -714,13 +664,7 @@ class TestFinishDenoise(QtTestCase):
         def record_progress(total, increment, count, done, data=None):
             events.append((total, increment, count, done, data))
 
-        with (
-            patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session),
-            patch(
-                "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-                return_value={"provider": "CPUExecutionProvider"},
-            ),
-        ):
+        with patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session):
             self.project.update_settings(
                 replace(
                     self.project.get_settings(),

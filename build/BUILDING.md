@@ -12,11 +12,6 @@ during setup.
 Create and push the `v<version>` Git tag from the final release commit before
 syncing assets.
 
-Prepare the unchanged GraXpert denoise model 3.0.2 as described in
-[its model notice](../third_party/graxpert/denoise/3.0.2/README.md). The model builder verifies its pinned
-hash and requires its attribution/license notices before building an archive.
-GraXpert weights retain CC BY-NC-SA 4.0 terms independently of the app's MIT
-license; this bundled route is for noncommercial distribution.
 
 Build the shared model ZIP once on macOS, Windows, or Linux:
 
@@ -55,23 +50,18 @@ smoke check before approving a platform release:
 
 Pass `--skip-nox` to test the bundled GraXpert model alone. `--image` is optional;
 without it the check uses a textured RGB sample that exercises actual model inference.
-Star removal uses the bundled PyTorch Nox model (`models/removeStars/nox_color_finetuned_best.pt`).
+Star removal uses the bundled PyTorch Nox model (`models/removeStars/nox_color_finetuned_best.pt`),
+and starless denoising uses the bundled PyTorch GraXpert model
+(`models/graxpert/denoise/3.0.2/graxpert-denoise-3.0.2-mixed-int4-int8.pt`).
 
-Select exactly one dependency extra through the normal setup scripts. `cpu`, `cu118`,
-`cu124` and `mps` install CPU `onnxruntime==1.31.1`; `cu133` installs
-`onnxruntime-gpu==1.31.1` for GraXpert CUDA, leaving existing stacking acceleration intact.
-Do not install both ORT distributions in the same environment. This follows the upstream
-[CUDA provider compatibility policy](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
-
-The existing setup/repair runtime check now runs the bundled GraXpert model. It verifies
-CUDA kernel execution from an ORT profile on `cu133`, explicitly reports a failed GPU
-check and verifies CPU fallback, then atomically records the resolved choice in
-`runtime/graxpert-runtime.json`. The explicit command above refreshes the same result;
-pass the installed variant instead of `cpu` when testing another lane. Runtime inference
-reads that result without device probes or silent provider reselection. Repair refreshes
-it after variant changes. A missing model is recorded as unavailable and leaves other
-modes usable; it never produces a verified provider result. Clean Windows/macOS and real CUDA execution remain release
-validation gates; a successful Linux CPU check does not establish those configurations.
+Select one dependency extra (`cpu`, `cu118`, `cu124`, `cu133`, or `mps`) through the
+normal setup scripts. Both Nox and GraXpert run on the installed PyTorch device (`cuda`,
+`mps`, or `cpu`) with automatic CPU fallback on recognized GPU allocation failure.
+The setup/repair runtime check (`src/setup/check_runtime.py`) exercises native
+dependencies and runs a smoke check on the bundled GraXpert model when present; a
+missing model is reported as a notice and leaves other modes and neutral finishing
+usable. Clean Windows/macOS and real GPU execution remain release validation gates;
+a successful Linux CPU check does not establish those configurations.
 
 ## macOS
 

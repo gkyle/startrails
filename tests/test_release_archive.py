@@ -119,8 +119,8 @@ class ModelArchiveTests(unittest.TestCase):
             metadata = models / "config.json"
             graxpert = models / "graxpert"
             graxpert.mkdir()
-            model_data = b"ONNX weights\r\n\x00\xff"
-            (graxpert / "model.onnx").write_bytes(model_data)
+            model_data = b"PyTorch weights\r\n\x00\xff"
+            (graxpert / "graxpert-denoise-3.0.2-mixed-int4-int8.pt").write_bytes(model_data)
             notices = {
                 "README.md": b"# Model attribution\n",
                 "LICENSE.html": b"<p>License</p>\n",
@@ -155,7 +155,10 @@ class ModelArchiveTests(unittest.TestCase):
                 self.assertEqual(archive.read("models/config.json"), b'{\n  "name": "sky"\n}\n')
                 self.assertEqual(archive.read("models/model.safetensors"), b"model weights")
                 self.assertEqual(archive.getinfo("models/config.json").create_system, unix_zip_system)
-                self.assertEqual(archive.read("models/graxpert/model.onnx"), model_data)
+                self.assertEqual(
+                    archive.read("models/graxpert/graxpert-denoise-3.0.2-mixed-int4-int8.pt"),
+                    model_data,
+                )
                 for name, content in notices.items():
                     self.assertEqual(archive.read("models/graxpert/" + name), content)
 

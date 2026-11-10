@@ -7,11 +7,15 @@ import numpy as np
 import torch
 
 from startrails.lib.finish.graxpert import (
+    EXPECTED_PARAM_COUNT as GRAXPERT_EXPECTED_PARAM_COUNT,
+    EXPECTED_WEIGHT_TENSOR_COUNT as GRAXPERT_EXPECTED_WEIGHT_TENSOR_COUNT,
+    MIN_MAD_EPSILON,
+    build_graxpert_model,
     compute_graxpert_stats,
     graxpert_model_identity,
     graxpert_tile_postprocess,
     graxpert_tile_preprocess,
-    MIN_MAD_EPSILON,
+    load_graxpert_model,
 )
 from startrails.lib.finish.nox import (
     EXPECTED_PARAM_COUNT,
@@ -37,8 +41,37 @@ class TestFinishModelSetup(unittest.TestCase):
         self.assertIn(NOX_MANIFEST.sha256, nox_model_identity())
 
         self.assertEqual(GRAXPERT_MANIFEST.version, "3.0.2")
+        self.assertEqual(
+            GRAXPERT_MANIFEST.relative_path,
+            "graxpert/denoise/3.0.2/graxpert-denoise-3.0.2-mixed-int4-int8.pt",
+        )
         self.assertEqual(len(GRAXPERT_MANIFEST.sha256), 64)
-        self.assertGreater(GRAXPERT_MANIFEST.size_bytes, 400_000_000)
+        self.assertEqual(GRAXPERT_MANIFEST.size_bytes, 87_819_947)
+        self.assertIn(GRAXPERT_MANIFEST.version, graxpert_model_identity())
+        self.assertIn(GRAXPERT_MANIFEST.sha256, graxpert_model_identity())
+
+    def test_graxpert_architecture_and_checkpoint_validation(self):
+        model = build_graxpert_model()
+        actual = model.state_dict()
+        self.assertEqual(len(actual), GRAXPERT_EXPECTED_WEIGHT_TENSOR_COUNT)
+        param_count = sum(p.numel() for p in model.parameters())
+        self.assertEqual(param_count, GRAXPERT_EXPECTED_PARAM_COUNT)
+
+        batch_nhwc = torch.full((1, 64, 64, 3), 0.25, dtype=torch.float32)
+        with torch.no_grad():
+            out_nhwc = model(batch_nhwc)
+        self.assertEqual(tuple(out_nhwc.shape), (1, 64, 64, 3))
+        self.assertTrue(torch.isfinite(out_nhwc).all())
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            missing = Path(tmpdir) / "missing.pt"
+            with self.assertRaises(FileNotFoundError):
+                load_graxpert_model(missing, device="cpu")
+
+            corrupt = Path(tmpdir) / "corrupt.pt"
+            corrupt.write_bytes(b"not a checkpoint")
+            with self.assertRaises(ValueError):
+                load_graxpert_model(corrupt, device="cpu")
 
     def test_nox_architecture_matches_expected_state_dict_and_param_count(self):
         model = NoxColor()

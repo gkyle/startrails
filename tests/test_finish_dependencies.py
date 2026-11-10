@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from concurrent.futures import CancelledError
 from dataclasses import replace
-import json
 from pathlib import Path
 import tempfile
 import unittest
-import onnxruntime as ort
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import torch
 
 from startrails.lib.finish.composition import compute_denoise_endpoint_signature
 from startrails.lib.finish.defaults import (
@@ -25,8 +24,8 @@ from startrails.lib.finish.defaults import (
     ROLE_SKY_MASK,
     SCOPE_WHOLE_IMAGE,
 )
-from startrails.lib.finish.graxpert import INPUT_TENSOR_NAME, graxpert_model_identity
-from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
+from startrails.lib.finish.graxpert import graxpert_model_identity
+from startrails.lib.finish.graxpert_runtime import GraXpertSession
 from startrails.lib.finish.nox import NoxSession
 from startrails.lib.model_manifest import GRAXPERT_MANIFEST, NOX_MANIFEST
 from startrails.lib.project_finish import FinishProject
@@ -133,96 +132,46 @@ class TestFinishDependencies(unittest.TestCase):
         self.assertEqual(session.execution_device, "cuda")
         self.assertIsNone(session.fallback_reason)
 
-    def test_runtime_policy_is_loaded_without_probing_and_rejects_stale_state(self):
-        policy = {
-            "provider": "CPUExecutionProvider",
-            "device": "cpu",
-            "verified": True,
-            "ort_version": ort.__version__,
-            "model_sha256": GRAXPERT_MANIFEST.sha256,
-        }
-        path = self.root / "policy.json"
-        with patch("onnxruntime.InferenceSession") as create_session:
-            with self.assertRaisesRegex(RuntimeError, "setup or repair"):
-                resolve_graxpert_runtime_policy(path)
-            path.write_text(json.dumps(policy))
-            self.assertEqual(resolve_graxpert_runtime_policy(path), policy)
-            policy["ort_version"] = "old"
-            path.write_text(json.dumps(policy))
-            with self.assertRaisesRegex(RuntimeError, "stale or invalid"):
-                resolve_graxpert_runtime_policy(path)
-            create_session.assert_not_called()
-
-    def test_setup_verifies_real_inference_and_detects_gpu_fallback(self):
+    def test_setup_verifies_real_graxpert_inference_and_reports_execution_device(self):
         from setup.check_finish_models import check_graxpert
 
         sample = np.full((256, 256, 3), 0.5, np.float32)
         session = MagicMock()
-        session.get_providers.return_value = ["CPUExecutionProvider"]
-        session.run.return_value = [np.zeros((1, 256, 256, 3), np.float32)]
+        session.configured_device = torch.device("cuda")
+        session.execution_device = "cpu"
+        session.fallback_reason = "cuda allocation failure: out of memory; retried on cpu."
+        session.denoise_full_strength.return_value = np.zeros((256, 256, 3), np.float32)
         with (
             patch("setup.check_finish_models.verify_file_integrity", return_value=True),
-            patch("setup.check_finish_models.ort.InferenceSession", return_value=session),
+            patch("setup.check_finish_models.GraXpertSession", return_value=session),
         ):
-            report = check_graxpert(self.root / "model.onnx", sample, variant="cu133")
-            policy = report["selected_policy"]
-            self.assertEqual(policy["provider"], "CPUExecutionProvider")
-            self.assertIn("fell back to CPU", policy["gpu_error"])
-            self.assertTrue(policy["verified"])
-            session.run.side_effect = RuntimeError("CPU inference failed")
+            report = check_graxpert(self.root / "graxpert.pt", sample)
+            self.assertEqual(report["configured_device"], "cuda")
+            self.assertEqual(report["execution_device"], "cpu")
+            self.assertIn("out of memory", report["fallback_reason"])
+            session.denoise_full_strength.side_effect = RuntimeError("CPU inference failed")
             with self.assertRaisesRegex(RuntimeError, "CPU inference failed"):
-                check_graxpert(self.root / "model.onnx", sample, variant="cpu")
-
-    def test_gpu_policy_requires_cuda_kernel_execution(self):
-        from setup.check_finish_models import check_graxpert
-
-        sample = np.full((256, 256, 3), 0.5, np.float32)
-        profile = self.root / "profile.json"
-
-        def create_session(path, *, sess_options, providers):
-            session = MagicMock()
-            session.get_providers.return_value = providers
-            session.run.return_value = [np.zeros((1, 256, 256, 3), np.float32)]
-            session.end_profiling.return_value = str(profile)
-            return session
-
-        with (
-            patch("setup.check_finish_models.verify_file_integrity", return_value=True),
-            patch("setup.check_finish_models.ort.InferenceSession", side_effect=create_session),
-        ):
-            for executed_provider in ("CPUExecutionProvider", "CUDAExecutionProvider"):
-                with self.subTest(executed_provider=executed_provider):
-                    profile.write_text(json.dumps([{"args": {"provider": executed_provider}}]))
-                    policy = check_graxpert(self.root / "model.onnx", sample, variant="cu133")["selected_policy"]
-                    self.assertEqual(policy["provider"], executed_provider)
-                    self.assertEqual(policy["gpu_error"] is None, executed_provider == "CUDAExecutionProvider")
+                check_graxpert(self.root / "graxpert.pt", sample)
 
     def test_missing_model_setup_does_not_block_other_modes(self):
         from setup.check_runtime import main
 
-        policy_path = self.root / "runtime.json"
         with (
             patch("startrails.paths.APPLICATION_DIR", self.root),
-            patch("startrails.lib.finish.graxpert_runtime.GRAXPERT_RUNTIME_POLICY_PATH", policy_path),
             patch("sys.argv", ["check_runtime.py", "--variant", "cpu"]),
         ):
             main()
-        policy = json.loads(policy_path.read_text())
-        self.assertFalse(policy["verified"])
-        with self.assertRaisesRegex(RuntimeError, "model is missing"):
-            resolve_graxpert_runtime_policy(policy_path)
 
     def test_graxpert_session_tiling_hann_blending_and_cancellation(self):
-        model_path = self.root / "fake_model.onnx"
+        model_path = self.root / "fake_graxpert.pt"
         model_path.write_bytes(b"dummy")
 
-        with patch("onnxruntime.InferenceSession") as mock_ort:
-            mock_sess = MagicMock()
-            mock_sess.get_providers.return_value = ["CPUExecutionProvider"]
-            mock_sess.run.side_effect = lambda names, feeds: [feeds["gen_input_image"].copy()]
-            mock_ort.return_value = mock_sess
+        class FakeGraXpertModel:
+            def __call__(self, batch):
+                return batch.clone()
 
-            session = GraXpertSession(model_path=model_path, provider="CPUExecutionProvider")
+        with patch("startrails.lib.finish.graxpert_runtime.load_graxpert_model", return_value=FakeGraXpertModel()):
+            session = GraXpertSession(model_path=model_path, device="cpu")
 
             image = np.full((512, 512, 3), 0.5, dtype=np.float32)
             progress_events = []
@@ -252,45 +201,55 @@ class TestFinishDependencies(unittest.TestCase):
                 session.denoise_full_strength(image, should_interrupt=should_interrupt)
 
     def test_graxpert_session_retries_recognized_cuda_allocation_failure_on_cpu(self):
-        model_path = self.root / "fake_model.onnx"
+        model_path = self.root / "fake_graxpert.pt"
         model_path.write_bytes(b"dummy")
         image = np.random.default_rng(0).uniform(0.1, 0.8, (256, 256, 3)).astype(np.float32)
 
-        gpu_session = MagicMock()
-        gpu_session.get_providers.return_value = ["CUDAExecutionProvider"]
-        gpu_session.run.side_effect = RuntimeError("CUDA failure 2: out of memory")
-        cpu_session = MagicMock()
-        cpu_session.get_providers.return_value = ["CPUExecutionProvider"]
-        cpu_session.run.side_effect = lambda names, feeds: [feeds[INPUT_TENSOR_NAME].copy()]
+        class CudaOomModel:
+            def __call__(self, batch):
+                raise RuntimeError("CUDA out of memory. Tried to allocate 512.00 MiB")
 
-        with patch("onnxruntime.InferenceSession", side_effect=[gpu_session, cpu_session]) as create_session:
-            session = GraXpertSession(model_path=model_path, provider="CUDAExecutionProvider")
+        class CpuIdentityModel:
+            def __call__(self, batch):
+                return batch.clone()
+
+        with (
+            patch("torch.cuda.is_available", return_value=True),
+            patch(
+                "startrails.lib.finish.graxpert_runtime.load_graxpert_model",
+                side_effect=[CudaOomModel(), CpuIdentityModel()],
+            ) as load,
+        ):
+            session = GraXpertSession(model_path=model_path, device="cuda")
             result = session.denoise_full_strength(image)
 
-        self.assertEqual(create_session.call_count, 2)
-        self.assertEqual(create_session.call_args_list[0].kwargs["providers"], ["CUDAExecutionProvider"])
-        self.assertEqual(create_session.call_args_list[1].kwargs["providers"], ["CPUExecutionProvider"])
-        self.assertEqual(session.configured_provider, "CUDAExecutionProvider")
-        self.assertEqual(session.execution_provider, "CPUExecutionProvider")
+        self.assertEqual(load.call_count, 2)
+        self.assertEqual(str(load.call_args_list[0].args[1]), "cuda")
+        self.assertEqual(str(load.call_args_list[1].args[1]), "cpu")
+        self.assertEqual(str(session.configured_device), "cuda")
+        self.assertEqual(session.execution_device, "cpu")
         self.assertIn("out of memory", session.fallback_reason)
         np.testing.assert_allclose(result, image, atol=1e-6)
 
     def test_graxpert_session_propagates_non_allocation_execution_errors(self):
-        model_path = self.root / "fake_model.onnx"
+        model_path = self.root / "fake_graxpert.pt"
         model_path.write_bytes(b"dummy")
         image = np.full((256, 256, 3), 0.5, dtype=np.float32)
 
-        gpu_session = MagicMock()
-        gpu_session.get_providers.return_value = ["CUDAExecutionProvider"]
-        gpu_session.run.side_effect = RuntimeError("CUDA kernel launch failed: invalid argument")
+        class BrokenModel:
+            def __call__(self, batch):
+                raise RuntimeError("CUDA kernel launch failed: invalid argument")
 
-        with patch("onnxruntime.InferenceSession", return_value=gpu_session) as create_session:
-            session = GraXpertSession(model_path=model_path, provider="CUDAExecutionProvider")
+        with (
+            patch("torch.cuda.is_available", return_value=True),
+            patch("startrails.lib.finish.graxpert_runtime.load_graxpert_model", return_value=BrokenModel()) as load,
+        ):
+            session = GraXpertSession(model_path=model_path, device="cuda")
             with self.assertRaisesRegex(RuntimeError, "invalid argument"):
                 session.denoise_full_strength(image)
 
-        self.assertEqual(create_session.call_count, 1)
-        self.assertEqual(session.execution_provider, "CUDAExecutionProvider")
+        self.assertEqual(load.call_count, 1)
+        self.assertEqual(session.execution_device, "cuda")
         self.assertIsNone(session.fallback_reason)
 
     def test_remove_stars_operation_adapter(self):
@@ -410,23 +369,29 @@ class TestFinishDependencies(unittest.TestCase):
             self.assertEqual(status_ready["device"], "cpu")
             self.assertEqual(status_ready["version"], NOX_MANIFEST.version)
 
-        # GraXpert status surfaces the resolved provider policy for diagnostics.
-        policy = {"provider": "CUDAExecutionProvider", "device": "cuda", "verified": True}
-        with patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", return_value=policy):
+        # GraXpert status surfaces model readiness and resolved device for diagnostics.
+        fake_graxpert = self.root / "models" / GRAXPERT_MANIFEST.relative_path
+        fake_graxpert.parent.mkdir(parents=True, exist_ok=True)
+        with fake_graxpert.open("wb") as stream:
+            stream.truncate(GRAXPERT_MANIFEST.size_bytes)
+        with (
+            patch("startrails.workflow.finish.APPLICATION_DIR", self.root),
+            patch("startrails.workflow.finish.resolve_graxpert_device", return_value="cuda"),
+        ):
             gx_status = wf.get_graxpert_status()
-        self.assertEqual(gx_status["policy"], policy)
-        self.assertEqual(gx_status["provider"], "CUDAExecutionProvider")
+        self.assertTrue(gx_status["configured"])
+        self.assertTrue(gx_status["model_ready"])
         self.assertEqual(gx_status["device"], "cuda")
-        self.assertIn("model_ready", gx_status)
+        self.assertEqual(gx_status["version"], GRAXPERT_MANIFEST.version)
 
-    def test_check_finish_models_writes_runtime_policy_and_runs_nox(self):
+    def test_check_finish_models_runs_graxpert_and_nox(self):
         from setup.check_finish_models import main as check_models_main
 
         with (
             patch(
                 "setup.check_finish_models.check_graxpert",
-                return_value={"selected_policy": {"provider": "CPUExecutionProvider", "device": "cpu"}},
-            ),
+                return_value={"version": GRAXPERT_MANIFEST.version, "execution_device": "cpu"},
+            ) as mock_check_graxpert,
             patch(
                 "setup.check_finish_models.check_nox",
                 return_value=(np.zeros((512, 512, 3), dtype=np.float32), {"version": "1.0.0"}),
@@ -437,15 +402,13 @@ class TestFinishDependencies(unittest.TestCase):
                     "check_finish_models.py",
                     "--variant",
                     "cpu",
-                    "--runtime-policy",
-                    str(self.root / "policy.json"),
                 ],
             ),
         ):
             check_models_main()
 
+        mock_check_graxpert.assert_called_once()
         mock_check_nox.assert_called_once()
-        self.assertEqual(json.loads((self.root / "policy.json").read_text())["provider"], "CPUExecutionProvider")
 
     def test_ui_separate_stars_settings(self):
         from support import qt_app
@@ -535,12 +498,8 @@ class TestFinishDependencyUI(QtTestCase):
         project.update_settings(replace(project.get_settings(), denoise_strength=0.0))
         app, workflow = self.make_denoise_app(project)
 
-        with (
-            patch("startrails.workflow.finish.resolve_graxpert_runtime_policy") as resolve_policy,
-            patch("startrails.workflow.finish.GraXpertSession") as init_session,
-        ):
+        with patch("startrails.workflow.finish.GraXpertSession") as init_session:
             result = workflow.do_denoise_starless()
-            resolve_policy.assert_not_called()
             init_session.assert_not_called()
         self.assertEqual(result.operation, "Finished Starless")
         finished = project.current_artifact_path(ROLE_FINISHED_STARLESS)
@@ -572,12 +531,8 @@ class TestFinishDependencyUI(QtTestCase):
         project.update_settings(replace(project.get_settings(), denoise_strength=50.0, denoise_scope="sky_only"))
         app, workflow = self.make_denoise_app(project)
         denoised = np.full_like(starless, 0.1)
-        policy = {"provider": "CPUExecutionProvider", "device": "cpu", "verified": True}
 
-        with (
-            patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", return_value=policy),
-            patch("startrails.workflow.finish.GraXpertSession") as init_session,
-        ):
+        with patch("startrails.workflow.finish.GraXpertSession") as init_session:
             init_session.return_value.denoise_full_strength.return_value = denoised
             app.activeOperation = None
             workflow.do_denoise_starless()
@@ -615,7 +570,7 @@ class TestFinishDependencyUI(QtTestCase):
         self.assertIsNone(project.current_artifact_path(ROLE_DENOISED_STARLESS))
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_STARLESS))
 
-    def test_workflow_reports_execution_provider_and_fallback_reason(self):
+    def test_workflow_reports_execution_device_and_fallback_reason(self):
         source = np.full((16, 24, 3), 0.4, np.float32)
         starless = np.full((16, 24, 3), 0.3, np.float32)
         project = self.prepare_separated_project(
@@ -627,35 +582,38 @@ class TestFinishDependencyUI(QtTestCase):
         )
         project.update_settings(replace(project.get_settings(), denoise_strength=50.0, denoise_scope=SCOPE_WHOLE_IMAGE))
         app, workflow = self.make_denoise_app(project)
-        policy = {"provider": "CUDAExecutionProvider", "device": "cuda", "verified": True}
         fake_session = MagicMock()
-        fake_session.configured_provider = "CUDAExecutionProvider"
-        fake_session.execution_provider = "CPUExecutionProvider"
-        fake_session.fallback_reason = (
-            "CUDAExecutionProvider allocation failure: CUDA failure 2: out of memory; retried on CPUExecutionProvider."
-        )
+        fake_session.configured_device = torch.device("cuda")
+        fake_session.execution_device = "cpu"
+        fake_session.fallback_reason = "cuda allocation failure: CUDA out of memory; retried on cpu."
         fake_session.denoise_full_strength.return_value = np.full_like(starless, 0.1)
 
+        fake_graxpert = self.root / "models" / GRAXPERT_MANIFEST.relative_path
+        fake_graxpert.parent.mkdir(parents=True, exist_ok=True)
+        with fake_graxpert.open("wb") as stream:
+            stream.truncate(GRAXPERT_MANIFEST.size_bytes)
+
         with (
-            patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", return_value=policy),
+            patch("startrails.workflow.finish.APPLICATION_DIR", self.root),
+            patch("startrails.workflow.finish.resolve_graxpert_device", return_value=torch.device("cuda")),
             patch("startrails.workflow.finish.GraXpertSession", return_value=fake_session),
         ):
             workflow.do_denoise_starless()
             status = workflow.get_graxpert_status()
 
-        # Configured provider remains the setup-owned policy value.
-        self.assertEqual(status["provider"], "CUDAExecutionProvider")
-        self.assertEqual(status["execution_provider"], "CPUExecutionProvider")
+        self.assertEqual(status["device"], "cuda")
+        self.assertEqual(status["execution_device"], "cpu")
         self.assertIn("out of memory", status["fallback_reason"])
 
-        # A session from a previous provider lane must not report stale execution state.
-        with patch(
-            "startrails.workflow.finish.resolve_graxpert_runtime_policy",
-            return_value={"provider": "CPUExecutionProvider", "device": "cpu", "verified": True},
+        # A session from a previous model key must not report stale execution state.
+        workflow._graxpert_session_key = "stale-key"
+        with (
+            patch("startrails.workflow.finish.APPLICATION_DIR", self.root),
+            patch("startrails.workflow.finish.resolve_graxpert_device", return_value=torch.device("cpu")),
         ):
             stale_status = workflow.get_graxpert_status()
-        self.assertEqual(stale_status["provider"], "CPUExecutionProvider")
-        self.assertIsNone(stale_status["execution_provider"])
+        self.assertEqual(stale_status["device"], "cpu")
+        self.assertIsNone(stale_status["execution_device"])
         self.assertIsNone(stale_status["fallback_reason"])
 
     def test_workflow_recombine_uses_finished_plate_with_separated_negative_correction(self):
@@ -675,13 +633,9 @@ class TestFinishDependencyUI(QtTestCase):
             replace(project.get_settings(), denoise_strength=100.0, denoise_scope=SCOPE_WHOLE_IMAGE)
         )
         app, workflow = self.make_denoise_app(project)
-        policy = {"provider": "CPUExecutionProvider", "device": "cpu", "verified": True}
         denoised = np.full_like(starless, 0.5)
 
-        with (
-            patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", return_value=policy),
-            patch("startrails.workflow.finish.GraXpertSession") as init_session,
-        ):
+        with patch("startrails.workflow.finish.GraXpertSession") as init_session:
             init_session.return_value.denoise_full_strength.return_value = denoised
             workflow.do_denoise_starless()
             result = workflow.do_recombine()
@@ -717,11 +671,7 @@ class TestFinishDependencyUI(QtTestCase):
         self.assertFalse(endpoint.exists())
 
         project.update_settings(replace(project.get_settings(), denoise_strength=75.0, denoise_scope=SCOPE_WHOLE_IMAGE))
-        policy = {"provider": "CPUExecutionProvider", "device": "cpu", "verified": True}
-        with (
-            patch("startrails.workflow.finish.resolve_graxpert_runtime_policy", return_value=policy),
-            patch("startrails.workflow.finish.GraXpertSession") as init_session,
-        ):
+        with patch("startrails.workflow.finish.GraXpertSession") as init_session:
             init_session.return_value.denoise_full_strength.side_effect = CancelledError()
             self.assertIsNone(workflow.do_denoise_starless())
 

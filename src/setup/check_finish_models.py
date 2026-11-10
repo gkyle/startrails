@@ -4,24 +4,14 @@ import argparse
 import json
 from pathlib import Path
 import sys
-from tempfile import TemporaryDirectory
 from time import perf_counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
-import onnxruntime as ort
 
-from startrails.lib.artifacts import ArtifactTransaction
-from startrails.lib.finish.graxpert import (
-    INPUT_TENSOR_NAME,
-    OUTPUT_TENSOR_NAME,
-    WINDOW_SIZE as GRAXPERT_WINDOW_SIZE,
-    compute_graxpert_stats,
-    graxpert_tile_postprocess,
-    graxpert_tile_preprocess,
-)
-from startrails.lib.finish.graxpert_runtime import GRAXPERT_RUNTIME_POLICY_PATH
+from startrails.lib.finish.graxpert import WINDOW_SIZE as GRAXPERT_WINDOW_SIZE
+from startrails.lib.finish.graxpert_runtime import GraXpertSession
 from startrails.lib.finish.nox import (
     DEFAULT_STRIDE,
     NoxSession,
@@ -56,66 +46,24 @@ def create_smoke_image(size: int = SMOKE_IMAGE_SIZE) -> np.ndarray:
     return np.round(np.clip(sky, 0.0, 1.0) * 65535.0).astype(np.uint16)
 
 
-def check_graxpert(model_path: Path, image: np.ndarray, *, variant: str) -> dict:
-    """Setup owns selection; verify actual GPU kernels, explicitly report CPU fallback."""
+def check_graxpert(model_path: Path, image: np.ndarray) -> dict:
+    """Verify GraXpert weights and smoke-test tiled PyTorch inference."""
     if not verify_file_integrity(model_path, GRAXPERT_MANIFEST.sha256, GRAXPERT_MANIFEST.size_bytes):
         raise ValueError(f"Missing or unverified GraXpert model: {model_path}")
     started = perf_counter()
-    median, mad = compute_graxpert_stats(image)
     tile = image[:GRAXPERT_WINDOW_SIZE, :GRAXPERT_WINDOW_SIZE]
     if tile.shape != (GRAXPERT_WINDOW_SIZE, GRAXPERT_WINDOW_SIZE, 3):
         raise ValueError("GraXpert setup requires at least a 256-pixel RGB sample.")
-    batch = graxpert_tile_preprocess(tile, median, mad)[None]
-
-    def run(provider):
-        with TemporaryDirectory(prefix="startrails-ort-profile-") as temporary:
-            options = ort.SessionOptions()
-            options.enable_profiling = provider == "CUDAExecutionProvider"
-            options.profile_file_prefix = str(Path(temporary) / "profile")
-            session = ort.InferenceSession(str(model_path), sess_options=options, providers=[provider])
-            session.disable_fallback()
-            if session.get_providers()[0] != provider:
-                raise RuntimeError(f"Requested {provider}, but ONNX Runtime fell back to CPU.")
-            output = session.run([OUTPUT_TENSOR_NAME], {INPUT_TENSOR_NAME: batch})[0]
-            if output.shape != batch.shape or output.dtype != np.float32 or not np.isfinite(output).all():
-                raise ValueError("GraXpert inference returned invalid model output.")
-            if options.enable_profiling:
-                profile = json.loads(Path(session.end_profiling()).read_text())
-                if not any(event.get("args", {}).get("provider") == provider for event in profile):
-                    raise RuntimeError("GraXpert inference did not execute any CUDA kernels.")
-            restored = graxpert_tile_postprocess(output[0], tile, median, mad)
-            if not np.isfinite(restored).all():
-                raise ValueError("GraXpert postprocessing returned non-finite output.")
-            return session.get_providers(), list(output.shape)
-
-    if variant == "cu133":
-        # Match the application's Torch import before initializing native CUDA libraries.
-        import torch  # noqa: F401
-
-    gpu_error = None
-    provider = "CUDAExecutionProvider" if variant == "cu133" else "CPUExecutionProvider"
-    try:
-        providers, shape = run(provider)
-    except Exception as error:
-        if provider == "CPUExecutionProvider":
-            raise
-        gpu_error = str(error)
-        provider = "CPUExecutionProvider"
-        providers, shape = run(provider)
-    policy = {
-        "provider": provider,
-        "device": "cuda" if provider == "CUDAExecutionProvider" else "cpu",
-        "variant": variant,
-        "ort_version": ort.__version__,
-        "model_sha256": GRAXPERT_MANIFEST.sha256,
-        "gpu_error": gpu_error,
-        "verified": True,
-    }
+    session = GraXpertSession(model_path=model_path)
+    denoised = session.denoise_full_strength(tile)
+    if denoised.shape != tile.shape or denoised.dtype != np.float32 or not np.isfinite(denoised).all():
+        raise ValueError("GraXpert inference returned invalid model output.")
     return {
-        "version": ort.__version__,
-        "providers": providers,
-        "selected_policy": policy,
-        "shape": shape,
+        "version": GRAXPERT_MANIFEST.version,
+        "configured_device": str(session.configured_device),
+        "execution_device": session.execution_device,
+        "fallback_reason": session.fallback_reason,
+        "shape": list(denoised.shape),
         "seconds": perf_counter() - started,
     }
 
@@ -144,13 +92,6 @@ def check_nox(model_path: Path, image: np.ndarray, *, chroma_postfilter: bool = 
     }
 
 
-def persist_graxpert_policy(policy: dict, path: Path) -> None:
-    with ArtifactTransaction() as transaction:
-        staged = transaction.stage(path)
-        staged.write_text(json.dumps(policy, indent=2), encoding="utf-8")
-        transaction.commit()
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -160,10 +101,7 @@ def main():
     parser.add_argument("--skip-nox", action="store_true", help="Skip Nox star removal smoke check")
     parser.add_argument("--image", type=Path, help="Sample RGB image; check its central 512-pixel crop")
     parser.add_argument("--variant", choices=("cpu", "cu118", "cu124", "cu133", "mps"))
-    parser.add_argument("--runtime-policy", type=Path, default=GRAXPERT_RUNTIME_POLICY_PATH)
     args = parser.parse_args()
-    if args.variant is None:
-        parser.error("--variant must match the installed setup variant")
     if args.image is None:
         pixels = create_smoke_image()
     else:
@@ -178,8 +116,7 @@ def main():
     report = {}
     if not args.skip_nox:
         image, report["nox"] = check_nox(args.nox_model, image)
-    report["graxpert"] = check_graxpert(args.graxpert_model, image, variant=args.variant)
-    persist_graxpert_policy(report["graxpert"]["selected_policy"], args.runtime_policy)
+    report["graxpert"] = check_graxpert(args.graxpert_model, image)
     print(json.dumps(report, indent=2))
 
 

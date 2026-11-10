@@ -17,7 +17,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from startrails.lib.finish.graxpert_runtime import is_cuda_allocation_failure
+from startrails.lib.gpu import (
+    free_gpu_memory,
+    is_cuda_allocation_failure,
+    resolve_torch_device as resolve_nox_device,
+)
 from startrails.lib.image_io import validate_image_array
 from startrails.lib.model_manifest import NOX_MANIFEST, NOX_MODEL_SHA256, NOX_MODEL_VERSION
 from startrails.paths import APPLICATION_DIR
@@ -464,33 +468,6 @@ def axis_starts(limit: int, window: int, stride: int) -> List[int]:
     return starts
 
 
-def resolve_nox_device(device_arg: Union[str, torch.device] = "auto") -> torch.device:
-    """Resolve compute device string or torch.device to a concrete torch.device."""
-    if isinstance(device_arg, torch.device):
-        device_arg = str(device_arg)
-    choice = device_arg.strip().lower()
-    if choice == "auto":
-        if torch.cuda.is_available():
-            return torch.device("cuda")
-        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            return torch.device("mps")
-        return torch.device("cpu")
-    if choice in ("gpu", "cuda"):
-        if not torch.cuda.is_available():
-            raise RuntimeError("CUDA device requested but torch.cuda.is_available() is False.")
-        return torch.device("cuda")
-    if choice.startswith("cuda:") or choice.startswith("gpu:"):
-        idx = choice.split(":")[-1]
-        return torch.device(f"cuda:{idx}")
-    if choice == "mps":
-        if not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
-            raise RuntimeError("MPS device requested but torch.backends.mps.is_available() is False.")
-        return torch.device("mps")
-    if choice == "cpu":
-        return torch.device("cpu")
-    raise ValueError(f"Unknown device specification: {device_arg}")
-
-
 def load_nox_model(model_path: Path, device: torch.device) -> NoxColor:
     """Load NoxColor model weights from a PyTorch checkpoint."""
     if not model_path.is_file():
@@ -696,8 +673,8 @@ class NoxSession:
         starless_crop = out_accum[:, pad_top : pad_top + h, pad_left : pad_left + w].clamp(0.0, 1.0)
         starless_np = starless_crop.permute(1, 2, 0).cpu().numpy().astype(np.float32, copy=False)
 
-        if self.device.type == "cuda":
-            torch.cuda.empty_cache()
+        if self.device.type != "cpu":
+            free_gpu_memory()
 
         return starless_np
 

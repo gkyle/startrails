@@ -324,13 +324,12 @@ class FinishStarlessSettings(QWidget):
         has_prerequisites: bool = True,
         has_endpoint: bool = False,
     ) -> None:
-        """Update provider/readiness display and interactive control states."""
+        """Update device/readiness display and interactive control states."""
         self._has_prerequisites = has_prerequisites
         self._has_endpoint = has_endpoint
 
-        policy = status.get("policy")
-        model_ready = status.get("model_ready", False)
-        is_ready = bool(model_ready and policy and policy.get("verified", False))
+        model_ready = bool(status.get("model_ready", status.get("configured", False)))
+        is_ready = model_ready
         self._is_ready = is_ready
 
         self.unconfigured_box.setVisible(not is_ready)
@@ -355,28 +354,23 @@ class FinishStarlessSettings(QWidget):
                 else:
                     self.lbl_unconf_msg.setText(self._default_unconf_msg)
         else:
-            configured_provider = policy.get("provider", "CPU")
-            configured_label = self._format_provider_label(configured_provider)
-            variant = policy.get("variant")
-            variant_str = f" ({variant})" if variant else ""
-
-            exec_provider = status.get("execution_provider")
+            configured_device = str(status.get("device") or "cpu")
+            configured_label = self._format_device_label(configured_device)
+            exec_device = status.get("execution_device")
             fallback_reason = status.get("fallback_reason")
 
-            if exec_provider and exec_provider != configured_provider:
-                actual_label = self._format_provider_label(exec_provider)
+            if exec_device and exec_device != configured_device:
+                actual_label = self._format_device_label(str(exec_device))
                 if fallback_reason:
-                    details = (
-                        f"{actual_label} (fallback: {fallback_reason}; configured: {configured_label}{variant_str})"
-                    )
+                    details = f"{actual_label} (fallback: {fallback_reason}; configured: {configured_label})"
                 else:
-                    details = f"{actual_label} (fallback from {configured_label}{variant_str})"
+                    details = f"{actual_label} (fallback from {configured_label})"
                 self.lbl_provider_dot.setStyleSheet("color: #f59e0b;")
             elif fallback_reason:
-                details = f"{configured_label}{variant_str} (fallback: {fallback_reason})"
+                details = f"{configured_label} (fallback: {fallback_reason})"
                 self.lbl_provider_dot.setStyleSheet("color: #f59e0b;")
             else:
-                details = f"{configured_label}{variant_str}"
+                details = configured_label
                 self.lbl_provider_dot.setStyleSheet("color: #10b981;")
 
             info_text = f"GraXpert AI 3.0.2 • {details}"
@@ -387,12 +381,15 @@ class FinishStarlessSettings(QWidget):
         self._update_controls_enabled()
 
     @staticmethod
-    def _format_provider_label(provider: str) -> str:
-        if provider == "CUDAExecutionProvider":
+    def _format_device_label(device: str) -> str:
+        lower = device.strip().lower()
+        if lower == "cuda" or lower.startswith("cuda:"):
             return "CUDA (GPU)"
-        if provider == "CPUExecutionProvider":
+        if lower == "mps":
+            return "MPS (GPU)"
+        if lower == "cpu":
             return "CPU"
-        return provider
+        return device
 
 
 __all__ = ["FinishStarlessSettings"]

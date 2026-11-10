@@ -290,10 +290,11 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertTrue(self.widget.check_enable_sharpen.isChecked())
 
     def test_refresh_status_verified_cuda(self):
-        """Verified CUDA policy displays provider info badge."""
+        """Configured CUDA device displays GPU info badge."""
         status = {
-            "policy": {"provider": "CUDAExecutionProvider", "variant": "cu133", "verified": True},
+            "configured": True,
             "model_ready": True,
+            "device": "cuda",
             "setup_error": None,
         }
         self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
@@ -303,10 +304,11 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertIn("CUDA (GPU)", self.widget.lbl_provider_info.text())
 
     def test_refresh_status_verified_cpu(self):
-        """Verified CPU policy displays CPU badge."""
+        """Configured CPU device displays CPU badge."""
         status = {
-            "policy": {"provider": "CPUExecutionProvider", "variant": "cpu", "verified": True},
+            "configured": True,
             "model_ready": True,
+            "device": "cpu",
             "setup_error": None,
         }
         self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
@@ -316,12 +318,13 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertIn("CPU", self.widget.lbl_provider_info.text())
 
     def test_refresh_status_displays_fallback_and_configured_provider(self):
-        """When execution_provider and fallback_reason are present, UI displays actual provider, fallback, and configured."""
+        """When execution_device and fallback_reason are present, UI displays actual device, fallback, and configured."""
         status = {
-            "policy": {"provider": "CUDAExecutionProvider", "variant": "cu133", "verified": True},
+            "configured": True,
             "model_ready": True,
+            "device": "cuda",
             "setup_error": None,
-            "execution_provider": "CPUExecutionProvider",
+            "execution_device": "cpu",
             "fallback_reason": "CUDA out of memory",
         }
         self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
@@ -336,7 +339,7 @@ class TestFinishStarlessSettings(QtTestCase):
     def test_refresh_status_missing_model_shows_warning(self):
         """Missing GraXpert model shows unconfigured warning."""
         status = {
-            "policy": None,
+            "configured": False,
             "model_ready": False,
             "setup_error": "Model file not found",
         }
@@ -347,7 +350,7 @@ class TestFinishStarlessSettings(QtTestCase):
     def test_cached_endpoint_surfaces_cached_blending_message(self):
         """When a cached endpoint exists, notice indicates cached endpoint is available for blending."""
         status = {
-            "policy": None,
+            "configured": False,
             "model_ready": False,
             "setup_error": "Model file missing",
         }
@@ -359,8 +362,9 @@ class TestFinishStarlessSettings(QtTestCase):
     def test_refresh_status_missing_prerequisites_disables_controls(self):
         """Missing prerequisites disables adjustment sliders regardless of readiness."""
         status = {
-            "policy": {"provider": "CUDAExecutionProvider", "verified": True},
+            "configured": True,
             "model_ready": True,
+            "device": "cuda",
             "setup_error": None,
         }
         self.widget.refresh_status(status, has_prerequisites=False, has_endpoint=False)
@@ -432,7 +436,7 @@ class TestSidebarFinishPrerequisites(QtTestCase):
         with patch.object(
             FinishWorkflow,
             "get_graxpert_status",
-            return_value={"policy": None, "model_ready": False, "setup_error": "missing"},
+            return_value={"configured": False, "model_ready": False, "setup_error": "missing"},
         ):
             self.sidebar.update_prerequisites(self.project)
             self.assertEqual(self.sidebar.starlessCard.status, "ready")
@@ -443,8 +447,9 @@ class TestSidebarFinishPrerequisites(QtTestCase):
             FinishWorkflow,
             "get_graxpert_status",
             return_value={
-                "policy": {"provider": "CUDAExecutionProvider", "verified": True},
+                "configured": True,
                 "model_ready": True,
+                "device": "cuda",
                 "setup_error": None,
             },
         ):
@@ -460,8 +465,9 @@ class TestSidebarFinishPrerequisites(QtTestCase):
             FinishWorkflow,
             "get_graxpert_status",
             return_value={
-                "policy": {"provider": "CUDAExecutionProvider", "verified": True},
+                "configured": True,
                 "model_ready": True,
+                "device": "cuda",
                 "setup_error": None,
             },
         ):
@@ -567,8 +573,9 @@ class TestFinishViewStarlessInteraction(QtTestCase):
                 FinishWorkflow,
                 "get_graxpert_status",
                 return_value={
-                    "policy": {"provider": "CUDAExecutionProvider", "verified": True},
+                    "configured": True,
                     "model_ready": True,
+                    "device": "cuda",
                     "setup_error": None,
                 },
             ),
@@ -944,7 +951,7 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             patch.object(
                 FinishWorkflow,
                 "get_graxpert_status",
-                return_value={"policy": None, "model_ready": False, "setup_error": "Model missing"},
+                return_value={"configured": False, "model_ready": False, "setup_error": "Model missing"},
             ),
             patch.object(FinishWorkflow, "do_denoise_starless", side_effect=lambda **kw: recompute_called.append(True)),
             patch.object(FinishWorkflow, "do_recombine"),
@@ -973,8 +980,9 @@ class TestFinishViewStarlessInteraction(QtTestCase):
                 FinishWorkflow,
                 "get_graxpert_status",
                 return_value={
-                    "policy": {"provider": "CUDAExecutionProvider", "verified": True},
+                    "configured": True,
                     "model_ready": True,
+                    "device": "cuda",
                     "setup_error": None,
                 },
             ),

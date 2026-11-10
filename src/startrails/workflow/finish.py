@@ -45,7 +45,7 @@ from startrails.lib.finish.nox import (
 )
 from startrails.lib.finish.separation import compute_separation_signature
 from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
-from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_runtime_policy
+from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_device
 from startrails.lib.image_io import imread, imwrite
 from startrails.lib.model_manifest import GRAXPERT_MANIFEST, NOX_MANIFEST
 from startrails.lib.project_finish import LAYER_EXPORT_SUFFIXES, FinishProject
@@ -173,7 +173,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self._nox_session: Optional[NoxSession] = None
         self._nox_session_key: Optional[str] = None
         self._graxpert_session: Optional[GraXpertSession] = None
-        self._graxpert_session_key: Optional[Tuple[str, str]] = None
+        self._graxpert_session_key: Optional[str] = None
         self._starless_arrays = _DecodedArrayCache()
 
     @property
@@ -688,40 +688,33 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         }
 
     def get_graxpert_status(self) -> dict:
-        """Return the current runtime execution policy and model file readiness for GraXpert."""
-        try:
-            policy = resolve_graxpert_runtime_policy()
-            setup_error = None
-        except (RuntimeError, ValueError, OSError) as error:
-            policy = None
-            setup_error = str(error)
+        """Return runtime device selection and model readiness for GraXpert denoising."""
         model_path = APPLICATION_DIR / "models" / GRAXPERT_MANIFEST.relative_path
-        # Status is refreshed often; setup/repair already verified the model hash.
-        # A cheap presence/size check avoids rehashing the ~478 MB weights here.
+        # Status is refreshed often; avoid rehashing the ~88 MB weights on every
+        # UI refresh while verify-time helpers check the full SHA-256 digest.
         try:
             model_ready = model_path.is_file() and model_path.stat().st_size == GRAXPERT_MANIFEST.size_bytes
-        except OSError:
+            setup_error = None if model_ready else f"GraXpert model not found or invalid: {model_path}"
+        except OSError as error:
             model_ready = False
-        provider = policy.get("provider") if policy is not None else None
-        device = policy.get("device") if policy is not None else None
+            setup_error = str(error)
+        try:
+            device = str(resolve_graxpert_device())
+        except (RuntimeError, OSError, ValueError) as error:
+            device = "cpu"
+            if setup_error is None:
+                setup_error = str(error)
         session = self._graxpert_session
-        # A session created for a previous policy lane no longer describes the
-        # configured runtime, so do not present its execution state as current.
-        session_matches_policy = (
-            session is not None and provider is not None and session.configured_provider == provider
-        )
+        session_matches_device = session is not None and str(session.configured_device) == device
         return {
-            "configured": policy is not None and model_ready,
-            # Configured provider comes from the setup-owned policy; execution
-            # fields report what the last session actually used, including a CPU retry.
-            "provider": provider,
-            "device": device,
-            "execution_provider": session.execution_provider if session_matches_policy else None,
-            "fallback_reason": session.fallback_reason if session_matches_policy else None,
-            "policy": policy,
-            "setup_error": setup_error,
+            "configured": model_ready,
             "model_ready": model_ready,
             "model_path": str(model_path),
+            "version": GRAXPERT_MANIFEST.version,
+            "device": device,
+            "execution_device": session.execution_device if session_matches_device else None,
+            "fallback_reason": session.fallback_reason if session_matches_device else None,
+            "setup_error": setup_error,
         }
 
     def invalidate_if_graxpert_changed(self) -> bool:
@@ -764,19 +757,13 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self._nox_session_key = key
         return session
 
-    def _graxpert_session_for(self, policy: dict) -> GraXpertSession:
-        """Reuse one verified inference session for the resolved provider policy.
-
-        The setup result is authoritative; processing must not re-probe providers or
-        rediscover capabilities. A cached session also avoids reloading the model on
-        every interactive strength/scope request.
-        """
-        provider = str(policy["provider"])
-        key = (provider, graxpert_model_identity())
+    def _graxpert_session_for(self) -> GraXpertSession:
+        """Reuse one loaded GraXpert inference session for the pinned model identity."""
+        key = graxpert_model_identity()
         session = self._graxpert_session
         if session is not None and self._graxpert_session_key == key:
             return session
-        session = GraXpertSession(provider=provider)
+        session = GraXpertSession()
         self._graxpert_session = session
         self._graxpert_session_key = key
         return session
@@ -1336,8 +1323,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         if strength == 0:
                             denoised_arr = base
                         elif need_endpoint:
-                            policy = resolve_graxpert_runtime_policy()
-                            session = self._graxpert_session_for(policy)
+                            session = self._graxpert_session_for()
                             endpoint_dest = project.artifact_path(ROLE_DENOISE_ENDPOINT, for_write=True)
                             op = self._new_operation(GraXpertDenoise)
                             inference_progress = (
