@@ -443,10 +443,30 @@ class TestFinishDenoise(QtTestCase):
                 atol=1.5 / 65535,
             )
 
+            # Disabling denoise implicitly disables post-denoise sharpening: do_denoise_starless does
+            # not call GraXpert or overwrite the cached denoised/finished plates, and returns Starless.
+            self.project.update_settings(replace(self.project.get_settings(), enable_starless_denoise=False))
+            self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+            self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
+            result = self.workflow.do_denoise_starless()
+            self.assertIsNotNone(result)
+            self.assertEqual(result.operation, "Starless")
+            self.assertEqual(fake_session.denoise_full_strength.call_count, 1)
+            np.testing.assert_allclose(
+                imread(self.project.current_artifact_path(ROLE_FINISHED_STARLESS), to_rgb=True, as_float=True),
+                sharpen_starless(blended, mask, 40.0, 60.0),
+                atol=1.5 / 65535,
+            )
+            np.testing.assert_allclose(
+                imread(self.project.current_artifact_path(ROLE_DENOISED_STARLESS), to_rgb=True, as_float=True),
+                blended,
+                atol=1.5 / 65535,
+            )
+
     def test_recombine_respects_independent_starless_toggles(self):
         """Recombination selects finished, denoised, or separated plate from the toggles."""
         self.prepare_separated_project()
-        self.project.update_settings(replace(self.project.get_settings(), star_amount=0.0))
+        self.project.update_settings(replace(self.project.get_settings(), star_amount=0.0, structure_amount=20.0))
         separated_p = self.project.current_artifact_path(ROLE_SEPARATED_STARLESS)
         self.assertIsNotNone(separated_p)
         separated_pixels = imread(separated_p, to_rgb=True, as_float=True)
@@ -456,22 +476,20 @@ class TestFinishDenoise(QtTestCase):
         self.project.record_artifact(ROLE_DENOISED_STARLESS, denoised_p)
         finished_p = self.project.artifact_path(ROLE_FINISHED_STARLESS, for_write=True)
         imwrite(finished_p, np.full((512, 512, 3), 0.25, np.float32), convertBGR=False, bit_depth=16)
-        self.project.record_artifact(
-            ROLE_FINISHED_STARLESS,
-            finished_p,
-            options={
-                "separation_signature": self.project.separation_signature,
-                "starless_filter_version": STARLESS_FILTER_VERSION,
-            },
-        )
+        finished_options = {
+            "separation_signature": self.project.separation_signature,
+            "starless_filter_version": STARLESS_FILTER_VERSION,
+        }
+        self.project.record_artifact(ROLE_FINISHED_STARLESS, finished_p, options=finished_options)
 
+        # Post-denoise sharpening applies only when denoise is enabled; otherwise fall back to separated starless.
         expectations = (
-            (True, True, 0.25),
-            (True, False, 0.30),
-            (False, False, None),
-            (False, True, 0.25),
+            (True, True, 0.25, ROLE_FINISHED_STARLESS),
+            (True, False, 0.30, ROLE_DENOISED_STARLESS),
+            (False, False, None, ROLE_SEPARATED_STARLESS),
+            (False, True, None, ROLE_SEPARATED_STARLESS),
         )
-        for enable_denoise, enable_sharpen, expected in expectations:
+        for enable_denoise, enable_sharpen, expected, expected_role in expectations:
             with self.subTest(enable_denoise=enable_denoise, enable_sharpen=enable_sharpen):
                 self.project.update_settings(
                     replace(
@@ -499,12 +517,7 @@ class TestFinishDenoise(QtTestCase):
                 options = self.project.artifact_manifest[ROLE_FINISHED_COMPOSITE]["options"]
                 self.assertEqual(options["enable_starless_denoise"], enable_denoise)
                 self.assertEqual(options["enable_starless_sharpen"], enable_sharpen)
-                self.assertEqual(
-                    self.workflow.active_starless_role(),
-                    ROLE_FINISHED_STARLESS
-                    if enable_sharpen
-                    else (ROLE_DENOISED_STARLESS if enable_denoise else ROLE_SEPARATED_STARLESS),
-                )
+                self.assertEqual(self.workflow.active_starless_role(), expected_role)
 
     def test_repeated_denoise_adjustments_reuse_decoded_plates(self):
         """Cached endpoint adjustments do not decode the separated or endpoint plates again."""

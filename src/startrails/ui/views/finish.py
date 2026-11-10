@@ -65,6 +65,7 @@ class FinishView(ModeView):
         self._denoise_timer: Optional[QTimer] = None
         self._recombine_timer: Optional[QTimer] = None
         self._last_output_file: Optional[OutputFile] = None
+        self._retained_starless_outputs: dict[str, Path] = {}
 
     def build_sidebar(self, parent: QWidget) -> QWidget:
         """Construct and return the Finish mode sidebar widget."""
@@ -282,6 +283,7 @@ class FinishView(ModeView):
         """Reset sidebar view state when a new or opened project is active."""
         self._generation += 1
         self._last_output_file = None
+        self._retained_starless_outputs.clear()
         if self._denoise_timer is not None and self._denoise_timer.isActive():
             self._denoise_timer.stop()
         if self._recombine_timer is not None and self._recombine_timer.isActive():
@@ -325,7 +327,7 @@ class FinishView(ModeView):
         if self.sidebar is not None:
             self.sidebar.update_from_project(self._project, dimensions)
             self.sidebar.inputFiles.set_files(self.app.workflow.getInputFileList())
-            self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
+            self.sidebar.outputFiles.set_files(self._build_output_files())
             self.sidebar.lock_output_files_height()
             if self._project.source_is_current() and self._project.source_file is not None:
                 self.sidebar.inputFiles.focus_file(self._project.source_file)
@@ -427,6 +429,25 @@ class FinishView(ModeView):
                     if hasattr(canvas, "set_mask_edit_mode"):
                         canvas.set_mask_edit_mode(True)
 
+    def _build_output_files(self) -> list[OutputFile]:
+        """Return project outputs plus retained starless outputs awaiting recomputation."""
+        outputs = list(self.app.workflow.get_output_file_list())
+        if self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is not None and self._retained_starless_outputs:
+            present = {f.operation for f in outputs}
+            retained_specs = (
+                (ROLE_DENOISED_STARLESS, "Denoised Starless"),
+                (ROLE_FINISHED_STARLESS, "Finished Starless"),
+            )
+            insert_at = sum(1 for f in outputs if f.operation in ("Starless", "Stars"))
+            for role, label in retained_specs:
+                path = self._retained_starless_outputs.get(role)
+                if path is not None and label not in present and path.is_file():
+                    outputs.insert(insert_at, OutputFile(basename=path.name, path=str(path), operation=label))
+                    insert_at += 1
+        else:
+            self._retained_starless_outputs.clear()
+        return outputs
+
     def updateReadyStates(self, _=None) -> None:  # noqa: N802 - ModeView interface
         """Update file sections and step prerequisites based on project readiness."""
         if self.sidebar is not None and isinstance(self._project, FinishProject):
@@ -436,7 +457,7 @@ class FinishView(ModeView):
             if hasattr(self.app.workflow, "invalidate_if_starless_filter_changed"):
                 self.app.workflow.invalidate_if_starless_filter_changed()
             self.sidebar.inputFiles.set_files(self.app.workflow.getInputFileList())
-            self.sidebar.outputFiles.set_files(self.app.workflow.get_output_file_list())
+            self.sidebar.outputFiles.set_files(self._build_output_files())
             self.sidebar.lock_output_files_height()
             self.sidebar.update_prerequisites(self._project)
             # If the canvas is showing a file that is no longer available, fall
@@ -493,8 +514,8 @@ class FinishView(ModeView):
 
                     file_exists = curr_p.exists() if curr_p is not None else False
 
-                    if (is_fin_starless or is_comp) and file_exists and has_separated_starless:
-                        # Leave the current starless (or composite) image on the canvas
+                    if is_starless_artifact and file_exists and has_separated_starless:
+                        # Leave the current starless or composite image on the canvas while updating
                         pass
                     elif is_starless_artifact and not file_exists:
                         if has_separated_starless:
@@ -781,6 +802,7 @@ class FinishView(ModeView):
 
         stride = self.sidebar.separateSettings.get_stride()
         chroma_postfilter = self.sidebar.separateSettings.get_chroma_postfilter()
+        self._retained_starless_outputs.clear()
         if hasattr(self.sidebar.separateSettings, "lbl_status"):
             self.sidebar.separateSettings.lbl_status.hide()
 
@@ -896,6 +918,7 @@ class FinishView(ModeView):
         workflow = self.app.workflow
 
         def on_done():
+            self._retained_starless_outputs.clear()
             self.updateReadyStates()
             active_file = self._active_starless_output_file()
             if active_file is not None and Path(active_file.path).exists():
@@ -910,6 +933,8 @@ class FinishView(ModeView):
                 self.showFile(active_file, preserve_view=True, reload=True)
 
         def on_cancelled():
+            self._retained_starless_outputs.clear()
+            self.updateReadyStates()
             self._show_task_error("finish_denoise", "Cancelled")
 
         def work():
@@ -934,11 +959,21 @@ class FinishView(ModeView):
             work=work,
         )
 
+    def _mark_starless_outputs_pending(self) -> None:
+        """Keep previously built starless outputs visible in the UI while recomputing."""
+        if self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is None:
+            return
+        for role in (ROLE_DENOISED_STARLESS, ROLE_FINISHED_STARLESS):
+            path = self._project.current_artifact_path(role)
+            if path is not None and path.is_file():
+                self._retained_starless_outputs[role] = path
+
     def on_denoise_strength_changed(self, value: float) -> None:
         """Update denoise strength setting and trigger debounced preview recomposition."""
         settings = self._project.get_settings()
         if settings.denoise_strength == value:
             return
+        self._mark_starless_outputs_pending()
         self._project.update_settings(replace(settings, denoise_strength=value))
         self.app.workflow.save_project()
         self.updateReadyStates()
@@ -950,6 +985,7 @@ class FinishView(ModeView):
         settings = self._project.get_settings()
         if settings.denoise_scope == scope:
             return
+        self._mark_starless_outputs_pending()
         self._project.update_settings(replace(settings, denoise_scope=scope))
         self.app.workflow.save_project()
         self.updateReadyStates()
@@ -961,6 +997,7 @@ class FinishView(ModeView):
         settings = self._project.get_settings()
         if settings.structure_amount == value:
             return
+        self._mark_starless_outputs_pending()
         self._project.update_settings(replace(settings, structure_amount=value))
         self.app.workflow.save_project()
         self.updateReadyStates()
@@ -972,6 +1009,7 @@ class FinishView(ModeView):
         settings = self._project.get_settings()
         if settings.detail_amount == value:
             return
+        self._mark_starless_outputs_pending()
         self._project.update_settings(replace(settings, detail_amount=value))
         self.app.workflow.save_project()
         self.updateReadyStates()
@@ -1008,10 +1046,7 @@ class FinishView(ModeView):
             return False
 
         settings = self._project.get_settings()
-        enable_denoise = settings.enable_starless_denoise
-        enable_sharpen = settings.enable_starless_sharpen
-
-        if not enable_denoise and not enable_sharpen:
+        if not settings.enable_starless_denoise:
             return False
 
         intended_role = self.app.workflow.active_starless_role(settings)
@@ -1029,10 +1064,7 @@ class FinishView(ModeView):
             self._project.current_artifact_path(ROLE_DENOISE_ENDPOINT) is not None
             or self._project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None
         )
-        can_denoise = enable_denoise and (graxpert_ready or has_endpoint or settings.denoise_strength == 0.0)
-        can_sharpen = enable_sharpen
-
-        return bool(can_denoise or can_sharpen)
+        return bool(graxpert_ready or has_endpoint or settings.denoise_strength == 0.0)
 
     def on_enable_denoise_changed(self, enabled: bool) -> None:
         """Toggle starless denoising and switch canvas preview without recomputation when current."""
@@ -1086,6 +1118,7 @@ class FinishView(ModeView):
     def on_reset_starless(self) -> None:
         """Reset starless finishing settings to their defaults."""
         settings = self._project.get_settings()
+        self._mark_starless_outputs_pending()
         self._project.update_settings(
             replace(
                 settings,
@@ -1133,13 +1166,9 @@ class FinishView(ModeView):
         graxpert_ready = bool(
             graxpert_status.get("configured") or (graxpert_status.get("model_ready") and graxpert_status.get("policy"))
         )
-        enable_denoise = settings.enable_starless_denoise
-        enable_sharpen = settings.enable_starless_sharpen
-
-        if enable_denoise:
-            if not (endpoint is not None or settings.denoise_strength == 0.0 or graxpert_ready):
-                return
-        elif not enable_sharpen:
+        if not settings.enable_starless_denoise:
+            return
+        if not (endpoint is not None or settings.denoise_strength == 0.0 or graxpert_ready):
             return
 
         deliver_result = self._get_post_result()
@@ -1147,6 +1176,7 @@ class FinishView(ModeView):
         workflow = self.app.workflow
 
         def on_done():
+            self._retained_starless_outputs.clear()
             self.updateReadyStates()
             active_file = self._active_starless_output_file()
             if active_file is not None and Path(active_file.path).exists():
@@ -1164,7 +1194,8 @@ class FinishView(ModeView):
                 self.showFile(active_file, preserve_view=True, reload=True)
 
         def on_cancelled():
-            pass
+            self._retained_starless_outputs.clear()
+            self.updateReadyStates()
 
         def work():
             progress_updater = ProgressBarUpdater(

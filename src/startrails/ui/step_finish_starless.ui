@@ -395,7 +395,7 @@ QLabel#lbl_status {
         <string notr="true">color: #334155; font-size: 12px; font-weight: 600;</string>
        </property>
        <property name="text">
-        <string>Enable sharpen</string>
+        <string>Enable post-denoise sharpen</string>
        </property>
        <property name="buddy">
         <cstring>check_enable_sharpen</cstring>
@@ -411,7 +411,7 @@ QLabel#lbl_status {
         <enum>Qt::FocusPolicy::StrongFocus</enum>
        </property>
        <property name="accessibleName">
-        <string>Enable sharpen</string>
+        <string>Enable post-denoise sharpen</string>
        </property>
        <property name="text">
         <string/>

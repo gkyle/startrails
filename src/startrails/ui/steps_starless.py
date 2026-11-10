@@ -82,6 +82,7 @@ class FinishStarlessSettings(QWidget):
         self._is_ready: bool = False
         self._has_prerequisites: bool = True
         self._has_endpoint: bool = False
+        self._remembered_enable_sharpen: bool = DEFAULT_ENABLE_STARLESS_SHARPEN
         self._default_unconf_msg = (
             "GraXpert AI model (3.0.2) is missing or unverified. Zero-strength finishing remains available."
         )
@@ -120,6 +121,7 @@ class FinishStarlessSettings(QWidget):
         self.settings_changed.emit()
 
     def _on_enable_sharpen_toggled(self, checked: bool) -> None:
+        self._remembered_enable_sharpen = bool(checked)
         self._update_controls_enabled()
         self.enable_sharpen_changed.emit(checked)
         self.settings_changed.emit()
@@ -182,8 +184,13 @@ class FinishStarlessSettings(QWidget):
         self.settings_changed.emit()
 
     def _update_controls_enabled(self) -> None:
-        denoise_active = self._has_prerequisites and self.get_enable_denoise()
-        sharpen_active = self._has_prerequisites and self.get_enable_sharpen()
+        denoise_enabled = self.get_enable_denoise()
+        denoise_active = self._has_prerequisites and denoise_enabled
+        sharpen_enabled = denoise_enabled and self._remembered_enable_sharpen
+        sharpen_active = self._has_prerequisites and sharpen_enabled
+
+        with QSignalBlocker(self.check_enable_sharpen):
+            self.check_enable_sharpen.setChecked(sharpen_enabled)
 
         self.slider_strength.setEnabled(denoise_active)
         self.radio_sky_only.setEnabled(denoise_active)
@@ -194,8 +201,8 @@ class FinishStarlessSettings(QWidget):
 
         self.check_enable_denoise.setEnabled(self._has_prerequisites)
         self.lbl_enable_denoise.setEnabled(self._has_prerequisites)
-        self.check_enable_sharpen.setEnabled(self._has_prerequisites)
-        self.lbl_enable_sharpen.setEnabled(self._has_prerequisites)
+        self.check_enable_sharpen.setEnabled(denoise_active)
+        self.lbl_enable_sharpen.setEnabled(denoise_active)
         self.btn_reset.setEnabled(self._has_prerequisites)
 
     def get_enable_denoise(self) -> bool:
@@ -209,13 +216,14 @@ class FinishStarlessSettings(QWidget):
         self._update_controls_enabled()
 
     def get_enable_sharpen(self) -> bool:
-        """Return whether starless sharpening is enabled."""
-        return self.check_enable_sharpen.isChecked()
+        """Return whether post-denoise sharpening is effectively enabled."""
+        return self.get_enable_denoise() and self.check_enable_sharpen.isChecked()
 
     def set_enable_sharpen(self, enabled: bool) -> None:
-        """Update sharpen checkbox state without emitting change signals."""
+        """Update post-denoise sharpen checkbox state without emitting change signals."""
+        self._remembered_enable_sharpen = bool(enabled)
         with QSignalBlocker(self.check_enable_sharpen):
-            self.check_enable_sharpen.setChecked(enabled)
+            self.check_enable_sharpen.setChecked(self._remembered_enable_sharpen if self.get_enable_denoise() else False)
         self._update_controls_enabled()
 
     def get_enable_starless(self) -> bool:

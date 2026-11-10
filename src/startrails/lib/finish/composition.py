@@ -28,6 +28,8 @@ def blend_denoise(
     sky_mask: Optional[np.ndarray],
     strength_percent: float,
     scope: DenoiseScopeType,
+    *,
+    chunk_rows: int = RECOMBINE_CHUNK_ROWS,
 ) -> np.ndarray:
     """Blend a working RGB region from GraXpert full-strength denoise endpoint with separated starless base.
 
@@ -42,25 +44,32 @@ def blend_denoise(
         raise ValueError(f"Denoise strength must be in range [0.0, 100.0], got {strength_percent}")
     if scope not in (SCOPE_SKY_ONLY, SCOPE_WHOLE_IMAGE):
         raise ValueError(f"Unknown scope '{scope}'. Must be one of {(SCOPE_SKY_ONLY, SCOPE_WHOLE_IMAGE)}.")
+    if chunk_rows <= 0:
+        raise ValueError("chunk_rows must be positive.")
 
     if strength_percent == 0.0:
         return base.copy()
 
     h, w = base.shape[:2]
-    a = float(strength_percent) / PERCENT_SCALE
+    if scope == SCOPE_SKY_ONLY:
+        if sky_mask is None:
+            raise ValueError("Sky-only denoising requires a sky mask.")
+        if sky_mask.ndim != 2 or sky_mask.shape != (h, w):
+            raise ValueError(f"Sky mask shape {sky_mask.shape} must match image shape {(h, w)}.")
+        if sky_mask.dtype != np.float32:
+            raise ValueError("Sky mask must be normalized float32.")
 
-    if scope == SCOPE_WHOLE_IMAGE:
-        return base + a * (full_denoised - base)
-
-    if sky_mask is None:
-        raise ValueError("Sky-only denoising requires a sky mask.")
-    if sky_mask.ndim != 2 or sky_mask.shape != (h, w):
-        raise ValueError(f"Sky mask shape {sky_mask.shape} must match image shape {(h, w)}.")
-
-    if sky_mask.dtype != np.float32:
-        raise ValueError("Sky mask must be normalized float32.")
-    w_weight = sky_mask[..., np.newaxis]
-    return base + a * w_weight * (full_denoised - base)
+    a = np.float32(float(strength_percent) / PERCENT_SCALE)
+    blended = np.empty_like(base, dtype=np.float32)
+    for start in range(0, h, chunk_rows):
+        end = min(start + chunk_rows, h)
+        chunk = blended[start:end]
+        np.subtract(full_denoised[start:end], base[start:end], out=chunk)
+        chunk *= a
+        if scope == SCOPE_SKY_ONLY:
+            chunk *= sky_mask[start:end, :, np.newaxis]
+        chunk += base[start:end]
+    return blended
 
 
 def recombine_layers(

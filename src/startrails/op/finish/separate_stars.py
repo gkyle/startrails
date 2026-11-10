@@ -75,7 +75,7 @@ class SeparateStars(Observable):
                     pixels,
                     convertBGR=True,
                     bit_depth=INTERMEDIATE_BIT_DEPTH,
-                    compression=settings.tiff_deflate_compression,
+                    compression=False,
                 )
                 self.updateJob(1, {"desc": "Starless image staged."})
                 # The saved plate is complete. Reuse its integer buffer rather
@@ -95,7 +95,7 @@ class SeparateStars(Observable):
                     pixels,
                     convertBGR=True,
                     bit_depth=INTERMEDIATE_BIT_DEPTH,
-                    compression=settings.tiff_deflate_compression,
+                    compression=False,
                 )
                 if self.shouldInterrupt():
                     return None

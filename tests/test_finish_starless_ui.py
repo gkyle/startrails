@@ -210,7 +210,8 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertEqual(self.widget.lbl_detail_value.text(), "66%")
 
     def test_enable_starless_toggle_and_control_enabling(self):
-        """Toggling check_enable_denoise and check_enable_sharpen enables/disables controls."""
+        """Toggling denoise and post-denoise sharpen updates controls and remembers sharpen state."""
+        self.assertEqual(self.widget.lbl_enable_sharpen.text(), "Enable post-denoise sharpen")
         self.assertTrue(self.widget.get_enable_denoise())
         self.assertTrue(self.widget.get_enable_sharpen())
         self.assertTrue(self.widget.check_enable_denoise.isChecked())
@@ -226,24 +227,46 @@ class TestFinishStarlessSettings(QtTestCase):
         self.widget.enable_denoise_changed.connect(denoise_sigs.append)
         self.widget.enable_sharpen_changed.connect(sharpen_sigs.append)
 
-        # Uncheck denoise
+        # Uncheck denoise -> implicitly unchecks/disables post-denoise sharpen without emitting sharpen signal
         self.widget.check_enable_denoise.setChecked(False)
         self.assertFalse(self.widget.get_enable_denoise())
+        self.assertFalse(self.widget.get_enable_sharpen())
+        self.assertFalse(self.widget.check_enable_sharpen.isChecked())
+        self.assertFalse(self.widget.check_enable_sharpen.isEnabled())
+        self.assertFalse(self.widget.lbl_enable_sharpen.isEnabled())
         self.assertEqual(denoise_sigs, [False])
+        self.assertEqual(sharpen_sigs, [])
         self.assertFalse(self.widget.slider_strength.isEnabled())
         self.assertFalse(self.widget.radio_sky_only.isEnabled())
         self.assertFalse(self.widget.radio_whole_image.isEnabled())
-        self.assertTrue(self.widget.slider_structure.isEnabled())
-        self.assertTrue(self.widget.slider_detail.isEnabled())
+        self.assertFalse(self.widget.slider_structure.isEnabled())
+        self.assertFalse(self.widget.slider_detail.isEnabled())
         self.assertTrue(self.widget.check_enable_denoise.isEnabled())
         self.assertTrue(self.widget.btn_reset.isEnabled())
 
-        # Uncheck sharpen
+        # Re-check denoise -> re-enables and restores remembered sharpen=True state
+        self.widget.check_enable_denoise.setChecked(True)
+        self.assertTrue(self.widget.get_enable_denoise())
+        self.assertTrue(self.widget.get_enable_sharpen())
+        self.assertTrue(self.widget.check_enable_sharpen.isChecked())
+        self.assertTrue(self.widget.check_enable_sharpen.isEnabled())
+        self.assertTrue(self.widget.slider_structure.isEnabled())
+        self.assertTrue(self.widget.slider_detail.isEnabled())
+        self.assertEqual(denoise_sigs, [False, True])
+        self.assertEqual(sharpen_sigs, [])
+
+        # Uncheck sharpen explicitly -> remembered as False across denoise disable/re-enable
         self.widget.check_enable_sharpen.setChecked(False)
         self.assertFalse(self.widget.get_enable_sharpen())
         self.assertEqual(sharpen_sigs, [False])
         self.assertFalse(self.widget.slider_structure.isEnabled())
         self.assertFalse(self.widget.slider_detail.isEnabled())
+
+        self.widget.check_enable_denoise.setChecked(False)
+        self.widget.check_enable_denoise.setChecked(True)
+        self.assertTrue(self.widget.check_enable_sharpen.isEnabled())
+        self.assertFalse(self.widget.check_enable_sharpen.isChecked())
+        self.assertFalse(self.widget.slider_structure.isEnabled())
 
         # Programmatic setters block signals
         self.widget.set_enable_denoise(True)
@@ -252,7 +275,7 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertTrue(self.widget.get_enable_sharpen())
         self.assertTrue(self.widget.slider_strength.isEnabled())
         self.assertTrue(self.widget.slider_structure.isEnabled())
-        self.assertEqual(denoise_sigs, [False])
+        self.assertEqual(denoise_sigs, [False, True, False, True])
         self.assertEqual(sharpen_sigs, [False])
 
         # Reset action also resets enable_denoise and enable_sharpen to True
@@ -1010,7 +1033,7 @@ class TestFinishViewStarlessInteraction(QtTestCase):
         self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
 
     def test_independent_toggles_switch_between_stored_outputs_without_worker(self):
-        """Toggling enable_denoise and enable_sharpen switches preview with zero recomputation."""
+        """Toggling denoise and post-denoise sharpen switches preview with zero recomputation."""
         self.project.update_settings(replace(self.project.get_settings(), structure_amount=30.0))
 
         denoised_path = self.root / "denoised_starless.tif"
@@ -1030,28 +1053,37 @@ class TestFinishViewStarlessInteraction(QtTestCase):
 
         worker_called = []
         with patch.object(FinishWorkflow, "do_denoise_starless", side_effect=lambda **kw: worker_called.append(True)):
-            # 1. Toggle Sharpen OFF -> immediately displays Denoised Starless
+            # 1. Toggle Denoise OFF (even with structure > 0) -> visually disables sharpen & shows Starless
+            self.sidebar.starlessSettings.check_enable_denoise.setChecked(False)
+            self.qt.processEvents()
+            self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+            self.assertFalse(self.sidebar.starlessSettings.check_enable_sharpen.isChecked())
+            self.assertFalse(self.sidebar.starlessSettings.check_enable_sharpen.isEnabled())
+            self.assertTrue(self.project.get_settings().enable_starless_sharpen)
+            self.assertEqual(worker_called, [])
+
+            # 2. Toggle Denoise back ON -> restores sharpen=True and displays Finished Starless
+            self.sidebar.starlessSettings.check_enable_denoise.setChecked(True)
+            self.qt.processEvents()
+            self.assertTrue(self.sidebar.starlessSettings.check_enable_sharpen.isChecked())
+            self.assertTrue(self.sidebar.starlessSettings.check_enable_sharpen.isEnabled())
+            self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+            self.assertEqual(worker_called, [])
+
+            # 3. Toggle Sharpen OFF -> displays Denoised Starless without recomputation
             self.sidebar.starlessSettings.check_enable_sharpen.setChecked(False)
             self.qt.processEvents()
             self.assertEqual(Path(self.canvas.file.path).resolve(), denoised_path.resolve())
             self.assertEqual(worker_called, [])
 
-            # 2. Toggle Sharpen back ON -> immediately displays Finished Starless without recomputation
-            self.sidebar.starlessSettings.check_enable_sharpen.setChecked(True)
-            self.qt.processEvents()
-            self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
-            self.assertEqual(worker_called, [])
-
-            # 3. Toggle Denoise OFF -> still displays Finished Starless (sharpen remains enabled)
+            # 4. Disable Denoise -> Starless; Re-enable Denoise -> remembers sharpen=False and shows Denoised
             self.sidebar.starlessSettings.check_enable_denoise.setChecked(False)
             self.qt.processEvents()
-            self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
-            self.assertEqual(worker_called, [])
-
-            # 4. Toggle Denoise back ON -> immediately displays Finished Starless
+            self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
             self.sidebar.starlessSettings.check_enable_denoise.setChecked(True)
             self.qt.processEvents()
-            self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+            self.assertFalse(self.sidebar.starlessSettings.check_enable_sharpen.isChecked())
+            self.assertEqual(Path(self.canvas.file.path).resolve(), denoised_path.resolve())
             self.assertEqual(worker_called, [])
 
             # Artifacts remain valid on disk and in manifest
@@ -1124,14 +1156,36 @@ class TestFinishViewStarlessInteraction(QtTestCase):
         )
 
     def test_canvas_stays_on_starless_image_when_changing_sliders(self):
-        """Slider changes invalidate Finished Starless but do NOT cause canvas to revert to source.tif."""
+        """Slider changes keep pending Denoised/Finished Starless in outputs and on canvas."""
+        denoised_path = self.root / "denoised_starless.tif"
         finished_path = self.root / "finished_starless.tif"
+        imwrite(denoised_path, np.full((512, 512, 3), 21000, dtype=np.uint16), bit_depth=16)
         imwrite(finished_path, np.full((512, 512, 3), 22000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(
+            ROLE_DENOISED_STARLESS, denoised_path, options={"starless_filter_version": STARLESS_FILTER_VERSION}
+        )
         self.project.record_artifact(
             ROLE_FINISHED_STARLESS, finished_path, options={"starless_filter_version": STARLESS_FILTER_VERSION}
         )
         self.view.updateReadyStates()
 
+        output_ops = [f.operation for f in self.sidebar.outputFiles.model.files]
+        self.assertIn("Denoised Starless", output_ops)
+        self.assertIn("Finished Starless", output_ops)
+
+        # Viewing Denoised Starless stays on denoised_starless.tif and in outputFiles when strength changes
+        den_file = OutputFile(basename=denoised_path.name, path=str(denoised_path), operation="Denoised Starless")
+        self.view.showFile(den_file)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), denoised_path.resolve())
+
+        self.view.on_denoise_strength_changed(65.0)
+        self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+        self.assertEqual(Path(self.canvas.file.path).resolve(), denoised_path.resolve())
+        pending_ops = [f.operation for f in self.sidebar.outputFiles.model.files]
+        self.assertIn("Denoised Starless", pending_ops)
+        self.assertIn("Finished Starless", pending_ops)
+
+        # Viewing Finished Starless also stays on finished_starless.tif across slider changes
         fin_file = OutputFile(basename=finished_path.name, path=str(finished_path), operation="Finished Starless")
         self.view.showFile(fin_file)
         self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
@@ -1141,6 +1195,9 @@ class TestFinishViewStarlessInteraction(QtTestCase):
         self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
         # Canvas MUST stay on finished_starless.tif (not jumping to source.tif)
         self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+        pending_ops = [f.operation for f in self.sidebar.outputFiles.model.files]
+        self.assertIn("Denoised Starless", pending_ops)
+        self.assertIn("Finished Starless", pending_ops)
 
         # Change structure
         self.view.on_structure_amount_changed(40.0)

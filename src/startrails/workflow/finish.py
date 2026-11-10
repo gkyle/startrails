@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from collections import OrderedDict
 from concurrent.futures import CancelledError
+import shutil
 from typing import TYPE_CHECKING, Any, Callable, Dict, Final, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -191,36 +192,37 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             return cached
         return self._starless_arrays.put(path, imread(path, to_rgb=True, as_float=True))
 
+    @staticmethod
+    def _uses_finished_starless_plate(settings: FinishSettings) -> bool:
+        """Return True when post-denoise sharpening is active on top of denoising."""
+        return bool(settings.enable_starless_denoise and settings.enable_starless_sharpen)
+
     def active_starless_role(self, settings: Optional[FinishSettings] = None) -> str:
         """Return the stored starless role selected by the current toggles.
 
-        Denoise and sharpen are independent: sharpening supersedes the denoised
-        plate, denoising supersedes the separated plate, and disabling both falls
-        back to the separated plate. Missing plates still fall back at read time;
-        this reports the intended role for display and invalidation decisions.
+        Sharpening is post-denoise only: when denoise is disabled, both preview
+        and recombine fall back to the separated starless plate regardless of
+        the remembered post-denoise sharpen preference.
         """
         settings = self.project.get_settings() if settings is None else settings
+        if not settings.enable_starless_denoise:
+            return ROLE_SEPARATED_STARLESS
         if settings.enable_starless_sharpen:
             return ROLE_FINISHED_STARLESS
-        if settings.enable_starless_denoise:
-            return ROLE_DENOISED_STARLESS
-        return ROLE_SEPARATED_STARLESS
+        return ROLE_DENOISED_STARLESS
 
     def _starless_plate_path(self, settings: FinishSettings, separated_starless_path: Path) -> Path:
         """Resolve the best current plate for the toggles, falling back safely."""
         project = self.project
+        if not settings.enable_starless_denoise:
+            return separated_starless_path
         if settings.enable_starless_sharpen:
             finished = project.current_artifact_path(ROLE_FINISHED_STARLESS)
             if finished is not None:
                 return finished
-            # Sharpening without denoise must not silently consume a denoised
-            # plate the user disabled; only a finished plate can represent it.
-            if not settings.enable_starless_denoise:
-                return separated_starless_path
-        if settings.enable_starless_denoise:
-            denoised = project.current_artifact_path(ROLE_DENOISED_STARLESS)
-            if denoised is not None:
-                return denoised
+        denoised = project.current_artifact_path(ROLE_DENOISED_STARLESS)
+        if denoised is not None:
+            return denoised
         return separated_starless_path
 
     def _resolved_starless_role(self, settings: FinishSettings, separated_starless_path: Path) -> str:
@@ -592,7 +594,10 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             selected_roles: List[str] = [ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS]
             if settings.enable_starless_denoise and project.current_artifact_path(ROLE_DENOISED_STARLESS) is not None:
                 selected_roles.append(ROLE_DENOISED_STARLESS)
-            if settings.enable_starless_sharpen and project.current_artifact_path(ROLE_FINISHED_STARLESS) is not None:
+            if (
+                self._uses_finished_starless_plate(settings)
+                and project.current_artifact_path(ROLE_FINISHED_STARLESS) is not None
+            ):
                 selected_roles.append(ROLE_FINISHED_STARLESS)
         else:
             selected_roles = list(roles)
@@ -1129,7 +1134,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             and self.get_current_mask() is not None
         )
         needs_sharpen = (
-            settings.enable_starless_sharpen
+            self._uses_finished_starless_plate(settings)
             and will_sharpen
             and not has_finished
             and (has_denoised or has_endpoint or settings.denoise_strength == 0.0)
@@ -1210,11 +1215,12 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
 
         settings = project.get_settings()
         strength = settings.denoise_strength
+        denoise_enabled = bool(settings.enable_starless_denoise)
         scope = settings.denoise_scope
         structure = settings.structure_amount
         detail = settings.detail_amount
         will_sharpen = structure > 0 or detail > 0
-        publish_finished = settings.enable_starless_sharpen or will_sharpen
+        publish_finished = self._uses_finished_starless_plate(settings) or (denoise_enabled and will_sharpen)
         if not np.isfinite(strength) or not 0 <= strength <= PERCENT_SCALE:
             raise ValueError(f"Denoise strength must be in range [0.0, 100.0], got {strength}")
         if scope not in (SCOPE_SKY_ONLY, SCOPE_WHOLE_IMAGE):
@@ -1238,8 +1244,16 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             "detail_amount": float(detail),
             "starless_filter_version": STARLESS_FILTER_VERSION,
         }
-        endpoint_path = project.current_artifact_path(ROLE_DENOISE_ENDPOINT, options=endpoint_options)
-        denoised_path = project.current_artifact_path(ROLE_DENOISED_STARLESS, options=denoised_options)
+        endpoint_path = (
+            project.current_artifact_path(ROLE_DENOISE_ENDPOINT, options=endpoint_options)
+            if denoise_enabled
+            else None
+        )
+        denoised_path = (
+            project.current_artifact_path(ROLE_DENOISED_STARLESS, options=denoised_options)
+            if denoise_enabled
+            else None
+        )
         finished_path = (
             project.current_artifact_path(ROLE_FINISHED_STARLESS, options=finished_options)
             if publish_finished
@@ -1248,21 +1262,24 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
 
         denoised_dest = project.artifact_path(ROLE_DENOISED_STARLESS, for_write=True)
         finished_dest = project.artifact_path(ROLE_FINISHED_STARLESS, for_write=True)
-        need_denoised = denoised_path is None
+        need_denoised = denoise_enabled and denoised_path is None
         need_finished = publish_finished and finished_path is None
         need_endpoint = need_denoised and strength > 0 and endpoint_path is None
 
         def active_output() -> OutputFile:
-            if settings.enable_starless_sharpen:
+            active_role = self.active_starless_role(settings)
+            if active_role == ROLE_FINISHED_STARLESS:
                 path = project.current_artifact_path(ROLE_FINISHED_STARLESS) or finished_dest
                 return OutputFile(basename=path.name, path=str(path), operation="Finished Starless")
-            path = project.current_artifact_path(ROLE_DENOISED_STARLESS) or denoised_dest
-            return OutputFile(basename=path.name, path=str(path), operation="Denoised Starless")
+            if active_role == ROLE_DENOISED_STARLESS:
+                path = project.current_artifact_path(ROLE_DENOISED_STARLESS) or denoised_dest
+                return OutputFile(basename=path.name, path=str(path), operation="Denoised Starless")
+            return OutputFile(basename=separated_path.name, path=str(separated_path), operation="Starless")
 
         def report_complete() -> None:
             if progress_bar is None:
                 return
-            has_progress = strength > 0 or will_sharpen
+            has_progress = denoise_enabled and (strength > 0 or will_sharpen)
             progress_bar(
                 _STARLESS_PROGRESS_TOTAL,
                 1 if has_progress else _STARLESS_PROGRESS_TOTAL,
@@ -1280,7 +1297,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             return active_output()
 
         mask: Optional[np.ndarray] = None
-        if (scope == SCOPE_SKY_ONLY and strength > 0 and need_denoised) or (will_sharpen and need_finished):
+        if (scope == SCOPE_SKY_ONLY and need_denoised and strength > 0) or (will_sharpen and need_finished):
             mask = self.get_current_mask()
             if mask is None:
                 raise ValueError("Sky-only finishing requires a current sky mask.")
@@ -1294,21 +1311,24 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             try:
                 with ArtifactTransaction(self._job_cancel_check(project, revision)) as transaction:
 
-                    def stage_plate(destination: Path, array: np.ndarray) -> None:
+                    def stage_plate(destination: Path, array: np.ndarray) -> Path:
                         staged = transaction.stage(destination)
+                        # Internal intermediate TIFFs skip deflate compression so
+                        # interactive strength/amount updates write quickly; user
+                        # exports apply settings.tiff_deflate_compression.
                         written = imwrite(
                             staged,
                             array,
                             convertBGR=True,
                             bit_depth=INTERMEDIATE_BIT_DEPTH,
-                            quality=settings.jpeg_quality,
-                            optimize=settings.jpeg_optimize,
-                            compression=settings.tiff_deflate_compression,
+                            compression=False,
                         )
                         if written != staged:
                             written.unlink(missing_ok=True)
                             raise OSError("Starless staging path changed unexpectedly; nothing was published.")
+                        return staged
 
+                    staged_denoised: Optional[Path] = None
                     if need_denoised:
                         base = self._load_starless_array(separated_path)
                         if strength == 0:
@@ -1353,7 +1373,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                         else:
                             assert endpoint_path is not None
                             endpoint_arr = self._load_starless_array(endpoint_path)
-                            denoised_arr = blend_denoise(base, endpoint_arr, mask, strength, scope)
                             if progress_bar is not None:
                                 cached_progress = 90 if will_sharpen else _STARLESS_NO_PHASE_PROGRESS
                                 progress_bar(
@@ -1361,20 +1380,24 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                                     cached_progress,
                                     cached_progress,
                                     False,
-                                    {"desc": "Using cached denoise endpoint."},
+                                    {"desc": "Applying denoise strength..."},
                                 )
-                        stage_plate(denoised_dest, denoised_arr)
+                            denoised_arr = blend_denoise(base, endpoint_arr, mask, strength, scope)
+                        staged_denoised = stage_plate(denoised_dest, denoised_arr)
                     elif need_finished:
-                        assert denoised_path is not None
-                        denoised_arr = self._load_starless_array(denoised_path)
-                        if progress_bar is not None and will_sharpen:
-                            progress_bar(
-                                _STARLESS_PROGRESS_TOTAL,
-                                90,
-                                90,
-                                False,
-                                {"desc": "Using cached denoised starless."},
-                            )
+                        if denoise_enabled:
+                            assert denoised_path is not None
+                            denoised_arr = self._load_starless_array(denoised_path)
+                            if progress_bar is not None and will_sharpen:
+                                progress_bar(
+                                    _STARLESS_PROGRESS_TOTAL,
+                                    90,
+                                    90,
+                                    False,
+                                    {"desc": "Using cached denoised starless."},
+                                )
+                        else:
+                            denoised_arr = self._load_starless_array(separated_path)
 
                     if need_finished:
                         assert denoised_arr is not None
@@ -1385,7 +1408,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                                 _PhaseProgress(
                                     progress_bar,
                                     _STARLESS_SHARPEN_PROGRESS_SPAN
-                                    if strength > 0
+                                    if (denoise_enabled and strength > 0)
                                     else (0, _STARLESS_NO_PHASE_PROGRESS),
                                     scale=_STARLESS_PROGRESS_TOTAL,
                                 )
@@ -1411,7 +1434,11 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
                                 return None
                             stage_plate(finished_dest, sharpened)
                         else:
-                            stage_plate(finished_dest, denoised_arr)
+                            copy_source = staged_denoised if staged_denoised is not None else denoised_path
+                            if copy_source is not None and copy_source.is_file():
+                                shutil.copyfile(copy_source, transaction.stage(finished_dest))
+                            else:
+                                stage_plate(finished_dest, denoised_arr)
 
                     if not project.publish_denoise_results(
                         denoised_dest if need_denoised else None,

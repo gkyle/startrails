@@ -72,9 +72,7 @@ class Recombine(Observable):
                     composite,
                     convertBGR=True,
                     bit_depth=bit_depth,
-                    quality=settings.jpeg_quality,
-                    optimize=settings.jpeg_optimize,
-                    compression=settings.tiff_deflate_compression,
+                    compression=False,
                 )
                 if written != stage_path:
                     written.unlink(missing_ok=True)
