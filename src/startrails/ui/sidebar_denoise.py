@@ -66,8 +66,6 @@ class SidebarDenoise(QWidget):
         self._step_cards = (self.skyCard, self.alignCard, self.stackCard, self.tuneCard, self.exportCard)
         for card in self._step_cards:
             card.expanded.connect(lambda c=card: self._collapse_other_steps(c))
-        self.skyCard.expansion_changed.connect(self.skySettings.ui.showMaskOverlay.setChecked)
-        self.skySettings.ui.showMaskOverlay.setChecked(self.skyCard.is_expanded)
         self.sync_expanded_step()
 
         self.update_operations_progress(app)
@@ -109,7 +107,8 @@ class SidebarDenoise(QWidget):
         self.stackSettings.reset()
         self.tuneSettings.reset()
         self.exportSettings.reset()
-        self.skySettings.ui.showMaskOverlay.setChecked(self.skyCard.is_expanded)
+        if hasattr(self, "skyCard") and self.skyCard is not None:
+            self.skyCard.reset_before_after(emit=False)
         if hasattr(self, "exportCard") and self.exportCard is not None:
             self.exportCard.set_alert(False)
 

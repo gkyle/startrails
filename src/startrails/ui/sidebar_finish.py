@@ -186,8 +186,11 @@ class SidebarFinish(QWidget):
 
         self.recombineSettings.refresh_prerequisites(has_prerequisites=True)
 
+        has_composite = project.current_artifact_path(ROLE_FINISHED_COMPOSITE) is not None
         if project.current_export_path() is not None:
             self.recombineCard.setStatus("done", "Finished image saved")
+        elif has_composite:
+            self.recombineCard.setStatus("done", "Composite saved")
         else:
             self.recombineCard.setStatus("ready", "Ready to recombine")
 

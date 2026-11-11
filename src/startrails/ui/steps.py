@@ -1,8 +1,11 @@
 """Behavior for Designer-authored operation cards and settings."""
 
 from types import SimpleNamespace
-from PySide6.QtCore import Qt, QSignalBlocker, QObject, Signal, Property
+from typing import Final
+from PySide6.QtCore import QElapsedTimer, QEvent, Qt, QSignalBlocker, QObject, Signal, Property
 from PySide6.QtWidgets import QFrame, QWidget, QButtonGroup
+
+PREVIEW_LONG_PRESS_MS: Final[int] = 250
 
 
 def update_gpu_checkbox(checkbox, app, enabled=True):
@@ -89,6 +92,7 @@ from .ui_step_additional_tools import Ui_ToolsSettings
 class StepCard(QFrame):
     expanded = Signal()
     expansion_changed = Signal(bool)
+    before_after_toggled = Signal(bool)
 
     def add_body(self, body):
         """Qt Designer custom-container page insertion API."""
@@ -117,6 +121,11 @@ class StepCard(QFrame):
     is_expanded = Property(bool, lambda self: self.ui.toggle.isChecked(), lambda self, value: self.setExpanded(value))
     subtitle = Property(str, lambda self: self.ui.subtitle.text(), lambda self, value: self.setSubtitle(value))
     alert = Property(bool, lambda self: getattr(self, "_alert", False), lambda self, value: self.set_alert(value))
+    before_after_enabled = Property(
+        bool,
+        lambda self: getattr(self, "_before_after_enabled", False),
+        lambda self, value: self.set_before_after_enabled(value),
+    )
 
     def __init__(self, title="Step", body=None, number=None, expanded=False, parent=None, ui=None, prefix=None):
         if isinstance(title, QWidget) and parent is None:
@@ -126,6 +135,10 @@ class StepCard(QFrame):
         self.has_number = number is not None
         self._status = "ready"
         self._alert = False
+        self._before_after_enabled = False
+        self._showing_before = False
+        self._press_timer = QElapsedTimer()
+        self._press_active = False
         if ui is not None and prefix is not None:
             self.frame = getattr(ui, prefix)
             self.ui = SimpleNamespace(
@@ -133,6 +146,7 @@ class StepCard(QFrame):
                 number=getattr(ui, f"{prefix}Number", None),
                 toggle=getattr(ui, f"{prefix}Toggle"),
                 statusBadge=getattr(ui, f"{prefix}StatusBadge", None),
+                previewToggle=getattr(ui, f"{prefix}PreviewToggle", None),
                 subtitle=getattr(ui, f"{prefix}Subtitle"),
                 chevron=getattr(ui, f"{prefix}Chevron"),
                 body=getattr(ui, f"{prefix}Body"),
@@ -151,6 +165,13 @@ class StepCard(QFrame):
             self.ui.number.setText(str(number) if number is not None else "")
         if not self.has_number and self.ui.statusBadge is not None:
             self.ui.statusBadge.setVisible(False)
+        if self.ui.previewToggle is not None:
+            self.ui.previewToggle.setVisible(False)
+            self.ui.previewToggle.installEventFilter(self)
+            self.ui.previewToggle.pressed.connect(self._on_preview_pressed)
+            self.ui.previewToggle.toggled.connect(self._on_preview_toggled)
+            self.ui.previewToggle.released.connect(self._on_preview_released)
+            self._update_preview_visual(False)
         self.ui.toggle.toggled.connect(self.setExpanded)
         self.ui.headerWidget.mousePressEvent = self._on_header_clicked
         self.setExpanded(expanded)
@@ -163,6 +184,12 @@ class StepCard(QFrame):
             return
         super(QWidget, self.ui.headerWidget).mousePressEvent(event)
 
+    def _sync_collapsed_height(self) -> None:
+        if not self.ui.toggle.isChecked():
+            target = self.frame if getattr(self, "frame", None) is not None else self
+            target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
+            target.updateGeometry()
+
     def setExpanded(self, expanded):
         expanded = bool(expanded and self._status != "locked")
         with QSignalBlocker(self.ui.toggle):
@@ -171,6 +198,8 @@ class StepCard(QFrame):
         self.ui.chevron.style().unpolish(self.ui.chevron)
         self.ui.chevron.style().polish(self.ui.chevron)
         self.ui.body.setVisible(expanded)
+        self.reset_before_after(emit=True)
+        self._update_preview_visibility()
         target = self.frame if getattr(self, "frame", None) is not None else self
         if not expanded:
             target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
@@ -185,10 +214,7 @@ class StepCard(QFrame):
 
     def setSubtitle(self, text):
         self.ui.subtitle.setText(text)
-        if not self.ui.toggle.isChecked():
-            target = self.frame if getattr(self, "frame", None) is not None else self
-            target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
-            target.updateGeometry()
+        self._sync_collapsed_height()
 
     @property
     def status(self) -> str:
@@ -202,10 +228,91 @@ class StepCard(QFrame):
         self.ui.toggle.setEnabled(status != "locked")
         if status == "locked":
             self.setExpanded(False)
-        if not self.ui.toggle.isChecked():
-            target = self.frame if getattr(self, "frame", None) is not None else self
-            target.setFixedHeight(self.ui.headerWidget.sizeHint().height() + 2)
-            target.updateGeometry()
+        self._sync_collapsed_height()
+
+    def set_before_after_enabled(self, enabled: bool = True) -> None:
+        """Enable or disable the before/after preview chip on this step card."""
+        enabled = bool(enabled)
+        if self._before_after_enabled == enabled:
+            return
+        self._before_after_enabled = enabled
+        if not enabled:
+            self.reset_before_after(emit=False)
+        self._update_status_appearance()
+        self._sync_collapsed_height()
+
+    def is_showing_before(self) -> bool:
+        """Return True when the before/after preview toggle is showing the before state."""
+        return self._showing_before
+
+    def reset_before_after(self, emit: bool = False) -> None:
+        """Return the before/after toggle to its default 'after' state."""
+        if self.ui.previewToggle is not None:
+            with QSignalBlocker(self.ui.previewToggle):
+                self.ui.previewToggle.setChecked(False)
+            self._update_preview_visual(False)
+        changed = self._showing_before
+        self._showing_before = False
+        if emit and changed:
+            self.before_after_toggled.emit(False)
+
+    def _update_preview_visual(self, showing_before: bool) -> None:
+        toggle = self.ui.previewToggle
+        if toggle is None:
+            return
+        toggle.setToolTip(
+            "Showing before — click for after" if showing_before else "Compare before and after preview"
+        )
+        if toggle.property("showingBefore") != showing_before:
+            toggle.setProperty("showingBefore", showing_before)
+            toggle.style().unpolish(toggle)
+            toggle.style().polish(toggle)
+            toggle.update()
+
+    def _set_showing_before(self, showing_before: bool) -> None:
+        showing_before = bool(showing_before)
+        self._update_preview_visual(showing_before)
+        if self._showing_before == showing_before:
+            return
+        self._showing_before = showing_before
+        self.before_after_toggled.emit(showing_before)
+
+    def _on_preview_pressed(self) -> None:
+        self._set_showing_before(True)
+        if self._press_active:
+            # Exclude synchronous preview work on press so slow image loads
+            # do not turn a short click into a long press.
+            self._press_timer.restart()
+
+    def _on_preview_toggled(self, checked: bool) -> None:
+        self._set_showing_before(checked)
+
+    def _on_preview_released(self) -> None:
+        if self.ui.previewToggle is not None:
+            self._set_showing_before(self.ui.previewToggle.isChecked())
+
+    def eventFilter(self, obj, event):
+        if obj is getattr(self.ui, "previewToggle", None):
+            event_type = event.type()
+            if event_type in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonDblClick):
+                if event.button() == Qt.LeftButton:
+                    self._press_timer.start()
+                    self._press_active = True
+            elif event_type == QEvent.Type.MouseButtonRelease and event.button() == Qt.LeftButton:
+                is_long_press = (
+                    self._press_active
+                    and self._press_timer.isValid()
+                    and self._press_timer.elapsed() >= PREVIEW_LONG_PRESS_MS
+                )
+                self._press_active = False
+                if is_long_press:
+                    with QSignalBlocker(obj):
+                        obj.setDown(False)
+                        obj.setChecked(False)
+                    self._set_showing_before(False)
+                    event.accept()
+                    return True
+        return super().eventFilter(obj, event)
 
     def set_alert(self, alert: bool = True) -> None:
         alert = bool(alert)
@@ -240,6 +347,18 @@ class StepCard(QFrame):
                         "running": "Running",
                     }.get(status, "Ready")
                 )
+        self._update_preview_visibility()
+
+    def _update_preview_visibility(self) -> None:
+        if self.ui.previewToggle is None:
+            return
+        status = self._status if self.has_number else "neutral"
+        preview_visible = bool(
+            self._before_after_enabled and self.has_number and status == "done" and self.ui.toggle.isChecked()
+        )
+        if not preview_visible:
+            self.reset_before_after(emit=False)
+        self.ui.previewToggle.setVisible(preview_visible)
 
 
 class DetectSettings(QWidget):

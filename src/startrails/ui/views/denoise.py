@@ -490,8 +490,8 @@ class DenoiseView(ModeView):
                 file is not None
                 and ref is not None
                 and getattr(file, "path", None) == getattr(ref, "path", None)
-                and self.sky_settings is not None
-                and self.sky_settings.ui.showMaskOverlay.isChecked()
+                and self.mask_controller is not None
+                and self.mask_controller.is_overlay_enabled()
             ):
                 self.shell.canvas_main.set_mask_edit_mode(True)
             else:

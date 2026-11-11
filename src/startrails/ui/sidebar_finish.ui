@@ -231,6 +231,9 @@ QPushButton#openProject:focus:enabled {
          <property name="is_expanded" stdset="0">
           <bool>false</bool>
          </property>
+         <property name="before_after_enabled" stdset="0">
+          <bool>true</bool>
+         </property>
          <widget class="SkyMaskSettings" name="skySettings" native="true">
           <property name="geometry">
            <rect>
@@ -256,6 +259,9 @@ QPushButton#openProject:focus:enabled {
          </property>
          <property name="is_expanded" stdset="0">
           <bool>false</bool>
+         </property>
+         <property name="before_after_enabled" stdset="0">
+          <bool>true</bool>
          </property>
          <widget class="SeparateStarsSettings" name="separateSettings" native="true">
           <property name="geometry">
@@ -283,6 +289,9 @@ QPushButton#openProject:focus:enabled {
          <property name="is_expanded" stdset="0">
           <bool>false</bool>
          </property>
+         <property name="before_after_enabled" stdset="0">
+          <bool>true</bool>
+         </property>
          <widget class="FinishStarlessSettings" name="starlessSettings" native="true">
           <property name="geometry">
            <rect>
@@ -308,6 +317,9 @@ QPushButton#openProject:focus:enabled {
          </property>
          <property name="is_expanded" stdset="0">
           <bool>false</bool>
+         </property>
+         <property name="before_after_enabled" stdset="0">
+          <bool>true</bool>
          </property>
          <widget class="FinishRecombineSettings" name="recombineSettings" native="true">
           <property name="geometry">

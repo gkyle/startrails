@@ -557,5 +557,56 @@ class TestFinishMasking(QtTestCase):
         self.assertIsNotNone(saved_mask)
         np.testing.assert_allclose(saved_mask, expected_mask, atol=1.0 / 255.0)
 
+    def test_step1_eye_chip_toggles_mask_overlay(self):
+        """Step 1 eye chip appears when expanded and done, toggling the canvas mask overlay on and off."""
+        app, shell, view, sidebar = self.make_finish_view("overlay_chip")
+        shell.canvas_main.show()
+        sidebar.show()
+        self.qt.processEvents()
+
+        # Before a mask is defined, Step 1 starts ready with overlay disabled and chip hidden.
+        self.assertEqual(sidebar.skyCard.status, "ready")
+        self.assertFalse(sidebar.skyCard.ui.previewToggle.isVisible())
+        self.assertFalse(shell.canvas_main.is_mask_edit_mode())
+
+        # Save a mask -> Step 1 is done, still collapsed -> chip remains hidden until expanded.
+        mask = np.ones((32, 40), dtype=np.float32)
+        app.workflow.save_mask(mask)
+        view.updateReadyStates()
+        self.assertEqual(sidebar.skyCard.status, "done")
+        self.assertFalse(sidebar.skyCard.ui.previewToggle.isVisible())
+
+        # Expanding Step 1 shows the open-eye chip and turns the mask overlay ON.
+        sidebar.skyCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertTrue(sidebar.skyCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.skyCard.ui.previewToggle.isChecked())
+        self.assertFalse(sidebar.skyCard.ui.previewToggle.property("showingBefore"))
+        self.assertTrue(shell.canvas_main.is_mask_edit_mode())
+
+        # Clicking the eye chip switches to eye-off and hides the mask overlay.
+        sidebar.skyCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertTrue(sidebar.skyCard.ui.previewToggle.isChecked())
+        self.assertTrue(sidebar.skyCard.ui.previewToggle.property("showingBefore"))
+        self.assertFalse(shell.canvas_main.is_mask_edit_mode())
+
+        # Clicking again restores open eye and shows the mask overlay.
+        sidebar.skyCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertFalse(sidebar.skyCard.ui.previewToggle.isChecked())
+        self.assertFalse(sidebar.skyCard.ui.previewToggle.property("showingBefore"))
+        self.assertTrue(shell.canvas_main.is_mask_edit_mode())
+
+        # Collapsing Step 1 from eye-off resets state, hides the chip, and turns overlay off.
+        sidebar.skyCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertFalse(shell.canvas_main.is_mask_edit_mode())
+        sidebar.skyCard.setExpanded(False)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.skyCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.skyCard.ui.previewToggle.isChecked())
+        self.assertFalse(shell.canvas_main.is_mask_edit_mode())
+
 
 __all__ = ["TestFinishMasking"]

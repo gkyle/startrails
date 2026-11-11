@@ -1,12 +1,20 @@
 """Settings edits, validation, and fade semantics survive UI refresh."""
 
 from types import SimpleNamespace
-from PySide6.QtCore import Qt
+import time
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 from support import QtTestCase
 from startrails.lib.file import InputFile
 from startrails.lib.project_denoise import DenoiseProject
-from startrails.ui.steps import DetectSettings, FillSettings, StackSettings, StepCard, AdditionalToolsSettings
+from startrails.ui.steps import (
+    PREVIEW_LONG_PRESS_MS,
+    DetectSettings,
+    FillSettings,
+    StackSettings,
+    StepCard,
+    AdditionalToolsSettings,
+)
 from startrails.ui.steps_denoise import (
     DenoiseAlignSettings,
     DenoiseSkySettings,
@@ -118,7 +126,7 @@ class SettingsTests(QtTestCase):
             (DetectSettings(self.app), ("run", "advancedToggle", "useGPU")),
             (StackSettings(self.app), ("run", "advancedToggle", "useGPU")),
             (FillSettings(), ("run",)),
-            (DenoiseSkySettings(), ("showMaskOverlay",)),
+            (DenoiseSkySettings(), ("clearMask", "fullFrameMask", "refineMask")),
             (DenoiseStackSettings(), ("run", "advancedToggle", "useGPU", "compressIntermediateTiffs")),
             (DenoiseTuneSettings(), ("enableCorrections", "showGradientMask")),
             (AdditionalToolsSettings(), ("masks", "contribute", "training")),
@@ -175,3 +183,121 @@ class SettingsTests(QtTestCase):
         self.assertTrue(card.alert)
         self.assertEqual(card.ui.number.text(), "!")
         self.assertEqual(card.ui.number.property("stepStatus"), "ready")
+
+    def test_step_card_before_after_toggle(self):
+        card = StepCard("Finish Starless", FillSettings(), 3, expanded=False)
+        card.show()
+        self.qt.processEvents()
+
+        # Eye chip is placed to the left of the status badge.
+        header_layout = card.ui.headerLayout
+        self.assertLess(header_layout.indexOf(card.ui.previewToggle), header_layout.indexOf(card.ui.statusBadge))
+
+        # Unconfigured card never displays the chip, even when expanded and done.
+        card.setStatus("done")
+        card.setExpanded(True)
+        self.assertFalse(card.ui.previewToggle.isVisible())
+
+        # Configured card only displays the chip when expanded AND status == "done".
+        card.setExpanded(False)
+        card.set_before_after_enabled(True)
+        self.assertFalse(card.ui.previewToggle.isVisible())
+
+        card.setExpanded(True)
+        self.assertTrue(card.ui.previewToggle.isVisible())
+        self.assertFalse(card.ui.previewToggle.isChecked())
+        self.assertFalse(card.is_showing_before())
+
+        for non_done in ("ready", "running", "locked"):
+            card.setStatus(non_done)
+            self.assertFalse(card.ui.previewToggle.isVisible())
+
+        card.setStatus("done")
+        card.setExpanded(True)
+        self.assertTrue(card.ui.previewToggle.isVisible())
+
+        events = []
+        card.before_after_toggled.connect(events.append)
+
+        # Pressing down immediately triggers showing "before" without collapsing the card.
+        self.assertFalse(card.ui.previewToggle.property("showingBefore"))
+        QTest.mousePress(card.ui.previewToggle, Qt.LeftButton)
+        self.assertEqual(events, [True])
+        self.assertTrue(card.is_showing_before())
+        self.assertTrue(card.ui.previewToggle.property("showingBefore"))
+        self.assertTrue(card.is_expanded)
+
+        # Releasing inside toggles to "before" and stays there.
+        QTest.mouseRelease(card.ui.previewToggle, Qt.LeftButton)
+        self.assertEqual(events, [True])
+        self.assertTrue(card.ui.previewToggle.isChecked())
+        self.assertTrue(card.is_showing_before())
+
+        # Second click toggles back to "after".
+        QTest.mouseClick(card.ui.previewToggle, Qt.LeftButton)
+        self.assertEqual(events, [True, False])
+        self.assertFalse(card.ui.previewToggle.isChecked())
+        self.assertFalse(card.ui.previewToggle.property("showingBefore"))
+        self.assertFalse(card.is_showing_before())
+
+        # Press-and-drag-off peeks "before" while held down and returns to "after" on release.
+        QTest.mousePress(card.ui.previewToggle, Qt.LeftButton)
+        self.assertEqual(events, [True, False, True])
+        QTest.mouseMove(card.ui.previewToggle, QPoint(-20, -20))
+        QTest.mouseRelease(card.ui.previewToggle, Qt.LeftButton, pos=QPoint(-20, -20))
+        self.assertEqual(events, [True, False, True, False])
+        self.assertFalse(card.ui.previewToggle.isChecked())
+
+        # Long press from "after" shows "before" on mouse down and returns to "after" on mouse up.
+        QTest.mousePress(card.ui.previewToggle, Qt.LeftButton)
+        self.assertEqual(events[-1], True)
+        self.assertTrue(card.is_showing_before())
+        time.sleep((PREVIEW_LONG_PRESS_MS + 30) / 1000.0)
+        QTest.mouseRelease(card.ui.previewToggle, Qt.LeftButton)
+        self.assertEqual(events[-1], False)
+        self.assertFalse(card.ui.previewToggle.isChecked())
+        self.assertFalse(card.ui.previewToggle.isDown())
+        self.assertFalse(card.ui.previewToggle.property("showingBefore"))
+        self.assertFalse(card.is_showing_before())
+
+        # Follow-up short click right after long press still toggles cleanly.
+        QTest.mouseClick(card.ui.previewToggle, Qt.LeftButton)
+        self.assertEqual(events[-1], True)
+        self.assertTrue(card.ui.previewToggle.isChecked())
+
+        # Long press when starting in "before" also returns to "after" on release.
+        QTest.mousePress(card.ui.previewToggle, Qt.LeftButton)
+        self.assertTrue(card.is_showing_before())
+        time.sleep((PREVIEW_LONG_PRESS_MS + 30) / 1000.0)
+        QTest.mouseRelease(card.ui.previewToggle, Qt.LeftButton)
+        self.assertEqual(events[-1], False)
+        self.assertFalse(card.ui.previewToggle.isChecked())
+        self.assertFalse(card.is_showing_before())
+
+        # Collapsing resets to "after" (emitting False) and hides the chip; re-expanding keeps "after".
+        QTest.mouseClick(card.ui.previewToggle, Qt.LeftButton)
+        self.assertTrue(card.ui.previewToggle.isChecked())
+        self.assertEqual(events[-1], True)
+        card.setExpanded(False)
+        self.assertEqual(events[-1], False)
+        self.assertFalse(card.ui.previewToggle.isVisible())
+        self.assertFalse(card.ui.previewToggle.isChecked())
+        self.assertFalse(card.is_showing_before())
+        card.setExpanded(True)
+        self.assertTrue(card.ui.previewToggle.isVisible())
+        self.assertFalse(card.ui.previewToggle.isChecked())
+        self.assertFalse(card.is_showing_before())
+
+        # A slow synchronous preview load during mouse down must not turn a quick click into a long press.
+        def slow_handler(showing_before):
+            if showing_before:
+                time.sleep((PREVIEW_LONG_PRESS_MS + 30) / 1000.0)
+
+        card.before_after_toggled.connect(slow_handler)
+        try:
+            QTest.mousePress(card.ui.previewToggle, Qt.LeftButton)
+            QTest.mouseRelease(card.ui.previewToggle, Qt.LeftButton)
+        finally:
+            card.before_after_toggled.disconnect(slow_handler)
+        self.assertTrue(card.ui.previewToggle.isChecked())
+        self.assertTrue(card.is_showing_before())

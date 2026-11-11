@@ -452,11 +452,33 @@ class TestFinishSeparation(QtTestCase):
         self.assertEqual((canvas.posX, canvas.posY), (50, -30))
 
         # Expanding Step 2: Separate stars displays the starless image when both separated layers exist.
+        sidebar.show()
+        self.qt.processEvents()
         sidebar.separateCard.setExpanded(False)
+        self.assertFalse(sidebar.separateCard.ui.previewToggle.isVisible())
         sidebar.separateCard.setExpanded(True)
+        self.assertTrue(sidebar.separateCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.separateCard.ui.previewToggle.isChecked())
         self.assertEqual(Path(canvas.file.path), Path(starless_entry.path))
         self.assertAlmostEqual(canvas.zoom_factor, 2.5)
         self.assertEqual((canvas.posX, canvas.posY), (50, -30))
+
+        # Before/after chip on Step 2 toggles cleanly between input image (before) and starless (after).
+        sidebar.separateCard.ui.previewToggle.click()
+        self.assertTrue(sidebar.separateCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(canvas.file.path), Path(source_path).resolve())
+        self.assertFalse(canvas.is_mask_edit_mode())
+        sidebar.separateCard.ui.previewToggle.click()
+        self.assertFalse(sidebar.separateCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(canvas.file.path), Path(starless_entry.path))
+
+        # Collapsing Step 2 while showing before returns canvas to starless (after) and hides the chip.
+        sidebar.separateCard.ui.previewToggle.click()
+        self.assertEqual(Path(canvas.file.path), Path(source_path).resolve())
+        sidebar.separateCard.setExpanded(False)
+        self.assertFalse(sidebar.separateCard.ui.previewToggle.isVisible())
+        self.assertEqual(Path(canvas.file.path), Path(starless_entry.path))
+        sidebar.separateCard.setExpanded(True)
 
         # Default zoom is the state a project reset would clear; keep a panned transform.
         canvas.zoom_factor = 1.0

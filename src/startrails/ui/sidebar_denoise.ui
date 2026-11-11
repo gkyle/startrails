@@ -366,6 +366,9 @@ QProgressBar#operationsProgress::chunk {
            <property name="is_expanded" stdset="0">
             <bool>true</bool>
            </property>
+           <property name="before_after_enabled" stdset="0">
+            <bool>true</bool>
+           </property>
            <widget class="DenoiseSkySettings" name="skySettings" native="true">
             <property name="geometry">
              <rect>

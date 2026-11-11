@@ -221,7 +221,15 @@ class TestSidebarFinishRecombinePrerequisites(QtTestCase):
         self.assertTrue(self.sidebar.btn_export_layers.isEnabled())
         self.assertTrue(self.sidebar.slider_star_amount.isEnabled())
 
-        # 5. Record export -> done
+        # 5. Record composite -> done ("Composite saved")
+        comp_p = self.root / "composite.tif"
+        imwrite(comp_p, np.full((64, 64, 3), 24000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_FINISHED_COMPOSITE, comp_p)
+        self.sidebar.update_prerequisites(self.project)
+        self.assertEqual(self.sidebar.recombineCard.status, "done")
+        self.assertEqual(self.sidebar.recombineCard.ui.subtitle.text(), "Composite saved")
+
+        # 6. Record export -> done ("Finished image saved")
         export_p = self.root / "exported.tif"
         imwrite(export_p, np.full((64, 64, 3), 25000, dtype=np.uint16), bit_depth=16)
         self.project.record_export(export_p)
@@ -584,7 +592,6 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         """Selecting an output file clears inputFiles; viewing source outside Step 1 does NOT show green mask overlay."""
         # 1. In Step 1 (skyCard expanded), viewing source shows mask overlay for editing
         self.sidebar.skyCard.setExpanded(True)
-        self.sidebar.skySettings.ui.showMaskOverlay.setChecked(True)
         self.view.showFile(self.project.source_file)
         QApplication.processEvents()
         self.assertTrue(self.canvas.is_mask_edit_mode())
@@ -685,11 +692,17 @@ class TestFinishViewRecombineInteraction(QtTestCase):
             mock_info.assert_called_once()
             self.assertIn("source image first", mock_info.call_args[0][2])
 
-    def test_step4_status_progression_after_save_export(self):
-        """Saving an export transitions Step 4 card status from 'ready' to 'done'."""
+    def test_step4_status_progression_after_composite_and_save_export(self):
+        """Step 4 transitions from 'ready' -> 'done' when composite exists, and 'Finished image saved' on export."""
+        self.project.invalidate_artifact_roles({ROLE_FINISHED_COMPOSITE})
         self.view.updateReadyStates()
         self.assertEqual(self.sidebar.recombineCard.status, "ready")
         self.assertEqual(self.sidebar.recombineCard.ui.subtitle.text(), "Ready to recombine")
+
+        self.project.record_artifact(ROLE_FINISHED_COMPOSITE, self.composite_path)
+        self.view.updateReadyStates()
+        self.assertEqual(self.sidebar.recombineCard.status, "done")
+        self.assertEqual(self.sidebar.recombineCard.ui.subtitle.text(), "Composite saved")
 
         export_path = self.root / "final_image.tif"
         imwrite(export_path, np.full((64, 64, 3), 30000, dtype=np.uint16), bit_depth=16)
@@ -698,6 +711,59 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         self.view.updateReadyStates()
         self.assertEqual(self.sidebar.recombineCard.status, "done")
         self.assertEqual(self.sidebar.recombineCard.ui.subtitle.text(), "Finished image saved")
+
+    def test_step4_before_after_chip_visibility_and_preview(self):
+        """Step 4 eye chip appears only when expanded and done, toggling input image (before) and composite (after)."""
+        self.sidebar.show()
+
+        # Without composite/export, Step 4 is ready -> chip stays hidden even when expanded.
+        self.project.invalidate_artifact_roles({ROLE_FINISHED_COMPOSITE})
+        self.view.updateReadyStates()
+        with patch.object(self.view, "_debounce_recombine"):
+            self.sidebar.recombineCard.setExpanded(True)
+        self.assertEqual(self.sidebar.recombineCard.status, "ready")
+        self.assertFalse(self.sidebar.recombineCard.ui.previewToggle.isVisible())
+        self.sidebar.recombineCard.setExpanded(False)
+
+        # Record composite -> Step 4 is done, hidden while collapsed.
+        self.project.record_artifact(ROLE_FINISHED_COMPOSITE, self.composite_path)
+        self.view.updateReadyStates()
+        self.assertEqual(self.sidebar.recombineCard.status, "done")
+        self.assertFalse(self.sidebar.recombineCard.ui.previewToggle.isVisible())
+
+        # Expand Step 4 -> chip appears and defaults to composite ("after").
+        self.sidebar.recombineCard.setExpanded(True)
+        QApplication.processEvents()
+        self.assertTrue(self.sidebar.recombineCard.ui.previewToggle.isVisible())
+        self.assertFalse(self.sidebar.recombineCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
+
+        # Click chip -> switches canvas cleanly to the input source image ("before").
+        self.sidebar.recombineCard.ui.previewToggle.click()
+        QApplication.processEvents()
+        self.assertTrue(self.sidebar.recombineCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.source_path.resolve())
+        self.assertFalse(self.canvas.is_mask_edit_mode())
+
+        # Click again -> switches back to the composite ("after").
+        self.sidebar.recombineCard.ui.previewToggle.click()
+        QApplication.processEvents()
+        self.assertFalse(self.sidebar.recombineCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
+
+        # Collapse while in "before" hides the chip AND restores composite ("after") on the canvas.
+        self.sidebar.recombineCard.ui.previewToggle.click()
+        QApplication.processEvents()
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.source_path.resolve())
+        self.sidebar.recombineCard.setExpanded(False)
+        QApplication.processEvents()
+        self.assertFalse(self.sidebar.recombineCard.ui.previewToggle.isVisible())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
+        self.sidebar.recombineCard.setExpanded(True)
+        QApplication.processEvents()
+        self.assertTrue(self.sidebar.recombineCard.ui.previewToggle.isVisible())
+        self.assertFalse(self.sidebar.recombineCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
 
 
 if __name__ == "__main__":

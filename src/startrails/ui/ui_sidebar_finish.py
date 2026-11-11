@@ -160,6 +160,7 @@ class Ui_SidebarFinish(object):
         self.skyCard.setObjectName(u"skyCard")
         self.skyCard.setProperty(u"step_number", 1)
         self.skyCard.setProperty(u"is_expanded", False)
+        self.skyCard.setProperty(u"before_after_enabled", True)
         self.skySettings = SkyMaskSettings(self.skyCard)
         self.skySettings.setObjectName(u"skySettings")
         self.skySettings.setGeometry(QRect(0, 0, 100, 30))
@@ -171,6 +172,7 @@ class Ui_SidebarFinish(object):
         self.separateCard.setObjectName(u"separateCard")
         self.separateCard.setProperty(u"step_number", 2)
         self.separateCard.setProperty(u"is_expanded", False)
+        self.separateCard.setProperty(u"before_after_enabled", True)
         self.separateSettings = SeparateStarsSettings(self.separateCard)
         self.separateSettings.setObjectName(u"separateSettings")
         self.separateSettings.setGeometry(QRect(0, 0, 100, 30))
@@ -182,6 +184,7 @@ class Ui_SidebarFinish(object):
         self.starlessCard.setObjectName(u"starlessCard")
         self.starlessCard.setProperty(u"step_number", 3)
         self.starlessCard.setProperty(u"is_expanded", False)
+        self.starlessCard.setProperty(u"before_after_enabled", True)
         self.starlessSettings = FinishStarlessSettings(self.starlessCard)
         self.starlessSettings.setObjectName(u"starlessSettings")
         self.starlessSettings.setGeometry(QRect(0, 0, 100, 30))
@@ -193,6 +196,7 @@ class Ui_SidebarFinish(object):
         self.recombineCard.setObjectName(u"recombineCard")
         self.recombineCard.setProperty(u"step_number", 4)
         self.recombineCard.setProperty(u"is_expanded", False)
+        self.recombineCard.setProperty(u"before_after_enabled", True)
         self.recombineSettings = FinishRecombineSettings(self.recombineCard)
         self.recombineSettings.setObjectName(u"recombineSettings")
         self.recombineSettings.setGeometry(QRect(0, 0, 100, 30))
@@ -235,5 +239,6 @@ class Ui_SidebarFinish(object):
         self.recombineCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarFinish", u"Blend layers and export image", None))
         pass
     # retranslateUi
+
 
 Ui_sidebarFinish = Ui_SidebarFinish

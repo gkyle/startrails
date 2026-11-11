@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import os
 from typing import List, Optional, Tuple
 import cv2
@@ -69,6 +70,8 @@ class CanvasLabel(QLabel):
         self._horizon_overlay_rect: Optional[Tuple[int, int, int, int]] = None
         self._horizon_overlay_arr: Optional[np.ndarray] = None
         self._horizon_overlay_patches = []
+        self._pixmap_cache: OrderedDict[Tuple[str, int, int], QPixmap] = OrderedDict()
+        self._pixmap_cache_limit = 4
 
         # Debounce timers for high-frequency events
         self.wheelDebounceTimer = QTimer()
@@ -137,6 +140,25 @@ class CanvasLabel(QLabel):
         self._prepare_file_display(file)
         self.setFromNumpyArray(pixels, resetZoomAndPosition=reset_zoom_and_position, is_bgr=is_bgr)
 
+    def _file_cache_key(self, path: str) -> Optional[Tuple[str, int, int]]:
+        try:
+            st = os.stat(path)
+        except OSError:
+            return None
+        return (path, st.st_mtime_ns, st.st_size)
+
+    def _evict_cached_pixmap(self, path: str) -> None:
+        for key in [k for k in self._pixmap_cache if k[0] == path]:
+            self._pixmap_cache.pop(key, None)
+
+    def _store_cached_pixmap(self, key: Optional[Tuple[str, int, int]], pixmap: QPixmap) -> None:
+        if key is None or pixmap.isNull():
+            return
+        self._evict_cached_pixmap(key[0])
+        self._pixmap_cache[key] = pixmap
+        while len(self._pixmap_cache) > self._pixmap_cache_limit:
+            self._pixmap_cache.popitem(last=False)
+
     def setFile(self, file: File, reload: bool = False, preserve_view: Optional[bool] = None) -> None:
         same_file = (
             file is not None
@@ -154,24 +176,38 @@ class CanvasLabel(QLabel):
         self._prepare_file_display(file)
 
         if file is not None and getattr(file, "path", None):
+            path = file.path
+            if reload:
+                self._evict_cached_pixmap(path)
+            cache_key = self._file_cache_key(path)
+            cached = None if reload or cache_key is None else self._pixmap_cache.get(cache_key)
+            if cached is not None and not cached.isNull():
+                self._pixmap_cache.move_to_end(cache_key)
+                self.setPixmap(cached, not should_preserve)
+                return
+
             QImageReader.setAllocationLimit(0)
             # QPixmap's filename cache can retain a partial output when successive
             # writes share a timestamp and size. Explicit refreshes must read pixels.
-            newPixmap = QPixmap.fromImage(QImageReader(file.path).read()) if reload else QPixmap(file.path)
+            newPixmap = QPixmap.fromImage(QImageReader(path).read()) if reload else QPixmap(path)
             # Sometimes we're writing over a file at the same moment we try to replace the pixmap. Try to not replace useful pixels with nil.
             if newPixmap.width() > 0 and newPixmap.height() > 0:
+                self._store_cached_pixmap(cache_key, newPixmap)
                 self.setPixmap(newPixmap, not should_preserve)
-            elif os.path.exists(file.path):
+            elif os.path.exists(path):
                 # Robust fallback for large, 16-bit, float, or formats that Qt QPixmap couldn't load directly
                 try:
-                    with open(file.path, "rb") as f:
+                    with open(path, "rb") as f:
                         buf = np.frombuffer(f.read(), dtype=np.uint8)
                     arr = cv2.imdecode(buf, cv2.IMREAD_UNCHANGED)
                     if arr is not None and arr.size > 0:
                         self.setFromNumpyArray(arr, resetZoomAndPosition=not should_preserve)
+                        if self.pixmap is not None and not self.pixmap.isNull():
+                            self._store_cached_pixmap(cache_key, self.pixmap)
                 except Exception as err:
-                    print(f"Error loading image fallback for {file.path}: {err}")
+                    print(f"Error loading image fallback for {path}: {err}")
         else:
+            self._pixmap_cache.clear()
             self.file = None
             self.selectedMask = None
             self.selectedNub = None

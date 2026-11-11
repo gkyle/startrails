@@ -50,7 +50,6 @@ class SkyMaskSettings(QWidget):
         self.ui.clearMask.clicked.connect(self.clear_mask_requested.emit)
         self.ui.fullFrameMask.clicked.connect(self.full_frame_requested.emit)
         self.ui.refineMask.clicked.connect(self.refine_mask_requested.emit)
-        self.ui.showMaskOverlay.toggled.connect(self.mask_edit_toggled.emit)
 
         # Connect change signals
         self.ui.modelType.currentIndexChanged.connect(self._on_change)
@@ -74,8 +73,6 @@ class SkyMaskSettings(QWidget):
         self.settings_changed.emit()
 
     def reset(self) -> None:
-        with QSignalBlocker(self.ui.showMaskOverlay):
-            self.ui.showMaskOverlay.setChecked(False)
         with QSignalBlocker(self.ui.brushSlider):
             self.ui.brushSlider.setValue(DEFAULT_MASK_BRUSH_RADIUS)
         with QSignalBlocker(self.ui.brushRadius):

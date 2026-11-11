@@ -208,51 +208,6 @@ QPushButton#refineMask:disabled {
    </item>
 
    <item>
-    <layout class="QHBoxLayout" name="showMaskOverlayRow">
-     <item>
-      <widget class="CheckboxLabel" name="showMaskOverlayLabel">
-       <property name="cursor">
-        <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">color: #334155; font-size: 12px;</string>
-       </property>
-       <property name="toolTip">
-        <string>Show sky mask on canvas and enable interactive brush editing tools</string>
-       </property>
-       <property name="text">
-        <string>Show Mask Overlay</string>
-       </property>
-       <property name="buddy">
-        <cstring>showMaskOverlay</cstring>
-       </property>
-      </widget>
-     </item>
-     <item alignment="Qt::AlignmentFlag::AlignRight">
-      <widget class="QCheckBox" name="showMaskOverlay">
-       <property name="cursor">
-        <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="focusPolicy">
-        <enum>Qt::FocusPolicy::StrongFocus</enum>
-       </property>
-       <property name="toolTip">
-        <string>Show sky mask on canvas and enable interactive brush editing tools</string>
-       </property>
-       <property name="accessibleName">
-        <string>Show and edit mask overlay</string>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="checked">
-        <bool>false</bool>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="brushLayout">
      <property name="spacing">
       <number>6</number>
@@ -381,13 +336,6 @@ Hotkeys: [ / ] or Ctrl+Wheel to resize.</string>
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>CheckboxLabel</class>
-   <extends>QLabel</extends>
-   <header>startrails.ui.checkbox_label</header>
-  </customwidget>
- </customwidgets>
  <resources>
    <include location="resources.qrc"/>
   </resources>

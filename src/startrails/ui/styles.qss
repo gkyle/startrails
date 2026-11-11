@@ -74,7 +74,6 @@ QCheckBox:focus:enabled {
 
 QCheckBox#useGPU,
 QCheckBox#compressIntermediateTiffs,
-QCheckBox#showMaskOverlay,
 QCheckBox#enableCorrections,
 QCheckBox#showGradientMask {
     spacing: 0px;
@@ -82,7 +81,6 @@ QCheckBox#showGradientMask {
 
 QCheckBox#useGPU::indicator,
 QCheckBox#compressIntermediateTiffs::indicator,
-QCheckBox#showMaskOverlay::indicator,
 QCheckBox#enableCorrections::indicator,
 QCheckBox#showGradientMask::indicator {
     width: 36px;
@@ -92,7 +90,6 @@ QCheckBox#showGradientMask::indicator {
 
 QCheckBox#useGPU::indicator:unchecked,
 QCheckBox#compressIntermediateTiffs::indicator:unchecked,
-QCheckBox#showMaskOverlay::indicator:unchecked,
 QCheckBox#enableCorrections::indicator:unchecked,
 QCheckBox#showGradientMask::indicator:unchecked {
     image: url(:/startrails/ui/switch_off.svg);
@@ -100,7 +97,6 @@ QCheckBox#showGradientMask::indicator:unchecked {
 
 QCheckBox#useGPU::indicator:checked,
 QCheckBox#compressIntermediateTiffs::indicator:checked,
-QCheckBox#showMaskOverlay::indicator:checked,
 QCheckBox#enableCorrections::indicator:checked,
 QCheckBox#showGradientMask::indicator:checked {
     image: url(:/startrails/ui/switch_on.svg);
@@ -108,7 +104,6 @@ QCheckBox#showGradientMask::indicator:checked {
 
 QCheckBox#useGPU:focus:enabled,
 QCheckBox#compressIntermediateTiffs:focus:enabled,
-QCheckBox#showMaskOverlay:focus:enabled,
 QCheckBox#enableCorrections:focus:enabled,
 QCheckBox#showGradientMask:focus:enabled {
     border-color: transparent;

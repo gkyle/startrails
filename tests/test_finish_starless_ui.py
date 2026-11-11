@@ -1241,6 +1241,73 @@ class TestFinishViewStarlessInteraction(QtTestCase):
         self.assertFalse(self.project.get_settings().enable_starless_denoise)
         self.assertEqual(len(save_calls), 1)
 
+    def test_step3_before_after_chip_visibility_and_preview(self):
+        """Step 3 eye chip is visible only when expanded and done, toggling Step 2 starless and finished starless."""
+        self.sidebar.show()
+        self.qt.processEvents()
+
+        # Step 3 is initially ready -> chip is hidden even when expanded.
+        self.view.updateReadyStates()
+        self.sidebar.starlessCard.setExpanded(True)
+        self.assertEqual(self.sidebar.starlessCard.status, "ready")
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isVisible())
+        self.sidebar.starlessCard.setExpanded(False)
+
+        denoised_path = self.root / "denoised_starless.tif"
+        finished_path = self.root / "finished_starless.tif"
+        imwrite(denoised_path, np.full((512, 512, 3), 24000, dtype=np.uint16), bit_depth=16)
+        imwrite(finished_path, np.full((512, 512, 3), 28000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, denoised_path)
+        self.project.record_artifact(
+            ROLE_FINISHED_STARLESS,
+            finished_path,
+            options={"starless_filter_version": STARLESS_FILTER_VERSION},
+        )
+
+        with patch.object(
+            FinishWorkflow,
+            "get_graxpert_status",
+            return_value={"configured": True, "model_ready": True, "device": "cpu", "setup_error": None},
+        ):
+            self.view.updateReadyStates()
+
+        # Done while collapsed -> chip remains hidden until expanded.
+        self.assertEqual(self.sidebar.starlessCard.status, "done")
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isVisible())
+
+        # Expand Step 3 -> chip becomes visible and defaults to after (finished starless).
+        self.sidebar.starlessCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertTrue(self.sidebar.starlessCard.ui.previewToggle.isVisible())
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # Click chip -> switches to Step 2 separated starless ("before").
+        self.sidebar.starlessCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertTrue(self.sidebar.starlessCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+
+        # Click again -> switches back to finished starless ("after").
+        self.sidebar.starlessCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # Collapse while in "before" hides the chip AND restores finished starless ("after") on the canvas.
+        self.sidebar.starlessCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+        self.sidebar.starlessCard.setExpanded(False)
+        self.qt.processEvents()
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isVisible())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+        self.sidebar.starlessCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertTrue(self.sidebar.starlessCard.ui.previewToggle.isVisible())
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
 
 __all__ = [
     "TestFinishStarlessSettings",

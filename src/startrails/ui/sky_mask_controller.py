@@ -76,13 +76,23 @@ class SkyMaskController(QObject):
         self._connect(self.settings_widget.brush_radius_changed, self.on_brush_radius_changed)
 
         if self.sky_card is not None:
-            self._connect(self.sky_card.expansion_changed, self.settings_widget.ui.showMaskOverlay.setChecked)
+            self._connect(self.sky_card.expansion_changed, self._on_sky_card_overlay_state_changed)
+            self._connect(self.sky_card.before_after_toggled, self._on_sky_card_overlay_state_changed)
 
         canvas = getattr(self.shell, "canvas_main", None)
         if canvas is not None:
             self._connect(canvas.mask_changed, self.on_canvas_mask_changed)
             self._connect(canvas.mask_brush_edited, self.on_canvas_mask_brush_edited)
             self._connect(canvas.brush_radius_changed, self.on_canvas_brush_radius_changed)
+
+    def is_overlay_enabled(self) -> bool:
+        """Return True when Step 1 is expanded and the eye toggle is not hiding the overlay."""
+        if self.sky_card is None:
+            return False
+        return bool(self.sky_card.is_expanded and not self.sky_card.is_showing_before())
+
+    def _on_sky_card_overlay_state_changed(self, *_) -> None:
+        self.on_mask_edit_toggled(self.is_overlay_enabled())
 
     def teardown(self) -> None:
         """Clean up canvas state and disconnect all tracked signals."""
@@ -106,11 +116,11 @@ class SkyMaskController(QObject):
         """Render mask overlay on top of the active source image."""
         self.show_source_image()
         canvas = getattr(self.shell, "canvas_main", None)
+        if self.sky_card is not None:
+            self.sky_card.reset_before_after(emit=False)
         if canvas is not None:
             canvas.set_denoise_mask(mask)
             canvas.set_mask_edit_mode(True)
-        with QSignalBlocker(self.settings_widget.ui.showMaskOverlay):
-            self.settings_widget.ui.showMaskOverlay.setChecked(True)
 
     def _on_detection_completed(self, mask: np.ndarray) -> None:
         if self.on_detection_finished is not None:
@@ -218,7 +228,7 @@ class SkyMaskController(QObject):
             return
 
         current_mask = current_mask.copy()
-        if canvas is not None and self.settings_widget.ui.showMaskOverlay.isChecked():
+        if canvas is not None and self.is_overlay_enabled():
             canvas.set_mask_edit_mode(True)
 
         vals = self.settings_widget.values()

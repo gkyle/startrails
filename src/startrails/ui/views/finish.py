@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Final, Optional
 
-from PySide6.QtCore import QSignalBlocker, QTimer
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 from startrails.lib.denoise.defaults import DEFAULT_SKY_DETECTION_DEVICE
@@ -132,6 +132,8 @@ class FinishView(ModeView):
 
         if hasattr(self.sidebar, "separateCard"):
             self.connect_signal(self.sidebar.separateCard.expanded, self._on_separate_card_expanded)
+            if hasattr(self.sidebar.separateCard, "before_after_toggled"):
+                self.connect_signal(self.sidebar.separateCard.before_after_toggled, self._on_separate_before_after)
 
         if hasattr(self.sidebar, "starlessSettings"):
             if hasattr(self.sidebar.starlessSettings, "enable_denoise_changed"):
@@ -156,6 +158,8 @@ class FinishView(ModeView):
 
         if hasattr(self.sidebar, "starlessCard"):
             self.connect_signal(self.sidebar.starlessCard.expanded, self._on_starless_card_expanded)
+            if hasattr(self.sidebar.starlessCard, "before_after_toggled"):
+                self.connect_signal(self.sidebar.starlessCard.before_after_toggled, self._on_starless_before_after)
 
         if hasattr(self.sidebar, "recombineSettings"):
             self.connect_signal(self.sidebar.recombineSettings.star_amount_changed, self.on_star_amount_changed)
@@ -165,6 +169,8 @@ class FinishView(ModeView):
 
         if hasattr(self.sidebar, "recombineCard"):
             self.connect_signal(self.sidebar.recombineCard.expanded, self._on_recombine_card_expanded)
+            if hasattr(self.sidebar.recombineCard, "before_after_toggled"):
+                self.connect_signal(self.sidebar.recombineCard.before_after_toggled, self._on_recombine_before_after)
 
     def teardown(self) -> None:
         """Disconnect signals and clean up canvas and mask controller state."""
@@ -310,23 +316,14 @@ class FinishView(ModeView):
                     canvas.set_denoise_mask(existing_mask)
                     is_expanded = bool(self.sidebar and self.sidebar.skyCard.is_expanded)
                     canvas.set_mask_edit_mode(is_expanded)
-                    if self.sidebar and hasattr(self.sidebar, "skySettings"):
-                        with QSignalBlocker(self.sidebar.skySettings.ui.showMaskOverlay):
-                            self.sidebar.skySettings.ui.showMaskOverlay.setChecked(is_expanded)
                 else:
                     canvas.set_denoise_mask(None)
                     canvas.set_mask_edit_mode(False)
-                    if self.sidebar and hasattr(self.sidebar, "skySettings"):
-                        with QSignalBlocker(self.sidebar.skySettings.ui.showMaskOverlay):
-                            self.sidebar.skySettings.ui.showMaskOverlay.setChecked(False)
             else:
                 canvas.setFile(None)
                 canvas.set_denoise_mask(None)
                 canvas.set_mask_edit_mode(False)
                 self._displayed_source_id = None
-                if self.sidebar and hasattr(self.sidebar, "skySettings"):
-                    with QSignalBlocker(self.sidebar.skySettings.ui.showMaskOverlay):
-                        self.sidebar.skySettings.ui.showMaskOverlay.setChecked(False)
 
         if self.sidebar is not None:
             self.sidebar.update_from_project(self._project, dimensions)
@@ -339,9 +336,20 @@ class FinishView(ModeView):
                 self.sidebar.skySettings.set_from_project(self._project)
 
         self.updateReadyStates()
+        self._reset_preview_toggles()
+
+    def _reset_preview_toggles(self, exclude: Optional[Any] = None) -> None:
+        """Reset step before/after preview toggles to their default after state without emitting."""
+        if self.sidebar is None:
+            return
+        for card_name in ("skyCard", "separateCard", "starlessCard", "recombineCard"):
+            card = getattr(self.sidebar, card_name, None)
+            if card is not None and card is not exclude and hasattr(card, "reset_before_after"):
+                card.reset_before_after(emit=False)
 
     def _on_file_section_show_file(self, file: Optional[File]) -> None:
         """Show a file selected from the Input or Output FileSection, preserving zoom/pan."""
+        self._reset_preview_toggles()
         self.showFile(file, preserve_view=True)
 
     def showFile(  # noqa: N802 - ModeView interface
@@ -398,17 +406,17 @@ class FinishView(ModeView):
                 and getattr(self._project, "source_file", None) is not None
                 and getattr(file, "path", None) == self._project.source_file.path
             ):
-                is_sky_active = bool(
-                    self.sidebar is not None and hasattr(self.sidebar, "skyCard") and self.sidebar.skyCard.is_expanded
+                show_overlay = (
+                    self.mask_controller.is_overlay_enabled()
+                    if self.mask_controller is not None
+                    else bool(
+                        self.sidebar is not None
+                        and hasattr(self.sidebar, "skyCard")
+                        and self.sidebar.skyCard.is_expanded
+                        and not self.sidebar.skyCard.is_showing_before()
+                    )
                 )
-                if (
-                    is_sky_active
-                    and self.sidebar is not None
-                    and hasattr(self.sidebar, "skySettings")
-                    and hasattr(self.sidebar.skySettings, "ui")
-                    and hasattr(self.sidebar.skySettings.ui, "showMaskOverlay")
-                    and self.sidebar.skySettings.ui.showMaskOverlay.isChecked()
-                ):
+                if show_overlay:
                     if hasattr(canvas, "set_mask_edit_mode"):
                         canvas.set_mask_edit_mode(True)
                 elif hasattr(canvas, "set_mask_edit_mode") and canvas.is_mask_edit_mode():
@@ -621,6 +629,7 @@ class FinishView(ModeView):
 
         def on_done(out_path: Any):
             self.updateReadyStates()
+            self._reset_preview_toggles()
             comp_path = self._project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
             if comp_path is not None:
                 comp_file = OutputFile(basename=comp_path.name, path=str(comp_path), operation="Composite")
@@ -763,6 +772,7 @@ class FinishView(ModeView):
             # Same-project completion: refresh file sections and prerequisites
             # without resetting the full project view (which would lose zoom/pan).
             self.updateReadyStates()
+            self._reset_preview_toggles()
             p = self._project.current_artifact_path(ROLE_SEPARATED_STARLESS)
             if p:
                 starless_file = OutputFile(basename=p.name, path=str(p), operation="Starless")
@@ -813,16 +823,42 @@ class FinishView(ModeView):
         self.app.workflow.save_project()
         self.updateReadyStates()
 
-    def _on_separate_card_expanded(self) -> None:
-        """When Separate Stars card is expanded, display the separated starless image if present."""
+    def _show_source_before(self) -> None:
+        """Display clean source input image on canvas (mask overlay disabled) for before preview."""
+        if not self._project or not self._project.source_is_current():
+            return
+        source = self._project.source_file
+        if source is not None:
+            self.showFile(source, preserve_view=True)
+            canvas = getattr(self.shell, "canvas_main", None)
+            if canvas is not None and hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
+                canvas.set_mask_edit_mode(False)
+
+    def _show_separated_starless(self, require_stars: bool = True) -> None:
+        """Display Step 2 separated starless image on canvas when available."""
         if not self._project or not self._project.source_is_current():
             return
         starless_path = self._project.current_artifact_path(ROLE_SEPARATED_STARLESS)
-        stars_path = self._project.current_artifact_path(ROLE_SEPARATED_STARS)
+        stars_path = self._project.current_artifact_path(ROLE_SEPARATED_STARS) if require_stars else True
         if starless_path is not None and stars_path is not None and starless_path.exists():
             starless_file = OutputFile(basename=starless_path.name, path=str(starless_path), operation="Starless")
             self.sidebar.outputFiles.focus_file(starless_file)
             self.showFile(starless_file, preserve_view=True)
+
+    def _on_separate_before_after(self, showing_before: bool) -> None:
+        """Handle Step 2 before/after toggle between input image (before) and starless (after)."""
+        if not self._project or not self._project.source_is_current():
+            return
+        self._reset_preview_toggles(exclude=getattr(self.sidebar, "separateCard", None))
+        if showing_before:
+            self._show_source_before()
+        else:
+            self._show_separated_starless()
+
+    def _on_separate_card_expanded(self) -> None:
+        """When Separate Stars card is expanded, display the separated starless image if present."""
+        self._reset_preview_toggles()
+        self._show_separated_starless()
 
     def on_run_denoise(self) -> None:
         """Execute GraXpert AI denoising on the separated starless plate."""
@@ -878,6 +914,7 @@ class FinishView(ModeView):
         def on_done():
             self._retained_starless_outputs.clear()
             self.updateReadyStates()
+            self._reset_preview_toggles()
             active_file = self._active_starless_output_file()
             if active_file is not None and Path(active_file.path).exists():
                 self._last_output_file = active_file
@@ -1022,11 +1059,8 @@ class FinishView(ModeView):
         self._project.update_settings(replace(settings, enable_starless_denoise=enabled))
         self.app.workflow.save_project()
         self.updateReadyStates()
-
-        active_file = self._active_starless_output_file()
-        if active_file is not None and Path(active_file.path).exists():
-            self.sidebar.outputFiles.focus_file(active_file)
-            self.showFile(active_file, preserve_view=True)
+        self._reset_preview_toggles()
+        self._show_starless_preview(False)
 
         if enabled and self._intended_starless_output_missing_and_ready():
             self._debounce_denoise_preview()
@@ -1037,11 +1071,8 @@ class FinishView(ModeView):
         self._project.update_settings(replace(settings, enable_starless_sharpen=enabled))
         self.app.workflow.save_project()
         self.updateReadyStates()
-
-        active_file = self._active_starless_output_file()
-        if active_file is not None and Path(active_file.path).exists():
-            self.sidebar.outputFiles.focus_file(active_file)
-            self.showFile(active_file, preserve_view=True)
+        self._reset_preview_toggles()
+        self._show_starless_preview(False)
 
         if enabled and self._intended_starless_output_missing_and_ready():
             self._debounce_denoise_preview()
@@ -1050,17 +1081,34 @@ class FinishView(ModeView):
         """Compatibility handler for enable_starless_changed signal."""
         self.on_enable_denoise_changed(enabled)
 
+    def _show_starless_preview(self, showing_before: bool) -> None:
+        """Display either Step 2 starless plate (before) or active finished starless plate (after)."""
+        if not self._project or not self._project.source_is_current():
+            return
+        if showing_before:
+            self._show_separated_starless(require_stars=False)
+            return
+
+        active_file = self._active_starless_output_file()
+        if active_file is not None and Path(active_file.path).exists():
+            self._last_output_file = active_file
+            self.sidebar.outputFiles.focus_file(active_file)
+            self.showFile(active_file, preserve_view=True)
+
+    def _on_starless_before_after(self, showing_before: bool) -> None:
+        """Handle Step 3 before/after preview chip toggles."""
+        self._reset_preview_toggles(exclude=getattr(self.sidebar, "starlessCard", None))
+        self._show_starless_preview(showing_before)
+
     def _on_starless_card_expanded(self) -> None:
         """When Starless card is expanded, ensure active starless output is displayed or computed."""
+        self._reset_preview_toggles()
         if not self._project or not self._project.source_is_current():
             return
         if self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is None:
             return
 
-        active_file = self._active_starless_output_file()
-        if active_file is not None and Path(active_file.path).exists():
-            self.sidebar.outputFiles.focus_file(active_file)
-            self.showFile(active_file, preserve_view=True)
+        self._show_starless_preview(False)
 
         if self._intended_starless_output_missing_and_ready():
             self._debounce_denoise_preview()
@@ -1126,6 +1174,7 @@ class FinishView(ModeView):
         def on_done():
             self._retained_starless_outputs.clear()
             self.updateReadyStates()
+            self._reset_preview_toggles()
             active_file = self._active_starless_output_file()
             if active_file is not None and Path(active_file.path).exists():
                 self._last_output_file = active_file
@@ -1211,8 +1260,47 @@ class FinishView(ModeView):
         if self._recombine_timer is not None and self._recombine_timer.isActive():
             self._recombine_timer.start(FINISH_SLIDER_DEBOUNCE_MS)
 
+    def _show_composite_file(self, composite_path: Path, respect_mask_edit_mode: bool = False) -> None:
+        composite_file = OutputFile(
+            basename=composite_path.name, path=str(composite_path), operation="Composite"
+        )
+        self._last_output_file = composite_file
+        self.sidebar.outputFiles.focus_file(composite_file)
+        if respect_mask_edit_mode:
+            canvas = getattr(self.shell, "canvas_main", None)
+            if canvas is not None and hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
+                return
+        self.showFile(composite_file, preserve_view=True)
+
+    def _on_recombine_before_after(self, showing_before: bool) -> None:
+        """Handle Step 4 before/after preview chip toggles between input image and composite."""
+        if not self._project or not self._project.source_is_current():
+            return
+        self._reset_preview_toggles(exclude=getattr(self.sidebar, "recombineCard", None))
+        if showing_before:
+            self._show_source_before()
+            return
+
+        composite_path = self._project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
+        if composite_path is not None and composite_path.exists():
+            self._show_composite_file(composite_path)
+            return
+
+        export_path = self._project.current_export_path()
+        if export_path is not None and export_path.exists():
+            export_file = OutputFile(basename=export_path.name, path=str(export_path), operation="Export")
+            self._last_output_file = export_file
+            self.showFile(export_file, preserve_view=True)
+            return
+
+        has_starless = self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is not None
+        has_stars = self._project.current_artifact_path(ROLE_SEPARATED_STARS) is not None
+        if has_starless and has_stars:
+            self._debounce_recombine()
+
     def _on_recombine_card_expanded(self) -> None:
         """When Recombine card is expanded, ensure composite is built and displayed."""
+        self._reset_preview_toggles()
         if not self._project or not self._project.source_is_current():
             return
         has_starless = self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is not None
@@ -1223,15 +1311,7 @@ class FinishView(ModeView):
             if composite_path is None:
                 self._debounce_recombine()
             else:
-                composite_file = OutputFile(
-                    basename=composite_path.name, path=str(composite_path), operation="Composite"
-                )
-                self._last_output_file = composite_file
-                self.sidebar.outputFiles.focus_file(composite_file)
-                canvas = getattr(self.shell, "canvas_main", None)
-                if canvas is not None and hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
-                    return
-                self.showFile(composite_file, preserve_view=True)
+                self._show_composite_file(composite_path, respect_mask_edit_mode=True)
 
     def _debounce_recombine(self) -> None:
         """Debounce rapid slider interactions before updating recombine composite."""
@@ -1264,6 +1344,7 @@ class FinishView(ModeView):
 
         def on_done():
             self.updateReadyStates()
+            self._reset_preview_toggles()
             p = self._project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
             if p:
                 composite_file = OutputFile(basename=p.name, path=str(p), operation="Composite")

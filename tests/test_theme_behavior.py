@@ -16,6 +16,26 @@ class ThemeTests(QtTestCase):
         self.assertIn("border-color: #38bdf8;", styled)
         self.assertIn("border: 1px solid #38bdf8;", styled)
 
+        eye_styled = dark_stylesheet(
+            "qproperty-icon: url(:/startrails/ui/preview_eye.svg);\n"
+            "qproperty-icon: url(:/startrails/ui/preview_eye_off.svg);"
+        )
+        self.assertIn("url(:/startrails/ui/preview_eye_dark.svg);", eye_styled)
+        self.assertIn("url(:/startrails/ui/preview_eye_off_dark.svg);", eye_styled)
+
+    def test_preview_eye_resources_load(self):
+        from PySide6.QtGui import QIcon
+        import startrails.ui.resources_rc  # noqa: F401
+
+        for path in (
+            ":/startrails/ui/preview_eye.svg",
+            ":/startrails/ui/preview_eye_dark.svg",
+            ":/startrails/ui/preview_eye_off.svg",
+            ":/startrails/ui/preview_eye_off_dark.svg",
+        ):
+            icon = QIcon(path)
+            self.assertFalse(icon.pixmap(16, 16).isNull(), path)
+
     def test_project_finish_resource_loads_without_filesystem(self):
         from PySide6.QtGui import QPixmap
         import startrails.ui.resources_rc  # noqa: F401

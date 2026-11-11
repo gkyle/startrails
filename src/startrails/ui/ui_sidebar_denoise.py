@@ -247,6 +247,7 @@ class Ui_SidebarDenoise(object):
         self.skyCard.setObjectName(u"skyCard")
         self.skyCard.setProperty(u"step_number", 1)
         self.skyCard.setProperty(u"is_expanded", True)
+        self.skyCard.setProperty(u"before_after_enabled", True)
         self.skySettings = DenoiseSkySettings(self.skyCard)
         self.skySettings.setObjectName(u"skySettings")
         self.skySettings.setGeometry(QRect(0, 0, 100, 30))
@@ -411,5 +412,6 @@ class Ui_SidebarDenoise(object):
         self.runPipeline.setText(QCoreApplication.translate("SidebarDenoise", u"\u25b6 Run Full Denoise Pipeline", None))
         pass
     # retranslateUi
+
 
 Ui_sidebarDenoise = Ui_SidebarDenoise

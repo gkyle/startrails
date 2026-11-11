@@ -15,11 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QHBoxLayout,
-    QLabel, QPushButton, QSizePolicy, QSlider,
-    QSpinBox, QVBoxLayout, QWidget)
-
-from startrails.ui.checkbox_label import CheckboxLabel
+from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QLabel,
+    QPushButton, QSizePolicy, QSlider, QSpinBox,
+    QVBoxLayout, QWidget)
 from . import resources_rc
 
 class Ui_DenoiseSkySettings(object):
@@ -135,26 +133,6 @@ class Ui_DenoiseSkySettings(object):
 
         self.layout.addLayout(self.refineParamLayout)
 
-        self.showMaskOverlayRow = QHBoxLayout()
-        self.showMaskOverlayRow.setObjectName(u"showMaskOverlayRow")
-        self.showMaskOverlayLabel = CheckboxLabel(DenoiseSkySettings)
-        self.showMaskOverlayLabel.setObjectName(u"showMaskOverlayLabel")
-        self.showMaskOverlayLabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showMaskOverlayLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
-
-        self.showMaskOverlayRow.addWidget(self.showMaskOverlayLabel)
-
-        self.showMaskOverlay = QCheckBox(DenoiseSkySettings)
-        self.showMaskOverlay.setObjectName(u"showMaskOverlay")
-        self.showMaskOverlay.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showMaskOverlay.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.showMaskOverlay.setChecked(False)
-
-        self.showMaskOverlayRow.addWidget(self.showMaskOverlay, 0, Qt.AlignmentFlag.AlignRight)
-
-
-        self.layout.addLayout(self.showMaskOverlayRow)
-
         self.brushLayout = QHBoxLayout()
         self.brushLayout.setSpacing(6)
         self.brushLayout.setObjectName(u"brushLayout")
@@ -239,9 +217,6 @@ class Ui_DenoiseSkySettings(object):
 
         self.layout.addWidget(self.error)
 
-#if QT_CONFIG(shortcut)
-        self.showMaskOverlayLabel.setBuddy(self.showMaskOverlay)
-#endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(DenoiseSkySettings)
 
@@ -273,17 +248,6 @@ class Ui_DenoiseSkySettings(object):
 #endif // QT_CONFIG(tooltip)
         self.erosionPixels.setSpecialValueText(QCoreApplication.translate("DenoiseSkySettings", u"None (0 px)", None))
         self.erosionPixels.setSuffix(QCoreApplication.translate("DenoiseSkySettings", u" px", None))
-#if QT_CONFIG(tooltip)
-        self.showMaskOverlayLabel.setToolTip(QCoreApplication.translate("DenoiseSkySettings", u"Show sky mask on canvas and enable interactive brush editing tools", None))
-#endif // QT_CONFIG(tooltip)
-        self.showMaskOverlayLabel.setText(QCoreApplication.translate("DenoiseSkySettings", u"Show Mask Overlay", None))
-#if QT_CONFIG(tooltip)
-        self.showMaskOverlay.setToolTip(QCoreApplication.translate("DenoiseSkySettings", u"Show sky mask on canvas and enable interactive brush editing tools", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(accessibility)
-        self.showMaskOverlay.setAccessibleName(QCoreApplication.translate("DenoiseSkySettings", u"Show and edit mask overlay", None))
-#endif // QT_CONFIG(accessibility)
-        self.showMaskOverlay.setText("")
         self.brushLabel.setText(QCoreApplication.translate("DenoiseSkySettings", u"Brush:", None))
         self.brushRadius.setSuffix(QCoreApplication.translate("DenoiseSkySettings", u" px", None))
 #if QT_CONFIG(tooltip)
@@ -298,5 +262,6 @@ class Ui_DenoiseSkySettings(object):
 "Hotkeys: [ / ] or Ctrl+Wheel to resize.", None))
         pass
     # retranslateUi
+
 
 Ui_denoiseSkySettings = Ui_DenoiseSkySettings
