@@ -184,6 +184,13 @@ class ImageIoTests(IsolatedTestCase):
         decoded_16 = imread(path_16)
         self.assertEqual(decoded_16.dtype, np.uint16)
 
+        # 16-bit PNG output ignores the JPEG-only optimize hint while preserving depth and RGB order
+        color_pixels = np.array([[[0.25, 0.5, 0.75]]], dtype=np.float32)
+        path_16_png = imwrite(self.root / "image_16bit.png", color_pixels, convertBGR=True, bit_depth=16, optimize=True)
+        decoded_16_png = imread(path_16_png, to_rgb=True)
+        self.assertEqual(decoded_16_png.dtype, np.uint16)
+        np.testing.assert_array_equal(decoded_16_png, np.array([[[16384, 32768, 49151]]], dtype=np.uint16))
+
     def test_explicit_depth_rejects_incompatible_codec_or_integer_samples(self):
         pixels = np.full((8, 8, 3), 0.25, dtype=np.float32)
         destination = self.root / "image.jpg"

@@ -190,7 +190,7 @@ def imwrite(
         options = [cv2.IMWRITE_TIFF_COMPRESSION, comp_val]
 
     def _encode_image(target_path: Path):
-        if optimize and suffix not in (".tif", ".tiff"):
+        if optimize and suffix in (".jpg", ".jpeg"):
             from PIL import Image
 
             rgb = img
@@ -198,10 +198,7 @@ def imwrite(
                 rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             elif img.ndim == 3 and img.shape[2] == 4:
                 rgb = cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)
-            settings = {}
-            if suffix in (".jpg", ".jpeg"):
-                settings.update(quality=quality, optimize=optimize)
-            Image.fromarray(rgb).save(target_path, **settings)
+            Image.fromarray(rgb).save(target_path, quality=quality, optimize=optimize)
             return
         success, encoded = cv2.imencode(suffix, img, options)
         if not success:
