@@ -272,13 +272,6 @@ class TestFinishDenoise(QtTestCase):
         sidebar.starlessSettings.radio_whole_image.setChecked(True)
         self.assertEqual(self.project.get_settings().denoise_scope, SCOPE_WHOLE_IMAGE)
 
-        # Test reset button
-        sidebar.starlessSettings.btn_reset.click()
-        self.assertEqual(self.project.get_settings().denoise_strength, 50.0)
-        self.assertEqual(self.project.get_settings().denoise_scope, SCOPE_SKY_ONLY)
-        self.assertEqual(sidebar.starlessSettings.slider_denoise_strength.value(), 50)
-        self.assertTrue(sidebar.starlessSettings.radio_sky_only.isChecked())
-
     def test_workflow_applies_structure_and_detail_to_denoised_plate(self):
         """Sharpening reruns from the denoised plate and persists both amounts."""
         self.prepare_separated_project()

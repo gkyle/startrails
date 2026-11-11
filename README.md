@@ -88,7 +88,7 @@ An accurate sky/ground boundary is critical. The mask determines which pixels be
 
 1. **Detect Sky** creates an automatic starting mask.
 2. **Refine Mask** adjusts the boundary to follow the horizon more closely. It searches for local contrast at the edges of the mask to better separate sky from ground. It can be run multiple times and combined with manual painting to improve results.
-3. Zoom in and use the **painting tools** to make local corrections. With **Show Mask Overlay** enabled, left-drag paints sky and right-drag erases it. Adjust the brush size for broad areas or fine details.
+3. Zoom in and use the **painting tools** to make local corrections. While **Define Sky Region** is expanded with the mask overlay shown (use the header eye button to toggle it on or off), left-drag paints sky and right-drag erases it. Adjust the brush size for broad areas or fine details.
 
 The green overlay shows the selected sky region. Automated detection, refinement, and manual painting work together so you can get a tight mask before stacking.
 
@@ -137,7 +137,7 @@ Finish mode processes a single image rather than stacking a sequence. Create an 
 1. **Define Sky Region:** Detect and refine the sky mask, paint corrections, or select the full frame for an image without foreground.
 2. **Separate Stars:** Run star removal to create starless and stars layers.
 3. **Finish Starless:** Adjust AI denoise strength and scope, and optionally sharpen with Structure and Detail controls.
-4. **Recombine & Save:** Adjust star amount, threshold, and Add or Screen blending. Compare with the original, then save the image or export layers.
+4. **Recombine and Save:** Adjust star amount, threshold, and Add or Screen blending, then save the image or export layers.
 
 Star removal requires the bundled Nox model; AI denoising requires the bundled GraXpert model. GraXpert's noncommercial model terms below apply independently of the application's license.
 

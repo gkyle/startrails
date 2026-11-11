@@ -486,6 +486,16 @@ class TestFinishDependencies(unittest.TestCase):
         self.assertTrue(widget.configured_box.isVisible())
         self.assertTrue(widget.btn_separate.isEnabled())
 
+        # Advanced stride dropdown starts collapsed and toggles visibility
+        self.assertFalse(widget.advancedToggle.isChecked())
+        self.assertFalse(widget.advancedBody.isVisible())
+        widget.advancedToggle.click()
+        self.assertTrue(widget.advancedToggle.isChecked())
+        self.assertTrue(widget.advancedBody.isVisible())
+        self.assertTrue(widget.combo_stride.isVisibleTo(widget))
+        widget.advancedToggle.click()
+        self.assertFalse(widget.advancedBody.isVisible())
+
         # Chroma postfilter toggle emits signal and updates getter
         toggled = []
         widget.chroma_postfilter_changed.connect(toggled.append)

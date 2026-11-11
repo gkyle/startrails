@@ -8,10 +8,8 @@ from PySide6.QtCore import QSignalBlocker, Signal
 from PySide6.QtWidgets import QButtonGroup, QWidget
 
 from startrails.lib.finish.defaults import (
-    DEFAULT_DENOISE_SCOPE,
     DEFAULT_DENOISE_STRENGTH_PERCENT,
     DEFAULT_DETAIL_AMOUNT_PERCENT,
-    DEFAULT_ENABLE_STARLESS_DENOISE,
     DEFAULT_ENABLE_STARLESS_SHARPEN,
     DEFAULT_STRUCTURE_AMOUNT_PERCENT,
     SCOPE_SKY_ONLY,
@@ -38,7 +36,6 @@ class FinishStarlessSettings(QWidget):
     detail_amount_changed = Signal(float)
     detail_changed = detail_amount_changed
     slider_dragging = Signal()
-    reset_requested = Signal()
     settings_changed = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -72,7 +69,6 @@ class FinishStarlessSettings(QWidget):
         self.slider_detail_amount = self.ui.slider_detail
         self.spin_detail = self.ui.spin_detail
         self.spin_detail_amount = self.ui.spin_detail
-        self.btn_reset = self.ui.btn_reset
         self.lbl_status = self.ui.lbl_status
 
         self.scope_group = QButtonGroup(self)
@@ -111,8 +107,6 @@ class FinishStarlessSettings(QWidget):
         self.radio_sky_only.toggled.connect(self._on_scope_toggled)
         self.radio_whole_image.toggled.connect(self._on_scope_toggled)
 
-        self.btn_reset.clicked.connect(self._on_reset_clicked)
-
     def _on_enable_denoise_toggled(self, checked: bool) -> None:
         self._update_controls_enabled()
         self.enable_denoise_changed.emit(checked)
@@ -128,16 +122,6 @@ class FinishStarlessSettings(QWidget):
         if checked:
             self.denoise_scope_changed.emit(self.get_scope())
             self.settings_changed.emit()
-
-    def _on_reset_clicked(self) -> None:
-        self.set_enable_denoise(DEFAULT_ENABLE_STARLESS_DENOISE)
-        self.set_enable_sharpen(DEFAULT_ENABLE_STARLESS_SHARPEN)
-        self.set_strength(DEFAULT_DENOISE_STRENGTH_PERCENT)
-        self.set_scope(DEFAULT_DENOISE_SCOPE)
-        self.set_structure(DEFAULT_STRUCTURE_AMOUNT_PERCENT)
-        self.set_detail(DEFAULT_DETAIL_AMOUNT_PERCENT)
-        self.reset_requested.emit()
-        self.settings_changed.emit()
 
     def _update_controls_enabled(self) -> None:
         denoise_enabled = self.get_enable_denoise()
@@ -162,7 +146,6 @@ class FinishStarlessSettings(QWidget):
         self.lbl_enable_denoise.setEnabled(self._has_prerequisites)
         self.check_enable_sharpen.setEnabled(denoise_active)
         self.lbl_enable_sharpen.setEnabled(denoise_active)
-        self.btn_reset.setEnabled(self._has_prerequisites)
 
     def get_enable_denoise(self) -> bool:
         """Return whether starless denoising is enabled."""

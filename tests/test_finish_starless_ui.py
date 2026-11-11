@@ -140,14 +140,6 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertEqual(self.widget.get_scope(), SCOPE_SKY_ONLY)
         self.assertEqual(scopes, [SCOPE_WHOLE_IMAGE, SCOPE_SKY_ONLY])
 
-    def test_button_signals(self):
-        """Action buttons emit explicit requested signals."""
-        reset_called = []
-        self.widget.reset_requested.connect(lambda: reset_called.append(True))
-
-        self.widget.btn_reset.click()
-        self.assertEqual(reset_called, [True])
-
     def test_programmatic_setters_block_signals(self):
         """set_strength, set_scope, set_structure, and set_detail do not fire signals."""
         strength_sig = []
@@ -196,25 +188,6 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertEqual(self.widget.get_detail(), 100.0)
         self.assertEqual(self.widget.spin_detail.value(), 100)
 
-    def test_reset_action_restores_all_defaults(self):
-        """Clicking reset restores strength, scope, structure, and detail to defaults."""
-        self.widget.set_strength(85.0)
-        self.widget.set_scope(SCOPE_WHOLE_IMAGE)
-        self.widget.set_structure(50.0)
-        self.widget.set_detail(70.0)
-
-        reset_emitted = []
-        self.widget.reset_requested.connect(lambda: reset_emitted.append(True))
-        self.widget.btn_reset.click()
-
-        self.assertEqual(self.widget.get_strength(), DEFAULT_DENOISE_STRENGTH_PERCENT)
-        self.assertEqual(self.widget.get_scope(), DEFAULT_DENOISE_SCOPE)
-        self.assertEqual(self.widget.get_structure(), DEFAULT_STRUCTURE_AMOUNT_PERCENT)
-        self.assertEqual(self.widget.get_detail(), DEFAULT_DETAIL_AMOUNT_PERCENT)
-        self.assertEqual(self.widget.spin_structure.value(), int(DEFAULT_STRUCTURE_AMOUNT_PERCENT))
-        self.assertEqual(self.widget.spin_detail.value(), int(DEFAULT_DETAIL_AMOUNT_PERCENT))
-        self.assertEqual(reset_emitted, [True])
-
     def test_set_from_project_restores_structure_and_detail(self):
         """set_from_project updates structure and detail controls from project settings."""
         proj = FinishProject(project_file=str(self.root / f"temp{FINISH_EXT}"))
@@ -243,7 +216,6 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertTrue(self.widget.slider_detail.isEnabled())
         self.assertTrue(self.widget.spin_detail.isEnabled())
         self.assertTrue(self.widget.radio_sky_only.isEnabled())
-        self.assertTrue(self.widget.btn_reset.isEnabled())
 
         denoise_sigs = []
         sharpen_sigs = []
@@ -268,7 +240,6 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertFalse(self.widget.slider_detail.isEnabled())
         self.assertFalse(self.widget.spin_detail.isEnabled())
         self.assertTrue(self.widget.check_enable_denoise.isEnabled())
-        self.assertTrue(self.widget.btn_reset.isEnabled())
 
         # Re-check denoise -> re-enables and restores remembered sharpen=True state
         self.widget.check_enable_denoise.setChecked(True)
@@ -308,17 +279,6 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertTrue(self.widget.slider_structure.isEnabled())
         self.assertEqual(denoise_sigs, [False, True, False, True])
         self.assertEqual(sharpen_sigs, [False])
-
-        # Reset action also resets enable_denoise and enable_sharpen to True
-        self.widget.check_enable_denoise.setChecked(False)
-        self.widget.check_enable_sharpen.setChecked(False)
-        self.assertFalse(self.widget.get_enable_denoise())
-        self.assertFalse(self.widget.get_enable_sharpen())
-        self.widget.btn_reset.click()
-        self.assertTrue(self.widget.get_enable_denoise())
-        self.assertTrue(self.widget.get_enable_sharpen())
-        self.assertTrue(self.widget.check_enable_denoise.isChecked())
-        self.assertTrue(self.widget.check_enable_sharpen.isChecked())
 
     def test_refresh_status_ready_hides_unconfigured_box(self):
         """Ready GraXpert status hides the unconfigured warning box."""
@@ -665,38 +625,6 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             self.qt.processEvents()
             self.assertEqual(recompute_called, [True])
             self.assertEqual(self.project.get_settings().denoise_strength, 0.0)
-
-    def test_reset_action_restores_defaults(self):
-        """Reset button restores standard defaults and recomputes if endpoint was present."""
-        endpoint_path = self.root / "endpoint.tif"
-        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
-        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
-
-        # Set nondefault values
-        self.sidebar.starlessSettings.set_strength(90.0)
-        self.sidebar.starlessSettings.set_scope(SCOPE_WHOLE_IMAGE)
-        self.sidebar.starlessSettings.set_structure(45.0)
-        self.sidebar.starlessSettings.set_detail(65.0)
-
-        recompute_called = []
-        with (
-            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=lambda **kw: recompute_called.append(True)),
-            patch.object(FinishWorkflow, "do_recombine"),
-        ):
-            self.sidebar.starlessSettings.btn_reset.click()
-            self.view._denoise_timer.timeout.emit()
-            self.qt.processEvents()
-
-        settings = self.project.get_settings()
-        self.assertEqual(settings.denoise_strength, DEFAULT_DENOISE_STRENGTH_PERCENT)
-        self.assertEqual(settings.denoise_scope, DEFAULT_DENOISE_SCOPE)
-        self.assertEqual(settings.structure_amount, DEFAULT_STRUCTURE_AMOUNT_PERCENT)
-        self.assertEqual(settings.detail_amount, DEFAULT_DETAIL_AMOUNT_PERCENT)
-        self.assertEqual(self.sidebar.starlessSettings.get_strength(), DEFAULT_DENOISE_STRENGTH_PERCENT)
-        self.assertEqual(self.sidebar.starlessSettings.get_scope(), DEFAULT_DENOISE_SCOPE)
-        self.assertEqual(self.sidebar.starlessSettings.get_structure(), DEFAULT_STRUCTURE_AMOUNT_PERCENT)
-        self.assertEqual(self.sidebar.starlessSettings.get_detail(), DEFAULT_DETAIL_AMOUNT_PERCENT)
-        self.assertEqual(recompute_called, [True])
 
     def test_structure_change_with_cached_endpoint_debounces_recompute(self):
         """Structure slider change when cached endpoint exists debounces and recomputes without inference."""

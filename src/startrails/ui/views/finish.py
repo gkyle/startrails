@@ -15,13 +15,7 @@ from startrails.lib.denoise.defaults import DEFAULT_SKY_DETECTION_DEVICE
 from startrails.lib.file import File, OutputFile
 from startrails.lib.finish.defaults import (
     DEFAULT_BLEND_MODE,
-    DEFAULT_DENOISE_SCOPE,
-    DEFAULT_DENOISE_STRENGTH_PERCENT,
-    DEFAULT_DETAIL_AMOUNT_PERCENT,
-    DEFAULT_ENABLE_STARLESS_DENOISE,
-    DEFAULT_ENABLE_STARLESS_SHARPEN,
     DEFAULT_STAR_AMOUNT_PERCENT,
-    DEFAULT_STRUCTURE_AMOUNT_PERCENT,
     ROLE_DENOISE_ENDPOINT,
     ROLE_DENOISED_STARLESS,
     ROLE_FINISHED_COMPOSITE,
@@ -154,7 +148,6 @@ class FinishView(ModeView):
             )
             self.connect_signal(self.sidebar.starlessSettings.detail_amount_changed, self.on_detail_amount_changed)
             self.connect_signal(self.sidebar.starlessSettings.slider_dragging, self._on_starless_slider_dragging)
-            self.connect_signal(self.sidebar.starlessSettings.reset_requested, self.on_reset_starless)
 
         if hasattr(self.sidebar, "starlessCard"):
             self.connect_signal(self.sidebar.starlessCard.expanded, self._on_starless_card_expanded)
@@ -1112,27 +1105,6 @@ class FinishView(ModeView):
 
         if self._intended_starless_output_missing_and_ready():
             self._debounce_denoise_preview()
-
-    def on_reset_starless(self) -> None:
-        """Reset starless finishing settings to their defaults."""
-        settings = self._project.get_settings()
-        self._mark_starless_outputs_pending()
-        self._project.update_settings(
-            replace(
-                settings,
-                enable_starless_denoise=DEFAULT_ENABLE_STARLESS_DENOISE,
-                enable_starless_sharpen=DEFAULT_ENABLE_STARLESS_SHARPEN,
-                denoise_strength=DEFAULT_DENOISE_STRENGTH_PERCENT,
-                denoise_scope=DEFAULT_DENOISE_SCOPE,
-                structure_amount=DEFAULT_STRUCTURE_AMOUNT_PERCENT,
-                detail_amount=DEFAULT_DETAIL_AMOUNT_PERCENT,
-            )
-        )
-        self.app.workflow.save_project()
-        if hasattr(self.sidebar, "starlessSettings"):
-            self.sidebar.starlessSettings.set_from_project(self._project)
-        self.updateReadyStates()
-        self._debounce_denoise_preview()
 
     def _debounce_denoise_preview(self) -> None:
         """Debounce rapid slider interactions before updating blend and composite."""

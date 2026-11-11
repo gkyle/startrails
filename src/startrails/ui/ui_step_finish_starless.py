@@ -16,9 +16,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout,
-    QLabel, QPushButton, QRadioButton, QSizePolicy,
-    QSlider, QSpacerItem, QSpinBox, QVBoxLayout,
-    QWidget)
+    QLabel, QRadioButton, QSizePolicy, QSlider,
+    QSpacerItem, QSpinBox, QVBoxLayout, QWidget)
 
 from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
@@ -65,30 +64,14 @@ class Ui_FinishStarlessSettings(object):
 "    border: none;\n"
 "    outline: none;\n"
 "}\n"
-"QPushButton#btn_reset {\n"
-"    background-color: #ffffff;\n"
-"    color: #475569;\n"
-"    border: 1px solid #cbd5e1;\n"
-"    border-radius: 4px;\n"
-"    padding: 6px 12px;\n"
-"    font-size: 11px;\n"
-"}\n"
-"QPushButton#btn_reset:hover {\n"
-"  "
-                        "  background-color: #f1f5f9;\n"
-"}\n"
-"QPushButton#btn_reset:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #cbd5e1;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
 "QCheckBox#check_enable_denoise, QCheckBox#check_enable_sharpen {\n"
 "    spacing: 0px;\n"
 "    border: none;\n"
 "    padding: 0px;\n"
 "}\n"
 "QCheckBox#check_enable_denoise::indicator, QCheckBox#check_enable_sharpen::indicator {\n"
-"    width: 36px;\n"
+"    width: 3"
+                        "6px;\n"
 "    height: 20px;\n"
 "    border-radius: 10px;\n"
 "}\n"
@@ -101,8 +84,7 @@ class Ui_FinishStarlessSettings(object):
 "QCheckBox#check_enable_denoise:focus, QCheckBox#check_enable_sharpen:focus,\n"
 "QCheckBox#check_enable_denoise:focus:enabled, QCheckBox#check_enable_sharpen:focus:enabled {\n"
 "    border: none;\n"
-"    outline"
-                        ": none;\n"
+"    outline: none;\n"
 "}\n"
 "QLabel#lbl_status {\n"
 "    color: #b91c1c;\n"
@@ -316,18 +298,6 @@ class Ui_FinishStarlessSettings(object):
 
         self.layout.addLayout(self.detail_row)
 
-        self.action_layout = QHBoxLayout()
-        self.action_layout.setSpacing(6)
-        self.action_layout.setObjectName(u"action_layout")
-        self.btn_reset = QPushButton(FinishStarlessSettings)
-        self.btn_reset.setObjectName(u"btn_reset")
-        self.btn_reset.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-
-        self.action_layout.addWidget(self.btn_reset)
-
-
-        self.layout.addLayout(self.action_layout)
-
         self.lbl_status = QLabel(FinishStarlessSettings)
         self.lbl_status.setObjectName(u"lbl_status")
         self.lbl_status.setWordWrap(True)
@@ -377,7 +347,6 @@ class Ui_FinishStarlessSettings(object):
         self.spin_detail.setAccessibleName(QCoreApplication.translate("FinishStarlessSettings", u"Detail", None))
 #endif // QT_CONFIG(accessibility)
         self.spin_detail.setSuffix(QCoreApplication.translate("FinishStarlessSettings", u"%", None))
-        self.btn_reset.setText(QCoreApplication.translate("FinishStarlessSettings", u"Reset", None))
         self.lbl_status.setText("")
         pass
     # retranslateUi

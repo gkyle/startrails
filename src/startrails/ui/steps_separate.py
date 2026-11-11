@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QWidget
 
 from startrails.lib.finish.nox import DEFAULT_STRIDE, validate_separation_stride
 from startrails.lib.project_finish import FinishProject
+from .steps import toggle_advanced_settings
 from .ui_step_separate import Ui_SeparateStarsSettings
 
 
@@ -31,7 +32,10 @@ class SeparateStarsSettings(QWidget):
         self.combo_stride = self.ui.combo_stride
         self.lbl_chroma_postfilter = self.ui.lbl_chroma_postfilter
         self.check_chroma_postfilter = self.ui.check_chroma_postfilter
-        self.btn_separate = self.ui.btn_separate
+        self.run = self.ui.run
+        self.btn_separate = self.ui.run
+        self.advancedToggle = self.ui.advancedToggle
+        self.advancedBody = self.ui.advancedBody
         self.lbl_status = self.ui.lbl_status
 
         self._default_unconf_msg = "Star removal model is missing or unavailable."
@@ -40,8 +44,14 @@ class SeparateStarsSettings(QWidget):
         self.lbl_status.hide()
         self.unconfigured_box.setVisible(False)
         self.configured_box.setVisible(True)
+        self.ui.advancedToggle.toggled.connect(self._toggle_advanced)
+        self.ui.advancedToggle.setChecked(False)
+        self._toggle_advanced(False)
         self._init_events()
         self._init_strides()
+
+    def _toggle_advanced(self, checked: bool) -> None:
+        toggle_advanced_settings(self, checked)
 
     def _init_events(self) -> None:
         self.btn_separate.clicked.connect(self.run_separation_requested.emit)
