@@ -247,6 +247,10 @@ class DenoiseView(ModeView):
                 on_detection_finished=on_detection_finished,
                 sky_card=self.sky_card,
                 get_device=lambda: DEFAULT_SKY_DETECTION_DEVICE if getattr(self._project, "use_gpu", True) else "cpu",
+                get_detection_options=lambda: {
+                    "model_path": self._project.auto_mask_path,
+                    "foliage_protection": self._project.mask_foliage_protection,
+                },
             )
             self.mask_controller.bind()
             self.connect_signal(self.sky_settings.export_training_requested, self.do_export_training_sky)

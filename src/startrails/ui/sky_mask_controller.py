@@ -43,6 +43,7 @@ class SkyMaskController(QObject):
         on_detection_finished: Optional[Callable[[np.ndarray], None]] = None,
         sky_card: Optional[StepCard] = None,
         get_device: Callable[[], str],
+        get_detection_options: Callable[[], dict[str, Any]],
     ):
         super().__init__()
         self.shell = shell
@@ -60,6 +61,7 @@ class SkyMaskController(QObject):
         self.on_detection_finished = on_detection_finished
         self.sky_card = sky_card
         self.get_device = get_device
+        self.get_detection_options = get_detection_options
 
         self._signal_connections: List[Tuple[Any, Callable]] = []
 
@@ -129,9 +131,11 @@ class SkyMaskController(QObject):
         vals = self.settings_widget.values()
         search_radius = vals["mask_search_radius"]
         erosion_pixels = vals["mask_erosion_pixels"]
-        foliage_protection = vals["mask_foliage_protection"]
         model_type = vals["auto_mask_model"]
-        model_path = vals["auto_mask_path"]
+
+        detection_options = self.get_detection_options()
+        model_path = detection_options["model_path"]
+        foliage_protection = detection_options["foliage_protection"]
         device = self.get_device()
         src_path = getattr(src, "path", src)
 
@@ -220,7 +224,9 @@ class SkyMaskController(QObject):
         vals = self.settings_widget.values()
         search_radius = vals["mask_search_radius"]
         erosion_pixels = vals["mask_erosion_pixels"]
-        foliage_protection = vals["mask_foliage_protection"]
+
+        detection_options = self.get_detection_options()
+        foliage_protection = detection_options["foliage_protection"]
         src_path = getattr(src, "path", src)
 
         result_guard = self.get_result_guard()

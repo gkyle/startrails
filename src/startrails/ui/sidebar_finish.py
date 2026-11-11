@@ -86,6 +86,7 @@ class SidebarFinish(QWidget):
 
     def update_from_project(self, project: FinishProject, dimensions: Optional[tuple[int, int]]) -> None:
         """Update file sections and step prerequisites from active project."""
+        self.skySettings.set_from_project(project)
         self.separateSettings.set_from_project(project)
         self.starlessSettings.set_from_project(project)
         self.recombineSettings.set_from_project(project)

@@ -116,6 +116,10 @@ class FinishView(ModeView):
                 on_detection_finished=self._on_mask_detection_finished,
                 sky_card=self.sidebar.skyCard,
                 get_device=lambda: DEFAULT_SKY_DETECTION_DEVICE,
+                get_detection_options=lambda: {
+                    "model_path": self._project.auto_mask_path,
+                    "foliage_protection": self._project.mask_foliage_protection,
+                },
             )
             self.mask_controller.bind()
 

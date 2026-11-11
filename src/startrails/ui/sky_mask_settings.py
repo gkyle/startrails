@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from PySide6.QtCore import QSignalBlocker, Signal
 from PySide6.QtWidgets import QWidget
 
-from startrails.lib.denoise.defaults import DENOISE_DEFAULTS, DEFAULT_MASK_BRUSH_RADIUS
+from startrails.lib.denoise.defaults import DEFAULT_MASK_BRUSH_RADIUS
 from .ui_step_denoise_sky import Ui_DenoiseSkySettings
 
 if TYPE_CHECKING:
@@ -74,12 +74,6 @@ class SkyMaskSettings(QWidget):
         self.settings_changed.emit()
 
     def reset(self) -> None:
-        with QSignalBlocker(self.ui.modelType):
-            self.ui.modelType.setCurrentIndex(self.REV_MODEL_MAP[DENOISE_DEFAULTS.auto_mask_model])
-        with QSignalBlocker(self.ui.searchRadius):
-            self.ui.searchRadius.setValue(DENOISE_DEFAULTS.mask_search_radius or 0)
-        with QSignalBlocker(self.ui.erosionPixels):
-            self.ui.erosionPixels.setValue(DENOISE_DEFAULTS.mask_erosion_pixels)
         with QSignalBlocker(self.ui.showMaskOverlay):
             self.ui.showMaskOverlay.setChecked(False)
         with QSignalBlocker(self.ui.brushSlider):
@@ -98,11 +92,8 @@ class SkyMaskSettings(QWidget):
             self.ui.training.setEnabled(enabled)
 
     def values(self) -> Dict[str, Any]:
-        project = self.app.project if self.app else DENOISE_DEFAULTS
         return {
             "auto_mask_model": self.MODEL_MAP[self.ui.modelType.currentIndex()],
-            "auto_mask_path": project.auto_mask_path,
-            "mask_foliage_protection": project.mask_foliage_protection,
             "mask_search_radius": self.ui.searchRadius.value() or None,
             "mask_erosion_pixels": self.ui.erosionPixels.value(),
         }
@@ -117,7 +108,7 @@ class SkyMaskSettings(QWidget):
         if hasattr(proj, "mask_search_radius"):
             radius = proj.mask_search_radius
             with QSignalBlocker(self.ui.searchRadius):
-                self.ui.searchRadius.setValue(int(radius) if radius else 0)
+                self.ui.searchRadius.setValue(int(radius) if radius is not None else 0)
         if hasattr(proj, "auto_mask_model"):
             model = proj.auto_mask_model
             if model in self.REV_MODEL_MAP:

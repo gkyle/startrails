@@ -61,6 +61,8 @@ class TestFinishMasking(QtTestCase):
         project.auto_mask_model = "segformer"
         project.mask_search_radius = 15
         project.mask_erosion_pixels = 8
+        project.auto_mask_path = "/models/project_a_mask.pt"
+        project.mask_foliage_protection = True
 
         app = self.make_app(project)
         settings = SkyMaskSettings(app=app)
@@ -69,6 +71,14 @@ class TestFinishMasking(QtTestCase):
         self.assertEqual(settings.ui.modelType.currentText(), "SegFormer (ADE20K Pretrained)")
         self.assertEqual(settings.ui.searchRadius.value(), 15)
         self.assertEqual(settings.ui.erosionPixels.value(), 8)
+        self.assertEqual(
+            settings.values(),
+            {
+                "auto_mask_model": "segformer",
+                "mask_search_radius": 15,
+                "mask_erosion_pixels": 8,
+            },
+        )
 
         # Mutate widget controls and sync back
         settings.ui.modelType.setCurrentIndex(0)  # nightstack
@@ -78,6 +88,32 @@ class TestFinishMasking(QtTestCase):
         self.assertEqual(project.auto_mask_model, "nightstack")
         self.assertEqual(project.mask_search_radius, 22)
         self.assertEqual(project.mask_erosion_pixels, 3)
+        # Syncing another project must preserve its non-widget configuration.
+        proj_b_file = self.root / f"test_b{FINISH_EXT}"
+        project_b = FinishProject(project_file=str(proj_b_file))
+        project_b.auto_mask_path = "/models/project_b_custom.pt"
+        project_b.mask_foliage_protection = False
+        project_b.mask_search_radius = 10
+        project_b.mask_erosion_pixels = 5
+
+        # Set controls to explicit 0 values
+        settings.ui.modelType.setCurrentIndex(1)  # segformer
+        settings.ui.searchRadius.setValue(0)     # 0 translates to None
+        settings.ui.erosionPixels.setValue(0)    # explicit 0 erosion
+
+        settings.sync_to_project(project_b)
+
+        self.assertEqual(project_b.auto_mask_model, "segformer")
+        self.assertIsNone(project_b.mask_search_radius)
+        self.assertEqual(project_b.mask_erosion_pixels, 0)
+        self.assertEqual(project_b.auto_mask_path, "/models/project_b_custom.pt")
+        self.assertFalse(project_b.mask_foliage_protection)
+
+        # Loading another project's controls preserves explicit zero values.
+        settings.set_from_project(project_b)
+        self.assertEqual(settings.ui.modelType.currentIndex(), 1)
+        self.assertEqual(settings.ui.searchRadius.value(), 0)
+        self.assertEqual(settings.ui.erosionPixels.value(), 0)
 
     def test_workflow_save_mask_geometry_validation_and_artifact_registration(self):
         proj_file = self.root / f"geo{FINISH_EXT}"
@@ -221,6 +257,8 @@ class TestFinishMasking(QtTestCase):
     def test_detection_and_refinement_survive_reopening(self):
         proj_file = self.root / f"detect{FINISH_EXT}"
         project = FinishProject(project_file=str(proj_file))
+        project.auto_mask_path = "/models/custom_detect.pt"
+        project.mask_foliage_protection = False
         source = self.create_synthetic_image("detect_source.tif", shape=(64, 64, 3))
         project.set_source_image(source)
 
@@ -237,11 +275,25 @@ class TestFinishMasking(QtTestCase):
         mock_detect = np.full((64, 64), 0.8, dtype=np.float32)
         mock_refined = np.full((64, 64), 0.95, dtype=np.float32)
 
-        with patch("startrails.op.denoise.detect_sky.DetectSky.detect", return_value=mock_detect):
-            with patch("startrails.op.denoise.refine_mask.RefineMask.refine", return_value=mock_refined):
-                # Trigger Detect Sky
-                view.mask_controller.do_detect_sky()
-                self.qt.processEvents()
+        with (
+            patch("startrails.op.denoise.detect_sky.DetectSky.detect", return_value=mock_detect) as mock_detect_op,
+            patch("startrails.op.denoise.refine_mask.RefineMask.refine", return_value=mock_refined) as mock_refine_op,
+        ):
+            # Trigger Detect Sky
+            view.mask_controller.do_detect_sky()
+            self.qt.processEvents()
+
+            mock_detect_op.assert_called_once()
+            self.assertEqual(mock_detect_op.call_args.kwargs["model_path"], "/models/custom_detect.pt")
+            mock_refine_op.assert_called_once()
+            self.assertFalse(mock_refine_op.call_args.kwargs["foliage_protection"])
+
+            # Also verify direct do_refine_mask forwards foliage_protection=False
+            mock_refine_op.reset_mock()
+            view.mask_controller.do_refine_mask()
+            self.qt.processEvents()
+            mock_refine_op.assert_called_once()
+            self.assertFalse(mock_refine_op.call_args.kwargs["foliage_protection"])
 
         self.assertIsNotNone(project.current_artifact_path(ROLE_SKY_MASK))
         self.assertEqual(sidebar.skyCard.status, "done")
