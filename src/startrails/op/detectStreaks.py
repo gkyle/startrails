@@ -21,6 +21,7 @@ from sahi.slicing import slice_image
 
 from startrails.lib.util import Observable
 from startrails.lib.file import InputFile
+from startrails.lib.gpu import resolve_torch_device
 from startrails.paths import APPLICATION_DIR
 
 USE_GPU_IF_AVAILABLE = True
@@ -51,15 +52,7 @@ class StreaksPredictor(OBBPredictor):
 class DetectStreaks(Observable):
     def __init__(self, useGPU=True):
         super().__init__()
-        if USE_GPU_IF_AVAILABLE and useGPU:
-            if torch.backends.mps.is_available():
-                self.device = 'mps'
-            elif torch.cuda.is_available():
-                self.device = 'cuda:0'
-            else:
-                self.device = 'cpu'
-        else:
-            self.device = 'cpu'
+        self.device = str(resolve_torch_device(use_gpu=USE_GPU_IF_AVAILABLE and useGPU))
 
         # Prefer openvino/fp16 model variant if device is cpu
         if self.device == 'cpu':

@@ -15,7 +15,7 @@ Download an installer from [GitHub Releases](https://github.com/gkyle/startrails
 - **Windows 10/11 (x64):** Run `StarTrailsAI-<version>-windows-x64-setup.exe`.
 - **macOS 14+ (Apple Silicon):** Open `StarTrailsAI-<version>-macos-arm64.dmg`, then double-click **Install StarTrails AI.app**.
 
-Initial installation needs an internet connection. A compatible GPU can speed up supported processing steps.
+Initial installation needs an internet connection. A compatible GPU can speed up supported processing steps(NVIDIA CUDA, AMD ROCm, Intel XPU, Apple Silicon MPS, and CPU are supported).
 
 To run from source, clone the repository or [download the source ZIP](https://github.com/gkyle/startrails/archive/refs/heads/main.zip). From the extracted folder, run `run.bat` on Windows or `./run.sh` on Linux or macOS. These scripts use **uv** to set up an isolated Python environment and install dependencies.
 

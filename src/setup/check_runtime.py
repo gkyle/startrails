@@ -16,6 +16,8 @@ def main():
     from PySide6 import QtWidgets
     import torch
     import torchvision
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from startrails.lib.gpu import torch_accelerator_kind
 
     print(
         f"Loaded Qt {QtWidgets.__name__}, OpenCV {cv2.__version__}, OpenVINO {openvino.__version__}, "
@@ -24,6 +26,8 @@ def main():
     notice = ""
     if args.variant.startswith("cu"):
         try:
+            if torch_accelerator_kind() != "nvidia":
+                raise RuntimeError("The installed NVIDIA PyTorch build has no usable CUDA device")
             import cupy as cp
 
             # A kernel also checks the toolkit compiler components needed by CuPy.
@@ -41,6 +45,16 @@ def main():
         else:
             notice = "Apple GPU acceleration is unavailable. CPU processing remains available."
             print(notice, file=sys.stderr)
+    elif args.variant in {"rocm7", "xpu"}:
+        kind = "rocm" if args.variant == "rocm7" else "xpu"
+        try:
+            if torch_accelerator_kind() != kind:
+                raise RuntimeError("No usable device was detected")
+            device = "cuda" if kind == "rocm" else "xpu"
+            torch.ones(1, device=device).sum().item()
+        except Exception as error:
+            notice = f"{kind.upper()} acceleration is unavailable. CPU processing remains available."
+            print(f"{notice} Details: {error}", file=sys.stderr)
     if args.notice_file is not None:
         args.notice_file.write_text(notice, encoding="utf-8")
 

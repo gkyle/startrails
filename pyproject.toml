@@ -31,17 +31,17 @@ cpu = [
   "torch>=2.6.0",
   "torchvision>=0.21.0",
 ]
-cu118 = [
+cu11 = [
   "torch>=2.6.0",
   "torchvision>=0.21.0",
   "cupy-cuda11x>=13.6.0",
 ]
-cu124 = [
+cu12 = [
   "torch>=2.6.0",
   "torchvision>=0.21.0",
   "cupy-cuda12x>=14.2.0",
 ]
-cu133 = [
+cu13 = [
   "torch>=2.6.0",
   "torchvision>=0.21.0",
   "cupy-cuda13x>=14.2.0",
@@ -50,32 +50,62 @@ mps = [
   "torch>=2.6.0",
   "torchvision>=0.21.0",
 ]
+rocm7 = [
+  "torch>=2.6.0",
+  "torchvision>=0.21.0",
+  "pytorch-triton-rocm>=3 ; sys_platform == 'linux'",
+  "triton-rocm>=3 ; sys_platform == 'linux'",
+]
+xpu = [
+  "torch>=2.6.0",
+  "torchvision>=0.21.0",
+  "pytorch-triton-xpu>=3 ; sys_platform == 'linux' or sys_platform == 'win32'",
+  "triton-xpu>=3 ; sys_platform == 'linux' or sys_platform == 'win32'",
+]
 
 [tool.uv]
 conflicts = [
   [
     { extra = "cpu" },
-    { extra = "cu118" },
-    { extra = "cu124" },
-    { extra = "cu133" },
+    { extra = "cu11" },
+    { extra = "cu12" },
+    { extra = "cu13" },
     { extra = "mps" },
+    { extra = "rocm7" },
+    { extra = "xpu" },
   ],
 ]
 
 [tool.uv.sources]
 torch = [
   { index = "pytorch-cpu", extra = "cpu" },
-  { index = "pytorch-cu118", extra = "cu118" },
-  { index = "pytorch-cu124", extra = "cu124" },
-  { index = "pytorch-cu130", extra = "cu133" },
+  { index = "pytorch-cu118", extra = "cu11" },
+  { index = "pytorch-cu124", extra = "cu12" },
+  { index = "pytorch-cu130", extra = "cu13" },
   { index = "pytorch-cpu", extra = "mps" },
+  { index = "pytorch-rocm72", extra = "rocm7", marker = "sys_platform == 'linux'" },
+  { index = "pytorch-xpu", extra = "xpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 torchvision = [
   { index = "pytorch-cpu", extra = "cpu" },
-  { index = "pytorch-cu118", extra = "cu118" },
-  { index = "pytorch-cu124", extra = "cu124" },
-  { index = "pytorch-cu130", extra = "cu133" },
+  { index = "pytorch-cu118", extra = "cu11" },
+  { index = "pytorch-cu124", extra = "cu12" },
+  { index = "pytorch-cu130", extra = "cu13" },
   { index = "pytorch-cpu", extra = "mps" },
+  { index = "pytorch-rocm72", extra = "rocm7", marker = "sys_platform == 'linux'" },
+  { index = "pytorch-xpu", extra = "xpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+pytorch-triton-rocm = [
+  { index = "pytorch-rocm72", extra = "rocm7", marker = "sys_platform == 'linux'" },
+]
+triton-rocm = [
+  { index = "pytorch-rocm72", extra = "rocm7", marker = "sys_platform == 'linux'" },
+]
+pytorch-triton-xpu = [
+  { index = "pytorch-xpu", extra = "xpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+triton-xpu = [
+  { index = "pytorch-xpu", extra = "xpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 
 [[tool.uv.index]]
@@ -96,6 +126,16 @@ explicit = true
 [[tool.uv.index]]
 name = "pytorch-cu130"
 url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-rocm72"
+url = "https://download.pytorch.org/whl/rocm7.2"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-xpu"
+url = "https://download.pytorch.org/whl/xpu"
 explicit = true
 
 [tool.ruff]

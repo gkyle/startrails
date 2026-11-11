@@ -14,6 +14,7 @@ from startrails.lib.finish.defaults import (
     GRAXPERT_MODEL_FILENAME,
     GRAXPERT_MODEL_RELATIVE_PATH,
 )
+from startrails.lib.gpu import torch_inference_dtype
 
 CHANNELS = 3
 WINDOW_SIZE = 256
@@ -33,7 +34,7 @@ CHECKPOINT_FORMAT_MIXED_INT4_INT8 = "graxpert_pytorch_mixed_int4_int8"
 
 def graxpert_inference_dtype(device: torch.device) -> torch.dtype:
     """Select model precision for GraXpert inference on the chosen device."""
-    return torch.float16 if device.type in ("cuda", "mps") else torch.float32
+    return torch_inference_dtype(device)
 
 
 def graxpert_model_identity() -> str:

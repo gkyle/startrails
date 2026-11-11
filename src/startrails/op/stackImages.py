@@ -6,15 +6,11 @@ from typing import List
 import cv2
 import psutil
 import numpy
-try:
-    import cupy
-except:
-    pass
 
 from startrails.lib.util import applyMask, Observable
 from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.source_map import save_source_map, snapshot_sources, source_dtype
-from startrails.lib.gpu import GPUInfo
+from startrails.lib.gpu import GPUInfo, free_cupy_memory, get_array_module, is_cupy_available
 
 
 USE_GPU_IF_AVAILABLE = True
@@ -26,18 +22,11 @@ class StackImages(Observable):
 
     def __init__(self, useGPU=True):
         super().__init__()
-        self.useGPU = False
-
-        # Use cupy instead of numpy if CUDA is available.
-        try:
-            if USE_GPU_IF_AVAILABLE and useGPU and cupy.is_available():
-                self.useGPU = True
-        except:
-            pass
+        self.useGPU = USE_GPU_IF_AVAILABLE and useGPU and is_cupy_available()
 
     def processBatch(self, inputImages, outImage, outfile, writeToFile=True):
         """Reduce (stable source ID, preprocessed image) pairs and their owners."""
-        np = cupy if self.useGPU else numpy
+        np, _ = get_array_module(self.useGPU)
         if outImage is not None:
             # Previous batch previews may still be queued on the GUI thread.
             outImage = np.array(outImage, copy=True)
@@ -54,7 +43,7 @@ class StackImages(Observable):
             self.sourceOwners[wins] = source_id
             np.maximum(outImage, image, out=outImage)
         if self.useGPU:
-            outImage = cupy.asnumpy(outImage)
+            outImage = np.asnumpy(outImage)
         if writeToFile:
             if not cv2.imwrite(outfile, outImage, [cv2.IMWRITE_JPEG_QUALITY, 100]):
                 raise OSError(f"Could not write stacked image: {outfile}")
@@ -120,7 +109,7 @@ class StackImages(Observable):
                 if not cv2.imwrite(outfile.path, outImg, [cv2.IMWRITE_JPEG_QUALITY, 100]):
                     raise OSError(f"Could not write stacked image: {outfile.path}")
             if completedCount == targetCount and not self.shouldInterrupt():
-                owners = cupy.asnumpy(self.sourceOwners) if self.useGPU else self.sourceOwners
+                owners = get_array_module(self.useGPU)[0].asnumpy(self.sourceOwners) if self.useGPU else self.sourceOwners
                 save_source_map(outfile, owners, sources, {
                     "apply_masks": bool(applyMasks), "fade": bool(fade),
                     "fade_gradient": fadeGradient, "tie_break": "first_source_in_stack_order",
@@ -129,7 +118,7 @@ class StackImages(Observable):
             self.batch.clear()
             self.sourceOwners = None
             if self.useGPU:
-                cupy.get_default_memory_pool().free_all_blocks()
+                free_cupy_memory()
 
     def preprocessImage(self, file: InputFile, applyMasks, fade, fadeGradient, idx):
         img = cv2.imread(file.path, cv2.IMREAD_UNCHANGED)
@@ -181,20 +170,12 @@ class StackImages(Observable):
         provenanceWorkingBytes = provenanceBytes * 2 + img.size * 3
 
         availableBytes = 0
-        if useGPU:
-            try:
-                if cupy.cuda.is_available():
-                    targetUtilization = 0.6
-                    mempool = cupy.get_default_memory_pool()
-                    mempool.free_all_blocks()
-
-                    gpuMemoryAvailable = gpuInfo.get_gpu_memory_available()
-                    if gpuMemoryAvailable is None:
-                        availableBytes = 0
-                    else:
-                        availableBytes = gpuMemoryAvailable * 1024 * 1024 * 1024
-            except Exception as e:
-                pass
+        if useGPU and is_cupy_available():
+            targetUtilization = 0.6
+            free_cupy_memory()
+            gpuMemoryAvailable = gpuInfo.get_gpu_memory_available()
+            if gpuMemoryAvailable is not None:
+                availableBytes = gpuMemoryAvailable * 1024 * 1024 * 1024
 
         # Fall back to RAM if GPU unavailable
         if availableBytes == 0:

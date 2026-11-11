@@ -35,6 +35,8 @@ esac
 DEV_UV_STUB = """#!/bin/bash
 printf '%s\\n' "$*" >> "$STARTRAILS_TEST_CALLS"
 case "$*" in
+    --version) printf 'uv %s (test)\\n' "${STARTRAILS_TEST_UV_VERSION:-0.13.7}" ;;
+    self\\ update*) exit 1 ;;
     *probeGPU.py*) printf cpu ;;
 esac
 """
@@ -93,7 +95,7 @@ class MacAppMetadataTests(unittest.TestCase):
                     {
                         "version": "0.1.1",
                         "python_version": "3.12.15",
-                        "uv_version": "0.13.5",
+                        "uv_version": "0.13.7",
                         "models_sha256": model_hash,
                     }
                 ),
@@ -160,7 +162,7 @@ class MacSetupTests(unittest.TestCase):
         self.assertEqual(prepared.returncode, 0, prepared.stdout + prepared.stderr)
         calls = self.calls.read_text(encoding="utf-8")
         self.assertIn("probeGPU.py", calls)
-        self.assertIn("sync --extra mps --locked --python 3.12.15", calls)
+        self.assertIn("sync --locked --extra mps --python 3.12.15", calls)
         project = self.home / "night sky.proj_denoise"
         project.touch()
         launched = self.run_setup("--launch", "--", project.name)
@@ -205,6 +207,8 @@ class UnixDevelopmentLaunchTests(unittest.TestCase):
             root = Path(temporary)
             (root / "src/setup").mkdir(parents=True)
             (root / "bin").mkdir()
+            (root / "build").mkdir()
+            shutil.copy2(ROOT / "build/toolchain.json", root / "build/toolchain.json")
             shutil.copy2(ROOT / "run.sh", root / "run.sh")
             shutil.copy2(ROOT / "src/setup/setup.sh", root / "src/setup/setup.sh")
             uv = root / "bin/uv"
@@ -227,8 +231,24 @@ class UnixDevelopmentLaunchTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             commands = calls.read_text(encoding="utf-8")
-            self.assertIn("sync --extra cpu", commands)
+            self.assertIn("sync --locked --extra cpu", commands)
             self.assertIn(f"src/main.py {project.resolve()}", commands)
+
+            mismatch = subprocess.run(
+                ["/bin/sh", str(root / "run.sh"), project.name],
+                cwd=root,
+                env={
+                    **os.environ,
+                    "PATH": f"{root / 'bin'}:{os.environ['PATH']}",
+                    "STARTRAILS_TEST_CALLS": str(calls),
+                    "STARTRAILS_TEST_UV_VERSION": "0.13.6",
+                },
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertNotEqual(mismatch.returncode, 0)
+            self.assertIn("uv 0.13.7 is required", mismatch.stderr)
 
 
 @unittest.skipUnless(MACOS_ARM, "macOS Apple Silicon installer")

@@ -27,7 +27,7 @@ class WindowsPrepareTests(unittest.TestCase):
             toolchain_path = root / "build/toolchain.json"
             toolchain = {
                 "python_version": "3.12.15",
-                "uv_version": "0.13.5",
+                "uv_version": "0.13.7",
                 "windows_x64_uv_archive_sha256": "windows-hash",
                 "macos_min_version": "14.0",
                 "macos_arm64_uv_archive_sha256": "mac-hash",
