@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 import numpy as np
 
-from startrails.lib.util import imwrite
-from startrails.op.denoise.base import DenoiseOperation
+from startrails.lib.util import Observable, imwrite
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.denoise.mask import MaskHandler
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
@@ -17,7 +16,7 @@ from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 logger = logging.getLogger(__name__)
 
 
-class ComposeHorizon(DenoiseOperation):
+class ComposeHorizon(Observable):
     """Composites celestial sky and landscape ground with horizon denoising and tuning."""
 
     def __init__(self, cancel_event=None, cancel_check=None):

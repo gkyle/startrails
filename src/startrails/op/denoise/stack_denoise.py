@@ -9,8 +9,7 @@ from pathlib import Path
 from typing import Callable, List, Optional
 import numpy as np
 
-from startrails.lib.util import imwrite
-from startrails.op.denoise.base import DenoiseOperation
+from startrails.lib.util import Observable, imwrite
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.denoise.mask import MaskHandler
 from startrails.lib.denoise.stacking.freeze_ground import FreezeGroundStacker
@@ -19,7 +18,7 @@ from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 logger = logging.getLogger(__name__)
 
 
-class StackDenoise(DenoiseOperation):
+class StackDenoise(Observable):
     """Executes Freeze-Ground sigma-clipped or mean stacking of sky and ground frames."""
 
     def __init__(self, cancel_event=None, cancel_check=None):

@@ -10,8 +10,8 @@ import numpy as np
 
 from startrails.lib.file import DenoiseInputFile, OutputFile
 from startrails.lib.project_denoise import DenoiseProject
+from startrails.lib.util import Observable
 from startrails.op.denoise.align_stars import AlignResult, AlignStars
-from startrails.op.denoise.base import DenoiseOperation
 from startrails.op.denoise.compose_horizon import ComposeHorizon
 from startrails.op.denoise.pipeline import DenoisePipeline
 from startrails.op.denoise.stack_denoise import StackDenoise
@@ -38,7 +38,7 @@ class DenoiseWorkflow(Workflow, SkyMaskingWorkflowMixin):
     def operation_session(self):
         self._cancel_event = Event()
         revision = self.project.processing_revision
-        session = DenoiseOperation(
+        session = Observable(
             self._cancel_event,
             lambda: self.project is not self.app.project or revision != self.project.processing_revision,
         )
