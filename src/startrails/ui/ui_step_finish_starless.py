@@ -17,7 +17,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout,
     QLabel, QPushButton, QRadioButton, QSizePolicy,
-    QSlider, QSpacerItem, QVBoxLayout, QWidget)
+    QSlider, QSpacerItem, QSpinBox, QVBoxLayout,
+    QWidget)
 
 from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
@@ -38,19 +39,13 @@ class Ui_FinishStarlessSettings(object):
 "    font-size: 11px;\n"
 "    line-height: 1.3;\n"
 "}\n"
-"QLabel#lbl_strength_title, QLabel#lbl_scope_title, QLabel#lbl_structure_title, QLabel#lbl_detail_title {\n"
+"QLabel#lbl_scope_title {\n"
 "    font-size: 11px;\n"
 "    font-weight: 600;\n"
 "    color: #475569;\n"
 "}\n"
-"QLabel#lbl_strength_value, QLabel#lbl_structure_value, QLabel#lbl_detail_value {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #0369a1;\n"
-"}\n"
 "QRadioButton {\n"
-"   "
-                        " font-size: 11px;\n"
+"    font-size: 11px;\n"
 "    color: #334155;\n"
 "    font-weight: 500;\n"
 "    spacing: 5px;\n"
@@ -79,7 +74,8 @@ class Ui_FinishStarlessSettings(object):
 "    font-size: 11px;\n"
 "}\n"
 "QPushButton#btn_reset:hover {\n"
-"    background-color: #f1f5f9;\n"
+"  "
+                        "  background-color: #f1f5f9;\n"
 "}\n"
 "QPushButton#btn_reset:disabled {\n"
 "    background-color: #f8fafc;\n"
@@ -91,8 +87,7 @@ class Ui_FinishStarlessSettings(object):
 "    border: none;\n"
 "    padding: 0px;\n"
 "}\n"
-"QCheckBox#check_enable_denoise::indicator, QCheckBox#check_enable_sharpen::indicator"
-                        " {\n"
+"QCheckBox#check_enable_denoise::indicator, QCheckBox#check_enable_sharpen::indicator {\n"
 "    width: 36px;\n"
 "    height: 20px;\n"
 "    border-radius: 10px;\n"
@@ -106,7 +101,8 @@ class Ui_FinishStarlessSettings(object):
 "QCheckBox#check_enable_denoise:focus, QCheckBox#check_enable_sharpen:focus,\n"
 "QCheckBox#check_enable_denoise:focus:enabled, QCheckBox#check_enable_sharpen:focus:enabled {\n"
 "    border: none;\n"
-"    outline: none;\n"
+"    outline"
+                        ": none;\n"
 "}\n"
 "QLabel#lbl_status {\n"
 "    color: #b91c1c;\n"
@@ -152,41 +148,42 @@ class Ui_FinishStarlessSettings(object):
 
         self.layout.addLayout(self.enableDenoiseRow)
 
-        self.strength_container = QWidget(FinishStarlessSettings)
-        self.strength_container.setObjectName(u"strength_container")
-        self.strength_layout = QVBoxLayout(self.strength_container)
-        self.strength_layout.setSpacing(4)
-        self.strength_layout.setObjectName(u"strength_layout")
-        self.strength_layout.setContentsMargins(0, 0, 0, 0)
-        self.header_layout = QHBoxLayout()
-        self.header_layout.setObjectName(u"header_layout")
-        self.lbl_strength_title = QLabel(self.strength_container)
+        self.strength_row = QHBoxLayout()
+        self.strength_row.setSpacing(6)
+        self.strength_row.setObjectName(u"strength_row")
+        self.lbl_strength_title = QLabel(FinishStarlessSettings)
         self.lbl_strength_title.setObjectName(u"lbl_strength_title")
+        self.lbl_strength_title.setMinimumSize(QSize(68, 0))
+        self.lbl_strength_title.setMaximumSize(QSize(68, 16777215))
 
-        self.header_layout.addWidget(self.lbl_strength_title)
+        self.strength_row.addWidget(self.lbl_strength_title)
 
-        self.lbl_strength_value = QLabel(self.strength_container)
-        self.lbl_strength_value.setObjectName(u"lbl_strength_value")
-        self.lbl_strength_value.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
-
-        self.header_layout.addWidget(self.lbl_strength_value)
-
-
-        self.strength_layout.addLayout(self.header_layout)
-
-        self.slider_strength = QSlider(self.strength_container)
+        self.slider_strength = QSlider(FinishStarlessSettings)
         self.slider_strength.setObjectName(u"slider_strength")
+        self.slider_strength.setMinimumSize(QSize(60, 0))
         self.slider_strength.setOrientation(Qt.Orientation.Horizontal)
+        self.slider_strength.setMinimum(0)
         self.slider_strength.setMaximum(100)
         self.slider_strength.setSingleStep(1)
         self.slider_strength.setPageStep(10)
         self.slider_strength.setValue(50)
         self.slider_strength.setTracking(True)
 
-        self.strength_layout.addWidget(self.slider_strength)
+        self.strength_row.addWidget(self.slider_strength)
+
+        self.spin_strength = QSpinBox(FinishStarlessSettings)
+        self.spin_strength.setObjectName(u"spin_strength")
+        self.spin_strength.setMaximumSize(QSize(62, 16777215))
+        self.spin_strength.setStyleSheet(u"")
+        self.spin_strength.setMinimum(0)
+        self.spin_strength.setMaximum(100)
+        self.spin_strength.setSingleStep(1)
+        self.spin_strength.setValue(50)
+
+        self.strength_row.addWidget(self.spin_strength)
 
 
-        self.layout.addWidget(self.strength_container)
+        self.layout.addLayout(self.strength_row)
 
         self.scope_container = QWidget(FinishStarlessSettings)
         self.scope_container.setObjectName(u"scope_container")
@@ -245,77 +242,79 @@ class Ui_FinishStarlessSettings(object):
 
         self.layout.addLayout(self.enableSharpenRow)
 
-        self.structure_container = QWidget(FinishStarlessSettings)
-        self.structure_container.setObjectName(u"structure_container")
-        self.structure_layout = QVBoxLayout(self.structure_container)
-        self.structure_layout.setSpacing(4)
-        self.structure_layout.setObjectName(u"structure_layout")
-        self.structure_layout.setContentsMargins(0, 0, 0, 0)
-        self.structure_header_layout = QHBoxLayout()
-        self.structure_header_layout.setObjectName(u"structure_header_layout")
-        self.lbl_structure_title = QLabel(self.structure_container)
+        self.structure_row = QHBoxLayout()
+        self.structure_row.setSpacing(6)
+        self.structure_row.setObjectName(u"structure_row")
+        self.lbl_structure_title = QLabel(FinishStarlessSettings)
         self.lbl_structure_title.setObjectName(u"lbl_structure_title")
+        self.lbl_structure_title.setMinimumSize(QSize(68, 0))
+        self.lbl_structure_title.setMaximumSize(QSize(68, 16777215))
 
-        self.structure_header_layout.addWidget(self.lbl_structure_title)
+        self.structure_row.addWidget(self.lbl_structure_title)
 
-        self.lbl_structure_value = QLabel(self.structure_container)
-        self.lbl_structure_value.setObjectName(u"lbl_structure_value")
-        self.lbl_structure_value.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
-
-        self.structure_header_layout.addWidget(self.lbl_structure_value)
-
-
-        self.structure_layout.addLayout(self.structure_header_layout)
-
-        self.slider_structure = QSlider(self.structure_container)
+        self.slider_structure = QSlider(FinishStarlessSettings)
         self.slider_structure.setObjectName(u"slider_structure")
+        self.slider_structure.setMinimumSize(QSize(60, 0))
         self.slider_structure.setOrientation(Qt.Orientation.Horizontal)
+        self.slider_structure.setMinimum(0)
         self.slider_structure.setMaximum(100)
         self.slider_structure.setSingleStep(1)
         self.slider_structure.setPageStep(10)
         self.slider_structure.setValue(0)
         self.slider_structure.setTracking(True)
 
-        self.structure_layout.addWidget(self.slider_structure)
+        self.structure_row.addWidget(self.slider_structure)
+
+        self.spin_structure = QSpinBox(FinishStarlessSettings)
+        self.spin_structure.setObjectName(u"spin_structure")
+        self.spin_structure.setMaximumSize(QSize(62, 16777215))
+        self.spin_structure.setStyleSheet(u"")
+        self.spin_structure.setMinimum(0)
+        self.spin_structure.setMaximum(100)
+        self.spin_structure.setSingleStep(1)
+        self.spin_structure.setValue(0)
+
+        self.structure_row.addWidget(self.spin_structure)
 
 
-        self.layout.addWidget(self.structure_container)
+        self.layout.addLayout(self.structure_row)
 
-        self.detail_container = QWidget(FinishStarlessSettings)
-        self.detail_container.setObjectName(u"detail_container")
-        self.detail_layout = QVBoxLayout(self.detail_container)
-        self.detail_layout.setSpacing(4)
-        self.detail_layout.setObjectName(u"detail_layout")
-        self.detail_layout.setContentsMargins(0, 0, 0, 0)
-        self.detail_header_layout = QHBoxLayout()
-        self.detail_header_layout.setObjectName(u"detail_header_layout")
-        self.lbl_detail_title = QLabel(self.detail_container)
+        self.detail_row = QHBoxLayout()
+        self.detail_row.setSpacing(6)
+        self.detail_row.setObjectName(u"detail_row")
+        self.lbl_detail_title = QLabel(FinishStarlessSettings)
         self.lbl_detail_title.setObjectName(u"lbl_detail_title")
+        self.lbl_detail_title.setMinimumSize(QSize(68, 0))
+        self.lbl_detail_title.setMaximumSize(QSize(68, 16777215))
 
-        self.detail_header_layout.addWidget(self.lbl_detail_title)
+        self.detail_row.addWidget(self.lbl_detail_title)
 
-        self.lbl_detail_value = QLabel(self.detail_container)
-        self.lbl_detail_value.setObjectName(u"lbl_detail_value")
-        self.lbl_detail_value.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
-
-        self.detail_header_layout.addWidget(self.lbl_detail_value)
-
-
-        self.detail_layout.addLayout(self.detail_header_layout)
-
-        self.slider_detail = QSlider(self.detail_container)
+        self.slider_detail = QSlider(FinishStarlessSettings)
         self.slider_detail.setObjectName(u"slider_detail")
+        self.slider_detail.setMinimumSize(QSize(60, 0))
         self.slider_detail.setOrientation(Qt.Orientation.Horizontal)
+        self.slider_detail.setMinimum(0)
         self.slider_detail.setMaximum(100)
         self.slider_detail.setSingleStep(1)
         self.slider_detail.setPageStep(10)
         self.slider_detail.setValue(0)
         self.slider_detail.setTracking(True)
 
-        self.detail_layout.addWidget(self.slider_detail)
+        self.detail_row.addWidget(self.slider_detail)
+
+        self.spin_detail = QSpinBox(FinishStarlessSettings)
+        self.spin_detail.setObjectName(u"spin_detail")
+        self.spin_detail.setMaximumSize(QSize(62, 16777215))
+        self.spin_detail.setStyleSheet(u"")
+        self.spin_detail.setMinimum(0)
+        self.spin_detail.setMaximum(100)
+        self.spin_detail.setSingleStep(1)
+        self.spin_detail.setValue(0)
+
+        self.detail_row.addWidget(self.spin_detail)
 
 
-        self.layout.addWidget(self.detail_container)
+        self.layout.addLayout(self.detail_row)
 
         self.action_layout = QHBoxLayout()
         self.action_layout.setSpacing(6)
@@ -337,7 +336,10 @@ class Ui_FinishStarlessSettings(object):
 
 #if QT_CONFIG(shortcut)
         self.lbl_enable_denoise.setBuddy(self.check_enable_denoise)
+        self.lbl_strength_title.setBuddy(self.spin_strength)
         self.lbl_enable_sharpen.setBuddy(self.check_enable_sharpen)
+        self.lbl_structure_title.setBuddy(self.spin_structure)
+        self.lbl_detail_title.setBuddy(self.spin_detail)
 #endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(FinishStarlessSettings)
@@ -352,8 +354,11 @@ class Ui_FinishStarlessSettings(object):
         self.check_enable_denoise.setAccessibleName(QCoreApplication.translate("FinishStarlessSettings", u"Enable denoise", None))
 #endif // QT_CONFIG(accessibility)
         self.check_enable_denoise.setText("")
-        self.lbl_strength_title.setText(QCoreApplication.translate("FinishStarlessSettings", u"Denoise Strength", None))
-        self.lbl_strength_value.setText(QCoreApplication.translate("FinishStarlessSettings", u"50%", None))
+        self.lbl_strength_title.setText(QCoreApplication.translate("FinishStarlessSettings", u"Strength:", None))
+#if QT_CONFIG(accessibility)
+        self.spin_strength.setAccessibleName(QCoreApplication.translate("FinishStarlessSettings", u"Denoise strength", None))
+#endif // QT_CONFIG(accessibility)
+        self.spin_strength.setSuffix(QCoreApplication.translate("FinishStarlessSettings", u"%", None))
         self.lbl_scope_title.setText(QCoreApplication.translate("FinishStarlessSettings", u"Denoise Scope", None))
         self.radio_sky_only.setText(QCoreApplication.translate("FinishStarlessSettings", u"Sky Only", None))
         self.radio_whole_image.setText(QCoreApplication.translate("FinishStarlessSettings", u"Whole Image", None))
@@ -362,10 +367,16 @@ class Ui_FinishStarlessSettings(object):
         self.check_enable_sharpen.setAccessibleName(QCoreApplication.translate("FinishStarlessSettings", u"Enable post-denoise sharpen", None))
 #endif // QT_CONFIG(accessibility)
         self.check_enable_sharpen.setText("")
-        self.lbl_structure_title.setText(QCoreApplication.translate("FinishStarlessSettings", u"Structure", None))
-        self.lbl_structure_value.setText(QCoreApplication.translate("FinishStarlessSettings", u"0%", None))
-        self.lbl_detail_title.setText(QCoreApplication.translate("FinishStarlessSettings", u"Detail", None))
-        self.lbl_detail_value.setText(QCoreApplication.translate("FinishStarlessSettings", u"0%", None))
+        self.lbl_structure_title.setText(QCoreApplication.translate("FinishStarlessSettings", u"Structure:", None))
+#if QT_CONFIG(accessibility)
+        self.spin_structure.setAccessibleName(QCoreApplication.translate("FinishStarlessSettings", u"Structure", None))
+#endif // QT_CONFIG(accessibility)
+        self.spin_structure.setSuffix(QCoreApplication.translate("FinishStarlessSettings", u"%", None))
+        self.lbl_detail_title.setText(QCoreApplication.translate("FinishStarlessSettings", u"Detail:", None))
+#if QT_CONFIG(accessibility)
+        self.spin_detail.setAccessibleName(QCoreApplication.translate("FinishStarlessSettings", u"Detail", None))
+#endif // QT_CONFIG(accessibility)
+        self.spin_detail.setSuffix(QCoreApplication.translate("FinishStarlessSettings", u"%", None))
         self.btn_reset.setText(QCoreApplication.translate("FinishStarlessSettings", u"Reset", None))
         self.lbl_status.setText("")
         pass

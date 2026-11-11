@@ -47,15 +47,18 @@ class TestFinishStarlessSettings(QtTestCase):
     def test_default_control_values(self):
         """Initial widget state matches authoritative defaults."""
         self.assertEqual(self.widget.get_strength(), DEFAULT_DENOISE_STRENGTH_PERCENT)
-        self.assertEqual(self.widget.lbl_strength_value.text(), f"{int(DEFAULT_DENOISE_STRENGTH_PERCENT)}%")
+        self.assertEqual(self.widget.spin_strength.text(), f"{int(DEFAULT_DENOISE_STRENGTH_PERCENT)}%")
+        self.assertEqual(self.widget.spin_strength.value(), int(DEFAULT_DENOISE_STRENGTH_PERCENT))
         self.assertEqual(self.widget.get_scope(), DEFAULT_DENOISE_SCOPE)
         self.assertTrue(self.widget.radio_sky_only.isChecked())
         self.assertFalse(self.widget.radio_whole_image.isChecked())
         self.assertEqual(self.widget.get_structure(), DEFAULT_STRUCTURE_AMOUNT_PERCENT)
-        self.assertEqual(self.widget.lbl_structure_value.text(), f"{int(DEFAULT_STRUCTURE_AMOUNT_PERCENT)}%")
+        self.assertEqual(self.widget.spin_structure.text(), f"{int(DEFAULT_STRUCTURE_AMOUNT_PERCENT)}%")
+        self.assertEqual(self.widget.spin_structure.value(), 0)
         self.assertEqual(self.widget.slider_structure.value(), 0)
         self.assertEqual(self.widget.get_detail(), DEFAULT_DETAIL_AMOUNT_PERCENT)
-        self.assertEqual(self.widget.lbl_detail_value.text(), f"{int(DEFAULT_DETAIL_AMOUNT_PERCENT)}%")
+        self.assertEqual(self.widget.spin_detail.text(), f"{int(DEFAULT_DETAIL_AMOUNT_PERCENT)}%")
+        self.assertEqual(self.widget.spin_detail.value(), 0)
         self.assertEqual(self.widget.slider_detail.value(), 0)
         self.assertFalse(self.widget.unconfigured_box.isHidden())
         self.assertTrue(self.widget.get_enable_denoise())
@@ -64,17 +67,22 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertTrue(self.widget.check_enable_sharpen.isChecked())
 
     def test_strength_slider_interaction(self):
-        """Dragging strength slider emits strength_changed and updates value label."""
+        """Adjusting strength slider or spinbox keeps both synced and emits strength_changed."""
         signals = []
         self.widget.strength_changed.connect(signals.append)
 
         self.widget.slider_strength.setValue(75)
-        self.assertEqual(self.widget.lbl_strength_value.text(), "75%")
+        self.assertEqual(self.widget.spin_strength.value(), 75)
         self.assertEqual(self.widget.get_strength(), 75.0)
         self.assertEqual(signals, [75.0])
 
+        self.widget.spin_strength.setValue(40)
+        self.assertEqual(self.widget.slider_strength.value(), 40)
+        self.assertEqual(self.widget.get_strength(), 40.0)
+        self.assertEqual(signals, [75.0, 40.0])
+
     def test_structure_slider_interaction(self):
-        """Dragging structure slider emits structure_amount_changed, structure_changed, and settings_changed."""
+        """Adjusting structure slider or spinbox keeps both synced and emits signals."""
         amount_signals = []
         alias_signals = []
         settings_signals = []
@@ -83,15 +91,21 @@ class TestFinishStarlessSettings(QtTestCase):
         self.widget.settings_changed.connect(lambda: settings_signals.append(True))
 
         self.widget.slider_structure.setValue(45)
-        self.assertEqual(self.widget.lbl_structure_value.text(), "45%")
+        self.assertEqual(self.widget.spin_structure.value(), 45)
         self.assertEqual(self.widget.get_structure(), 45.0)
         self.assertEqual(self.widget.get_structure_amount(), 45.0)
         self.assertEqual(amount_signals, [45.0])
         self.assertEqual(alias_signals, [45.0])
         self.assertEqual(settings_signals, [True])
 
+        self.widget.spin_structure.setValue(20)
+        self.assertEqual(self.widget.slider_structure.value(), 20)
+        self.assertEqual(amount_signals, [45.0, 20.0])
+        self.assertEqual(alias_signals, [45.0, 20.0])
+        self.assertEqual(len(settings_signals), 2)
+
     def test_detail_slider_interaction(self):
-        """Dragging detail slider emits detail_amount_changed, detail_changed, and settings_changed."""
+        """Adjusting detail slider or spinbox keeps both synced and emits signals."""
         amount_signals = []
         alias_signals = []
         settings_signals = []
@@ -100,12 +114,18 @@ class TestFinishStarlessSettings(QtTestCase):
         self.widget.settings_changed.connect(lambda: settings_signals.append(True))
 
         self.widget.slider_detail.setValue(60)
-        self.assertEqual(self.widget.lbl_detail_value.text(), "60%")
+        self.assertEqual(self.widget.spin_detail.value(), 60)
         self.assertEqual(self.widget.get_detail(), 60.0)
         self.assertEqual(self.widget.get_detail_amount(), 60.0)
         self.assertEqual(amount_signals, [60.0])
         self.assertEqual(alias_signals, [60.0])
         self.assertEqual(settings_signals, [True])
+
+        self.widget.spin_detail.setValue(15)
+        self.assertEqual(self.widget.slider_detail.value(), 15)
+        self.assertEqual(amount_signals, [60.0, 15.0])
+        self.assertEqual(alias_signals, [60.0, 15.0])
+        self.assertEqual(len(settings_signals), 2)
 
     def test_scope_radio_interaction(self):
         """Toggling scope radios updates state and emits scope_changed."""
@@ -147,13 +167,14 @@ class TestFinishStarlessSettings(QtTestCase):
         self.widget.set_detail(75.0)
 
         self.assertEqual(self.widget.get_strength(), 80.0)
+        self.assertEqual(self.widget.spin_strength.value(), 80)
         self.assertEqual(self.widget.get_scope(), SCOPE_WHOLE_IMAGE)
         self.assertEqual(self.widget.get_structure(), 35.0)
         self.assertEqual(self.widget.get_structure_amount(), 35.0)
-        self.assertEqual(self.widget.lbl_structure_value.text(), "35%")
+        self.assertEqual(self.widget.spin_structure.value(), 35)
         self.assertEqual(self.widget.get_detail(), 75.0)
         self.assertEqual(self.widget.get_detail_amount(), 75.0)
-        self.assertEqual(self.widget.lbl_detail_value.text(), "75%")
+        self.assertEqual(self.widget.spin_detail.value(), 75)
         self.assertEqual(strength_sig, [])
         self.assertEqual(scope_sig, [])
         self.assertEqual(structure_sig, [])
@@ -163,17 +184,17 @@ class TestFinishStarlessSettings(QtTestCase):
         # Clamping behavior
         self.widget.set_structure_amount(-10.0)
         self.assertEqual(self.widget.get_structure(), 0.0)
-        self.assertEqual(self.widget.lbl_structure_value.text(), "0%")
+        self.assertEqual(self.widget.spin_structure.value(), 0)
         self.widget.set_structure_amount(150.0)
         self.assertEqual(self.widget.get_structure(), 100.0)
-        self.assertEqual(self.widget.lbl_structure_value.text(), "100%")
+        self.assertEqual(self.widget.spin_structure.value(), 100)
 
         self.widget.set_detail_amount(-20.0)
         self.assertEqual(self.widget.get_detail(), 0.0)
-        self.assertEqual(self.widget.lbl_detail_value.text(), "0%")
+        self.assertEqual(self.widget.spin_detail.value(), 0)
         self.widget.set_detail_amount(120.0)
         self.assertEqual(self.widget.get_detail(), 100.0)
-        self.assertEqual(self.widget.lbl_detail_value.text(), "100%")
+        self.assertEqual(self.widget.spin_detail.value(), 100)
 
     def test_reset_action_restores_all_defaults(self):
         """Clicking reset restores strength, scope, structure, and detail to defaults."""
@@ -190,8 +211,8 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertEqual(self.widget.get_scope(), DEFAULT_DENOISE_SCOPE)
         self.assertEqual(self.widget.get_structure(), DEFAULT_STRUCTURE_AMOUNT_PERCENT)
         self.assertEqual(self.widget.get_detail(), DEFAULT_DETAIL_AMOUNT_PERCENT)
-        self.assertEqual(self.widget.lbl_structure_value.text(), f"{int(DEFAULT_STRUCTURE_AMOUNT_PERCENT)}%")
-        self.assertEqual(self.widget.lbl_detail_value.text(), f"{int(DEFAULT_DETAIL_AMOUNT_PERCENT)}%")
+        self.assertEqual(self.widget.spin_structure.value(), int(DEFAULT_STRUCTURE_AMOUNT_PERCENT))
+        self.assertEqual(self.widget.spin_detail.value(), int(DEFAULT_DETAIL_AMOUNT_PERCENT))
         self.assertEqual(reset_emitted, [True])
 
     def test_set_from_project_restores_structure_and_detail(self):
@@ -205,8 +226,8 @@ class TestFinishStarlessSettings(QtTestCase):
         self.widget.set_from_project(proj)
         self.assertEqual(self.widget.get_structure(), 33.0)
         self.assertEqual(self.widget.get_detail(), 66.0)
-        self.assertEqual(self.widget.lbl_structure_value.text(), "33%")
-        self.assertEqual(self.widget.lbl_detail_value.text(), "66%")
+        self.assertEqual(self.widget.spin_structure.value(), 33)
+        self.assertEqual(self.widget.spin_detail.value(), 66)
 
     def test_enable_starless_toggle_and_control_enabling(self):
         """Toggling denoise and post-denoise sharpen updates controls and remembers sharpen state."""
@@ -216,8 +237,11 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertTrue(self.widget.check_enable_denoise.isChecked())
         self.assertTrue(self.widget.check_enable_sharpen.isChecked())
         self.assertTrue(self.widget.slider_strength.isEnabled())
+        self.assertTrue(self.widget.spin_strength.isEnabled())
         self.assertTrue(self.widget.slider_structure.isEnabled())
+        self.assertTrue(self.widget.spin_structure.isEnabled())
         self.assertTrue(self.widget.slider_detail.isEnabled())
+        self.assertTrue(self.widget.spin_detail.isEnabled())
         self.assertTrue(self.widget.radio_sky_only.isEnabled())
         self.assertTrue(self.widget.btn_reset.isEnabled())
 
@@ -236,10 +260,13 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertEqual(denoise_sigs, [False])
         self.assertEqual(sharpen_sigs, [])
         self.assertFalse(self.widget.slider_strength.isEnabled())
+        self.assertFalse(self.widget.spin_strength.isEnabled())
         self.assertFalse(self.widget.radio_sky_only.isEnabled())
         self.assertFalse(self.widget.radio_whole_image.isEnabled())
         self.assertFalse(self.widget.slider_structure.isEnabled())
+        self.assertFalse(self.widget.spin_structure.isEnabled())
         self.assertFalse(self.widget.slider_detail.isEnabled())
+        self.assertFalse(self.widget.spin_detail.isEnabled())
         self.assertTrue(self.widget.check_enable_denoise.isEnabled())
         self.assertTrue(self.widget.btn_reset.isEnabled())
 
@@ -250,7 +277,9 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertTrue(self.widget.check_enable_sharpen.isChecked())
         self.assertTrue(self.widget.check_enable_sharpen.isEnabled())
         self.assertTrue(self.widget.slider_structure.isEnabled())
+        self.assertTrue(self.widget.spin_structure.isEnabled())
         self.assertTrue(self.widget.slider_detail.isEnabled())
+        self.assertTrue(self.widget.spin_detail.isEnabled())
         self.assertEqual(denoise_sigs, [False, True])
         self.assertEqual(sharpen_sigs, [])
 
@@ -259,13 +288,16 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertFalse(self.widget.get_enable_sharpen())
         self.assertEqual(sharpen_sigs, [False])
         self.assertFalse(self.widget.slider_structure.isEnabled())
+        self.assertFalse(self.widget.spin_structure.isEnabled())
         self.assertFalse(self.widget.slider_detail.isEnabled())
+        self.assertFalse(self.widget.spin_detail.isEnabled())
 
         self.widget.check_enable_denoise.setChecked(False)
         self.widget.check_enable_denoise.setChecked(True)
         self.assertTrue(self.widget.check_enable_sharpen.isEnabled())
         self.assertFalse(self.widget.check_enable_sharpen.isChecked())
         self.assertFalse(self.widget.slider_structure.isEnabled())
+        self.assertFalse(self.widget.spin_structure.isEnabled())
 
         # Programmatic setters block signals
         self.widget.set_enable_denoise(True)
@@ -1202,8 +1234,8 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             slider.setValue(85)
             self.qt.processEvents()
 
-            # Value label updated immediately for responsive visual feedback
-            self.assertEqual(self.sidebar.starlessSettings.lbl_strength_value.text(), "85%")
+            # Spinbox updated immediately for responsive visual feedback
+            self.assertEqual(self.sidebar.starlessSettings.spin_strength.value(), 85)
             # Settings NOT yet committed, worker NOT executed
             self.assertEqual(self.project.get_settings().denoise_strength, DEFAULT_DENOISE_STRENGTH_PERCENT)
             self.assertEqual(recompute_calls, [])

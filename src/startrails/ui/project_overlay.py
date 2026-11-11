@@ -303,7 +303,7 @@ class ProjectWelcomeOverlay(QWidget):
         layout_fn.addWidget(lbl_fn_title)
 
         lbl_fn_desc = QLabel(
-            "Separate stars from night sky for different processing.",
+            "Separate stars from night sky for targeted processing.",
             self.card_finish,
         )
         lbl_fn_desc.setObjectName("CardDescription")

@@ -15,10 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout,
-    QLabel, QPushButton, QSizePolicy, QSlider,
+from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QLabel,
+    QPushButton, QSizePolicy, QSlider, QSpinBox,
     QVBoxLayout, QWidget)
-
 from . import resources_rc
 
 class Ui_FinishRecombineSettings(object):
@@ -26,17 +25,7 @@ class Ui_FinishRecombineSettings(object):
         if not FinishRecombineSettings.objectName():
             FinishRecombineSettings.setObjectName(u"FinishRecombineSettings")
         FinishRecombineSettings.resize(300, 260)
-        FinishRecombineSettings.setStyleSheet(u"QLabel#lbl_star_amount_title, QLabel#lbl_star_threshold_title {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #475569;\n"
-"}\n"
-"QLabel#lbl_star_amount_value, QLabel#lbl_star_threshold_value {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #0369a1;\n"
-"}\n"
-"QLabel#lbl_fin_mode {\n"
+        FinishRecombineSettings.setStyleSheet(u"QLabel#lbl_fin_mode {\n"
 "    font-size: 11px;\n"
 "    font-weight: 500;\n"
 "    color: #64748b;\n"
@@ -76,9 +65,9 @@ class Ui_FinishRecombineSettings(object):
 "    padding: 6px;\n"
 "    background-color: #ffffff;\n"
 "    color: #0284c7;\n"
-""
-                        "    border: 1px solid #0284c7;\n"
-"    border-radius: 4px;\n"
+"    border: 1px solid #0284c7;\n"
+"    border-radius: 4p"
+                        "x;\n"
 "    font-size: 11px;\n"
 "}\n"
 "QPushButton#btn_save_output:hover, QPushButton#btn_export_layers:hover {\n"
@@ -93,57 +82,79 @@ class Ui_FinishRecombineSettings(object):
         self.layout.setSpacing(8)
         self.layout.setObjectName(u"layout")
         self.layout.setContentsMargins(4, 4, 4, 4)
-        self.star_amount_header_layout = QHBoxLayout()
-        self.star_amount_header_layout.setObjectName(u"star_amount_header_layout")
+        self.star_amount_row = QHBoxLayout()
+        self.star_amount_row.setSpacing(6)
+        self.star_amount_row.setObjectName(u"star_amount_row")
         self.lbl_star_amount_title = QLabel(FinishRecombineSettings)
         self.lbl_star_amount_title.setObjectName(u"lbl_star_amount_title")
+        self.lbl_star_amount_title.setMinimumSize(QSize(68, 0))
+        self.lbl_star_amount_title.setMaximumSize(QSize(68, 16777215))
 
-        self.star_amount_header_layout.addWidget(self.lbl_star_amount_title)
-
-        self.lbl_star_amount_value = QLabel(FinishRecombineSettings)
-        self.lbl_star_amount_value.setObjectName(u"lbl_star_amount_value")
-        self.lbl_star_amount_value.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
-
-        self.star_amount_header_layout.addWidget(self.lbl_star_amount_value)
-
-
-        self.layout.addLayout(self.star_amount_header_layout)
+        self.star_amount_row.addWidget(self.lbl_star_amount_title)
 
         self.slider_star_amount = QSlider(FinishRecombineSettings)
         self.slider_star_amount.setObjectName(u"slider_star_amount")
+        self.slider_star_amount.setMinimumSize(QSize(60, 0))
         self.slider_star_amount.setOrientation(Qt.Orientation.Horizontal)
+        self.slider_star_amount.setMinimum(0)
         self.slider_star_amount.setMaximum(100)
         self.slider_star_amount.setSingleStep(1)
         self.slider_star_amount.setPageStep(10)
+        self.slider_star_amount.setValue(100)
         self.slider_star_amount.setTracking(True)
 
-        self.layout.addWidget(self.slider_star_amount)
+        self.star_amount_row.addWidget(self.slider_star_amount)
 
-        self.star_threshold_header_layout = QHBoxLayout()
-        self.star_threshold_header_layout.setObjectName(u"star_threshold_header_layout")
+        self.spin_star_amount = QSpinBox(FinishRecombineSettings)
+        self.spin_star_amount.setObjectName(u"spin_star_amount")
+        self.spin_star_amount.setMaximumSize(QSize(62, 16777215))
+        self.spin_star_amount.setStyleSheet(u"")
+        self.spin_star_amount.setMinimum(0)
+        self.spin_star_amount.setMaximum(100)
+        self.spin_star_amount.setSingleStep(1)
+        self.spin_star_amount.setValue(100)
+
+        self.star_amount_row.addWidget(self.spin_star_amount)
+
+
+        self.layout.addLayout(self.star_amount_row)
+
+        self.star_threshold_row = QHBoxLayout()
+        self.star_threshold_row.setSpacing(6)
+        self.star_threshold_row.setObjectName(u"star_threshold_row")
         self.lbl_star_threshold_title = QLabel(FinishRecombineSettings)
         self.lbl_star_threshold_title.setObjectName(u"lbl_star_threshold_title")
+        self.lbl_star_threshold_title.setMinimumSize(QSize(68, 0))
+        self.lbl_star_threshold_title.setMaximumSize(QSize(68, 16777215))
 
-        self.star_threshold_header_layout.addWidget(self.lbl_star_threshold_title)
-
-        self.lbl_star_threshold_value = QLabel(FinishRecombineSettings)
-        self.lbl_star_threshold_value.setObjectName(u"lbl_star_threshold_value")
-        self.lbl_star_threshold_value.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
-
-        self.star_threshold_header_layout.addWidget(self.lbl_star_threshold_value)
-
-
-        self.layout.addLayout(self.star_threshold_header_layout)
+        self.star_threshold_row.addWidget(self.lbl_star_threshold_title)
 
         self.slider_star_threshold = QSlider(FinishRecombineSettings)
         self.slider_star_threshold.setObjectName(u"slider_star_threshold")
+        self.slider_star_threshold.setMinimumSize(QSize(60, 0))
         self.slider_star_threshold.setOrientation(Qt.Orientation.Horizontal)
+        self.slider_star_threshold.setMinimum(0)
         self.slider_star_threshold.setMaximum(100)
         self.slider_star_threshold.setSingleStep(1)
         self.slider_star_threshold.setPageStep(10)
+        self.slider_star_threshold.setValue(0)
         self.slider_star_threshold.setTracking(True)
 
-        self.layout.addWidget(self.slider_star_threshold)
+        self.star_threshold_row.addWidget(self.slider_star_threshold)
+
+        self.spin_star_threshold = QSpinBox(FinishRecombineSettings)
+        self.spin_star_threshold.setObjectName(u"spin_star_threshold")
+        self.spin_star_threshold.setMaximumSize(QSize(62, 16777215))
+        self.spin_star_threshold.setStyleSheet(u"")
+        self.spin_star_threshold.setMinimum(0)
+        self.spin_star_threshold.setMaximum(100)
+        self.spin_star_threshold.setSingleStep(1)
+        self.spin_star_threshold.setValue(0)
+
+        self.star_threshold_row.addWidget(self.spin_star_threshold)
+
+
+        self.layout.addLayout(self.star_threshold_row)
 
         self.fin_mode_layout = QHBoxLayout()
         self.fin_mode_layout.setObjectName(u"fin_mode_layout")
@@ -186,6 +197,10 @@ class Ui_FinishRecombineSettings(object):
 
         self.layout.addLayout(self.actions_layout)
 
+#if QT_CONFIG(shortcut)
+        self.lbl_star_amount_title.setBuddy(self.spin_star_amount)
+        self.lbl_star_threshold_title.setBuddy(self.spin_star_threshold)
+#endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(FinishRecombineSettings)
 
@@ -193,10 +208,16 @@ class Ui_FinishRecombineSettings(object):
     # setupUi
 
     def retranslateUi(self, FinishRecombineSettings):
-        self.lbl_star_amount_title.setText(QCoreApplication.translate("FinishRecombineSettings", u"Stars", None))
-        self.lbl_star_amount_value.setText("")
-        self.lbl_star_threshold_title.setText(QCoreApplication.translate("FinishRecombineSettings", u"Threshold", None))
-        self.lbl_star_threshold_value.setText("")
+        self.lbl_star_amount_title.setText(QCoreApplication.translate("FinishRecombineSettings", u"Stars:", None))
+#if QT_CONFIG(accessibility)
+        self.spin_star_amount.setAccessibleName(QCoreApplication.translate("FinishRecombineSettings", u"Stars", None))
+#endif // QT_CONFIG(accessibility)
+        self.spin_star_amount.setSuffix(QCoreApplication.translate("FinishRecombineSettings", u"%", None))
+        self.lbl_star_threshold_title.setText(QCoreApplication.translate("FinishRecombineSettings", u"Threshold:", None))
+#if QT_CONFIG(accessibility)
+        self.spin_star_threshold.setAccessibleName(QCoreApplication.translate("FinishRecombineSettings", u"Star threshold", None))
+#endif // QT_CONFIG(accessibility)
+        self.spin_star_threshold.setSuffix(QCoreApplication.translate("FinishRecombineSettings", u"%", None))
         self.lbl_fin_mode.setText(QCoreApplication.translate("FinishRecombineSettings", u"Blend Mode", None))
         self.combo_star_blend_mode.setItemText(0, QCoreApplication.translate("FinishRecombineSettings", u"Add", None))
         self.combo_star_blend_mode.setItemText(1, QCoreApplication.translate("FinishRecombineSettings", u"Screen", None))

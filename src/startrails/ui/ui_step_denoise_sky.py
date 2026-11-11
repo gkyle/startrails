@@ -263,5 +263,4 @@ class Ui_DenoiseSkySettings(object):
         pass
     # retranslateUi
 
-
 Ui_denoiseSkySettings = Ui_DenoiseSkySettings

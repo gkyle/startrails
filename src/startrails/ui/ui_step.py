@@ -214,5 +214,4 @@ class Ui_StepCard(object):
         pass
     # retranslateUi
 
-
 Ui_stepCard = Ui_StepCard

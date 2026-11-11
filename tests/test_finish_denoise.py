@@ -266,7 +266,7 @@ class TestFinishDenoise(QtTestCase):
         # Test slider updates settings
         sidebar.starlessSettings.slider_denoise_strength.setValue(72)
         self.assertEqual(self.project.get_settings().denoise_strength, 72.0)
-        self.assertEqual(sidebar.starlessSettings.lbl_strength_value.text(), "72%")
+        self.assertEqual(sidebar.starlessSettings.spin_strength.value(), 72)
 
         # Test scope radio updates settings
         sidebar.starlessSettings.radio_whole_image.setChecked(True)

@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 from typing import Final
 from PySide6.QtCore import QElapsedTimer, QEvent, Qt, QSignalBlocker, QObject, Signal, Property
-from PySide6.QtWidgets import QFrame, QWidget, QButtonGroup
+from PySide6.QtWidgets import QButtonGroup, QFrame, QSlider, QSpinBox, QWidget
 
 PREVIEW_LONG_PRESS_MS: Final[int] = 250
 
@@ -31,6 +31,51 @@ def toggle_advanced_settings(widget: QWidget, checked: bool) -> None:
         if isinstance(p, StepCard):
             break
         p = p.parentWidget()
+
+
+def bind_percent_slider_spinbox(
+    slider: QSlider,
+    spinbox: QSpinBox,
+    value_signal: Signal,
+    settings_changed_signal: Signal,
+    dragging_signal: Signal,
+) -> None:
+    """Synchronize a 0-100 slider and spinbox, deferring value commits while dragging."""
+
+    def on_slider_changed(value: int) -> None:
+        with QSignalBlocker(spinbox):
+            spinbox.setValue(value)
+        if slider.isSliderDown():
+            dragging_signal.emit()
+        else:
+            value_signal.emit(float(value))
+            settings_changed_signal.emit()
+
+    def on_slider_released() -> None:
+        value = slider.value()
+        with QSignalBlocker(spinbox):
+            spinbox.setValue(value)
+        value_signal.emit(float(value))
+        settings_changed_signal.emit()
+
+    def on_spinbox_changed(value: int) -> None:
+        with QSignalBlocker(slider):
+            slider.setValue(value)
+        value_signal.emit(float(value))
+        settings_changed_signal.emit()
+
+    slider.valueChanged.connect(on_slider_changed)
+    slider.sliderPressed.connect(dragging_signal.emit)
+    slider.sliderReleased.connect(on_slider_released)
+    spinbox.valueChanged.connect(on_spinbox_changed)
+
+
+def set_percent_slider_spinbox(slider: QSlider, spinbox: QSpinBox, value: float) -> None:
+    """Set a synchronized 0-100 slider and spinbox without emitting change signals."""
+    clamped = max(0, min(100, int(round(value))))
+    with QSignalBlocker(slider), QSignalBlocker(spinbox):
+        slider.setValue(clamped)
+        spinbox.setValue(clamped)
 
 
 class SegmentedButtonGroup(QObject):

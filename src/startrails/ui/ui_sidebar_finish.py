@@ -240,5 +240,4 @@ class Ui_SidebarFinish(object):
         pass
     # retranslateUi
 
-
 Ui_sidebarFinish = Ui_SidebarFinish

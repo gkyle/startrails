@@ -18,6 +18,7 @@ from startrails.lib.finish.defaults import (
     SCOPE_WHOLE_IMAGE,
 )
 from startrails.lib.project_finish import FinishProject
+from .steps import bind_percent_slider_spinbox, set_percent_slider_spinbox
 from .ui_step_finish_starless import Ui_FinishStarlessSettings
 
 
@@ -55,7 +56,8 @@ class FinishStarlessSettings(QWidget):
 
         self.slider_strength = self.ui.slider_strength
         self.slider_denoise_strength = self.ui.slider_strength
-        self.lbl_strength_value = self.ui.lbl_strength_value
+        self.spin_strength = self.ui.spin_strength
+        self.spin_denoise_strength = self.ui.spin_strength
         self.radio_sky_only = self.ui.radio_sky_only
         self.radio_whole_image = self.ui.radio_whole_image
 
@@ -64,10 +66,12 @@ class FinishStarlessSettings(QWidget):
 
         self.slider_structure = self.ui.slider_structure
         self.slider_structure_amount = self.ui.slider_structure
-        self.lbl_structure_value = self.ui.lbl_structure_value
+        self.spin_structure = self.ui.spin_structure
+        self.spin_structure_amount = self.ui.spin_structure
         self.slider_detail = self.ui.slider_detail
         self.slider_detail_amount = self.ui.slider_detail
-        self.lbl_detail_value = self.ui.lbl_detail_value
+        self.spin_detail = self.ui.spin_detail
+        self.spin_detail_amount = self.ui.spin_detail
         self.btn_reset = self.ui.btn_reset
         self.lbl_status = self.ui.lbl_status
 
@@ -86,6 +90,9 @@ class FinishStarlessSettings(QWidget):
 
         self.lbl_status.hide()
         self.unconfigured_box.setVisible(True)
+        self.set_strength(DEFAULT_DENOISE_STRENGTH_PERCENT)
+        self.set_structure(DEFAULT_STRUCTURE_AMOUNT_PERCENT)
+        self.set_detail(DEFAULT_DETAIL_AMOUNT_PERCENT)
         self._update_controls_enabled()
 
         self._init_events()
@@ -94,20 +101,15 @@ class FinishStarlessSettings(QWidget):
         self.check_enable_denoise.toggled.connect(self._on_enable_denoise_toggled)
         self.check_enable_sharpen.toggled.connect(self._on_enable_sharpen_toggled)
 
-        self.slider_strength.valueChanged.connect(self._on_strength_slider_changed)
-        self.slider_strength.sliderPressed.connect(self.slider_dragging.emit)
-        self.slider_strength.sliderReleased.connect(self._on_strength_slider_released)
+        for slider, spin, signal in (
+            (self.slider_strength, self.spin_strength, self.denoise_strength_changed),
+            (self.slider_structure, self.spin_structure, self.structure_amount_changed),
+            (self.slider_detail, self.spin_detail, self.detail_amount_changed),
+        ):
+            bind_percent_slider_spinbox(slider, spin, signal, self.settings_changed, self.slider_dragging)
 
         self.radio_sky_only.toggled.connect(self._on_scope_toggled)
         self.radio_whole_image.toggled.connect(self._on_scope_toggled)
-
-        self.slider_structure.valueChanged.connect(self._on_structure_slider_changed)
-        self.slider_structure.sliderPressed.connect(self.slider_dragging.emit)
-        self.slider_structure.sliderReleased.connect(self._on_structure_slider_released)
-
-        self.slider_detail.valueChanged.connect(self._on_detail_slider_changed)
-        self.slider_detail.sliderPressed.connect(self.slider_dragging.emit)
-        self.slider_detail.sliderReleased.connect(self._on_detail_slider_released)
 
         self.btn_reset.clicked.connect(self._on_reset_clicked)
 
@@ -122,52 +124,10 @@ class FinishStarlessSettings(QWidget):
         self.enable_sharpen_changed.emit(checked)
         self.settings_changed.emit()
 
-    def _on_strength_slider_changed(self, value: int) -> None:
-        self.lbl_strength_value.setText(f"{value}%")
-        if self.slider_strength.isSliderDown():
-            self.slider_dragging.emit()
-        else:
-            self.denoise_strength_changed.emit(float(value))
-            self.settings_changed.emit()
-
-    def _on_strength_slider_released(self) -> None:
-        val = self.slider_strength.value()
-        self.lbl_strength_value.setText(f"{val}%")
-        self.denoise_strength_changed.emit(float(val))
-        self.settings_changed.emit()
-
     def _on_scope_toggled(self, checked: bool) -> None:
         if checked:
             self.denoise_scope_changed.emit(self.get_scope())
             self.settings_changed.emit()
-
-    def _on_structure_slider_changed(self, value: int) -> None:
-        self.lbl_structure_value.setText(f"{value}%")
-        if self.slider_structure.isSliderDown():
-            self.slider_dragging.emit()
-        else:
-            self.structure_amount_changed.emit(float(value))
-            self.settings_changed.emit()
-
-    def _on_structure_slider_released(self) -> None:
-        val = self.slider_structure.value()
-        self.lbl_structure_value.setText(f"{val}%")
-        self.structure_amount_changed.emit(float(val))
-        self.settings_changed.emit()
-
-    def _on_detail_slider_changed(self, value: int) -> None:
-        self.lbl_detail_value.setText(f"{value}%")
-        if self.slider_detail.isSliderDown():
-            self.slider_dragging.emit()
-        else:
-            self.detail_amount_changed.emit(float(value))
-            self.settings_changed.emit()
-
-    def _on_detail_slider_released(self) -> None:
-        val = self.slider_detail.value()
-        self.lbl_detail_value.setText(f"{val}%")
-        self.detail_amount_changed.emit(float(val))
-        self.settings_changed.emit()
 
     def _on_reset_clicked(self) -> None:
         self.set_enable_denoise(DEFAULT_ENABLE_STARLESS_DENOISE)
@@ -189,11 +149,14 @@ class FinishStarlessSettings(QWidget):
             self.check_enable_sharpen.setChecked(sharpen_enabled)
 
         self.slider_strength.setEnabled(denoise_active)
+        self.spin_strength.setEnabled(denoise_active)
         self.radio_sky_only.setEnabled(denoise_active)
         self.radio_whole_image.setEnabled(denoise_active)
 
         self.slider_structure.setEnabled(sharpen_active)
+        self.spin_structure.setEnabled(sharpen_active)
         self.slider_detail.setEnabled(sharpen_active)
+        self.spin_detail.setEnabled(sharpen_active)
 
         self.check_enable_denoise.setEnabled(self._has_prerequisites)
         self.lbl_enable_denoise.setEnabled(self._has_prerequisites)
@@ -243,12 +206,8 @@ class FinishStarlessSettings(QWidget):
         return float(self.slider_strength.value())
 
     def set_strength(self, strength: float) -> None:
-        """Update the slider position and display label without emitting change signals."""
-        val = int(round(strength))
-        val = max(0, min(100, val))
-        self.lbl_strength_value.setText(f"{val}%")
-        with QSignalBlocker(self.slider_strength):
-            self.slider_strength.setValue(val)
+        """Update the strength slider and spinbox without emitting change signals."""
+        set_percent_slider_spinbox(self.slider_strength, self.spin_strength, strength)
 
     def get_scope(self) -> str:
         """Return the selected scope ('sky_only' or 'whole_image')."""
@@ -273,12 +232,8 @@ class FinishStarlessSettings(QWidget):
         return self.get_structure()
 
     def set_structure(self, value: float) -> None:
-        """Update the structure slider position and display label without emitting change signals."""
-        val = int(round(value))
-        val = max(0, min(100, val))
-        self.lbl_structure_value.setText(f"{val}%")
-        with QSignalBlocker(self.slider_structure):
-            self.slider_structure.setValue(val)
+        """Update the structure slider and spinbox without emitting change signals."""
+        set_percent_slider_spinbox(self.slider_structure, self.spin_structure, value)
 
     def set_structure_amount(self, value: float) -> None:
         """Alias setting the structure amount without emitting change signals."""
@@ -293,12 +248,8 @@ class FinishStarlessSettings(QWidget):
         return self.get_detail()
 
     def set_detail(self, value: float) -> None:
-        """Update the detail slider position and display label without emitting change signals."""
-        val = int(round(value))
-        val = max(0, min(100, val))
-        self.lbl_detail_value.setText(f"{val}%")
-        with QSignalBlocker(self.slider_detail):
-            self.slider_detail.setValue(val)
+        """Update the detail slider and spinbox without emitting change signals."""
+        set_percent_slider_spinbox(self.slider_detail, self.spin_detail, value)
 
     def set_detail_amount(self, value: float) -> None:
         """Alias setting the detail amount without emitting change signals."""

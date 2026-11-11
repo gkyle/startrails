@@ -11,17 +11,7 @@
    </rect>
   </property>
   <property name="styleSheet">
-   <string notr="true">QLabel#lbl_star_amount_title, QLabel#lbl_star_threshold_title {
-    font-size: 11px;
-    font-weight: 600;
-    color: #475569;
-}
-QLabel#lbl_star_amount_value, QLabel#lbl_star_threshold_value {
-    font-size: 11px;
-    font-weight: 600;
-    color: #0369a1;
-}
-QLabel#lbl_fin_mode {
+   <string notr="true">QLabel#lbl_fin_mode {
     font-size: 11px;
     font-weight: 500;
     color: #64748b;
@@ -91,84 +81,186 @@ QPushButton#btn_save_output:disabled, QPushButton#btn_export_layers:disabled {
     <number>4</number>
    </property>
    <item>
-    <layout class="QHBoxLayout" name="star_amount_header_layout">
+    <layout class="QHBoxLayout" name="star_amount_row">
+     <property name="spacing">
+      <number>6</number>
+     </property>
      <item>
       <widget class="QLabel" name="lbl_star_amount_title">
+       <property name="minimumSize">
+        <size>
+         <width>68</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>68</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="text">
+        <string>Stars:</string>
+       </property>
+       <property name="buddy">
+        <cstring>spin_star_amount</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="slider_star_amount">
+       <property name="minimumSize">
+        <size>
+         <width>60</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>100</number>
+       </property>
+       <property name="singleStep">
+        <number>1</number>
+       </property>
+       <property name="pageStep">
+        <number>10</number>
+       </property>
+       <property name="value">
+        <number>100</number>
+       </property>
+       <property name="tracking">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="spin_star_amount">
+       <property name="maximumSize">
+        <size>
+         <width>62</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="accessibleName">
         <string>Stars</string>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="lbl_star_amount_value">
-       <property name="text">
-        <string/>
+       <property name="styleSheet">
+        <string notr="true"/>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+       <property name="suffix">
+        <string>%</string>
+       </property>
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>100</number>
+       </property>
+       <property name="singleStep">
+        <number>1</number>
+       </property>
+       <property name="value">
+        <number>100</number>
        </property>
       </widget>
      </item>
     </layout>
    </item>
    <item>
-    <widget class="QSlider" name="slider_star_amount">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
+    <layout class="QHBoxLayout" name="star_threshold_row">
+     <property name="spacing">
+      <number>6</number>
      </property>
-     <property name="maximum">
-      <number>100</number>
-     </property>
-     <property name="singleStep">
-      <number>1</number>
-     </property>
-     <property name="pageStep">
-      <number>10</number>
-     </property>
-     <property name="tracking">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="star_threshold_header_layout">
      <item>
       <widget class="QLabel" name="lbl_star_threshold_title">
+       <property name="minimumSize">
+        <size>
+         <width>68</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>68</width>
+         <height>16777215</height>
+        </size>
+       </property>
        <property name="text">
-        <string>Threshold</string>
+        <string>Threshold:</string>
+       </property>
+       <property name="buddy">
+        <cstring>spin_star_threshold</cstring>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="lbl_star_threshold_value">
-       <property name="text">
-        <string/>
+      <widget class="QSlider" name="slider_star_threshold">
+       <property name="minimumSize">
+        <size>
+         <width>60</width>
+         <height>0</height>
+        </size>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>100</number>
+       </property>
+       <property name="singleStep">
+        <number>1</number>
+       </property>
+       <property name="pageStep">
+        <number>10</number>
+       </property>
+       <property name="value">
+        <number>0</number>
+       </property>
+       <property name="tracking">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="spin_star_threshold">
+       <property name="maximumSize">
+        <size>
+         <width>62</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="accessibleName">
+        <string>Star threshold</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="suffix">
+        <string>%</string>
+       </property>
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>100</number>
+       </property>
+       <property name="singleStep">
+        <number>1</number>
+       </property>
+       <property name="value">
+        <number>0</number>
        </property>
       </widget>
      </item>
     </layout>
-   </item>
-   <item>
-    <widget class="QSlider" name="slider_star_threshold">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
-     </property>
-     <property name="maximum">
-      <number>100</number>
-     </property>
-     <property name="singleStep">
-      <number>1</number>
-     </property>
-     <property name="pageStep">
-      <number>10</number>
-     </property>
-     <property name="tracking">
-      <bool>true</bool>
-     </property>
-    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="fin_mode_layout">

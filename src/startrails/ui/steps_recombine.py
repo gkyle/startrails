@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from PySide6.QtCore import QSignalBlocker, Signal
-from PySide6.QtWidgets import QLabel, QSlider, QWidget
+from PySide6.QtWidgets import QWidget
 
 from startrails.lib.finish.defaults import FINISH_DEFAULTS
+from .steps import bind_percent_slider_spinbox, set_percent_slider_spinbox
 from .ui_step_finish_recombine import Ui_FinishRecombineSettings
 
 if TYPE_CHECKING:
@@ -31,11 +32,11 @@ class FinishRecombineSettings(QWidget):
 
         # Attribute aliases for backward compatibility and test access
         self.lbl_star_amount_title = self.ui.lbl_star_amount_title
-        self.lbl_star_amount_value = self.ui.lbl_star_amount_value
         self.slider_star_amount = self.ui.slider_star_amount
+        self.spin_star_amount = self.ui.spin_star_amount
         self.lbl_star_threshold_title = self.ui.lbl_star_threshold_title
-        self.lbl_star_threshold_value = self.ui.lbl_star_threshold_value
         self.slider_star_threshold = self.ui.slider_star_threshold
+        self.spin_star_threshold = self.ui.spin_star_threshold
         self.combo_star_blend_mode = self.ui.combo_star_blend_mode
         self.lbl_status = self.ui.lbl_status
         self.btn_save_output = self.ui.btn_save_output
@@ -55,29 +56,13 @@ class FinishRecombineSettings(QWidget):
         self.refresh_prerequisites(False)
 
     def _init_events(self) -> None:
-        for slider, label, sig in (
-            (self.slider_star_amount, self.lbl_star_amount_value, self.star_amount_changed),
-            (self.slider_star_threshold, self.lbl_star_threshold_value, self.star_threshold_changed),
+        for slider, spin, sig in (
+            (self.slider_star_amount, self.spin_star_amount, self.star_amount_changed),
+            (self.slider_star_threshold, self.spin_star_threshold, self.star_threshold_changed),
         ):
-            slider.valueChanged.connect(lambda v, s=slider, l=label, sg=sig: self._on_percent_slider_changed(s, l, sg, v))
-            slider.sliderPressed.connect(self.slider_dragging.emit)
-            slider.sliderReleased.connect(lambda s=slider, l=label, sg=sig: self._on_percent_slider_released(s, l, sg))
+            bind_percent_slider_spinbox(slider, spin, sig, self.settings_changed, self.slider_dragging)
         self.combo_star_blend_mode.currentIndexChanged.connect(self._on_star_blend_mode_changed)
         self.btn_export_layers.clicked.connect(self.export_layers_requested.emit)
-
-    def _on_percent_slider_changed(self, slider: QSlider, label: QLabel, signal: Signal, value: int) -> None:
-        label.setText(f"{value}%")
-        if slider.isSliderDown():
-            self.slider_dragging.emit()
-        else:
-            signal.emit(float(value))
-            self.settings_changed.emit()
-
-    def _on_percent_slider_released(self, slider: QSlider, label: QLabel, signal: Signal) -> None:
-        val = slider.value()
-        label.setText(f"{val}%")
-        signal.emit(float(val))
-        self.settings_changed.emit()
 
     def is_slider_down(self) -> bool:
         """Return True if any composition slider is actively held down."""
@@ -92,22 +77,14 @@ class FinishRecombineSettings(QWidget):
     def get_star_amount(self) -> float:
         return float(self.slider_star_amount.value())
 
-    @staticmethod
-    def _set_percent_slider(slider: QSlider, label: QLabel, value: float) -> None:
-        val = int(round(value))
-        val = max(0, min(100, val))
-        label.setText(f"{val}%")
-        with QSignalBlocker(slider):
-            slider.setValue(val)
-
     def set_star_amount(self, amount: float) -> None:
-        self._set_percent_slider(self.slider_star_amount, self.lbl_star_amount_value, amount)
+        set_percent_slider_spinbox(self.slider_star_amount, self.spin_star_amount, amount)
 
     def get_star_threshold(self) -> float:
         return float(self.slider_star_threshold.value())
 
     def set_star_threshold(self, threshold: float) -> None:
-        self._set_percent_slider(self.slider_star_threshold, self.lbl_star_threshold_value, threshold)
+        set_percent_slider_spinbox(self.slider_star_threshold, self.spin_star_threshold, threshold)
 
     def get_blend_mode(self) -> str:
         data = self.combo_star_blend_mode.currentData()
@@ -130,7 +107,9 @@ class FinishRecombineSettings(QWidget):
 
     def refresh_prerequisites(self, has_prerequisites: bool = True) -> None:
         self.slider_star_amount.setEnabled(has_prerequisites)
+        self.spin_star_amount.setEnabled(has_prerequisites)
         self.slider_star_threshold.setEnabled(has_prerequisites)
+        self.spin_star_threshold.setEnabled(has_prerequisites)
         self.combo_star_blend_mode.setEnabled(has_prerequisites)
         self.btn_save_output.setEnabled(has_prerequisites)
         self.btn_export_layers.setEnabled(has_prerequisites)
