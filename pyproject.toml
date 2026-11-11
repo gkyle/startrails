@@ -53,13 +53,11 @@ mps = [
 rocm7 = [
   "torch>=2.6.0",
   "torchvision>=0.21.0",
-  "pytorch-triton-rocm>=3 ; sys_platform == 'linux'",
   "triton-rocm>=3 ; sys_platform == 'linux'",
 ]
 xpu = [
   "torch>=2.6.0",
   "torchvision>=0.21.0",
-  "pytorch-triton-xpu>=3 ; sys_platform == 'linux' or sys_platform == 'win32'",
   "triton-xpu>=3 ; sys_platform == 'linux' or sys_platform == 'win32'",
 ]
 
@@ -95,14 +93,8 @@ torchvision = [
   { index = "pytorch-rocm72", extra = "rocm7", marker = "sys_platform == 'linux'" },
   { index = "pytorch-xpu", extra = "xpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
-pytorch-triton-rocm = [
-  { index = "pytorch-rocm72", extra = "rocm7", marker = "sys_platform == 'linux'" },
-]
 triton-rocm = [
   { index = "pytorch-rocm72", extra = "rocm7", marker = "sys_platform == 'linux'" },
-]
-pytorch-triton-xpu = [
-  { index = "pytorch-xpu", extra = "xpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 triton-xpu = [
   { index = "pytorch-xpu", extra = "xpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
