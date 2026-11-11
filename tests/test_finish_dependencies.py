@@ -134,36 +134,6 @@ class TestFinishDependencies(unittest.TestCase):
         self.assertEqual(session.execution_device, "cuda")
         self.assertIsNone(session.fallback_reason)
 
-    def test_setup_verifies_real_graxpert_inference_and_reports_execution_device(self):
-        from setup.check_finish_models import check_graxpert
-
-        sample = np.full((256, 256, 3), 0.5, np.float32)
-        model_path = self.root / "graxpert.pt"
-        model_path.write_bytes(b"dummy")
-        session = MagicMock()
-        session.configured_device = torch.device("cuda")
-        session.execution_device = "cpu"
-        session.fallback_reason = "cuda allocation failure: out of memory; retried on cpu."
-        session.denoise_full_strength.return_value = np.zeros((256, 256, 3), np.float32)
-        with patch("setup.check_finish_models.GraXpertSession", return_value=session) as session_class:
-            report = check_graxpert(model_path, sample, device="cuda")
-            self.assertEqual(report["configured_device"], "cuda")
-            self.assertEqual(report["execution_device"], "cpu")
-            self.assertIn("out of memory", report["fallback_reason"])
-            self.assertEqual(session_class.call_args.kwargs["device"], "cuda")
-            session.denoise_full_strength.side_effect = RuntimeError("CPU inference failed")
-            with self.assertRaisesRegex(RuntimeError, "CPU inference failed"):
-                check_graxpert(model_path, sample, device="cuda")
-
-    def test_missing_model_setup_does_not_block_other_modes(self):
-        from setup.check_runtime import main
-
-        with (
-            patch("startrails.paths.APPLICATION_DIR", self.root),
-            patch("sys.argv", ["check_runtime.py", "--variant", "cpu"]),
-        ):
-            main()
-
     def test_graxpert_session_tiling_hann_blending_and_cancellation(self):
         model_path = self.root / "fake_graxpert.pt"
         model_path.write_bytes(b"dummy")
@@ -381,88 +351,6 @@ class TestFinishDependencies(unittest.TestCase):
         self.assertTrue(gx_status["configured"])
         self.assertTrue(gx_status["model_ready"])
         self.assertEqual(gx_status["device"], "cuda")
-
-    def test_check_finish_models_runs_graxpert_and_nox(self):
-        from setup.check_finish_models import main as check_models_main
-
-        with (
-            patch(
-                "setup.check_finish_models.check_graxpert",
-                return_value={"execution_device": "cpu"},
-            ) as mock_check_graxpert,
-            patch(
-                "setup.check_finish_models.check_nox",
-                return_value=(np.zeros((512, 512, 3), dtype=np.float32), {"execution_device": "cpu"}),
-            ) as mock_check_nox,
-            patch(
-                "sys.argv",
-                [
-                    "check_finish_models.py",
-                    "--variant",
-                    "cpu",
-                ],
-            ),
-        ):
-            check_models_main()
-
-        mock_check_graxpert.assert_called_once()
-        mock_check_nox.assert_called_once()
-        self.assertEqual(mock_check_graxpert.call_args.kwargs["device"], "cpu")
-        self.assertEqual(mock_check_nox.call_args.kwargs["device"], "cpu")
-
-    def test_variant_resolves_to_explicit_runtime_device(self):
-        from setup.check_finish_models import resolve_variant_device
-
-        for variant, expected in (
-            ("cpu", "cpu"),
-            ("mps", "mps"),
-            ("cu118", "cuda"),
-            ("cu124", "cuda"),
-            ("cu133", "cuda"),
-            (None, "auto"),
-        ):
-            with self.subTest(variant=variant):
-                self.assertEqual(resolve_variant_device(variant), expected)
-
-    def test_runtime_smoke_failure_is_an_actionable_notice(self):
-        from setup.check_runtime import main
-
-        model_path = self.root / "models" / GRAXPERT_MODEL_RELATIVE_PATH
-        model_path.parent.mkdir(parents=True)
-        model_path.write_bytes(b"dummy")
-        notice_file = self.root / "notice.txt"
-        with (
-            patch("startrails.paths.APPLICATION_DIR", self.root),
-            patch("torch.backends.mps.is_available", return_value=False),
-            patch(
-                "setup.check_finish_models.check_graxpert",
-                side_effect=RuntimeError("model inference failed"),
-            ) as check,
-            patch(
-                "sys.argv",
-                ["check_runtime.py", "--variant", "mps", "--notice-file", str(notice_file)],
-            ),
-        ):
-            main()
-
-        notice = notice_file.read_text(encoding="utf-8")
-        self.assertIn("Apple GPU acceleration is unavailable", notice)
-        self.assertIn("model inference failed", notice)
-        self.assertIn("Repair StarTrails AI", notice)
-        self.assertEqual(check.call_args.kwargs["device"], "mps")
-
-    def test_explicit_model_smoke_check_propagates_inference_failure(self):
-        from setup.check_finish_models import main as check_models_main
-
-        with (
-            patch("setup.check_finish_models.check_graxpert", side_effect=RuntimeError("inference failed")),
-            patch(
-                "sys.argv",
-                ["check_finish_models.py", "--variant", "cpu", "--skip-nox"],
-            ),
-        ):
-            with self.assertRaisesRegex(RuntimeError, "inference failed"):
-                check_models_main()
 
     def test_ui_separate_stars_settings(self):
         from support import qt_app

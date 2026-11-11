@@ -12,7 +12,6 @@ during setup.
 Create and push the `v<version>` Git tag from the final release commit before
 syncing assets.
 
-
 Build the shared model ZIP once on macOS, Windows, or Linux:
 
 ```sh
@@ -40,26 +39,6 @@ GitHub's asset SHA-256. Use `python build/models.py --download` to fetch and
 verify it separately. To use a local model archive, pass `--models-archive ZIP`
 on macOS or `-ModelsArchive ZIP` on Windows. An installer for distribution must
 point to the same verified ZIP at its embedded model URL.
-
-After preparing an environment and its bundled models, run the explicit Finish setup
-smoke check before approving a platform release:
-
-```sh
-.venv/bin/python src/setup/check_finish_models.py --variant cpu --image /path/to/sample.tif
-```
-
-Use the installed variant to request its device explicitly (`cpu`, `mps`, or
-`cu118`/`cu124`/`cu133` for CUDA). Omitting `--variant` selects the device automatically.
-
-Select one dependency extra (`cpu`, `cu118`, `cu124`, `cu133`, or `mps`) through the
-normal setup scripts. Both Nox and GraXpert run on the installed PyTorch device (`cuda`,
-`mps`, or `cpu`) with automatic CPU fallback on recognized GPU allocation failure.
-The setup/repair runtime check (`src/setup/check_runtime.py`) exercises native
-dependencies and runs a smoke check on the bundled GraXpert model when present; a
-missing model or failed Finish inference check is reported as a notice and leaves
-other modes and neutral finishing usable. The explicit Finish smoke check above
-still fails on model or inference errors. Clean Windows/macOS and real GPU execution remain release validation gates;
-a successful Linux CPU check does not establish those configurations.
 
 ## macOS
 

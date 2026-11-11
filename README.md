@@ -132,14 +132,12 @@ The [training dataset](https://github.com/gkyle/startrails/releases/tag/training
 
 ## Finish workflow
 
-Finish mode processes a single image rather than stacking a sequence. Create an **Astro Finish** project and add your source image to **Input Files**.
+Finish mode takes a single nightscape image and separates stars from the sky to enable targeted post processing. For example, adjust the white balance of stars, or apply a tone curve to the sky to elevate the milky way, without adversely affecting the stars. It offers additional sky denoise and sharpening. You can export the stars and starless layers for editing and recombining in software like Photoshop or blend and recombine in the app.
 
 1. **Define Sky Region:** Detect and refine the sky mask, paint corrections, or select the full frame for an image without foreground.
 2. **Separate Stars:** Run star removal to create starless and stars layers.
 3. **Finish Starless:** Adjust AI denoise strength and scope, and optionally sharpen with Structure and Detail controls.
 4. **Recombine and Save:** Adjust star amount, threshold, and Add or Screen blending, then save the image or export layers.
-
-Star removal requires the bundled Nox model; AI denoising requires the bundled GraXpert model. GraXpert's noncommercial model terms below apply independently of the application's license.
 
 ## Third-party model licenses
 

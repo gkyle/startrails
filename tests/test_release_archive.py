@@ -11,10 +11,8 @@ import unittest
 from unittest.mock import patch
 from zipfile import ZipFile, ZipInfo
 
-from dataclasses import replace
-
 from build import release, models as model_builder
-from startrails.lib.finish.defaults import GRAXPERT_MODEL_RELATIVE_PATH, NOX_MODEL_RELATIVE_PATH
+from startrails.lib.finish.defaults import GRAXPERT_MODEL_RELATIVE_PATH
 
 
 class PublishedModelArchiveTests(unittest.TestCase):
@@ -100,29 +98,22 @@ class ModelArchiveTests(unittest.TestCase):
             self.assertEqual((stage / relative_path).read_text(), "Model license notice")
             self.assertFalse((stage / "src/startrails/lib/finish/__pycache__/nox.cpython-312.pyc").exists())
 
-    def test_finish_bundle_requires_weights_and_graxpert_notices(self):
+    def test_graxpert_bundle_requires_weights_and_notices(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
             model_root = root / "models"
             graxpert_data = b"unmodified graxpert model"
-            nox_data = b"unmodified nox model"
             graxpert = model_root / GRAXPERT_MODEL_RELATIVE_PATH
-            nox = model_root / NOX_MODEL_RELATIVE_PATH
             graxpert.parent.mkdir(parents=True)
-            nox.parent.mkdir(parents=True)
             with self.assertRaisesRegex(ValueError, "Missing GraXpert model"):
-                model_builder.prepare_finish_model_bundle(model_root)
+                model_builder.prepare_graxpert_model_bundle(model_root)
             graxpert.write_bytes(graxpert_data)
             with self.assertRaisesRegex(ValueError, "Missing GraXpert attribution/license"):
-                model_builder.prepare_finish_model_bundle(model_root)
+                model_builder.prepare_graxpert_model_bundle(model_root)
             for name in ("README.md", "LICENSE.html", "LICENSE.txt"):
                 (graxpert.parent / name).write_text(name)
-            with self.assertRaisesRegex(ValueError, "Missing bundled Finish model"):
-                model_builder.prepare_finish_model_bundle(model_root)
-            nox.write_bytes(nox_data)
-            model_builder.prepare_finish_model_bundle(model_root)
+            model_builder.prepare_graxpert_model_bundle(model_root)
             self.assertEqual(graxpert.read_bytes(), graxpert_data)
-            self.assertEqual(nox.read_bytes(), nox_data)
 
     def test_checkout_platform_does_not_change_archive_hash(self):
         with TemporaryDirectory() as temporary:

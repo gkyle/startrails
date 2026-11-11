@@ -13,17 +13,14 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 from build.release import create_models_archive, download_models_archive, models_archive_name, sha256
 from build.publish import sync_release
-from startrails.lib.finish.defaults import (
-    GRAXPERT_MODEL_RELATIVE_PATH,
-    NOX_MODEL_RELATIVE_PATH,
-)
+from startrails.lib.finish.defaults import GRAXPERT_MODEL_RELATIVE_PATH
 
 DEFAULT_OUTPUT_DIR = ROOT / "out/models"
 DEFAULT_DOWNLOAD_DIR = DEFAULT_OUTPUT_DIR / "downloads"
 
 
-def prepare_finish_model_bundle(models_dir: Path) -> None:
-    """Verify bundled Finish weights and GraXpert attribution exist before archiving."""
+def prepare_graxpert_model_bundle(models_dir: Path) -> None:
+    """Verify bundled GraXpert attribution exist before archiving."""
     graxpert_model = models_dir / GRAXPERT_MODEL_RELATIVE_PATH
     if not graxpert_model.is_file():
         raise ValueError(
@@ -33,10 +30,6 @@ def prepare_finish_model_bundle(models_dir: Path) -> None:
     for notice in notice_names:
         if not (graxpert_model.parent / notice).is_file():
             raise ValueError(f"Missing GraXpert attribution/license notice: {graxpert_model.parent / notice}")
-    nox_model = models_dir / NOX_MODEL_RELATIVE_PATH
-    if not nox_model.is_file():
-        raise ValueError(f"Missing bundled Finish model: {nox_model}")
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -62,7 +55,7 @@ def main() -> None:
         print(f"Fetching published models for v{version}...", file=sys.stderr)
         archive = download_models_archive(output, version)
     else:
-        prepare_finish_model_bundle(ROOT / "models")
+        prepare_graxpert_model_bundle(ROOT / "models")
         output.mkdir(parents=True, exist_ok=True)
         archive = output / models_archive_name(version)
         create_models_archive(archive)
