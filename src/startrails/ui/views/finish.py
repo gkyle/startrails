@@ -85,10 +85,7 @@ class FinishView(ModeView):
         self.connect_signal(self.sidebar.inputFiles.removeFile, self.on_remove_source)
         self.connect_signal(self.sidebar.outputFiles.showFile, self._on_file_section_show_file)
 
-        if hasattr(self.shell, "doCreateNewFinishProject"):
-            self.connect_signal(self.sidebar.pushButton_newProject.clicked, self.shell.doCreateNewFinishProject)
-        if hasattr(self.shell, "doOpenFinishProject"):
-            self.connect_signal(self.sidebar.pushButton_openProject.clicked, self.shell.doOpenFinishProject)
+        self.bind_project_actions(self.sidebar.pushButton_newProject, self.sidebar.pushButton_openProject)
 
         # Wire reusable sky masking controller (resolve app.workflow dynamically so
         # replacing/opening a Finish project keeps using the active workflow).

@@ -46,6 +46,17 @@ class ModeView(QObject):
         signal.connect(slot)
         self._signal_connections.append((signal, slot))
 
+    def bind_project_actions(
+        self,
+        new_project_button: Optional[QWidget],
+        open_project_button: Optional[QWidget],
+    ) -> None:
+        """Connect sidebar New/Open Project buttons to the shell's overlay-backed actions."""
+        if new_project_button is not None and hasattr(self.shell, "doNewProject"):
+            self.connect_signal(new_project_button.clicked, self.shell.doNewProject)
+        if open_project_button is not None and hasattr(self.shell, "doOpenProject"):
+            self.connect_signal(open_project_button.clicked, self.shell.doOpenProject)
+
     def confirm_clear_files(self, existing_count: int) -> bool:
         """Ask whether an import should replace the selected list's existing files."""
         if not existing_count:

@@ -226,10 +226,7 @@ class StarTrailsView(ModeView):
         self._init_sidebar_refs()
         signals = getSignals()
 
-        if self.pushButton_newProject is not None and hasattr(self.shell, "doNewProject"):
-            self.connect_signal(self.pushButton_newProject.clicked, self.shell.doNewProject)
-        if self.pushButton_openProject is not None and hasattr(self.shell, "doOpenProject"):
-            self.connect_signal(self.pushButton_openProject.clicked, self.shell.doOpenProject)
+        self.bind_project_actions(self.pushButton_newProject, self.pushButton_openProject)
 
         self.connect_signal(self.inputFiles.addRequested, self.selectInputFiles)
         self.connect_signal(self.pushButton_stackImages.clicked, self.doStack)

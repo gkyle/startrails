@@ -1009,3 +1009,32 @@ class TestFinishProject(QtTestCase):
         overlay.btn_fn_open.click()
         self.assertEqual(len(create_fired), 1)
         self.assertEqual(len(open_fired), 1)
+
+    def test_project_buttons_open_overlay_in_all_modes(self):
+        from startrails.lib.project_type import DENOISE_EXT, STARTRAILS_EXT
+        from startrails.ui.ui_wrap import MainWindow
+
+        app = self.make_app()
+        window = MainWindow(app)
+        self.addCleanup(window.close)
+
+        projects = (
+            ("startrails", self.root / f"st{STARTRAILS_EXT}"),
+            ("denoise", self.root / f"dn{DENOISE_EXT}"),
+            ("finish", self.root / f"fn{FINISH_EXT}"),
+        )
+        for mode, project_path in projects:
+            with self.subTest(mode=mode):
+                app.newProject(str(project_path))
+                window.ui.switch_to_project_mode()
+                self.assertEqual(window.ui.active_view.mode_name, mode)
+                window.hide_project_overlay()
+
+                window.ui.pushButton_newProject.click()
+                self.assertTrue(window.project_overlay.isVisible())
+                self.assertEqual(window.project_overlay._mode, "new")
+
+                window.hide_project_overlay()
+                window.ui.pushButton_openProject.click()
+                self.assertTrue(window.project_overlay.isVisible())
+                self.assertEqual(window.project_overlay._mode, "open")

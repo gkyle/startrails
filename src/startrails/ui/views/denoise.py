@@ -177,10 +177,7 @@ class DenoiseView(ModeView):
         if self.sidebar is None:
             return
 
-        if self.new_project_button is not None and hasattr(self.shell, "doNewProject"):
-            self.connect_signal(self.new_project_button.clicked, self.shell.doNewProject)
-        if self.open_project_button is not None and hasattr(self.shell, "doOpenProject"):
-            self.connect_signal(self.open_project_button.clicked, self.shell.doOpenProject)
+        self.bind_project_actions(self.new_project_button, self.open_project_button)
 
         # Connect FileSection actions
         signals = getSignals()
