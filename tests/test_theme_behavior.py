@@ -9,6 +9,15 @@ from startrails.ui.ui_wrap import MainWindow
 
 
 class ThemeTests(QtTestCase):
+    def test_project_finish_resource_loads_without_filesystem(self):
+        from PySide6.QtGui import QPixmap
+        import startrails.ui.resources_rc  # noqa: F401
+
+        pix = QPixmap(":/startrails/ui/project_finish.png")
+        self.assertFalse(pix.isNull())
+        self.assertGreater(pix.width(), 0)
+        self.assertGreater(pix.height(), 0)
+
     def test_scheme_changes_update_existing_window_without_losing_edits(self):
         theme = system_theme()
         previous = Qt.ColorScheme.Dark if theme.dark else Qt.ColorScheme.Light
