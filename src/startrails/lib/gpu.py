@@ -86,13 +86,10 @@ def resolve_torch_device(
 
 def torch_accelerator_kind() -> str:
     """Return the active PyTorch accelerator vendor, or CPU when unavailable."""
-    if torch.cuda.is_available():
+    device_type = resolve_torch_device().type
+    if device_type == "cuda":
         return "rocm" if torch.version.hip else "nvidia"
-    if torch.backends.mps.is_available():
-        return "mps"
-    if torch.xpu.is_available():
-        return "xpu"
-    return "cpu"
+    return device_type
 
 
 def configure_torch_inference(device: torch.device) -> None:
