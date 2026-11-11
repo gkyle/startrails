@@ -17,7 +17,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from startrails.lib.finish.defaults import DEFAULT_STARNET_STRIDE
+from startrails.lib.finish.defaults import (
+    DEFAULT_STARNET_STRIDE,
+    NOX_MODEL_FILENAME,
+    NOX_MODEL_RELATIVE_PATH,
+    NOX_MODEL_SHA256,
+    NOX_MODEL_VERSION,
+)
 from startrails.lib.gpu import (
     free_gpu_memory,
     is_cuda_allocation_failure,
@@ -26,10 +32,6 @@ from startrails.lib.gpu import (
 from startrails.lib.image_io import validate_image_array
 from startrails.paths import APPLICATION_DIR
 
-
-NOX_MODEL_VERSION = "1.0.0"
-NOX_MODEL_FILENAME = "nox_color_finetuned_best.pt"
-NOX_MODEL_RELATIVE_PATH = f"removeStars/{NOX_MODEL_FILENAME}"
 
 FILTERS: Tuple[int, ...] = (64, 128, 256, 512, 512, 512, 512, 512, 512, 512, 512, 512, 256, 128, 64)
 NUM_ENCODER_LAYERS = 8
@@ -57,8 +59,8 @@ WEIGHT_NORM_EPS = 1e-8
 
 
 def nox_model_identity() -> str:
-    """Return the Nox model identity used in separation cache keys."""
-    return f"{ARCHITECTURE}:{NOX_MODEL_VERSION}"
+    """Return the identity of the bundled Nox weights used in separation cache keys."""
+    return f"{ARCHITECTURE}:{NOX_MODEL_VERSION}:{NOX_MODEL_SHA256}"
 
 
 def validate_separation_stride(stride: int, window_size: int = WINDOW_SIZE) -> None:
@@ -708,6 +710,7 @@ __all__ = [
     "MIN_STRIDE",
     "NOX_MODEL_FILENAME",
     "NOX_MODEL_RELATIVE_PATH",
+    "NOX_MODEL_SHA256",
     "NOX_MODEL_VERSION",
     "NoxColor",
     "NoxSession",

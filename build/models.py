@@ -13,20 +13,33 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 from build.release import create_models_archive, download_models_archive, models_archive_name, sha256
 from build.publish import sync_release
-from startrails.lib.finish.defaults import GRAXPERT_MODEL_RELATIVE_PATH
+from startrails.lib.finish.defaults import (
+    FINISH_MODEL_PINS,
+    GRAXPERT_MODEL_RELATIVE_PATH,
+)
+from startrails.lib.signatures import verify_file_integrity
 
 DEFAULT_OUTPUT_DIR = ROOT / "out/models"
 DEFAULT_DOWNLOAD_DIR = DEFAULT_OUTPUT_DIR / "downloads"
 
 
-def prepare_graxpert_bundle(models_dir: Path) -> None:
-    model = models_dir / GRAXPERT_MODEL_RELATIVE_PATH
-    if not model.is_file():
-        raise ValueError(f"Missing GraXpert model: {model}. See {model.parent / 'README.md'}.")
+def prepare_finish_model_bundle(models_dir: Path) -> None:
+    """Verify bundled Finish weight pins and GraXpert attribution before archiving."""
+    graxpert_model = models_dir / GRAXPERT_MODEL_RELATIVE_PATH
+    if not graxpert_model.is_file():
+        raise ValueError(
+            f"Missing GraXpert model: {graxpert_model}. See {graxpert_model.parent / 'README.md'}."
+        )
     notice_names = ("README.md", "LICENSE.html", "LICENSE.txt")
     for notice in notice_names:
-        if not (model.parent / notice).is_file():
-            raise ValueError(f"Missing GraXpert attribution/license notice: {model.parent / notice}")
+        if not (graxpert_model.parent / notice).is_file():
+            raise ValueError(f"Missing GraXpert attribution/license notice: {graxpert_model.parent / notice}")
+    for relative_path, expected_sha256 in FINISH_MODEL_PINS:
+        model = models_dir / relative_path
+        if not model.is_file():
+            raise ValueError(f"Missing bundled Finish model: {model}")
+        if not verify_file_integrity(model, expected_sha256):
+            raise ValueError(f"Bundled Finish model does not match the pinned SHA-256: {model}")
 
 
 def main() -> None:
@@ -53,7 +66,7 @@ def main() -> None:
         print(f"Fetching published models for v{version}...", file=sys.stderr)
         archive = download_models_archive(output, version)
     else:
-        prepare_graxpert_bundle(ROOT / "models")
+        prepare_finish_model_bundle(ROOT / "models")
         output.mkdir(parents=True, exist_ok=True)
         archive = output / models_archive_name(version)
         create_models_archive(archive)

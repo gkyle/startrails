@@ -17,9 +17,22 @@ FINISH_EXT: Final[str] = ".proj_finish"
 FINISH_OUTPUT_DIR_SUFFIX: Final[str] = ".finish"
 
 # Bundled Finish model manifest shared with dependency-free release tooling.
+# The SHA-256 pins are the authoritative content identity for cache keys and
+# release-asset verification.
+NOX_MODEL_VERSION: Final[str] = "1.0.0"
+NOX_MODEL_FILENAME: Final[str] = "nox_color_finetuned_best.pt"
+NOX_MODEL_RELATIVE_PATH: Final[str] = f"removeStars/{NOX_MODEL_FILENAME}"
+NOX_MODEL_SHA256: Final[str] = "78153cc4f8de64c750a5d7f5c1e1b2061ab9de1687b2e066631f50bf898c9683"
+
 GRAXPERT_MODEL_VERSION: Final[str] = "3.0.2"
 GRAXPERT_MODEL_FILENAME: Final[str] = "graxpert-denoise-3.0.2-mixed-int4-int8.pt"
 GRAXPERT_MODEL_RELATIVE_PATH: Final[str] = f"denoiseSky/graxpert/{GRAXPERT_MODEL_FILENAME}"
+GRAXPERT_MODEL_SHA256: Final[str] = "e02957100e6088a644de64e154e777588eba2e323b8f5b914efc4aa91a0ad4b0"
+
+FINISH_MODEL_PINS: Final[Tuple[Tuple[str, str], ...]] = (
+    (NOX_MODEL_RELATIVE_PATH, NOX_MODEL_SHA256),
+    (GRAXPERT_MODEL_RELATIVE_PATH, GRAXPERT_MODEL_SHA256),
+)
 
 # Authoritative artifact role identifiers
 ROLE_SOURCE_SNAPSHOT: Final[str] = "source_snapshot"

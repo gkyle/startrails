@@ -13,6 +13,7 @@ import torch.nn.functional as F
 from startrails.lib.finish.defaults import (
     GRAXPERT_MODEL_FILENAME,
     GRAXPERT_MODEL_RELATIVE_PATH,
+    GRAXPERT_MODEL_SHA256,
     GRAXPERT_MODEL_VERSION,
 )
 
@@ -33,12 +34,12 @@ CHECKPOINT_FORMAT_MIXED_INT4_INT8 = "graxpert_pytorch_mixed_int4_int8"
 
 
 def graxpert_model_identity() -> str:
-    """Return the model identity used in full-strength inference cache keys.
+    """Return the identity of the bundled GraXpert weights used in cache keys.
 
     Device selection is deliberately excluded: CPU and GPU lanes run the same
     numerical pipeline, so switching an accelerator does not invalidate endpoints.
     """
-    return f"graxpert:{GRAXPERT_MODEL_VERSION}"
+    return f"graxpert:{GRAXPERT_MODEL_VERSION}:{GRAXPERT_MODEL_SHA256}"
 
 
 def compute_graxpert_stats(image: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -575,6 +576,7 @@ __all__ = [
     "EXPECTED_WEIGHT_TENSOR_COUNT",
     "GRAXPERT_MODEL_FILENAME",
     "GRAXPERT_MODEL_RELATIVE_PATH",
+    "GRAXPERT_MODEL_SHA256",
     "GRAXPERT_MODEL_VERSION",
     "GlobalContextExtractor",
     "LAYER_NORM_EPS",
