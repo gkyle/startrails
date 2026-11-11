@@ -9,6 +9,13 @@ from startrails.ui.ui_wrap import MainWindow
 
 
 class ThemeTests(QtTestCase):
+    def test_dark_stylesheet_maps_accent_border_color(self):
+        from startrails.ui.theme import dark_stylesheet
+
+        styled = dark_stylesheet("border-color: #0284c7; border: 1px solid #0284c7;")
+        self.assertIn("border-color: #38bdf8;", styled)
+        self.assertIn("border: 1px solid #38bdf8;", styled)
+
     def test_project_finish_resource_loads_without_filesystem(self):
         from PySide6.QtGui import QPixmap
         import startrails.ui.resources_rc  # noqa: F401
