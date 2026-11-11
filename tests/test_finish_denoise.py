@@ -84,6 +84,7 @@ class TestFinishDenoise(QtTestCase):
     def test_end_to_end_denoise_endpoint_caching_and_strength_blending(self):
         """Denoise runs inference once, caches endpoint, and strength/scope reuse it."""
         self.prepare_separated_project()
+        self.project.update_settings(replace(self.project.get_settings(), structure_amount=0.0, detail_amount=0.0))
 
         inference_calls = 0
 
@@ -97,7 +98,7 @@ class TestFinishDenoise(QtTestCase):
         fake_session.denoise_full_strength.side_effect = fake_denoise_inference
 
         with patch.object(self.workflow, "_graxpert_session_for", return_value=fake_session):
-            # Step 1: Run denoise at default settings (50% strength, sky_only)
+            # Step 1: Run denoise at 50% strength and sky_only with neutral sharpening.
             result = self.workflow.do_denoise_starless()
             self.assertIsNotNone(result)
             self.assertEqual(inference_calls, 1)
@@ -156,7 +157,9 @@ class TestFinishDenoise(QtTestCase):
         """Zero strength produces finished starless without invoking GraXpert."""
         self.prepare_separated_project()
         settings = self.project.get_settings()
-        self.project.update_settings(replace(settings, denoise_strength=0.0))
+        self.project.update_settings(
+            replace(settings, denoise_strength=0.0, structure_amount=0.0, detail_amount=0.0)
+        )
 
         with patch.object(self.workflow, "_graxpert_session_for", side_effect=RuntimeError("no model")):
             result = self.workflow.do_denoise_starless()

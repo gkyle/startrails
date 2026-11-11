@@ -123,6 +123,8 @@ class TestFinishProject(QtTestCase):
     def test_finish_project_defaults_and_zero_settings_survival(self):
         proj_file = self.root / f"test{FINISH_EXT}"
         project = FinishProject(project_file=str(proj_file))
+        self.assertEqual(project.structure_amount, 20.0)
+        self.assertEqual(project.detail_amount, 20.0)
 
         # Explicit non-defaults and zeroes
         project.denoise_strength = 0.0
