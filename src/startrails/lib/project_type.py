@@ -5,14 +5,14 @@ from pathlib import Path
 from typing import Any, Union
 import jsonpickle
 
+from startrails.lib.finish.defaults import FINISH_EXT, FINISH_OUTPUT_DIR_SUFFIX, PROJECT_TYPE_FINISH as TYPE_FINISH
+
 STARTRAILS_EXT = ".proj_startrails"
 DENOISE_EXT = ".proj_denoise"
-FINISH_EXT = ".proj_finish"
 LEGACY_STARTRAILS_EXT = ".project.json"
 
 TYPE_STARTRAILS = "startrails"
 TYPE_DENOISE = "denoise"
-TYPE_FINISH = "finish"
 
 
 class UnsupportedProjectError(ValueError):
@@ -62,7 +62,7 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
 
     if lower_name.endswith(FINISH_EXT):
         base = name[:-len(FINISH_EXT)]
-        return parent / f"{base}.finish"
+        return parent / f"{base}{FINISH_OUTPUT_DIR_SUFFIX}"
 
     if lower_name.endswith(".json"):
         return parent / name[:-5]

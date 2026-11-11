@@ -17,6 +17,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from startrails.lib.finish.defaults import DEFAULT_STARNET_STRIDE
 from startrails.lib.gpu import (
     free_gpu_memory,
     is_cuda_allocation_failure,
@@ -47,7 +48,7 @@ EXPECTED_WEIGHT_TENSOR_COUNT = 60
 ARCHITECTURE = "nox_color"
 
 WINDOW_SIZE = 512
-DEFAULT_STRIDE = 256
+DEFAULT_STRIDE = DEFAULT_STARNET_STRIDE
 MIN_STRIDE = 2
 MAX_STRIDE = 512
 DEFAULT_BATCH_SIZE = 4
@@ -728,4 +729,3 @@ __all__ = [
     "resolve_nox_device",
     "validate_separation_stride",
 ]
-
