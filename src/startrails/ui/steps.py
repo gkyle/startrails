@@ -40,7 +40,7 @@ def bind_percent_slider_spinbox(
     settings_changed_signal: Signal,
     dragging_signal: Signal,
 ) -> None:
-    """Synchronize a 0-100 slider and spinbox, deferring value commits while dragging."""
+    """Synchronize a percent slider and spinbox, deferring value commits while dragging."""
 
     def on_slider_changed(value: int) -> None:
         with QSignalBlocker(spinbox):
@@ -71,7 +71,7 @@ def bind_percent_slider_spinbox(
 
 
 def set_percent_slider_spinbox(slider: QSlider, spinbox: QSpinBox, value: float) -> None:
-    """Set a synchronized 0-100 slider and spinbox without emitting change signals."""
+    """Set a percent slider and spinbox without emitting change signals."""
     clamped = max(0, min(100, int(round(value))))
     with QSignalBlocker(slider), QSignalBlocker(spinbox):
         slider.setValue(clamped)

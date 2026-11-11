@@ -56,13 +56,13 @@ QComboBox#combo_star_blend_mode:focus {
       <widget class="QLabel" name="lbl_star_amount_title">
        <property name="minimumSize">
         <size>
-         <width>68</width>
+         <width>104</width>
          <height>0</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
-         <width>68</width>
+         <width>104</width>
          <height>16777215</height>
         </size>
        </property>
@@ -147,18 +147,18 @@ QComboBox#combo_star_blend_mode:focus {
       <widget class="QLabel" name="lbl_star_threshold_title">
        <property name="minimumSize">
         <size>
-         <width>68</width>
+         <width>104</width>
          <height>0</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
-         <width>68</width>
+         <width>104</width>
          <height>16777215</height>
         </size>
        </property>
        <property name="text">
-        <string>Threshold:</string>
+        <string>Faint-star cutoff:</string>
        </property>
        <property name="buddy">
         <cstring>spin_star_threshold</cstring>
@@ -180,19 +180,22 @@ QComboBox#combo_star_blend_mode:focus {
         <number>0</number>
        </property>
        <property name="maximum">
-        <number>100</number>
+        <number>50</number>
        </property>
        <property name="singleStep">
         <number>1</number>
        </property>
        <property name="pageStep">
-        <number>10</number>
+        <number>5</number>
        </property>
        <property name="value">
         <number>0</number>
        </property>
        <property name="tracking">
         <bool>true</bool>
+       </property>
+       <property name="toolTip">
+        <string>Higher values remove fainter stars. Drag for 0–50%; enter up to 100% in the number field.</string>
        </property>
       </widget>
      </item>
@@ -205,7 +208,10 @@ QComboBox#combo_star_blend_mode:focus {
         </size>
        </property>
        <property name="accessibleName">
-        <string>Star threshold</string>
+        <string>Faint-star cutoff</string>
+       </property>
+       <property name="toolTip">
+        <string>Higher values remove fainter stars. 0% keeps all stars; 100% removes all stars.</string>
        </property>
        <property name="styleSheet">
         <string notr="true"/>

@@ -81,7 +81,8 @@ class FinishRecombineSettings(QWidget):
         set_percent_slider_spinbox(self.slider_star_amount, self.spin_star_amount, amount)
 
     def get_star_threshold(self) -> float:
-        return float(self.slider_star_threshold.value())
+        """Return the exact cutoff, including values beyond the slider's routine range."""
+        return float(self.spin_star_threshold.value())
 
     def set_star_threshold(self, threshold: float) -> None:
         set_percent_slider_spinbox(self.slider_star_threshold, self.spin_star_threshold, threshold)

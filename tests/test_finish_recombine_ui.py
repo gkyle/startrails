@@ -51,7 +51,10 @@ class TestFinishRecombineSettings(QtTestCase):
         self.assertEqual(self.widget.get_star_threshold(), DEFAULT_STAR_THRESHOLD_PERCENT)
         self.assertEqual(self.widget.spin_star_threshold.text(), "0%")
         self.assertEqual(self.widget.spin_star_threshold.value(), 0)
-        self.assertEqual(self.widget.lbl_star_threshold_title.text(), "Threshold:")
+        self.assertEqual(self.widget.lbl_star_threshold_title.text(), "Faint-star cutoff:")
+        self.assertEqual(self.widget.slider_star_threshold.maximum(), 50)
+        self.assertEqual(self.widget.slider_star_threshold.pageStep(), 5)
+        self.assertEqual(self.widget.spin_star_threshold.maximum(), 100)
         self.assertEqual(self.widget.get_blend_mode(), DEFAULT_BLEND_MODE)
 
         self.widget.refresh_prerequisites(True)
@@ -126,6 +129,27 @@ class TestFinishRecombineSettings(QtTestCase):
         self.assertEqual(self.widget.get_star_threshold(), 15.0)
         self.assertEqual(self.widget.spin_star_threshold.value(), 15)
         self.assertEqual(self.widget.get_blend_mode(), "screen")
+
+    def test_threshold_above_slider_range_keeps_exact_value_until_slider_changes(self):
+        project = FinishProject(project_file=str(self.root / f"high_threshold{FINISH_EXT}"))
+        project.update_settings(replace(project.get_settings(), star_threshold=75.0))
+        changes = []
+        self.widget.star_threshold_changed.connect(changes.append)
+
+        self.widget.set_from_project(project)
+        self.assertEqual(self.widget.get_star_threshold(), 75.0)
+        self.assertEqual(self.widget.spin_star_threshold.value(), 75)
+        self.assertEqual(self.widget.slider_star_threshold.value(), 50)
+        self.assertEqual(changes, [])
+
+        self.widget.spin_star_threshold.setValue(100)
+        self.assertEqual(self.widget.get_star_threshold(), 100.0)
+        self.assertEqual(changes, [100.0])
+
+        self.widget.slider_star_threshold.setValue(49)
+        self.assertEqual(self.widget.get_star_threshold(), 49.0)
+        self.assertEqual(self.widget.spin_star_threshold.value(), 49)
+        self.assertEqual(changes, [100.0, 49.0])
 
     def test_refresh_prerequisites_toggles_enabled_state(self):
         """refresh_prerequisites enables/disables amount and threshold sliders/spinners and blend mode combo."""
