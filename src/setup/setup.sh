@@ -27,6 +27,12 @@ fi
 application_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 cd "$application_dir"
 
+uv_version_matches() {
+    local reported
+    reported=$("$1" --version) || return 1
+    [[ $reported == "uv $uv_version" || $reported == "uv $uv_version "* ]]
+}
+
 if $packaged; then
     # release.conf is generated from the build's pinned toolchain metadata.
     source "$application_dir/release.conf"
@@ -57,7 +63,7 @@ if $packaged; then
     fi
 else
     ready=false
-    uv_version=$(sed -n 's/^[[:space:]]*"uv_version":[[:space:]]*"\([^"]*\)".*/\1/p' build/toolchain.json)
+    uv_version=$(sed -n 's/.*"uv_version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' build/toolchain.json)
     if [[ -z $uv_version ]]; then printf 'Pinned uv version is missing from build/toolchain.json.\n' >&2; exit 1; fi
     if ! command -v uv >/dev/null 2>&1; then
         printf 'Installing uv %s...\n' "$uv_version"
@@ -66,17 +72,17 @@ else
     fi
     uv=$(command -v uv)
     if [[ -z $uv ]]; then printf 'uv installation failed.\n' >&2; exit 1; fi
-    if [[ $("$uv" --version) != "uv $uv_version "* ]]; then
+    if ! uv_version_matches "$uv"; then
         UV_NO_MODIFY_PATH=1 "$uv" self update "$uv_version" || true
     fi
-    if [[ $("$uv" --version) != "uv $uv_version "* ]]; then
+    if ! uv_version_matches "$uv"; then
         printf 'uv %s is required. Install that version with the official installer or update the installed uv.\n' "$uv_version" >&2
         exit 1
     fi
 fi
 
 prepare_environment() {
-    if $packaged && [[ ! -x $uv || $("$uv" --version) != "uv $uv_version "* ]]; then
+    if $packaged && { [[ ! -x $uv ]] || ! uv_version_matches "$uv"; }; then
         printf 'Bundled uv is missing or does not match this release. Reinstall StarTrails AI.\n' >&2
         return 1
     fi

@@ -35,7 +35,7 @@ esac
 DEV_UV_STUB = """#!/bin/bash
 printf '%s\\n' "$*" >> "$STARTRAILS_TEST_CALLS"
 case "$*" in
-    --version) printf 'uv %s (test)\\n' "${STARTRAILS_TEST_UV_VERSION:-0.13.7}" ;;
+    --version) printf 'uv %s\\n' "${STARTRAILS_TEST_UV_VERSION:?}" ;;
     self\\ update*) exit 1 ;;
     *probeGPU.py*) printf cpu ;;
 esac
@@ -208,7 +208,13 @@ class UnixDevelopmentLaunchTests(unittest.TestCase):
             (root / "src/setup").mkdir(parents=True)
             (root / "bin").mkdir()
             (root / "build").mkdir()
-            shutil.copy2(ROOT / "build/toolchain.json", root / "build/toolchain.json")
+            toolchain_path = root / "build/toolchain.json"
+            shutil.copy2(ROOT / "build/toolchain.json", toolchain_path)
+            toolchain = json.loads(toolchain_path.read_text(encoding="utf-8"))
+            uv_version = toolchain["uv_version"]
+            toolchain_path.write_text(
+                json.dumps(toolchain, separators=(",", ":")), encoding="utf-8"
+            )
             shutil.copy2(ROOT / "run.sh", root / "run.sh")
             shutil.copy2(ROOT / "src/setup/setup.sh", root / "src/setup/setup.sh")
             uv = root / "bin/uv"
@@ -224,6 +230,7 @@ class UnixDevelopmentLaunchTests(unittest.TestCase):
                     **os.environ,
                     "PATH": f"{root / 'bin'}:{os.environ['PATH']}",
                     "STARTRAILS_TEST_CALLS": str(calls),
+                    "STARTRAILS_TEST_UV_VERSION": uv_version,
                 },
                 capture_output=True,
                 text=True,
@@ -241,14 +248,14 @@ class UnixDevelopmentLaunchTests(unittest.TestCase):
                     **os.environ,
                     "PATH": f"{root / 'bin'}:{os.environ['PATH']}",
                     "STARTRAILS_TEST_CALLS": str(calls),
-                    "STARTRAILS_TEST_UV_VERSION": "0.13.6",
+                    "STARTRAILS_TEST_UV_VERSION": f"{uv_version}0",
                 },
                 capture_output=True,
                 text=True,
                 timeout=30,
             )
             self.assertNotEqual(mismatch.returncode, 0)
-            self.assertIn("uv 0.13.7 is required", mismatch.stderr)
+            self.assertIn(f"uv {uv_version} is required", mismatch.stderr)
 
 
 @unittest.skipUnless(MACOS_ARM, "macOS Apple Silicon installer")
