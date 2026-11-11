@@ -133,4 +133,4 @@ The [training dataset](https://github.com/gkyle/startrails/releases/tag/training
 
 The release model archive includes the GraXpert denoise model 3.0.2,
 by the GraXpert Development Team, under CC BY-NC-SA 4.0. Its model license is
-separate from StarTrails' MIT license. See the [model attribution and terms](third_party/graxpert/denoise/3.0.2/README.md).
+separate from StarTrails' MIT license. See the [model attribution and terms](models/denoiseSky/graxpert/README.md).

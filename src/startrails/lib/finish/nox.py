@@ -23,9 +23,12 @@ from startrails.lib.gpu import (
     resolve_torch_device as resolve_nox_device,
 )
 from startrails.lib.image_io import validate_image_array
-from startrails.lib.model_manifest import NOX_MANIFEST, NOX_MODEL_SHA256, NOX_MODEL_VERSION
 from startrails.paths import APPLICATION_DIR
 
+
+NOX_MODEL_VERSION = "1.0.0"
+NOX_MODEL_FILENAME = "nox_color_finetuned_best.pt"
+NOX_MODEL_RELATIVE_PATH = f"removeStars/{NOX_MODEL_FILENAME}"
 
 FILTERS: Tuple[int, ...] = (64, 128, 256, 512, 512, 512, 512, 512, 512, 512, 512, 512, 256, 128, 64)
 NUM_ENCODER_LAYERS = 8
@@ -53,8 +56,8 @@ WEIGHT_NORM_EPS = 1e-8
 
 
 def nox_model_identity() -> str:
-    """Return the pinned Nox model identity used in separation cache keys."""
-    return f"{NOX_MODEL_VERSION}:{NOX_MODEL_SHA256}"
+    """Return the Nox model identity used in separation cache keys."""
+    return f"{ARCHITECTURE}:{NOX_MODEL_VERSION}"
 
 
 def validate_separation_stride(stride: int, window_size: int = WINDOW_SIZE) -> None:
@@ -506,7 +509,11 @@ class NoxSession:
         *,
         device: Union[str, torch.device] = "auto",
     ):
-        self.model_path = Path(model_path) if model_path is not None else (APPLICATION_DIR / "models" / NOX_MANIFEST.relative_path)
+        self.model_path = (
+            Path(model_path)
+            if model_path is not None
+            else (APPLICATION_DIR / "models" / NOX_MODEL_RELATIVE_PATH)
+        )
         if not self.model_path.is_file():
             raise FileNotFoundError(f"Nox star removal model file not found: {self.model_path}")
 
@@ -698,6 +705,9 @@ __all__ = [
     "MAX_STRIDE",
     "MIN_SPATIAL_SIZE",
     "MIN_STRIDE",
+    "NOX_MODEL_FILENAME",
+    "NOX_MODEL_RELATIVE_PATH",
+    "NOX_MODEL_VERSION",
     "NoxColor",
     "NoxSession",
     "OUT_CHANNELS",

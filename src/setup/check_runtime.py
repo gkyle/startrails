@@ -46,11 +46,11 @@ def main():
 
     # Smoke-test the bundled GraXpert PyTorch model when present.
     from setup.check_finish_models import check_graxpert
-    from startrails.lib.model_manifest import GRAXPERT_MANIFEST
+    from startrails.lib.finish.graxpert import GRAXPERT_MODEL_RELATIVE_PATH
     from startrails.paths import APPLICATION_DIR
     import numpy as np
 
-    model_path = APPLICATION_DIR / "models" / GRAXPERT_MANIFEST.relative_path
+    model_path = APPLICATION_DIR / "models" / GRAXPERT_MODEL_RELATIVE_PATH
     if not model_path.is_file():
         message = "GraXpert model is missing. Install the model archive and run repair to enable Finish denoising."
         print(message, file=sys.stderr)

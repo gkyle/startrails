@@ -10,7 +10,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from startrails.lib.model_manifest import GRAXPERT_MODEL_SHA256, GRAXPERT_MODEL_VERSION
+GRAXPERT_MODEL_VERSION = "3.0.2"
+GRAXPERT_MODEL_FILENAME = "graxpert-denoise-3.0.2-mixed-int4-int8.pt"
+GRAXPERT_MODEL_RELATIVE_PATH = f"denoiseSky/graxpert/{GRAXPERT_MODEL_FILENAME}"
 
 CHANNELS = 3
 WINDOW_SIZE = 256
@@ -29,12 +31,12 @@ CHECKPOINT_FORMAT_MIXED_INT4_INT8 = "graxpert_pytorch_mixed_int4_int8"
 
 
 def graxpert_model_identity() -> str:
-    """Return the pinned model identity used in full-strength inference cache keys.
+    """Return the model identity used in full-strength inference cache keys.
 
     Device selection is deliberately excluded: CPU and GPU lanes run the same
     numerical pipeline, so switching an accelerator does not invalidate endpoints.
     """
-    return f"{GRAXPERT_MODEL_VERSION}:{GRAXPERT_MODEL_SHA256}"
+    return f"graxpert:{GRAXPERT_MODEL_VERSION}"
 
 
 def compute_graxpert_stats(image: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -568,6 +570,9 @@ __all__ = [
     "DepthwiseSeparableConv",
     "EXPECTED_PARAM_COUNT",
     "EXPECTED_WEIGHT_TENSOR_COUNT",
+    "GRAXPERT_MODEL_FILENAME",
+    "GRAXPERT_MODEL_RELATIVE_PATH",
+    "GRAXPERT_MODEL_VERSION",
     "GlobalContextExtractor",
     "LAYER_NORM_EPS",
     "LayerNorm2d",

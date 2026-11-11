@@ -13,6 +13,7 @@ import torch.nn as nn
 from startrails.lib.finish.graxpert import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_STRIDE,
+    GRAXPERT_MODEL_RELATIVE_PATH,
     WINDOW_SIZE,
     compute_graxpert_stats,
     graxpert_model_identity,
@@ -27,7 +28,6 @@ from startrails.lib.gpu import (
     resolve_torch_device as resolve_graxpert_device,
 )
 from startrails.lib.image_io import validate_image_array
-from startrails.lib.model_manifest import GRAXPERT_MANIFEST
 from startrails.paths import APPLICATION_DIR
 
 
@@ -43,7 +43,7 @@ class GraXpertSession:
         self.model_path = (
             Path(model_path)
             if model_path is not None
-            else (APPLICATION_DIR / "models" / GRAXPERT_MANIFEST.relative_path)
+            else (APPLICATION_DIR / "models" / GRAXPERT_MODEL_RELATIVE_PATH)
         )
         if not self.model_path.is_file():
             raise FileNotFoundError(f"GraXpert model file not found: {self.model_path}")

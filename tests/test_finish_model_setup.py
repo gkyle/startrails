@@ -9,6 +9,8 @@ import torch
 from startrails.lib.finish.graxpert import (
     EXPECTED_PARAM_COUNT as GRAXPERT_EXPECTED_PARAM_COUNT,
     EXPECTED_WEIGHT_TENSOR_COUNT as GRAXPERT_EXPECTED_WEIGHT_TENSOR_COUNT,
+    GRAXPERT_MODEL_RELATIVE_PATH,
+    GRAXPERT_MODEL_VERSION,
     MIN_MAD_EPSILON,
     build_graxpert_model,
     compute_graxpert_stats,
@@ -20,6 +22,8 @@ from startrails.lib.finish.graxpert import (
 from startrails.lib.finish.nox import (
     EXPECTED_PARAM_COUNT,
     EXPECTED_WEIGHT_TENSOR_COUNT,
+    NOX_MODEL_RELATIVE_PATH,
+    NOX_MODEL_VERSION,
     NoxColor,
     RadialChromaConfig,
     apply_radial_chroma_postfilter,
@@ -28,27 +32,20 @@ from startrails.lib.finish.nox import (
     nox_model_identity,
     validate_separation_stride,
 )
-from startrails.lib.model_manifest import GRAXPERT_MANIFEST, NOX_MANIFEST
 
 
 class TestFinishModelSetup(unittest.TestCase):
-    def test_bundled_model_manifests(self):
-        self.assertEqual(NOX_MANIFEST.version, "1.0.0")
-        self.assertEqual(NOX_MANIFEST.relative_path, "removeStars/nox_color_finetuned_best.pt")
-        self.assertEqual(len(NOX_MANIFEST.sha256), 64)
-        self.assertGreater(NOX_MANIFEST.size_bytes, 200_000_000)
-        self.assertIn(NOX_MANIFEST.version, nox_model_identity())
-        self.assertIn(NOX_MANIFEST.sha256, nox_model_identity())
+    def test_bundled_model_identities_and_paths(self):
+        self.assertEqual(NOX_MODEL_VERSION, "1.0.0")
+        self.assertEqual(NOX_MODEL_RELATIVE_PATH, "removeStars/nox_color_finetuned_best.pt")
+        self.assertIn(NOX_MODEL_VERSION, nox_model_identity())
 
-        self.assertEqual(GRAXPERT_MANIFEST.version, "3.0.2")
+        self.assertEqual(GRAXPERT_MODEL_VERSION, "3.0.2")
         self.assertEqual(
-            GRAXPERT_MANIFEST.relative_path,
-            "graxpert/denoise/3.0.2/graxpert-denoise-3.0.2-mixed-int4-int8.pt",
+            GRAXPERT_MODEL_RELATIVE_PATH,
+            "denoiseSky/graxpert/graxpert-denoise-3.0.2-mixed-int4-int8.pt",
         )
-        self.assertEqual(len(GRAXPERT_MANIFEST.sha256), 64)
-        self.assertEqual(GRAXPERT_MANIFEST.size_bytes, 87_819_947)
-        self.assertIn(GRAXPERT_MANIFEST.version, graxpert_model_identity())
-        self.assertIn(GRAXPERT_MANIFEST.sha256, graxpert_model_identity())
+        self.assertIn(GRAXPERT_MODEL_VERSION, graxpert_model_identity())
 
     def test_graxpert_architecture_and_checkpoint_validation(self):
         model = build_graxpert_model()

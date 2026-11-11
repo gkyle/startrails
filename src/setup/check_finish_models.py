@@ -10,17 +10,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 
-from startrails.lib.finish.graxpert import WINDOW_SIZE as GRAXPERT_WINDOW_SIZE
+from startrails.lib.finish.graxpert import (
+    GRAXPERT_MODEL_RELATIVE_PATH,
+    GRAXPERT_MODEL_VERSION,
+    WINDOW_SIZE as GRAXPERT_WINDOW_SIZE,
+)
 from startrails.lib.finish.graxpert_runtime import GraXpertSession
 from startrails.lib.finish.nox import (
     DEFAULT_STRIDE,
+    NOX_MODEL_RELATIVE_PATH,
+    NOX_MODEL_VERSION,
     NoxSession,
     WINDOW_SIZE as NOX_WINDOW_SIZE,
     apply_radial_chroma_postfilter,
 )
 from startrails.lib.image_io import imread, normalize_image
-from startrails.lib.model_manifest import GRAXPERT_MANIFEST, NOX_MANIFEST
-from startrails.lib.signatures import verify_file_integrity
 from startrails.paths import APPLICATION_DIR
 
 SMOKE_IMAGE_SIZE = NOX_WINDOW_SIZE
@@ -48,8 +52,8 @@ def create_smoke_image(size: int = SMOKE_IMAGE_SIZE) -> np.ndarray:
 
 def check_graxpert(model_path: Path, image: np.ndarray) -> dict:
     """Verify GraXpert weights and smoke-test tiled PyTorch inference."""
-    if not verify_file_integrity(model_path, GRAXPERT_MANIFEST.sha256, GRAXPERT_MANIFEST.size_bytes):
-        raise ValueError(f"Missing or unverified GraXpert model: {model_path}")
+    if not model_path.is_file():
+        raise ValueError(f"Missing GraXpert model: {model_path}")
     started = perf_counter()
     tile = image[:GRAXPERT_WINDOW_SIZE, :GRAXPERT_WINDOW_SIZE]
     if tile.shape != (GRAXPERT_WINDOW_SIZE, GRAXPERT_WINDOW_SIZE, 3):
@@ -59,7 +63,7 @@ def check_graxpert(model_path: Path, image: np.ndarray) -> dict:
     if denoised.shape != tile.shape or denoised.dtype != np.float32 or not np.isfinite(denoised).all():
         raise ValueError("GraXpert inference returned invalid model output.")
     return {
-        "version": GRAXPERT_MANIFEST.version,
+        "version": GRAXPERT_MODEL_VERSION,
         "configured_device": str(session.configured_device),
         "execution_device": session.execution_device,
         "fallback_reason": session.fallback_reason,
@@ -70,8 +74,8 @@ def check_graxpert(model_path: Path, image: np.ndarray) -> dict:
 
 def check_nox(model_path: Path, image: np.ndarray, *, chroma_postfilter: bool = True) -> tuple[np.ndarray, dict]:
     """Verify Nox star removal weights and smoke-test tiled inference."""
-    if not verify_file_integrity(model_path, NOX_MANIFEST.sha256, NOX_MANIFEST.size_bytes):
-        raise ValueError(f"Missing or unverified Nox model: {model_path}")
+    if not model_path.is_file():
+        raise ValueError(f"Missing Nox model: {model_path}")
     started = perf_counter()
     session = NoxSession(model_path=model_path)
     starless = session.remove_stars(image, stride=DEFAULT_STRIDE)
@@ -82,7 +86,7 @@ def check_nox(model_path: Path, image: np.ndarray, *, chroma_postfilter: bool = 
         starless, stats = apply_radial_chroma_postfilter(image, starless)
         detected_stars = stats.detected_stars
     return starless, {
-        "version": NOX_MANIFEST.version,
+        "version": NOX_MODEL_VERSION,
         "configured_device": str(session.configured_device),
         "execution_device": session.execution_device,
         "fallback_reason": session.fallback_reason,
@@ -95,9 +99,9 @@ def check_nox(model_path: Path, image: np.ndarray, *, chroma_postfilter: bool = 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--graxpert-model", type=Path, default=APPLICATION_DIR / "models" / GRAXPERT_MANIFEST.relative_path
+        "--graxpert-model", type=Path, default=APPLICATION_DIR / "models" / GRAXPERT_MODEL_RELATIVE_PATH
     )
-    parser.add_argument("--nox-model", type=Path, default=APPLICATION_DIR / "models" / NOX_MANIFEST.relative_path)
+    parser.add_argument("--nox-model", type=Path, default=APPLICATION_DIR / "models" / NOX_MODEL_RELATIVE_PATH)
     parser.add_argument("--skip-nox", action="store_true", help="Skip Nox star removal smoke check")
     parser.add_argument("--image", type=Path, help="Sample RGB image; check its central 512-pixel crop")
     parser.add_argument("--variant", choices=("cpu", "cu118", "cu124", "cu133", "mps"))

@@ -33,10 +33,16 @@ from startrails.lib.finish.defaults import (
     SUPPORTED_CHANNELS,
     FinishSettings,
 )
-from startrails.lib.finish.graxpert import graxpert_model_identity
+from startrails.lib.finish.graxpert import (
+    GRAXPERT_MODEL_RELATIVE_PATH,
+    GRAXPERT_MODEL_VERSION,
+    graxpert_model_identity,
+)
 from startrails.lib.finish.nox import (
     MAX_STRIDE,
     MIN_STRIDE,
+    NOX_MODEL_RELATIVE_PATH,
+    NOX_MODEL_VERSION,
     NoxSession,
     apply_radial_chroma_postfilter,
     nox_model_identity,
@@ -47,7 +53,6 @@ from startrails.lib.finish.separation import compute_separation_signature
 from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.finish.graxpert_runtime import GraXpertSession, resolve_graxpert_device
 from startrails.lib.image_io import imread, imwrite
-from startrails.lib.model_manifest import GRAXPERT_MANIFEST, NOX_MANIFEST
 from startrails.lib.project_finish import LAYER_EXPORT_SUFFIXES, FinishProject
 from startrails.op.finish.graxpert_denoise import GraXpertDenoise
 from startrails.op.finish.recombine import Recombine
@@ -660,12 +665,10 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
 
     def get_star_removal_status(self) -> dict:
         """Return runtime device selection and model readiness for Nox star removal."""
-        model_path = APPLICATION_DIR / "models" / NOX_MANIFEST.relative_path
-        # Status is refreshed often; avoid rehashing the ~218 MB weights on every
-        # UI refresh while verify-time helpers check the full SHA-256 digest.
+        model_path = APPLICATION_DIR / "models" / NOX_MODEL_RELATIVE_PATH
         try:
-            model_ready = model_path.is_file() and model_path.stat().st_size == NOX_MANIFEST.size_bytes
-            setup_error = None if model_ready else f"Star removal model not found or invalid: {model_path}"
+            model_ready = model_path.is_file()
+            setup_error = None if model_ready else f"Star removal model not found: {model_path}"
         except OSError as error:
             model_ready = False
             setup_error = str(error)
@@ -680,7 +683,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             "configured": model_ready,
             "model_ready": model_ready,
             "model_path": str(model_path),
-            "version": NOX_MANIFEST.version,
+            "version": NOX_MODEL_VERSION,
             "device": device,
             "execution_device": session.execution_device if session is not None else None,
             "fallback_reason": session.fallback_reason if session is not None else None,
@@ -689,12 +692,10 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
 
     def get_graxpert_status(self) -> dict:
         """Return runtime device selection and model readiness for GraXpert denoising."""
-        model_path = APPLICATION_DIR / "models" / GRAXPERT_MANIFEST.relative_path
-        # Status is refreshed often; avoid rehashing the ~88 MB weights on every
-        # UI refresh while verify-time helpers check the full SHA-256 digest.
+        model_path = APPLICATION_DIR / "models" / GRAXPERT_MODEL_RELATIVE_PATH
         try:
-            model_ready = model_path.is_file() and model_path.stat().st_size == GRAXPERT_MANIFEST.size_bytes
-            setup_error = None if model_ready else f"GraXpert model not found or invalid: {model_path}"
+            model_ready = model_path.is_file()
+            setup_error = None if model_ready else f"GraXpert model not found: {model_path}"
         except OSError as error:
             model_ready = False
             setup_error = str(error)
@@ -710,7 +711,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             "configured": model_ready,
             "model_ready": model_ready,
             "model_path": str(model_path),
-            "version": GRAXPERT_MANIFEST.version,
+            "version": GRAXPERT_MODEL_VERSION,
             "device": device,
             "execution_device": session.execution_device if session_matches_device else None,
             "fallback_reason": session.fallback_reason if session_matches_device else None,

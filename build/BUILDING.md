@@ -48,11 +48,6 @@ smoke check before approving a platform release:
 .venv/bin/python src/setup/check_finish_models.py --variant cpu --image /path/to/sample.tif
 ```
 
-Pass `--skip-nox` to test the bundled GraXpert model alone. `--image` is optional;
-without it the check uses a textured RGB sample that exercises actual model inference.
-Star removal uses the bundled PyTorch Nox model (`models/removeStars/nox_color_finetuned_best.pt`),
-and starless denoising uses the bundled PyTorch GraXpert model
-(`models/graxpert/denoise/3.0.2/graxpert-denoise-3.0.2-mixed-int4-int8.pt`).
 
 Select one dependency extra (`cpu`, `cu118`, `cu124`, `cu133`, or `mps`) through the
 normal setup scripts. Both Nox and GraXpert run on the installed PyTorch device (`cuda`,

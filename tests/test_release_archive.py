@@ -85,29 +85,22 @@ class ModelArchiveTests(unittest.TestCase):
             self.assertEqual((stage / relative_path).read_text(), "Model license notice")
             self.assertFalse((stage / "src/startrails/lib/finish/__pycache__/nox.cpython-312.pyc").exists())
 
-    def test_graxpert_bundle_requires_verified_weights_and_all_notices(self):
+    def test_graxpert_bundle_requires_weights_and_all_notices(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            model_root, notices = root / "models", root / "notices"
-            notices.mkdir()
+            model_root = root / "models"
             data = b"unmodified model"
-            manifest = replace(
-                model_builder.GRAXPERT_MANIFEST, sha256=hashlib.sha256(data).hexdigest(), size_bytes=len(data)
-            )
-            model = model_root / manifest.relative_path
+            model = model_root / model_builder.GRAXPERT_MODEL_RELATIVE_PATH
             model.parent.mkdir(parents=True)
-            with patch.object(model_builder, "GRAXPERT_MANIFEST", manifest):
-                with self.assertRaisesRegex(ValueError, "unverified GraXpert model"):
-                    model_builder.prepare_graxpert_bundle(model_root, notices)
-                model.write_bytes(data)
-                with self.assertRaisesRegex(ValueError, "Missing GraXpert attribution/license"):
-                    model_builder.prepare_graxpert_bundle(model_root, notices)
-                for name in ("README.md", "LICENSE.html", "LICENSE.txt"):
-                    (notices / name).write_text(name)
-                model_builder.prepare_graxpert_bundle(model_root, notices)
-            self.assertEqual(model.read_bytes(), data)
+            with self.assertRaisesRegex(ValueError, "Missing GraXpert model"):
+                model_builder.prepare_graxpert_bundle(model_root)
+            model.write_bytes(data)
+            with self.assertRaisesRegex(ValueError, "Missing GraXpert attribution/license"):
+                model_builder.prepare_graxpert_bundle(model_root)
             for name in ("README.md", "LICENSE.html", "LICENSE.txt"):
-                self.assertEqual((model.parent / name).read_bytes(), (notices / name).read_bytes())
+                (model.parent / name).write_text(name)
+            model_builder.prepare_graxpert_bundle(model_root)
+            self.assertEqual(model.read_bytes(), data)
 
     def test_checkout_platform_does_not_change_archive_hash(self):
         with TemporaryDirectory() as temporary:

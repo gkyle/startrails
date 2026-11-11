@@ -24,10 +24,13 @@ from startrails.lib.finish.defaults import (
     ROLE_SKY_MASK,
     SCOPE_WHOLE_IMAGE,
 )
-from startrails.lib.finish.graxpert import graxpert_model_identity
+from startrails.lib.finish.graxpert import (
+    GRAXPERT_MODEL_RELATIVE_PATH,
+    GRAXPERT_MODEL_VERSION,
+    graxpert_model_identity,
+)
 from startrails.lib.finish.graxpert_runtime import GraXpertSession
-from startrails.lib.finish.nox import NoxSession
-from startrails.lib.model_manifest import GRAXPERT_MANIFEST, NOX_MANIFEST
+from startrails.lib.finish.nox import NOX_MODEL_RELATIVE_PATH, NOX_MODEL_VERSION, NoxSession
 from startrails.lib.project_finish import FinishProject
 from startrails.op.finish.graxpert_denoise import GraXpertDenoise
 from startrails.op.finish.remove_stars import RemoveStars
@@ -136,22 +139,21 @@ class TestFinishDependencies(unittest.TestCase):
         from setup.check_finish_models import check_graxpert
 
         sample = np.full((256, 256, 3), 0.5, np.float32)
+        model_path = self.root / "graxpert.pt"
+        model_path.write_bytes(b"dummy")
         session = MagicMock()
         session.configured_device = torch.device("cuda")
         session.execution_device = "cpu"
         session.fallback_reason = "cuda allocation failure: out of memory; retried on cpu."
         session.denoise_full_strength.return_value = np.zeros((256, 256, 3), np.float32)
-        with (
-            patch("setup.check_finish_models.verify_file_integrity", return_value=True),
-            patch("setup.check_finish_models.GraXpertSession", return_value=session),
-        ):
-            report = check_graxpert(self.root / "graxpert.pt", sample)
+        with patch("setup.check_finish_models.GraXpertSession", return_value=session):
+            report = check_graxpert(model_path, sample)
             self.assertEqual(report["configured_device"], "cuda")
             self.assertEqual(report["execution_device"], "cpu")
             self.assertIn("out of memory", report["fallback_reason"])
             session.denoise_full_strength.side_effect = RuntimeError("CPU inference failed")
             with self.assertRaisesRegex(RuntimeError, "CPU inference failed"):
-                check_graxpert(self.root / "graxpert.pt", sample)
+                check_graxpert(model_path, sample)
 
     def test_missing_model_setup_does_not_block_other_modes(self):
         from setup.check_runtime import main
@@ -354,11 +356,10 @@ class TestFinishDependencies(unittest.TestCase):
             self.assertFalse(status["model_ready"])
             self.assertIsNotNone(status["setup_error"])
 
-        # Present Nox model matching pinned size reports configured
-        fake_nox = self.root / "models" / NOX_MANIFEST.relative_path
+        # Present Nox model reports configured
+        fake_nox = self.root / "models" / NOX_MODEL_RELATIVE_PATH
         fake_nox.parent.mkdir(parents=True, exist_ok=True)
-        with fake_nox.open("wb") as stream:
-            stream.truncate(NOX_MANIFEST.size_bytes)
+        fake_nox.write_bytes(b"dummy")
         with (
             patch("startrails.workflow.finish.APPLICATION_DIR", self.root),
             patch("startrails.workflow.finish.resolve_nox_device", return_value="cpu"),
@@ -367,13 +368,12 @@ class TestFinishDependencies(unittest.TestCase):
             self.assertTrue(status_ready["configured"])
             self.assertTrue(status_ready["model_ready"])
             self.assertEqual(status_ready["device"], "cpu")
-            self.assertEqual(status_ready["version"], NOX_MANIFEST.version)
+            self.assertEqual(status_ready["version"], NOX_MODEL_VERSION)
 
         # GraXpert status surfaces model readiness and resolved device for diagnostics.
-        fake_graxpert = self.root / "models" / GRAXPERT_MANIFEST.relative_path
+        fake_graxpert = self.root / "models" / GRAXPERT_MODEL_RELATIVE_PATH
         fake_graxpert.parent.mkdir(parents=True, exist_ok=True)
-        with fake_graxpert.open("wb") as stream:
-            stream.truncate(GRAXPERT_MANIFEST.size_bytes)
+        fake_graxpert.write_bytes(b"dummy")
         with (
             patch("startrails.workflow.finish.APPLICATION_DIR", self.root),
             patch("startrails.workflow.finish.resolve_graxpert_device", return_value="cuda"),
@@ -382,7 +382,7 @@ class TestFinishDependencies(unittest.TestCase):
         self.assertTrue(gx_status["configured"])
         self.assertTrue(gx_status["model_ready"])
         self.assertEqual(gx_status["device"], "cuda")
-        self.assertEqual(gx_status["version"], GRAXPERT_MANIFEST.version)
+        self.assertEqual(gx_status["version"], GRAXPERT_MODEL_VERSION)
 
     def test_check_finish_models_runs_graxpert_and_nox(self):
         from setup.check_finish_models import main as check_models_main
@@ -390,7 +390,7 @@ class TestFinishDependencies(unittest.TestCase):
         with (
             patch(
                 "setup.check_finish_models.check_graxpert",
-                return_value={"version": GRAXPERT_MANIFEST.version, "execution_device": "cpu"},
+                return_value={"version": GRAXPERT_MODEL_VERSION, "execution_device": "cpu"},
             ) as mock_check_graxpert,
             patch(
                 "setup.check_finish_models.check_nox",
@@ -588,10 +588,9 @@ class TestFinishDependencyUI(QtTestCase):
         fake_session.fallback_reason = "cuda allocation failure: CUDA out of memory; retried on cpu."
         fake_session.denoise_full_strength.return_value = np.full_like(starless, 0.1)
 
-        fake_graxpert = self.root / "models" / GRAXPERT_MANIFEST.relative_path
+        fake_graxpert = self.root / "models" / GRAXPERT_MODEL_RELATIVE_PATH
         fake_graxpert.parent.mkdir(parents=True, exist_ok=True)
-        with fake_graxpert.open("wb") as stream:
-            stream.truncate(GRAXPERT_MANIFEST.size_bytes)
+        fake_graxpert.write_bytes(b"dummy")
 
         with (
             patch("startrails.workflow.finish.APPLICATION_DIR", self.root),
