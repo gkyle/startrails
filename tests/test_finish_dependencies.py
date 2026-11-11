@@ -8,6 +8,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
+import warnings
 
 import numpy as np
 import torch
@@ -165,6 +166,12 @@ class TestFinishDependencies(unittest.TestCase):
                     image_variant = np.random.default_rng(0).uniform(0.1, 0.8, shape).astype(np.float32)
                     result = session.denoise_full_strength(image_variant)
                     np.testing.assert_allclose(result, image_variant, atol=1e-6)
+            readonly_image = image[:256, :256, :].copy()
+            readonly_image.flags.writeable = False
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", UserWarning)
+                readonly_result = session.denoise_full_strength(readonly_image)
+            np.testing.assert_allclose(readonly_result, readonly_image, atol=1e-6)
             self.assertGreater(len(progress_events), 0)
             self.assertEqual(progress_events[-1][0], progress_events[-1][1])
 
