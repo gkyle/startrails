@@ -4,6 +4,8 @@ import hashlib
 from io import BytesIO
 import json
 from pathlib import Path
+import subprocess
+import sys
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
@@ -69,6 +71,18 @@ class PublishedModelArchiveTests(unittest.TestCase):
 
 
 class ModelArchiveTests(unittest.TestCase):
+    def test_models_build_help_runs_without_inference_dependencies(self):
+        """The documented build invocation must work on a stdlib-only interpreter."""
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            [sys.executable, "-S", "build/models.py", "--help"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--download", result.stdout)
+
     def test_source_bundle_copies_text_resources_and_skips_pycache(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)

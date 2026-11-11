@@ -10,9 +10,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-GRAXPERT_MODEL_VERSION = "3.0.2"
-GRAXPERT_MODEL_FILENAME = "graxpert-denoise-3.0.2-mixed-int4-int8.pt"
-GRAXPERT_MODEL_RELATIVE_PATH = f"denoiseSky/graxpert/{GRAXPERT_MODEL_FILENAME}"
+from startrails.lib.finish.defaults import (
+    GRAXPERT_MODEL_FILENAME,
+    GRAXPERT_MODEL_RELATIVE_PATH,
+    GRAXPERT_MODEL_VERSION,
+)
 
 CHANNELS = 3
 WINDOW_SIZE = 256

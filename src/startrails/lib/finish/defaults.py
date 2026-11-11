@@ -16,6 +16,11 @@ PROJECT_TYPE_FINISH: Final[str] = "finish"
 FINISH_EXT: Final[str] = ".proj_finish"
 FINISH_OUTPUT_DIR_SUFFIX: Final[str] = ".finish"
 
+# Bundled Finish model manifest shared with dependency-free release tooling.
+GRAXPERT_MODEL_VERSION: Final[str] = "3.0.2"
+GRAXPERT_MODEL_FILENAME: Final[str] = "graxpert-denoise-3.0.2-mixed-int4-int8.pt"
+GRAXPERT_MODEL_RELATIVE_PATH: Final[str] = f"denoiseSky/graxpert/{GRAXPERT_MODEL_FILENAME}"
+
 # Authoritative artifact role identifiers
 ROLE_SOURCE_SNAPSHOT: Final[str] = "source_snapshot"
 ROLE_SKY_MASK: Final[str] = "sky_mask"

@@ -3,18 +3,17 @@
 import argparse
 from pathlib import Path
 import re
-import shutil
 import sys
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
-# Reuse the app's pinned asset identity and integrity check without importing
+# Reuse the app's pinned asset identities and integrity checks without importing
 # inference libraries into the build tool.
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 from build.release import create_models_archive, download_models_archive, models_archive_name, sha256
 from build.publish import sync_release
-from startrails.lib.finish.graxpert import GRAXPERT_MODEL_RELATIVE_PATH
+from startrails.lib.finish.defaults import GRAXPERT_MODEL_RELATIVE_PATH
 
 DEFAULT_OUTPUT_DIR = ROOT / "out/models"
 DEFAULT_DOWNLOAD_DIR = DEFAULT_OUTPUT_DIR / "downloads"
