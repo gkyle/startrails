@@ -511,7 +511,7 @@ def load_graxpert_model(
     device: Union[str, torch.device] = "cpu",
     dtype: Optional[torch.dtype] = None,
 ) -> CascadedGaze:
-    """Load a CascadedGaze checkpoint, defaulting to FP16 on CUDA/MPS and FP32 on CPU."""
+    """Load a checkpoint, defaulting to FP16 on CUDA/ROCm/MPS and FP32 on XPU/CPU."""
     checkpoint_path = Path(model_path)
     if not checkpoint_path.is_file():
         raise FileNotFoundError(f"GraXpert checkpoint not found at: {checkpoint_path}")
