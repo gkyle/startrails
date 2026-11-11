@@ -80,12 +80,13 @@ class AutoSkyDetector:
                 f"Unknown model_type: '{model_type}'. Expected 'nightstack' or 'segformer'."
             )
 
-        resolved_device = resolve_torch_device(device)
-        configure_torch_inference(resolved_device)
-        selected_device = str(resolved_device)
+        selected_device = device
 
         # 3. Execute neural inference
         try:
+            resolved_device = resolve_torch_device(device)
+            configure_torch_inference(resolved_device)
+            selected_device = str(resolved_device)
             return cls._detect_segformer(
                 rgb,
                 model_path=model_path,
