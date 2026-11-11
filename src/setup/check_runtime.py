@@ -44,7 +44,9 @@ def main():
             notice = "Apple GPU acceleration is unavailable. CPU processing remains available."
             print(notice, file=sys.stderr)
 
-    # Smoke-test the bundled GraXpert PyTorch model when present.
+    # Smoke-test the bundled GraXpert PyTorch model when present. A model or
+    # inference failure only disables Finish denoising, so report it as an
+    # actionable notice instead of blocking the rest of the setup.
     from setup.check_finish_models import check_graxpert, resolve_variant_device
     from startrails.lib.finish.graxpert import GRAXPERT_MODEL_RELATIVE_PATH
     from startrails.paths import APPLICATION_DIR
@@ -56,16 +58,23 @@ def main():
         message = "GraXpert model is missing. Install the model archive and run repair to enable Finish denoising."
         print(message, file=sys.stderr)
         notice = "\n".join(filter(None, (notice, message)))
-        if args.notice_file is not None:
-            args.notice_file.write_text(notice, encoding="utf-8")
-        return  # Other modes and neutral finishing remain usable.
-    sample = np.full((256, 256, 3), 0.5, dtype=np.float32)
-    report = check_graxpert(model_path, sample, device=device)
-    print(f"GraXpert runtime: {report['execution_device']} (configured: {report['configured_device']})")
-    if report["fallback_reason"]:
-        gpu_msg = f"GraXpert GPU execution fell back to CPU: {report['fallback_reason']}"
-        print(gpu_msg, file=sys.stderr)
-        notice = "\n".join(filter(None, (notice, gpu_msg)))
+    else:
+        sample = np.full((256, 256, 3), 0.5, dtype=np.float32)
+        try:
+            report = check_graxpert(model_path, sample, device=device)
+        except Exception as error:
+            message = (
+                "GraXpert denoising setup check failed, so Finish denoising is unavailable. "
+                f"Reinstall the model archive and run Repair StarTrails AI. Details: {error}"
+            )
+            print(message, file=sys.stderr)
+            notice = "\n".join(filter(None, (notice, message)))
+        else:
+            print(f"GraXpert runtime: {report['execution_device']} (configured: {report['configured_device']})")
+            if report["fallback_reason"]:
+                gpu_msg = f"GraXpert GPU execution fell back to CPU: {report['fallback_reason']}"
+                print(gpu_msg, file=sys.stderr)
+                notice = "\n".join(filter(None, (notice, gpu_msg)))
 
     if args.notice_file is not None:
         args.notice_file.write_text(notice, encoding="utf-8")

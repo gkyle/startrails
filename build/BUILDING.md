@@ -56,8 +56,9 @@ normal setup scripts. Both Nox and GraXpert run on the installed PyTorch device 
 `mps`, or `cpu`) with automatic CPU fallback on recognized GPU allocation failure.
 The setup/repair runtime check (`src/setup/check_runtime.py`) exercises native
 dependencies and runs a smoke check on the bundled GraXpert model when present; a
-missing model is reported as a notice and leaves other modes and neutral finishing
-usable. Clean Windows/macOS and real GPU execution remain release validation gates;
+missing model or failed Finish inference check is reported as a notice and leaves
+other modes and neutral finishing usable. The explicit Finish smoke check above
+still fails on model or inference errors. Clean Windows/macOS and real GPU execution remain release validation gates;
 a successful Linux CPU check does not establish those configurations.
 
 ## macOS

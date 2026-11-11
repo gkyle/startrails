@@ -427,6 +427,46 @@ class TestFinishDependencies(unittest.TestCase):
             with self.subTest(variant=variant):
                 self.assertEqual(resolve_variant_device(variant), expected)
 
+    def test_runtime_smoke_failure_is_an_actionable_notice(self):
+        from setup.check_runtime import main
+
+        model_path = self.root / "models" / GRAXPERT_MODEL_RELATIVE_PATH
+        model_path.parent.mkdir(parents=True)
+        model_path.write_bytes(b"dummy")
+        notice_file = self.root / "notice.txt"
+        with (
+            patch("startrails.paths.APPLICATION_DIR", self.root),
+            patch("torch.backends.mps.is_available", return_value=False),
+            patch(
+                "setup.check_finish_models.check_graxpert",
+                side_effect=RuntimeError("model inference failed"),
+            ) as check,
+            patch(
+                "sys.argv",
+                ["check_runtime.py", "--variant", "mps", "--notice-file", str(notice_file)],
+            ),
+        ):
+            main()
+
+        notice = notice_file.read_text(encoding="utf-8")
+        self.assertIn("Apple GPU acceleration is unavailable", notice)
+        self.assertIn("model inference failed", notice)
+        self.assertIn("Repair StarTrails AI", notice)
+        self.assertEqual(check.call_args.kwargs["device"], "mps")
+
+    def test_explicit_model_smoke_check_propagates_inference_failure(self):
+        from setup.check_finish_models import main as check_models_main
+
+        with (
+            patch("setup.check_finish_models.check_graxpert", side_effect=RuntimeError("inference failed")),
+            patch(
+                "sys.argv",
+                ["check_finish_models.py", "--variant", "cpu", "--skip-nox"],
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "inference failed"):
+                check_models_main()
+
     def test_ui_separate_stars_settings(self):
         from support import qt_app
 
