@@ -1,11 +1,12 @@
 # StarTrails AI
 
-StarTrails AI is an open-source desktop app for stacking nightscape photographs. It offers two workflows:
+StarTrails AI is an open-source desktop app for stacking and finishing nightscape photographs. It offers three workflows:
 
 | Mode | Use it for | Main capabilities |
 | :---: | --- | --- |
 | ![Startrails](src/startrails/ui/icons/project_startrails.png)<br>**Startrails** | Long star trails that show the sky's motion | Detect and remove satellite and airplane streaks, create star trail stacks, and fill gaps in the trails. |
 | ![Denoise](src/startrails/ui/icons/project_denoise.png)<br>**Denoise** | A cleaner nightscape with point-like stars | Create tight sky masks with sky detection, refinement, and painting tools, align and stack the sky separately from the ground, and tune noise. |
+| ![Finish](src/startrails/ui/icons/project_finish.png)<br>**Finish** | Finish a single nightscape image | Separate stars from the sky, denoise and sharpen the starless layer, then recombine and export. |
 
 ## Get started
 
@@ -18,7 +19,7 @@ Initial installation needs an internet connection. A compatible GPU can speed up
 
 To run from source, clone the repository or [download the source ZIP](https://github.com/gkyle/startrails/archive/refs/heads/main.zip). From the extracted folder, run `run.bat` on Windows or `./run.sh` on Linux or macOS. These scripts use **uv** to set up an isolated Python environment and install dependencies.
 
-On the welcome screen, choose **Star Trails** or **Denoise** and create or open a project.
+On the welcome screen, choose **Star Trails**, **Astro Denoise Stacking**, or **Astro Finish** and create or open a project.
 
 ## Startrails workflow
 
@@ -128,6 +129,17 @@ Choose **Contribute Corrections** to upload training data for review, or **Expor
 Streak data contains 512×512 image crops and labels. Sky data contains a half-size, 8-bit reference image and corrected mask (`image.jpg` and `mask.png`).
 
 The [training dataset](https://github.com/gkyle/startrails/releases/tag/training) and [training notebooks](training/) for streak detection are available.
+
+## Finish workflow
+
+Finish mode processes a single image rather than stacking a sequence. Create an **Astro Finish** project and add your source image to **Input Files**.
+
+1. **Define Sky Region:** Detect and refine the sky mask, paint corrections, or select the full frame for an image without foreground.
+2. **Separate Stars:** Run star removal to create starless and stars layers.
+3. **Finish Starless:** Adjust AI denoise strength and scope, and optionally sharpen with Structure and Detail controls.
+4. **Recombine & Save:** Adjust star amount, threshold, and Add or Screen blending. Compare with the original, then save the image or export layers.
+
+Star removal requires the bundled Nox model; AI denoising requires the bundled GraXpert model. GraXpert's noncommercial model terms below apply independently of the application's license.
 
 ## Third-party model licenses
 
