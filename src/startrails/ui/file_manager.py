@@ -365,6 +365,7 @@ class FileSection(QFrame):
         self._show_legend = inputs if show_legend is None else bool(show_legend)
         self._sort_by = "date"
         self._sort_order = "asc"
+        self._fixed_rows: int | None = None
         self.frame = getattr(ui, f"{prefix}Section") if ui and prefix else self
         if ui and prefix:
             self.ui = SimpleNamespace(
@@ -611,6 +612,11 @@ class FileSection(QFrame):
         if file is not None:
             self.showFile.emit(file)
 
+    def set_fixed_rows(self, rows: int | None) -> None:
+        """Pin the visible file table height to a constant row count when non-empty."""
+        self._fixed_rows = rows
+        self._refresh()
+
     def _refresh(self):
         count = self.model.rowCount()
         self.ui.count.setText(str(count))
@@ -618,8 +624,9 @@ class FileSection(QFrame):
         self.ui.empty.setVisible(not has_files)
         self.ui.files.setVisible(has_files)
         if has_files:
-            hh = self.ui.files.header().height() or 26
-            ideal_h = max(54, hh + min(count, 5) * 24 + 4)
+            hh = self.ui.files.header().sizeHint().height() or 26
+            rows = self._fixed_rows if self._fixed_rows is not None else min(count, 5)
+            ideal_h = max(54, hh + rows * 24 + 4)
             self.ui.files.setFixedHeight(ideal_h)
 
     def _remove(self):

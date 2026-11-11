@@ -40,6 +40,7 @@ class Ui_FinishStarlessSettings(object):
 "    color: #334155;\n"
 "    font-weight: 500;\n"
 "    spacing: 5px;\n"
+"    border: none;\n"
 "}\n"
 "QRadioButton:focus {\n"
 "    border: none;\n"
@@ -304,3 +305,5 @@ class Ui_FinishStarlessSettings(object):
     # retranslateUi
 
 Ui_finishStarlessSettings = Ui_FinishStarlessSettings
+
+

@@ -7,7 +7,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
-from PySide6.QtCore import QObject, QPoint
+from PySide6.QtCore import QObject, QPoint, Qt
+from PySide6.QtTest import QTest
 from startrails.lib.file import OutputFile
 from startrails.lib.finish.defaults import (
     DEFAULT_DENOISE_SCOPE,
@@ -1267,6 +1268,43 @@ class TestFinishViewStarlessInteraction(QtTestCase):
         self.assertTrue(self.sidebar.starlessCard.ui.previewToggle.isVisible())
         self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isChecked())
         self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+    def test_structure_slider_click_does_not_reflow_starless_card(self):
+        """First click on the Structure slider must not shift outputFiles or starlessCard geometry."""
+        self.sidebar.resize(300, 800)
+        self.sidebar.show()
+        self.view.updateReadyStates()
+        self.sidebar.starlessCard.setExpanded(True)
+        self.qt.processEvents()
+
+        output_height_before = self.sidebar.outputFiles.ui.files.height()
+        card_geom_before = self.sidebar.starlessCard.geometry()
+        settings_geom_before = self.sidebar.starlessSettings.geometry()
+        slider = self.sidebar.starlessSettings.slider_structure
+        slider_geom_before = slider.geometry()
+
+        with (
+            patch.object(
+                FinishWorkflow,
+                "get_graxpert_status",
+                return_value={"configured": True, "model_ready": True, "device": "cpu", "setup_error": None},
+            ),
+            patch.object(FinishWorkflow, "save_project"),
+        ):
+            pos = QPoint(slider.width() // 2, slider.height() // 2)
+            QTest.mousePress(slider, Qt.LeftButton, pos=pos)
+            self.qt.processEvents()
+            self.assertEqual(self.sidebar.outputFiles.ui.files.height(), output_height_before)
+            self.assertEqual(self.sidebar.starlessCard.geometry(), card_geom_before)
+            self.assertEqual(self.sidebar.starlessSettings.geometry(), settings_geom_before)
+            self.assertEqual(slider.geometry(), slider_geom_before)
+
+            QTest.mouseRelease(slider, Qt.LeftButton, pos=pos)
+            self.qt.processEvents()
+            self.assertEqual(self.sidebar.outputFiles.ui.files.height(), output_height_before)
+            self.assertEqual(self.sidebar.starlessCard.geometry(), card_geom_before)
+            self.assertEqual(self.sidebar.starlessSettings.geometry(), settings_geom_before)
+            self.assertEqual(slider.geometry(), slider_geom_before)
 
 
 __all__ = [

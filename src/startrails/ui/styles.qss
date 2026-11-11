@@ -177,7 +177,7 @@ QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit {
 }
 
 QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QLineEdit:focus {
-    border: 2px solid #0369a1;
+    border-color: #0369a1;
 }
 
 QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled, QLineEdit:disabled {
@@ -334,8 +334,14 @@ QSlider::handle:horizontal:hover {
     background: #0284c7;
 }
 
-QWidget:focus:enabled {
+/* RadioButtons */
+QRadioButton {
     border: none;
+}
+
+QRadioButton:focus {
+    border: none;
+    outline: none;
 }
 
 /* Primary Capsule Action Button (Detect Streaks, Align Stars, Stack, Composite) */
@@ -395,8 +401,8 @@ QToolButton#advancedToggle:hover {
 }
 
 QToolButton#advancedToggle:focus:enabled {
-    border: none;
     background-color: #0c4a6e;
+    outline: none;
 }
 
 QToolButton#advancedToggle:disabled {
@@ -524,6 +530,12 @@ QPushButton#btn_save_output:disabled {
     color: #94a3b8;
 }
 
+QPushButton#detect:focus:enabled,
+QPushButton#btn_save_output:focus:enabled {
+    border-color: #0f172a;
+    outline: none;
+}
+
 QPushButton#clearMask,
 QPushButton#fullFrameMask,
 QPushButton#btn_export_layers {
@@ -553,6 +565,13 @@ QPushButton#btn_export_layers:disabled {
     background-color: #f8fafc;
     color: #94a3b8;
     border-color: #e2e8f0;
+}
+
+QPushButton#clearMask:focus:enabled,
+QPushButton#fullFrameMask:focus:enabled,
+QPushButton#btn_export_layers:focus:enabled {
+    border-color: #0f172a;
+    outline: none;
 }
 
 /* Segmented Control Containers & Buttons */
@@ -588,8 +607,8 @@ QPushButton#stackFadeBoth {
 
 QPushButton#detectMergeNMS,
 QPushButton#detectMergeNMM {
-    border: none;
-    padding: 3px 4px;
+    border: 1px solid transparent;
+    padding: 2px 3px;
     min-height: 0px;
 }
 
@@ -654,12 +673,12 @@ QPushButton#stackFadeBoth:checked:focus:enabled {
 
 QPushButton#detectMergeNMS:focus:enabled,
 QPushButton#detectMergeNMM:focus:enabled {
-    border: 1px solid #0f172a;
+    border-color: #0f172a;
 }
 
 QPushButton#detectMergeNMS:checked:focus:enabled,
 QPushButton#detectMergeNMM:checked:focus:enabled {
-    border: 1px solid #ffffff;
+    border-color: #ffffff;
 }
 
 /* Error & Status Labels */

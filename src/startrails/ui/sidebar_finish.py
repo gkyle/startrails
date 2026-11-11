@@ -39,6 +39,7 @@ class SidebarFinish(QWidget):
         # File sections
         self.inputFiles = self.ui.inputFiles
         self.outputFiles = self.ui.outputFiles
+        self.outputFiles.set_fixed_rows(4)
         self.outputs = self.outputFiles
 
         # Step cards and settings
@@ -79,9 +80,8 @@ class SidebarFinish(QWidget):
 
     def lock_output_files_height(self) -> None:
         """Lock output files table to a constant 4-row height to prevent vertical position shifts."""
-        if hasattr(self, "outputFiles") and self.outputFiles.model.rowCount() > 0:
-            hh = self.outputFiles.ui.files.header().height() or 26
-            self.outputFiles.ui.files.setFixedHeight(hh + 4 * 24 + 4)
+        if hasattr(self, "outputFiles"):
+            self.outputFiles.set_fixed_rows(4)
 
     def update_from_project(self, project: FinishProject, dimensions: Optional[tuple[int, int]]) -> None:
         """Update file sections and step prerequisites from active project."""

@@ -84,6 +84,19 @@ class FileModelTests(QtTestCase):
 
         section.close()
 
+    def test_fixed_rows_preserved_across_focus_and_updates(self):
+        section = FileSection("Output Files", inputs=False)
+        section.set_fixed_rows(4)
+        files = [OutputFile("a.tif", "a.tif", "Starless"), OutputFile("b.tif", "b.tif", "Stars")]
+        section.set_files(files)
+        locked_height = section.ui.files.minimumHeight()
+        self.assertEqual(section.ui.files.maximumHeight(), locked_height)
+
+        section.focus_file(files[0])
+        self.assertEqual(section.ui.files.minimumHeight(), locked_height)
+        self.assertEqual(section.ui.files.maximumHeight(), locked_height)
+        section.close()
+
 
 class FileImportTests(QtTestCase):
     def make_import_window(self, target, existing):

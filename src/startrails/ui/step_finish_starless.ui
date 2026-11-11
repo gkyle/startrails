@@ -24,6 +24,7 @@ QRadioButton {
     color: #334155;
     font-weight: 500;
     spacing: 5px;
+    border: none;
 }
 QRadioButton:focus {
     border: none;
