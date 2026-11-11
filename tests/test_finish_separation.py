@@ -192,6 +192,30 @@ class TestFinishSeparation(QtTestCase):
             self.assertIsNotNone(self.workflow.do_separate_stars())
             self.assertEqual(strides, [DEFAULT_STARNET_STRIDE, NON_DEFAULT_STRIDE, NON_DEFAULT_STRIDE])
 
+    def test_mask_detection_setting_change_keeps_separation_current(self):
+        """A mask detection setting invalidates no output, so the running separation still publishes."""
+        source_path = self.create_synthetic_image("mask_setting_during_nox.tif")
+        self.workflow.do_import_source(source_path)
+        self.workflow.do_all_sky_mask()
+        changed = []
+        erosion_pixels = self.project.mask_erosion_pixels
+
+        def change_mask_setting(total, increment, count, done, data=None):
+            if changed:
+                return
+            self.project.update_settings(
+                replace(self.project.get_settings(), mask_erosion_pixels=erosion_pixels + 1)
+            )
+            changed.append(True)
+
+        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
+            self.assertIsNotNone(self.workflow.do_separate_stars(progress_bar=change_mask_setting))
+
+        self.assertEqual(changed, [True])
+        self.assertEqual(self.project.mask_erosion_pixels, erosion_pixels + 1)
+        self.assertIsNotNone(self.project.current_artifact_path(ROLE_SEPARATED_STARLESS))
+        self.assertIsNotNone(self.project.current_artifact_path(ROLE_SEPARATED_STARS))
+
     def test_arbitrary_dimensions_supported_by_nox_tiling(self):
         small_source = self.create_synthetic_image("small.tif", shape=(400, 400))
         self.workflow.do_import_source(small_source)

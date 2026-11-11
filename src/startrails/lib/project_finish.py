@@ -71,6 +71,11 @@ _EXPORT_ROLE = "export"
 _SOURCE_FORMATS_BY_SUFFIX = {".jpg": "jpeg", ".jpeg": "jpeg", ".tif": "tiff", ".tiff": "tiff"}
 _UNSET = object()
 
+# These settings are captured by the next separation signature rather than by a
+# stored artifact. Stored layers remain current, but an in-flight separation that
+# started with the previous value must not publish.
+_SEPARATION_INPUT_SETTING_NAMES: Final[Tuple[str, ...]] = ("starnet_stride", "chroma_postfilter")
+
 # User-facing layer exports keep the project stem and append a role-specific
 # tail so every separated or finished layer is identifiable after export.
 LAYER_EXPORT_SUFFIXES: Final[Dict[str, str]] = {
@@ -911,7 +916,15 @@ class FinishProject(Unpickle):
                     invalidated_roles.update({ROLE_FINISHED_COMPOSITE, _EXPORT_ROLE})
                 if changed & {"jpeg_quality", "jpeg_optimize", "tiff_deflate_compression"}:
                     invalidated_roles.add(_EXPORT_ROLE)
-                self.invalidate_artifact_roles(invalidated_roles)
+                if invalidated_roles:
+                    self.invalidate_artifact_roles(invalidated_roles)
+                elif changed & set(_SEPARATION_INPUT_SETTING_NAMES):
+                    # Stored layers stay current, but advance the revision so an
+                    # in-flight separation using the superseded options cannot publish.
+                    self.invalidate_artifact_roles(set())
+                # Mask detection settings (auto mask model/path, search radius,
+                # erosion and foliage protection) affect only future masks, so
+                # they invalidate nothing and must not cancel in-flight work.
             for k, v in asdict(settings).items():
                 setattr(self, k, v)
 
