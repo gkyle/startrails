@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import psutil
 import pynvml
@@ -16,6 +16,63 @@ _GPU_CHUNK_ROW_MIN = 128
 _GPU_CHUNK_ROW_MAX = 512
 _DEFAULT_CPU_CHUNK_ROWS = 256
 _BYTES_PER_GIB = 1024**3
+
+# GPU allocation failures are the only recognized recoverable execution errors.
+# Recovery is an explained CPU retry of the whole image.
+CUDA_ALLOCATION_ERROR_MARKERS = (
+    "out of memory",
+    "outofmemory",
+    "out_of_memory",
+    "cuda_error_out_of_memory",
+    "cuda_error_launch_out_of_resources",
+    "failed to allocate",
+    "allocation failed",
+    "cublas_status_alloc_failed",
+    "cudnn_status_alloc_failed",
+    "bad_alloc",
+    "resource exhausted",
+)
+
+
+def is_cuda_allocation_failure(error: BaseException) -> bool:
+    """Return whether an execution error is a recognizable allocation failure."""
+    if isinstance(error, MemoryError):
+        return True
+    message = str(error).casefold()
+    return any(marker in message for marker in CUDA_ALLOCATION_ERROR_MARKERS)
+
+
+def resolve_torch_device(
+    device: Union[str, torch.device] = "auto",
+    *,
+    use_gpu: bool = True,
+) -> torch.device:
+    """Resolve compute device string or torch.device to a concrete torch.device."""
+    if not use_gpu:
+        return torch.device("cpu")
+    if isinstance(device, torch.device):
+        device = str(device)
+    choice = device.strip().lower()
+    if choice == "auto":
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return torch.device("mps")
+        return torch.device("cpu")
+    if choice in ("gpu", "cuda"):
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA device requested but torch.cuda.is_available() is False.")
+        return torch.device("cuda")
+    if choice.startswith("cuda:") or choice.startswith("gpu:"):
+        idx = choice.split(":")[-1]
+        return torch.device(f"cuda:{idx}")
+    if choice == "mps":
+        if not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
+            raise RuntimeError("MPS device requested but torch.backends.mps.is_available() is False.")
+        return torch.device("mps")
+    if choice == "cpu":
+        return torch.device("cpu")
+    raise ValueError(f"Unknown device specification: {device}")
 
 
 def is_cupy_available() -> bool:
@@ -51,12 +108,10 @@ def get_array_module(use_gpu: bool = True) -> Tuple[Any, bool]:
 
 def free_gpu_memory() -> None:
     """Release unused memory blocks back to the GPU allocator."""
-    if is_cupy_available():
+    if _CUPY_AVAILABLE and _CUPY_MODULE is not None:
         try:
-            import cupy as cp
-
-            cp.get_default_memory_pool().free_all_blocks()
-            cp.get_default_pinned_memory_pool().free_all_blocks()
+            _CUPY_MODULE.get_default_memory_pool().free_all_blocks()
+            _CUPY_MODULE.get_default_pinned_memory_pool().free_all_blocks()
         except Exception:
             pass
     try:

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 from concurrent.futures import CancelledError
-import hashlib
-import json
 import logging
 import os
 from pathlib import Path
@@ -15,6 +13,7 @@ import numpy as np
 from startrails.lib.denoise.defaults import DENOISE_DEFAULTS
 from startrails.lib.gpu import free_gpu_memory, get_array_module
 from startrails.lib.image_io import imread, normalize_image
+from startrails.lib.signatures import compute_signature, read_file_identity
 from startrails.lib.denoise.stacking.disk_buffer import DiskFrameBuffer, read_frame_chunk
 
 
@@ -95,11 +94,10 @@ class DarkCalibrator:
         # Bump the version when decoding, normalization, or integration changes.
         sources = []
         for path in paths:
-            resolved = Path(path).resolve()
-            stat = resolved.stat()
-            sources.append((str(resolved), stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))
+            identity = read_file_identity(path)
+            sources.append((identity.path, identity.size, identity.mtime_ns, identity.ctime_ns))
         payload = {"version": 1, "sources": sorted(sources)}
-        return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+        return compute_signature(payload)
 
     @classmethod
     def _integrate_paths(cls, paths, use_gpu, scratch_dir, should_interrupt, progress_callback):

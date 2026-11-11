@@ -1,11 +1,12 @@
 # StarTrails AI
 
-StarTrails AI is an open-source desktop app for stacking nightscape photographs. It offers two workflows:
+StarTrails AI is an open-source desktop app for stacking and finishing nightscape photographs. It offers three workflows:
 
 | Mode | Use it for | Main capabilities |
 | :---: | --- | --- |
 | ![Startrails](src/startrails/ui/icons/project_startrails.png)<br>**Startrails** | Long star trails that show the sky's motion | Detect and remove satellite and airplane streaks, create star trail stacks, and fill gaps in the trails. |
 | ![Denoise](src/startrails/ui/icons/project_denoise.png)<br>**Denoise** | A cleaner nightscape with point-like stars | Create tight sky masks with sky detection, refinement, and painting tools, align and stack the sky separately from the ground, and tune noise. |
+| ![Finish](src/startrails/ui/icons/project_finish.png)<br>**Finish** | Finish a single nightscape image | Separate stars from the sky, denoise and sharpen the starless layer, then recombine and export. |
 
 ## Get started
 
@@ -18,7 +19,7 @@ Initial installation needs an internet connection. A compatible GPU can speed up
 
 To run from source, clone the repository or [download the source ZIP](https://github.com/gkyle/startrails/archive/refs/heads/main.zip). From the extracted folder, run `run.bat` on Windows or `./run.sh` on Linux or macOS. These scripts use **uv** to set up an isolated Python environment and install dependencies.
 
-On the welcome screen, choose **Star Trails** or **Denoise** and create or open a project.
+On the welcome screen, choose **Star Trails**, **Astro Denoise Stacking**, or **Astro Finish** and create or open a project.
 
 ## Startrails workflow
 
@@ -87,7 +88,7 @@ An accurate sky/ground boundary is critical. The mask determines which pixels be
 
 1. **Detect Sky** creates an automatic starting mask.
 2. **Refine Mask** adjusts the boundary to follow the horizon more closely. It searches for local contrast at the edges of the mask to better separate sky from ground. It can be run multiple times and combined with manual painting to improve results.
-3. Zoom in and use the **painting tools** to make local corrections. With **Show Mask Overlay** enabled, left-drag paints sky and right-drag erases it. Adjust the brush size for broad areas or fine details.
+3. Zoom in and use the **painting tools** to make local corrections. While **Define Sky Region** is expanded with the mask overlay shown (use the header eye button to toggle it on or off), left-drag paints sky and right-drag erases it. Adjust the brush size for broad areas or fine details.
 
 The green overlay shows the selected sky region. Automated detection, refinement, and manual painting work together so you can get a tight mask before stacking.
 
@@ -128,3 +129,18 @@ Choose **Contribute Corrections** to upload training data for review, or **Expor
 Streak data contains 512×512 image crops and labels. Sky data contains a half-size, 8-bit reference image and corrected mask (`image.jpg` and `mask.png`).
 
 The [training dataset](https://github.com/gkyle/startrails/releases/tag/training) and [training notebooks](training/) for streak detection are available.
+
+## Finish workflow
+
+Finish mode takes a single nightscape image and separates stars from the sky to enable targeted post processing. For example, adjust the white balance of stars, or apply a tone curve to the sky to elevate the milky way, without adversely affecting the stars. It offers additional sky denoise and sharpening. You can export the stars and starless layers for editing and recombining in software like Photoshop or blend and recombine in the app.
+
+1. **Define Sky Region:** Detect and refine the sky mask, paint corrections, or select the full frame for an image without foreground.
+2. **Separate Stars:** Run star removal to create starless and stars layers.
+3. **Finish Starless:** Adjust AI denoise strength and scope, and optionally sharpen with Structure and Detail controls.
+4. **Recombine and Save:** Adjust star amount, threshold, and Add or Screen blending, then save the image or export layers.
+
+## Third-party model licenses
+
+The release model archive includes the GraXpert denoise model 3.0.2,
+by the GraXpert Development Team, under CC BY-NC-SA 4.0. Its model license is
+separate from StarTrails' MIT license. See the [model attribution and terms](models/denoiseSky/graxpert/README.md).

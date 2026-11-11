@@ -1,6 +1,7 @@
 """Sky mask handling and rasterization for 2D celestial masks."""
 
 from __future__ import annotations
+from math import ceil
 from pathlib import Path
 from typing import Optional, Tuple
 import cv2
@@ -31,10 +32,7 @@ class MaskHandler:
                 mask = cv2.resize(mask_array.astype(np.float32), (w, h), interpolation=cv2.INTER_LINEAR)
             else:
                 mask = mask_array.astype(np.float32)
-            if feather_radius > 0:
-                ksize = feather_radius * 2 + 1
-                mask = cv2.GaussianBlur(mask, (ksize, ksize), feather_radius)
-            return np.clip(mask, 0.0, 1.0)
+            return cls.feather_mask(mask, feather_radius)
 
         if mask_path is not None and Path(mask_path).exists():
             return cls.load_brush_mask(shape, mask_path, feather_radius)
@@ -63,10 +61,20 @@ class MaskHandler:
             if mask.shape != (h, w):
                 mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_LINEAR)
 
-        if feather_radius > 0:
-            ksize = feather_radius * 2 + 1
-            mask = cv2.GaussianBlur(mask, (ksize, ksize), feather_radius)
+        return cls.feather_mask(mask, feather_radius)
 
+    @staticmethod
+    def feather_mask(mask: np.ndarray, radius_px: float) -> np.ndarray:
+        """Feather a mask without modifying it, using full-resolution pixel units.
+
+        Match the existing Gaussian support for integer radii; round fractional
+        support outward while retaining the requested radius as sigma.
+        """
+        if not np.isfinite(radius_px) or radius_px < 0:
+            raise ValueError("Mask feather radius must be finite and nonnegative.")
+        if radius_px > 0:
+            kernel_size = 2 * ceil(radius_px) + 1
+            mask = cv2.GaussianBlur(mask, (kernel_size, kernel_size), radius_px)
         return np.clip(mask, 0.0, 1.0)
 
     @classmethod

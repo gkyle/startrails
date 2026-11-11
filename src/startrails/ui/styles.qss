@@ -6,6 +6,163 @@ QLabel {
     font-size: 12px;
 }
 
+QLabel#projectTitle, QLabel#operationsTitle {
+    font-size: 15px;
+    font-weight: bold;
+    color: #0f172a;
+}
+
+QLabel#contributeHeading,
+QLabel#masksHeading,
+QLabel#findBrightestHeading {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+QLabel#operationsProgressLabel,
+QLabel#alignStatus,
+QLabel#brushHint,
+QLabel#outputFileName,
+QLabel#stackStatus,
+QLabel#tuneHint,
+QLabel#tuneStatus,
+QLabel#sourceLookupStatus,
+QLabel#findBrightestHint,
+QLabel#contributeHint,
+QLabel#masksHint,
+QLabel#hint,
+QLabel#memory {
+    color: #64748b;
+    font-size: 11px;
+}
+
+QLabel#operationsProgressLabel {
+    font-weight: 500;
+}
+
+QLabel#findBrightestHint,
+QLabel#contributeHint,
+QLabel#masksHint {
+    line-height: 1.3;
+}
+
+QLabel#hint {
+    line-height: 1.4;
+}
+
+QLabel#memory {
+    padding-top: 2px;
+}
+
+QFrame#sep1,
+QFrame#sepFindBrightest {
+    background-color: #f1f5f9;
+    max-height: 1px;
+}
+
+QFrame#unconfigured_box {
+    background-color: #fffbeb;
+    border: 1px solid #fef3c7;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+QLabel#lbl_unconf_msg {
+    color: #92400e;
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+/* Sidebar Shells & Scrollbars */
+QWidget#Sidebar,
+QWidget#SidebarDenoise,
+QWidget#SidebarFinish,
+QWidget#Sidebar QWidget#content,
+QWidget#SidebarDenoise QWidget#content,
+QWidget#SidebarFinish QWidget#content {
+    background-color: #f8fafc;
+}
+
+QScrollArea#scroll {
+    border: none;
+    background: transparent;
+}
+
+QScrollArea#scroll QScrollBar:vertical,
+QTreeView#files QScrollBar:vertical {
+    border: none;
+    background: #f1f5f9;
+    width: 6px;
+    border-radius: 3px;
+    margin: 2px 0px 2px 0px;
+}
+
+QScrollArea#scroll QScrollBar::handle:vertical,
+QTreeView#files QScrollBar::handle:vertical {
+    background: #cbd5e1;
+    min-height: 24px;
+    border-radius: 3px;
+}
+
+QScrollArea#scroll QScrollBar::handle:vertical:hover,
+QTreeView#files QScrollBar::handle:vertical:hover {
+    background: #94a3b8;
+}
+
+QScrollArea#scroll QScrollBar::add-line:vertical,
+QScrollArea#scroll QScrollBar::sub-line:vertical,
+QTreeView#files QScrollBar::add-line:vertical,
+QTreeView#files QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollArea#scroll QScrollBar::add-page:vertical,
+QScrollArea#scroll QScrollBar::sub-page:vertical,
+QTreeView#files QScrollBar::add-page:vertical,
+QTreeView#files QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollArea#scroll QScrollBar:horizontal,
+QTreeView#files QScrollBar:horizontal {
+    height: 0px;
+}
+
+/* Progress Bars */
+QProgressBar#operationsProgress {
+    background-color: #e2e8f0;
+    border-radius: 3px;
+    max-height: 6px;
+    min-height: 6px;
+    border: none;
+}
+
+QProgressBar#operationsProgress::chunk {
+    background-color: #16a34a;
+    border-radius: 3px;
+}
+
+QProgressBar#progressBar_gpu_util,
+QProgressBar#progressBar_gpu_mem {
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 3px;
+    font-size: 9px;
+    color: #334155;
+    max-height: 14px;
+    min-height: 14px;
+}
+
+QProgressBar#progressBar_gpu_util::chunk,
+QProgressBar#progressBar_gpu_mem::chunk {
+    background-color: green;
+    border-radius: 2px;
+}
+
 /* Input Fields (SpinBoxes, DoubleSpinBoxes, ComboBoxes, LineEdits) */
 QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit {
     background-color: #ffffff;
@@ -20,7 +177,7 @@ QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit {
 }
 
 QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QLineEdit:focus {
-    border: 2px solid #0369a1;
+    border-color: #0369a1;
 }
 
 QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled, QLineEdit:disabled {
@@ -74,17 +231,25 @@ QCheckBox:focus:enabled {
 
 QCheckBox#useGPU,
 QCheckBox#compressIntermediateTiffs,
-QCheckBox#showMaskOverlay,
 QCheckBox#enableCorrections,
-QCheckBox#showGradientMask {
+QCheckBox#showGradientMask,
+QCheckBox#showDeletedMasks,
+QCheckBox#check_chroma_postfilter,
+QCheckBox#check_enable_denoise,
+QCheckBox#check_enable_sharpen {
     spacing: 0px;
+    border: none;
+    padding: 0px;
 }
 
 QCheckBox#useGPU::indicator,
 QCheckBox#compressIntermediateTiffs::indicator,
-QCheckBox#showMaskOverlay::indicator,
 QCheckBox#enableCorrections::indicator,
-QCheckBox#showGradientMask::indicator {
+QCheckBox#showGradientMask::indicator,
+QCheckBox#showDeletedMasks::indicator,
+QCheckBox#check_chroma_postfilter::indicator,
+QCheckBox#check_enable_denoise::indicator,
+QCheckBox#check_enable_sharpen::indicator {
     width: 36px;
     height: 20px;
     border-radius: 10px;
@@ -92,29 +257,59 @@ QCheckBox#showGradientMask::indicator {
 
 QCheckBox#useGPU::indicator:unchecked,
 QCheckBox#compressIntermediateTiffs::indicator:unchecked,
-QCheckBox#showMaskOverlay::indicator:unchecked,
 QCheckBox#enableCorrections::indicator:unchecked,
-QCheckBox#showGradientMask::indicator:unchecked {
+QCheckBox#showGradientMask::indicator:unchecked,
+QCheckBox#showDeletedMasks::indicator:unchecked,
+QCheckBox#check_chroma_postfilter::indicator:unchecked,
+QCheckBox#check_enable_denoise::indicator:unchecked,
+QCheckBox#check_enable_sharpen::indicator:unchecked {
     image: url(:/startrails/ui/switch_off.svg);
 }
 
 QCheckBox#useGPU::indicator:checked,
 QCheckBox#compressIntermediateTiffs::indicator:checked,
-QCheckBox#showMaskOverlay::indicator:checked,
 QCheckBox#enableCorrections::indicator:checked,
-QCheckBox#showGradientMask::indicator:checked {
+QCheckBox#showGradientMask::indicator:checked,
+QCheckBox#showDeletedMasks::indicator:checked,
+QCheckBox#check_chroma_postfilter::indicator:checked,
+QCheckBox#check_enable_denoise::indicator:checked,
+QCheckBox#check_enable_sharpen::indicator:checked {
     image: url(:/startrails/ui/switch_on.svg);
 }
 
+QCheckBox#useGPU:focus,
+QCheckBox#compressIntermediateTiffs:focus,
+QCheckBox#enableCorrections:focus,
+QCheckBox#showGradientMask:focus,
+QCheckBox#showDeletedMasks:focus,
+QCheckBox#check_chroma_postfilter:focus,
+QCheckBox#check_enable_denoise:focus,
+QCheckBox#check_enable_sharpen:focus,
 QCheckBox#useGPU:focus:enabled,
 QCheckBox#compressIntermediateTiffs:focus:enabled,
-QCheckBox#showMaskOverlay:focus:enabled,
 QCheckBox#enableCorrections:focus:enabled,
-QCheckBox#showGradientMask:focus:enabled {
-    border-color: transparent;
+QCheckBox#showGradientMask:focus:enabled,
+QCheckBox#showDeletedMasks:focus:enabled,
+QCheckBox#check_chroma_postfilter:focus:enabled,
+QCheckBox#check_enable_denoise:focus:enabled,
+QCheckBox#check_enable_sharpen:focus:enabled {
+    border: none;
+    outline: none;
 }
 
 /* Horizontal Sliders */
+QSlider {
+    border: none;
+    padding: 0px;
+    margin: 0px;
+    min-height: 20px;
+    max-height: 20px;
+}
+
+QSlider:focus {
+    border: none;
+    outline: none;
+}
 QSlider::groove:horizontal {
     height: 4px;
     background: #cbd5e1;
@@ -139,8 +334,14 @@ QSlider::handle:horizontal:hover {
     background: #0284c7;
 }
 
-QWidget:focus:enabled {
+/* RadioButtons */
+QRadioButton {
     border: none;
+}
+
+QRadioButton:focus {
+    border: none;
+    outline: none;
 }
 
 /* Primary Capsule Action Button (Detect Streaks, Align Stars, Stack, Composite) */
@@ -200,8 +401,8 @@ QToolButton#advancedToggle:hover {
 }
 
 QToolButton#advancedToggle:focus:enabled {
-    border: none;
     background-color: #0c4a6e;
+    outline: none;
 }
 
 QToolButton#advancedToggle:disabled {
@@ -215,8 +416,275 @@ QWidget#advancedBody {
     background: transparent;
 }
 
-/* Error Labels */
-QLabel#error {
+/* Secondary Outline Buttons (6px radius, 2px border) */
+QPushButton#newProject,
+QPushButton#openProject,
+QPushButton#masks,
+QPushButton#training,
+QPushButton#findBrightest,
+QPushButton#nextSource,
+QPushButton#backToStack {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+QPushButton#nextSource,
+QPushButton#backToStack {
+    padding: 6px 8px;
+}
+
+QPushButton#newProject:hover,
+QPushButton#openProject:hover,
+QPushButton#masks:hover,
+QPushButton#training:hover,
+QPushButton#findBrightest:hover,
+QPushButton#nextSource:hover,
+QPushButton#backToStack:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+QPushButton#newProject:pressed,
+QPushButton#openProject:pressed {
+    background-color: #e2e8f0;
+}
+
+QPushButton#findBrightest:checked {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border-color: #0369a1;
+    font-weight: 600;
+}
+
+QPushButton#masks:disabled,
+QPushButton#training:disabled,
+QPushButton#findBrightest:disabled,
+QPushButton#nextSource:disabled,
+QPushButton#backToStack:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+
+QPushButton#newProject:focus:enabled,
+QPushButton#openProject:focus:enabled,
+QPushButton#masks:focus:enabled,
+QPushButton#training:focus:enabled,
+QPushButton#findBrightest:focus:enabled,
+QPushButton#nextSource:focus:enabled,
+QPushButton#backToStack:focus:enabled {
+    border-color: #0f172a;
+}
+
+/* Primary Filled Action Buttons */
+QPushButton#contribute {
+    background-color: #0369a1;
+    color: #ffffff;
+    border: 2px solid #0369a1;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+QPushButton#contribute:hover {
+    background-color: #075985;
+    border-color: #075985;
+}
+
+QPushButton#contribute:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+
+QPushButton#contribute:focus:enabled {
+    border-color: #0f172a;
+}
+
+/* Card Action Buttons (Detect Sky / Save Image & Secondary Card Buttons) */
+QPushButton#detect,
+QPushButton#btn_save_output {
+    font-weight: bold;
+    background-color: #2b5b84;
+    color: #ffffff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    border: 1px solid transparent;
+}
+
+QPushButton#detect:hover,
+QPushButton#btn_save_output:hover {
+    background-color: #3873a8;
+}
+
+QPushButton#detect:disabled,
+QPushButton#btn_save_output:disabled {
+    background-color: #cbd5e1;
+    color: #94a3b8;
+}
+
+QPushButton#detect:focus:enabled,
+QPushButton#btn_save_output:focus:enabled {
+    border-color: #0f172a;
+    outline: none;
+}
+
+QPushButton#clearMask,
+QPushButton#fullFrameMask,
+QPushButton#btn_export_layers {
+    background-color: #ffffff;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+QPushButton#clearMask,
+QPushButton#fullFrameMask {
+    padding: 5px 8px;
+    font-size: 11px;
+}
+
+QPushButton#clearMask:hover,
+QPushButton#fullFrameMask:hover,
+QPushButton#btn_export_layers:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+QPushButton#btn_export_layers:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+
+QPushButton#clearMask:focus:enabled,
+QPushButton#fullFrameMask:focus:enabled,
+QPushButton#btn_export_layers:focus:enabled {
+    border-color: #0f172a;
+    outline: none;
+}
+
+/* Segmented Control Containers & Buttons */
+QFrame#detectMergeContainer,
+QFrame#stackStreaksContainer,
+QFrame#stackFadeContainer {
+    background-color: #f1f5f9;
+    border-radius: 5px;
+    padding: 2px;
+}
+
+QFrame#detectMergeContainer {
+    border-radius: 6px;
+}
+
+QPushButton#detectMergeNMS,
+QPushButton#detectMergeNMM,
+QPushButton#stackStreaksKeep,
+QPushButton#stackStreaksRemove,
+QPushButton#stackFadeOff,
+QPushButton#stackFadeStart,
+QPushButton#stackFadeEnd,
+QPushButton#stackFadeBoth {
+    background-color: transparent;
+    color: #334155;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    min-height: 18px;
+}
+
+QPushButton#detectMergeNMS,
+QPushButton#detectMergeNMM {
+    border: 1px solid transparent;
+    padding: 2px 3px;
+    min-height: 0px;
+}
+
+QPushButton#stackStreaksKeep,
+QPushButton#stackStreaksRemove {
+    font-size: 12px;
+    padding: 4px 14px;
+}
+
+QPushButton#detectMergeNMS:checked,
+QPushButton#detectMergeNMM:checked,
+QPushButton#stackStreaksKeep:checked,
+QPushButton#stackStreaksRemove:checked,
+QPushButton#stackFadeOff:checked,
+QPushButton#stackFadeStart:checked,
+QPushButton#stackFadeEnd:checked,
+QPushButton#stackFadeBoth:checked {
+    background-color: #0369a1;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+QPushButton#detectMergeNMS:checked,
+QPushButton#detectMergeNMM:checked {
+    font-weight: bold;
+}
+
+QPushButton#detectMergeNMS:hover:!checked,
+QPushButton#detectMergeNMM:hover:!checked,
+QPushButton#stackStreaksKeep:hover:!checked,
+QPushButton#stackStreaksRemove:hover:!checked,
+QPushButton#stackFadeOff:hover:!checked,
+QPushButton#stackFadeStart:hover:!checked,
+QPushButton#stackFadeEnd:hover:!checked,
+QPushButton#stackFadeBoth:hover:!checked {
+    background-color: #e2e8f0;
+    color: #0f172a;
+}
+
+QPushButton#stackStreaksRemove:disabled {
+    color: #94a3b8;
+    background-color: transparent;
+}
+
+QPushButton#stackStreaksKeep:focus:enabled,
+QPushButton#stackStreaksRemove:focus:enabled,
+QPushButton#stackFadeOff:focus:enabled,
+QPushButton#stackFadeStart:focus:enabled,
+QPushButton#stackFadeEnd:focus:enabled,
+QPushButton#stackFadeBoth:focus:enabled {
+    border-color: #0f172a;
+}
+
+QPushButton#stackStreaksKeep:checked:focus:enabled,
+QPushButton#stackStreaksRemove:checked:focus:enabled,
+QPushButton#stackFadeOff:checked:focus:enabled,
+QPushButton#stackFadeStart:checked:focus:enabled,
+QPushButton#stackFadeEnd:checked:focus:enabled,
+QPushButton#stackFadeBoth:checked:focus:enabled {
+    border-color: #ffffff;
+}
+
+QPushButton#detectMergeNMS:focus:enabled,
+QPushButton#detectMergeNMM:focus:enabled {
+    border-color: #0f172a;
+}
+
+QPushButton#detectMergeNMS:checked:focus:enabled,
+QPushButton#detectMergeNMM:checked:focus:enabled {
+    border-color: #ffffff;
+}
+
+/* Error & Status Labels */
+QLabel#error,
+QLabel#lbl_status {
     color: #b91c1c;
     font-size: 11px;
+    line-height: 1.3;
 }

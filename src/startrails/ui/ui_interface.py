@@ -169,19 +169,6 @@ class Ui_MainWindow(object):
         self.progressBar_gpu_util.setMinimumSize(QSize(0, 16))
         font1 = QFont()
         self.progressBar_gpu_util.setFont(font1)
-        self.progressBar_gpu_util.setStyleSheet(u"QProgressBar#progressBar_gpu_util {\n"
-"    background-color: #f1f5f9;\n"
-"    border: 1px solid #e2e8f0;\n"
-"    border-radius: 3px;\n"
-"    font-size: 9px;\n"
-"    color: #334155;\n"
-"    max-height: 14px;\n"
-"    min-height: 14px;\n"
-"}\n"
-"QProgressBar#progressBar_gpu_util::chunk {\n"
-"    background-color: green;\n"
-"    border-radius: 2px;\n"
-"}")
         self.progressBar_gpu_util.setValue(0)
         self.progressBar_gpu_util.setAlignment(Qt.AlignCenter)
         self.progressBar_gpu_util.setTextVisible(True)
@@ -203,19 +190,6 @@ class Ui_MainWindow(object):
         self.progressBar_gpu_mem = QProgressBar(self.frame_gpu_mem)
         self.progressBar_gpu_mem.setObjectName(u"progressBar_gpu_mem")
         self.progressBar_gpu_mem.setFont(font1)
-        self.progressBar_gpu_mem.setStyleSheet(u"QProgressBar#progressBar_gpu_mem {\n"
-"    background-color: #f1f5f9;\n"
-"    border: 1px solid #e2e8f0;\n"
-"    border-radius: 3px;\n"
-"    font-size: 9px;\n"
-"    color: #334155;\n"
-"    max-height: 14px;\n"
-"    min-height: 14px;\n"
-"}\n"
-"QProgressBar#progressBar_gpu_mem::chunk {\n"
-"    background-color: green;\n"
-"    border-radius: 2px;\n"
-"}")
         self.progressBar_gpu_mem.setValue(0)
         self.progressBar_gpu_mem.setAlignment(Qt.AlignCenter)
         self.progressBar_gpu_mem.setTextVisible(True)

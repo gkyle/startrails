@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any, Union
 import jsonpickle
 
+from startrails.lib.finish.defaults import FINISH_EXT, FINISH_OUTPUT_DIR_SUFFIX, PROJECT_TYPE_FINISH as TYPE_FINISH
+
 STARTRAILS_EXT = ".proj_startrails"
 DENOISE_EXT = ".proj_denoise"
 LEGACY_STARTRAILS_EXT = ".project.json"
@@ -31,6 +33,7 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
     For denoise projects ('<base>.proj_denoise'), resolves to '<base>.denoise'
     (preserving legacy '<base>.denoise.project' if existing) to avoid naming collisions
     with startrails projects having the same basename.
+    For finish projects ('<base>.proj_finish'), resolves to '<base>.finish'.
     Otherwise resolves to '<name>' directory in the project's parent directory.
     """
     path = Path(project_file).resolve()
@@ -57,6 +60,10 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
             return legacy_dir
         return parent / f"{base}.denoise"
 
+    if lower_name.endswith(FINISH_EXT):
+        base = name[:-len(FINISH_EXT)]
+        return parent / f"{base}{FINISH_OUTPUT_DIR_SUFFIX}"
+
     if lower_name.endswith(".json"):
         return parent / name[:-5]
 
@@ -66,6 +73,8 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
 def detect_project_type_from_path(path: Union[str, Path]) -> str:
     """Detect project type purely by file extension without reading content."""
     name = str(path).lower()
+    if name.endswith(FINISH_EXT):
+        return TYPE_FINISH
     if name.endswith(DENOISE_EXT):
         return TYPE_DENOISE
     if name.endswith(STARTRAILS_EXT) or name.endswith(LEGACY_STARTRAILS_EXT):
@@ -76,13 +85,15 @@ def detect_project_type_from_path(path: Union[str, Path]) -> str:
 
 
 def detect_project_type(target: Union[str, Path, Any]) -> str:
-    """Detect whether target is a StarTrails or Denoise project.
+    """Detect whether target is a StarTrails, Denoise, or Finish project.
 
     Accepts an object, filepath, or Path. If a file exists, inspects content
     and jsonpickle representation. Rejects unsupported XML files.
     """
     type_name = type(target).__name__
     module_name = getattr(type(target), "__module__", "")
+    if type_name == "FinishProject" or "project_finish" in module_name:
+        return TYPE_FINISH
     if type_name == "DenoiseProject" or "project_denoise" in module_name:
         return TYPE_DENOISE
     if type_name == "Project" and "project" in module_name:
@@ -119,6 +130,8 @@ def detect_project_type(target: Union[str, Path, Any]) -> str:
             raise InvalidProjectError(f"Empty or null project content in {path}")
 
         dec_type = type(decoded).__name__
+        if dec_type == "FinishProject":
+            return TYPE_FINISH
         if dec_type == "DenoiseProject":
             return TYPE_DENOISE
         if dec_type == "Project":
@@ -126,6 +139,8 @@ def detect_project_type(target: Union[str, Path, Any]) -> str:
 
         if isinstance(decoded, dict):
             py_obj = str(decoded.get("py/object", ""))
+            if "FinishProject" in py_obj or "project_finish" in py_obj:
+                return TYPE_FINISH
             if "DenoiseProject" in py_obj or "project_denoise" in py_obj:
                 return TYPE_DENOISE
             if "Project" in py_obj:
@@ -134,9 +149,11 @@ def detect_project_type(target: Union[str, Path, Any]) -> str:
                 return TYPE_DENOISE
             if "rawInputFiles" in decoded:
                 return TYPE_STARTRAILS
+            if "source_file" in decoded or "source_bit_depth" in decoded:
+                return TYPE_FINISH
 
         raise InvalidProjectError(
-            f"File '{path}' does not contain a recognized StarTrails or Denoise project (got {dec_type})."
+            f"File '{path}' does not contain a recognized StarTrails, Denoise, or Finish project (got {dec_type})."
         )
 
     raise InvalidProjectError(f"Cannot determine project type for {target}")

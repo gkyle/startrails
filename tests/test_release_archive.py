@@ -4,12 +4,15 @@ import hashlib
 from io import BytesIO
 import json
 from pathlib import Path
+import subprocess
+import sys
 from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 from zipfile import ZipFile, ZipInfo
 
-from build import release
+from build import release, models as model_builder
+from startrails.lib.finish.defaults import GRAXPERT_MODEL_RELATIVE_PATH
 
 
 class PublishedModelArchiveTests(unittest.TestCase):
@@ -67,6 +70,51 @@ class PublishedModelArchiveTests(unittest.TestCase):
 
 
 class ModelArchiveTests(unittest.TestCase):
+    def test_models_build_help_runs_without_inference_dependencies(self):
+        """The documented build invocation must work on a stdlib-only interpreter."""
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            [sys.executable, "-S", "build/models.py", "--help"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--download", result.stdout)
+
+    def test_source_bundle_copies_text_resources_and_skips_pycache(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            relative_path = Path("src/startrails/lib/finish/NOTICE.txt")
+            source = root / relative_path
+            source.parent.mkdir(parents=True)
+            source.write_text("Model license notice", encoding="utf-8")
+            pycache_file = root / "src/startrails/lib/finish/__pycache__/nox.cpython-312.pyc"
+            pycache_file.parent.mkdir(parents=True)
+            pycache_file.write_bytes(b"bytecode")
+            stage = root / "release"
+            with patch.object(release, "ROOT", root):
+                release.copy_source_tree(stage)
+            self.assertEqual((stage / relative_path).read_text(), "Model license notice")
+            self.assertFalse((stage / "src/startrails/lib/finish/__pycache__/nox.cpython-312.pyc").exists())
+
+    def test_graxpert_bundle_requires_weights_and_notices(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            model_root = root / "models"
+            graxpert_data = b"unmodified graxpert model"
+            graxpert = model_root / GRAXPERT_MODEL_RELATIVE_PATH
+            graxpert.parent.mkdir(parents=True)
+            with self.assertRaisesRegex(ValueError, "Missing GraXpert model"):
+                model_builder.prepare_graxpert_model_bundle(model_root)
+            graxpert.write_bytes(graxpert_data)
+            with self.assertRaisesRegex(ValueError, "Missing GraXpert attribution/license"):
+                model_builder.prepare_graxpert_model_bundle(model_root)
+            for name in ("README.md", "LICENSE.html", "LICENSE.txt"):
+                (graxpert.parent / name).write_text(name)
+            model_builder.prepare_graxpert_model_bundle(model_root)
+            self.assertEqual(graxpert.read_bytes(), graxpert_data)
+
     def test_checkout_platform_does_not_change_archive_hash(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -75,6 +123,15 @@ class ModelArchiveTests(unittest.TestCase):
             weights = models / "model.safetensors"
             weights.write_bytes(b"model weights")
             metadata = models / "config.json"
+            graxpert = models / "graxpert"
+            graxpert.mkdir()
+            model_data = b"PyTorch weights\r\n\x00\xff"
+            (graxpert / "graxpert-denoise-3.0.2-mixed-int4-int8.pt").write_bytes(model_data)
+            notices = {
+                "README.md": b"# Model attribution\n",
+                "LICENSE.html": b"<p>License</p>\n",
+                "LICENSE.txt": b"Model license\n",
+            }
             first = root / "first.zip"
             second = root / "second.zip"
 
@@ -91,6 +148,8 @@ class ModelArchiveTests(unittest.TestCase):
                     return entry
 
                 metadata.write_bytes(b'{\n  "name": "sky"\n}\n'.replace(b"\n", newline))
+                for name, content in notices.items():
+                    (graxpert / name).write_bytes(content.replace(b"\n", newline))
                 with (
                     patch.object(release, "ROOT", root),
                     patch.object(release, "ZipInfo", side_effect=host_zip_info),
@@ -102,6 +161,12 @@ class ModelArchiveTests(unittest.TestCase):
                 self.assertEqual(archive.read("models/config.json"), b'{\n  "name": "sky"\n}\n')
                 self.assertEqual(archive.read("models/model.safetensors"), b"model weights")
                 self.assertEqual(archive.getinfo("models/config.json").create_system, unix_zip_system)
+                self.assertEqual(
+                    archive.read("models/graxpert/graxpert-denoise-3.0.2-mixed-int4-int8.pt"),
+                    model_data,
+                )
+                for name, content in notices.items():
+                    self.assertEqual(archive.read("models/graxpert/" + name), content)
 
     def test_staging_copies_the_exact_archive_and_uses_its_uncompressed_size(self):
         with TemporaryDirectory() as temporary:

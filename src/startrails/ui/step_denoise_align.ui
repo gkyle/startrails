@@ -117,9 +117,6 @@
    </item>
    <item>
     <widget class="QLabel" name="alignStatus">
-     <property name="styleSheet">
-      <string notr="true">color: #64748b; font-size: 11px;</string>
-     </property>
      <property name="text">
       <string>Homographies: 0 computed</string>
      </property>
@@ -152,9 +149,6 @@
          <widget class="CheckboxLabel" name="useGPULabel">
           <property name="cursor">
            <cursorShape>PointingHandCursor</cursorShape>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">color: #334155; font-size: 12px;</string>
           </property>
           <property name="text">
            <string>Use GPU Acceleration</string>

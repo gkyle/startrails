@@ -9,8 +9,7 @@ import numpy as np
 
 from startrails.lib.denoise.defaults import DEFAULT_SKY_DETECTION_DEVICE, DEFAULT_SKY_DETECTION_INPUT_SIZE
 from startrails.lib.artifacts import ArtifactTransaction
-from startrails.lib.util import imread
-from startrails.op.denoise.base import DenoiseOperation
+from startrails.lib.util import Observable, imread
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.profiler import PipelineProfiler
 from startrails.lib.denoise.mask import MaskHandler
@@ -26,7 +25,7 @@ logger = logging.getLogger(__name__)
 ProgressCallback = Callable[[float, str], None]
 
 
-class DenoisePipeline(DenoiseOperation):
+class DenoisePipeline(Observable):
     """Orchestrates image calibration, sky detection, alignment, stacking, and composition."""
 
     def __init__(self, config: Optional[DenoiseProject] = None, cancel_event=None, cancel_check=None):

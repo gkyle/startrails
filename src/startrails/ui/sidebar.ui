@@ -22,42 +22,6 @@
     <height>16777215</height>
    </size>
   </property>
-  <property name="styleSheet">
-   <string notr="true">QWidget#Sidebar {
-    background-color: #f8fafc;
-}
-QScrollArea#scroll {
-    border: none;
-    background: transparent;
-}
-QWidget#content {
-    background-color: #f8fafc;
-}
-QScrollBar:vertical {
-    border: none;
-    background: #f1f5f9;
-    width: 6px;
-    border-radius: 3px;
-    margin: 2px 0px 2px 0px;
-}
-QScrollBar::handle:vertical {
-    background: #cbd5e1;
-    min-height: 24px;
-    border-radius: 3px;
-}
-QScrollBar::handle:vertical:hover {
-    background: #94a3b8;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    height: 0px;
-}
-QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
-    background: none;
-}
-QScrollBar:horizontal {
-    height: 0px;
-}</string>
-  </property>
   <layout class="QVBoxLayout" name="layout">
    <property name="spacing">
     <number>0</number>
@@ -120,27 +84,6 @@ QScrollBar:horizontal {
            <property name="cursor">
             <cursorShape>PointingHandCursor</cursorShape>
            </property>
-           <property name="styleSheet">
-            <string notr="true">QPushButton#newProject {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 2px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-weight: 500;
-    font-size: 12px;
-}
-QPushButton#newProject:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}
-QPushButton#newProject:pressed {
-    background-color: #e2e8f0;
-}
-QPushButton#newProject:focus:enabled {
-    border-color: #0f172a;
-}</string>
-           </property>
            <property name="text">
             <string>New Project</string>
            </property>
@@ -151,27 +94,6 @@ QPushButton#newProject:focus:enabled {
            <property name="cursor">
             <cursorShape>PointingHandCursor</cursorShape>
            </property>
-           <property name="styleSheet">
-            <string notr="true">QPushButton#openProject {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 2px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-weight: 500;
-    font-size: 12px;
-}
-QPushButton#openProject:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}
-QPushButton#openProject:pressed {
-    background-color: #e2e8f0;
-}
-QPushButton#openProject:focus:enabled {
-    border-color: #0f172a;
-}</string>
-           </property>
            <property name="text">
             <string>Open Project</string>
            </property>
@@ -181,13 +103,6 @@ QPushButton#openProject:focus:enabled {
        </item>
        <item>
         <widget class="QLabel" name="projectTitle">
-         <property name="styleSheet">
-          <string notr="true">QLabel#projectTitle {
-    font-size: 15px;
-    font-weight: bold;
-    color: #0f172a;
-}</string>
-         </property>
          <property name="text">
           <string>Project Images</string>
          </property>
@@ -219,13 +134,6 @@ QPushButton#openProject:focus:enabled {
           </property>
           <item>
            <widget class="QLabel" name="operationsTitle">
-            <property name="styleSheet">
-             <string notr="true">QLabel#operationsTitle {
-    font-size: 15px;
-    font-weight: bold;
-    color: #0f172a;
-}</string>
-            </property>
             <property name="text">
              <string>Operations</string>
             </property>
@@ -247,13 +155,6 @@ QPushButton#openProject:focus:enabled {
             </property>
             <item>
              <widget class="QLabel" name="operationsProgressLabel">
-              <property name="styleSheet">
-               <string notr="true">QLabel#operationsProgressLabel {
-    font-size: 11px;
-    color: #64748b;
-    font-weight: 500;
-}</string>
-              </property>
               <property name="text">
                <string>0 of 4 steps complete</string>
               </property>
@@ -261,19 +162,6 @@ QPushButton#openProject:focus:enabled {
             </item>
             <item>
              <widget class="QProgressBar" name="operationsProgress">
-              <property name="styleSheet">
-               <string notr="true">QProgressBar#operationsProgress {
-    background-color: #e2e8f0;
-    border-radius: 3px;
-    max-height: 6px;
-    min-height: 6px;
-    border: none;
-}
-QProgressBar#operationsProgress::chunk {
-    background-color: #16a34a;
-    border-radius: 3px;
-}</string>
-              </property>
               <property name="maximum">
                <number>4</number>
               </property>

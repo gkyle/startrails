@@ -131,17 +131,12 @@ class Ui_reviewSettings(object):
         self.showDeletedMasksLabel = CheckboxLabel(reviewSettings)
         self.showDeletedMasksLabel.setObjectName(u"showDeletedMasksLabel")
         self.showDeletedMasksLabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showDeletedMasksLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.showDeletedMasksLayout.addWidget(self.showDeletedMasksLabel)
 
         self.showDeletedMasks = QCheckBox(reviewSettings)
         self.showDeletedMasks.setObjectName(u"showDeletedMasks")
         self.showDeletedMasks.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showDeletedMasks.setStyleSheet(u"QCheckBox#showDeletedMasks { spacing: 0px;}\n"
-"QCheckBox#showDeletedMasks::indicator { width: 36px; height: 20px;}\n"
-"QCheckBox#showDeletedMasks::indicator:unchecked { image: url(:/startrails/ui/switch_off.svg); }\n"
-"QCheckBox#showDeletedMasks::indicator:checked { image: url(:/startrails/ui/switch_on.svg); }")
 
         self.showDeletedMasksLayout.addWidget(self.showDeletedMasks, 0, Qt.AlignmentFlag.AlignRight)
 
@@ -150,28 +145,17 @@ class Ui_reviewSettings(object):
 
         self.sepFindBrightest = QFrame(reviewSettings)
         self.sepFindBrightest.setObjectName(u"sepFindBrightest")
-        self.sepFindBrightest.setStyleSheet(u"background-color: #f1f5f9;\n"
-"max-height: 1px;")
         self.sepFindBrightest.setFrameShape(QFrame.Shape.HLine)
 
         self.layout.addWidget(self.sepFindBrightest)
 
         self.findBrightestHeading = QLabel(reviewSettings)
         self.findBrightestHeading.setObjectName(u"findBrightestHeading")
-        self.findBrightestHeading.setStyleSheet(u"font-size: 11px;\n"
-"font-weight: 600;\n"
-"color: #475569;\n"
-"text-transform: uppercase;\n"
-"letter-spacing: 0.5px;\n"
-"margin-top: 2px;")
 
         self.layout.addWidget(self.findBrightestHeading)
 
         self.findBrightestHint = QLabel(reviewSettings)
         self.findBrightestHint.setObjectName(u"findBrightestHint")
-        self.findBrightestHint.setStyleSheet(u"font-size: 11px;\n"
-"color: #64748b;\n"
-"line-height: 1.3;")
         self.findBrightestHint.setWordWrap(True)
 
         self.layout.addWidget(self.findBrightestHint)
@@ -180,31 +164,6 @@ class Ui_reviewSettings(object):
         self.findBrightest.setObjectName(u"findBrightest")
         self.findBrightest.setEnabled(False)
         self.findBrightest.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.findBrightest.setStyleSheet(u"QPushButton#findBrightest {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 2px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#findBrightest:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#findBrightest:checked {\n"
-"    background-color: #e0f2fe;\n"
-"    color: #0369a1;\n"
-"    border-color: #0369a1;\n"
-"    font-weight: 600;\n"
-"}\n"
-"QPushButton#findBrightest:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
-"QPushButton#findBrightest:focus:enabled { border-color: #0f172a; }")
         self.findBrightest.setCheckable(True)
 
         self.layout.addWidget(self.findBrightest)
@@ -215,25 +174,6 @@ class Ui_reviewSettings(object):
         self.nextSource.setObjectName(u"nextSource")
         self.nextSource.setEnabled(False)
         self.nextSource.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.nextSource.setStyleSheet(u"QPushButton#nextSource {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 2px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 8px;\n"
-"    font-size: 12px;\n"
-"    font-weight: 500;\n"
-"}\n"
-"QPushButton#nextSource:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#nextSource:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
-"QPushButton#nextSource:focus:enabled { border-color: #0f172a; }")
 
         self.sourceNavigationLayout.addWidget(self.nextSource)
 
@@ -241,25 +181,6 @@ class Ui_reviewSettings(object):
         self.backToStack.setObjectName(u"backToStack")
         self.backToStack.setEnabled(False)
         self.backToStack.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.backToStack.setStyleSheet(u"QPushButton#backToStack {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 2px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 8px;\n"
-"    font-size: 12px;\n"
-"    font-weight: 500;\n"
-"}\n"
-"QPushButton#backToStack:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#backToStack:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
-"QPushButton#backToStack:focus:enabled { border-color: #0f172a; }")
 
         self.sourceNavigationLayout.addWidget(self.backToStack)
 
@@ -268,7 +189,6 @@ class Ui_reviewSettings(object):
 
         self.sourceLookupStatus = QLabel(reviewSettings)
         self.sourceLookupStatus.setObjectName(u"sourceLookupStatus")
-        self.sourceLookupStatus.setStyleSheet(u"color: #64748b; font-size: 11px;")
         self.sourceLookupStatus.setWordWrap(True)
 
         self.layout.addWidget(self.sourceLookupStatus)

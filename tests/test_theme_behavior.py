@@ -9,6 +9,42 @@ from startrails.ui.ui_wrap import MainWindow
 
 
 class ThemeTests(QtTestCase):
+    def test_dark_stylesheet_maps_accent_border_color(self):
+        from startrails.ui.theme import dark_stylesheet
+
+        styled = dark_stylesheet("border-color: #0284c7; border: 1px solid #0284c7;")
+        self.assertIn("border-color: #38bdf8;", styled)
+        self.assertIn("border: 1px solid #38bdf8;", styled)
+
+        eye_styled = dark_stylesheet(
+            "qproperty-icon: url(:/startrails/ui/preview_eye.svg);\n"
+            "qproperty-icon: url(:/startrails/ui/preview_eye_off.svg);"
+        )
+        self.assertIn("url(:/startrails/ui/preview_eye_dark.svg);", eye_styled)
+        self.assertIn("url(:/startrails/ui/preview_eye_off_dark.svg);", eye_styled)
+
+    def test_preview_eye_resources_load(self):
+        from PySide6.QtGui import QIcon
+        import startrails.ui.resources_rc  # noqa: F401
+
+        for path in (
+            ":/startrails/ui/preview_eye.svg",
+            ":/startrails/ui/preview_eye_dark.svg",
+            ":/startrails/ui/preview_eye_off.svg",
+            ":/startrails/ui/preview_eye_off_dark.svg",
+        ):
+            icon = QIcon(path)
+            self.assertFalse(icon.pixmap(16, 16).isNull(), path)
+
+    def test_project_finish_resource_loads_without_filesystem(self):
+        from PySide6.QtGui import QPixmap
+        import startrails.ui.resources_rc  # noqa: F401
+
+        pix = QPixmap(":/startrails/ui/project_finish.png")
+        self.assertFalse(pix.isNull())
+        self.assertGreater(pix.width(), 0)
+        self.assertGreater(pix.height(), 0)
+
     def test_scheme_changes_update_existing_window_without_losing_edits(self):
         theme = system_theme()
         previous = Qt.ColorScheme.Dark if theme.dark else Qt.ColorScheme.Light

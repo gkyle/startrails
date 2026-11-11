@@ -1,9 +1,12 @@
 """Canvas channel order, mask editing, and preview overlay behavior."""
 
+from unittest.mock import patch
 import numpy as np
 from PySide6.QtCore import QPointF
 
 from support import QtTestCase, qt_app
+from startrails.lib.file import File
+from startrails.lib.image_io import imwrite
 from startrails.ui.canvasLabel import CanvasLabel
 
 QT_APP = qt_app()
@@ -138,3 +141,24 @@ class CanvasTests(QtTestCase):
         rendered = self.canvas.grab().toImage()
         self.assertEqual(rendered.pixelColor(40, 50).red(), 0)
         self.assertEqual(rendered.pixelColor(210, 260).green(), 0)
+
+    def test_set_file_caches_pixmap_and_respects_reload(self):
+        path_a = self.root / "a.tif"
+        path_b = self.root / "b.tif"
+        imwrite(path_a, np.full((32, 32, 3), 10000, dtype=np.uint16), bit_depth=16)
+        imwrite(path_b, np.full((32, 32, 3), 40000, dtype=np.uint16), bit_depth=16)
+        file_a = File(path=str(path_a), basename="a.tif")
+        file_b = File(path=str(path_b), basename="b.tif")
+
+        self.canvas.setFile(file_a)
+        self.canvas.setFile(file_b, preserve_view=True)
+
+        # Switching back to an unchanged file hits the pixmap cache without disk I/O.
+        with patch("startrails.ui.canvasLabel.QPixmap", side_effect=AssertionError("unexpected reload")):
+            self.canvas.setFile(file_a, preserve_view=True)
+        self.assertEqual(self.canvas.file.path, str(path_a))
+
+        # reload=True bypasses the cache and reads fresh pixels.
+        imwrite(path_a, np.full((32, 32, 3), 50000, dtype=np.uint16), bit_depth=16)
+        self.canvas.setFile(file_a, reload=True, preserve_view=True)
+        self.assertGreater(self.canvas.pixmap.toImage().pixelColor(16, 16).red(), 150)

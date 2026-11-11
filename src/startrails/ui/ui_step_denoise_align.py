@@ -83,7 +83,6 @@ class Ui_DenoiseAlignSettings(object):
 
         self.alignStatus = QLabel(DenoiseAlignSettings)
         self.alignStatus.setObjectName(u"alignStatus")
-        self.alignStatus.setStyleSheet(u"color: #64748b; font-size: 11px;")
         self.alignStatus.setWordWrap(True)
 
         self.layout.addWidget(self.alignStatus)
@@ -99,7 +98,6 @@ class Ui_DenoiseAlignSettings(object):
         self.useGPULabel = CheckboxLabel(self.advancedBody)
         self.useGPULabel.setObjectName(u"useGPULabel")
         self.useGPULabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.useGPULabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.useGPURow.addWidget(self.useGPULabel)
 

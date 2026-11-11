@@ -15,6 +15,7 @@ from startrails.lib.denoise.defaults import (
     DEFAULT_SKY_DETECTION_INPUT_SIZE,
     DENOISE_DEFAULTS,
 )
+from startrails.lib.gpu import free_gpu_memory, resolve_torch_device
 from startrails.paths import APPLICATION_DIR
 
 logger = logging.getLogger(__name__)
@@ -95,9 +96,7 @@ class AutoSkyDetector:
                     f"Neural inference on {device} failed ({e}). Retrying neural inference on CPU..."
                 )
                 try:
-                    import torch
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
+                    free_gpu_memory()
                     return cls._detect_segformer(
                         rgb,
                         model_path=model_path,
@@ -116,7 +115,6 @@ class AutoSkyDetector:
         device_str: str,
     ) -> Tuple[Any, Any, str, int]:
         """Load and cache SegFormer model and processor."""
-        import torch
         from transformers import AutoImageProcessor, SegformerForSemanticSegmentation
 
         target_path = model_path
@@ -124,10 +122,7 @@ class AutoSkyDetector:
         if target_p.is_file():
             target_path = str(target_p.parent)
 
-        if device_str == "auto":
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-        else:
-            device = device_str
+        device = str(resolve_torch_device(device_str))
 
         cache_key = f"{target_path}_{device}"
         if cache_key in _MODEL_CACHE:
@@ -180,7 +175,7 @@ class AutoSkyDetector:
                 probs_feat = torch.softmax(logits, dim=1)[0, sky_idx].float().cpu().numpy()
                 probs = cv2.resize(probs_feat, (w, h), interpolation=cv2.INTER_LINEAR)
         finally:
-            if dev == "cuda" and torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            if dev != "cpu":
+                free_gpu_memory()
 
         return np.clip(probs, 0.0, 1.0).astype(np.float32)

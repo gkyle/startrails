@@ -45,12 +45,6 @@
      </property>
      <item row="0" column="0">
       <widget class="QLabel" name="methodLabel">
-       <property name="styleSheet">
-        <string notr="true">QLabel#methodLabel {
-    color: #334155;
-    font-size: 12px;
-}</string>
-       </property>
        <property name="text">
         <string>Method</string>
        </property>
@@ -79,12 +73,6 @@
      </item>
      <item row="1" column="0">
       <widget class="QLabel" name="streaksLabel">
-       <property name="styleSheet">
-        <string notr="true">QLabel#streaksLabel {
-    color: #334155;
-    font-size: 12px;
-}</string>
-       </property>
        <property name="text">
         <string>Streaks</string>
        </property>
@@ -92,38 +80,6 @@
      </item>
      <item row="1" column="1" alignment="Qt::AlignmentFlag::AlignRight">
       <widget class="QFrame" name="stackStreaksContainer">
-       <property name="styleSheet">
-        <string notr="true">QFrame#stackStreaksContainer {
-    background-color: #f1f5f9;
-    border-radius: 5px;
-    padding: 2px;
-}
-QPushButton#stackStreaksKeep, QPushButton#stackStreaksRemove {
-    background-color: transparent;
-    color: #334155;
-    border: 2px solid transparent;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-    padding: 4px 14px;
-    min-height: 18px;
-}
-QPushButton#stackStreaksKeep:checked, QPushButton#stackStreaksRemove:checked {
-    background-color: #0369a1;
-    color: #ffffff;
-    font-weight: 600;
-}
-QPushButton#stackStreaksKeep:hover:!checked, QPushButton#stackStreaksRemove:hover:!checked {
-    background-color: #e2e8f0;
-    color: #0f172a;
-}
-QPushButton#stackStreaksRemove:disabled {
-    color: #94a3b8;
-    background-color: transparent;
-}
-QPushButton#stackStreaksKeep:focus:enabled, QPushButton#stackStreaksRemove:focus:enabled { border-color: #0f172a; }
-QPushButton#stackStreaksKeep:checked:focus:enabled, QPushButton#stackStreaksRemove:checked:focus:enabled { border-color: #ffffff; }</string>
-       </property>
        <layout class="QHBoxLayout" name="stackStreaksLayout">
         <property name="spacing">
          <number>2</number>
@@ -180,12 +136,6 @@ QPushButton#stackStreaksKeep:checked:focus:enabled, QPushButton#stackStreaksRemo
      </item>
      <item row="2" column="0">
       <widget class="QLabel" name="fadeLabel">
-       <property name="styleSheet">
-        <string notr="true">QLabel#fadeLabel {
-    color: #334155;
-    font-size: 12px;
-}</string>
-       </property>
        <property name="text">
         <string>Fade frames</string>
        </property>
@@ -193,34 +143,6 @@ QPushButton#stackStreaksKeep:checked:focus:enabled, QPushButton#stackStreaksRemo
      </item>
      <item row="2" column="1" alignment="Qt::AlignmentFlag::AlignRight">
       <widget class="QFrame" name="stackFadeContainer">
-       <property name="styleSheet">
-        <string notr="true">QFrame#stackFadeContainer {
-    background-color: #f1f5f9;
-    border-radius: 5px;
-    padding: 2px;
-}
-QPushButton#stackFadeOff, QPushButton#stackFadeStart, QPushButton#stackFadeEnd, QPushButton#stackFadeBoth {
-    background-color: transparent;
-    color: #334155;
-    border: 2px solid transparent;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    padding: 4px 8px;
-    min-height: 18px;
-}
-QPushButton#stackFadeOff:checked, QPushButton#stackFadeStart:checked, QPushButton#stackFadeEnd:checked, QPushButton#stackFadeBoth:checked {
-    background-color: #0369a1;
-    color: #ffffff;
-    font-weight: 600;
-}
-QPushButton#stackFadeOff:hover:!checked, QPushButton#stackFadeStart:hover:!checked, QPushButton#stackFadeEnd:hover:!checked, QPushButton#stackFadeBoth:hover:!checked {
-    background-color: #e2e8f0;
-    color: #0f172a;
-}
-QPushButton#stackFadeOff:focus:enabled, QPushButton#stackFadeStart:focus:enabled, QPushButton#stackFadeEnd:focus:enabled, QPushButton#stackFadeBoth:focus:enabled { border-color: #0f172a; }
-QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:checked:focus:enabled, QPushButton#stackFadeEnd:checked:focus:enabled, QPushButton#stackFadeBoth:checked:focus:enabled { border-color: #ffffff; }</string>
-       </property>
        <layout class="QHBoxLayout" name="stackFadeLayout">
         <property name="spacing">
          <number>2</number>
@@ -426,12 +348,6 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
           <property name="cursor">
            <cursorShape>PointingHandCursor</cursorShape>
           </property>
-          <property name="styleSheet">
-           <string notr="true">QLabel#useGPULabel {
-    color: #334155;
-    font-size: 12px;
-}</string>
-          </property>
           <property name="text">
            <string>Use GPU</string>
           </property>
@@ -461,14 +377,8 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
         </item>
         <item row="1" column="0">
          <widget class="QLabel" name="batchLabel">
-          <property name="styleSheet">
-           <string notr="true">QLabel#batchLabel {
-    color: #334155;
-    font-size: 12px;
-}</string>
-          </property>
           <property name="text">
-           <string>&amp;Batch size</string>
+           <string>Batch size</string>
           </property>
           <property name="buddy">
            <cstring>batchSize</cstring>
@@ -498,13 +408,6 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
       </item>
       <item>
        <widget class="QLabel" name="memory">
-        <property name="styleSheet">
-         <string notr="true">QLabel#memory {
-    font-size: 11px;
-    color: #64748b;
-    padding-top: 2px;
-}</string>
-        </property>
         <property name="text">
          <string>Add input files for a batch suggestion.</string>
         </property>

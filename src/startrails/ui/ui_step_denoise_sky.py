@@ -15,11 +15,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QHBoxLayout,
-    QLabel, QPushButton, QSizePolicy, QSlider,
-    QSpinBox, QVBoxLayout, QWidget)
-
-from startrails.ui.checkbox_label import CheckboxLabel
+from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QLabel,
+    QPushButton, QSizePolicy, QSlider, QSpinBox,
+    QVBoxLayout, QWidget)
 from . import resources_rc
 
 class Ui_DenoiseSkySettings(object):
@@ -56,22 +54,6 @@ class Ui_DenoiseSkySettings(object):
         self.detect.setObjectName(u"detect")
         self.detect.setEnabled(False)
         self.detect.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.detect.setStyleSheet(u"QPushButton#detect {\n"
-"    font-weight: bold;\n"
-"    background-color: #2b5b84;\n"
-"    color: #ffffff;\n"
-"    padding: 6px 10px;\n"
-"    border-radius: 4px;\n"
-"    font-size: 12px;\n"
-"    border: 1px solid transparent;\n"
-"}\n"
-"QPushButton#detect:hover {\n"
-"    background-color: #3873a8;\n"
-"}\n"
-"QPushButton#detect:disabled {\n"
-"    background-color: #cbd5e1;\n"
-"    color: #94a3b8;\n"
-"}")
 
         self.actLayout.addWidget(self.detect)
 
@@ -135,26 +117,6 @@ class Ui_DenoiseSkySettings(object):
 
         self.layout.addLayout(self.refineParamLayout)
 
-        self.showMaskOverlayRow = QHBoxLayout()
-        self.showMaskOverlayRow.setObjectName(u"showMaskOverlayRow")
-        self.showMaskOverlayLabel = CheckboxLabel(DenoiseSkySettings)
-        self.showMaskOverlayLabel.setObjectName(u"showMaskOverlayLabel")
-        self.showMaskOverlayLabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showMaskOverlayLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
-
-        self.showMaskOverlayRow.addWidget(self.showMaskOverlayLabel)
-
-        self.showMaskOverlay = QCheckBox(DenoiseSkySettings)
-        self.showMaskOverlay.setObjectName(u"showMaskOverlay")
-        self.showMaskOverlay.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showMaskOverlay.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.showMaskOverlay.setChecked(False)
-
-        self.showMaskOverlayRow.addWidget(self.showMaskOverlay, 0, Qt.AlignmentFlag.AlignRight)
-
-
-        self.layout.addLayout(self.showMaskOverlayRow)
-
         self.brushLayout = QHBoxLayout()
         self.brushLayout.setSpacing(6)
         self.brushLayout.setObjectName(u"brushLayout")
@@ -188,38 +150,12 @@ class Ui_DenoiseSkySettings(object):
         self.clearMask = QPushButton(DenoiseSkySettings)
         self.clearMask.setObjectName(u"clearMask")
         self.clearMask.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.clearMask.setStyleSheet(u"QPushButton#clearMask {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
-"    border-radius: 4px;\n"
-"    padding: 5px 8px;\n"
-"    font-size: 11px;\n"
-"    font-weight: 500;\n"
-"}\n"
-"QPushButton#clearMask:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}")
 
         self.utilLayout.addWidget(self.clearMask)
 
         self.fullFrameMask = QPushButton(DenoiseSkySettings)
         self.fullFrameMask.setObjectName(u"fullFrameMask")
         self.fullFrameMask.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.fullFrameMask.setStyleSheet(u"QPushButton#fullFrameMask {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
-"    border-radius: 4px;\n"
-"    padding: 5px 8px;\n"
-"    font-size: 11px;\n"
-"    font-weight: 500;\n"
-"}\n"
-"QPushButton#fullFrameMask:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}")
 
         self.utilLayout.addWidget(self.fullFrameMask)
 
@@ -228,7 +164,6 @@ class Ui_DenoiseSkySettings(object):
 
         self.brushHint = QLabel(DenoiseSkySettings)
         self.brushHint.setObjectName(u"brushHint")
-        self.brushHint.setStyleSheet(u"color: #64748b; font-size: 11px;")
         self.brushHint.setWordWrap(True)
 
         self.layout.addWidget(self.brushHint)
@@ -239,9 +174,6 @@ class Ui_DenoiseSkySettings(object):
 
         self.layout.addWidget(self.error)
 
-#if QT_CONFIG(shortcut)
-        self.showMaskOverlayLabel.setBuddy(self.showMaskOverlay)
-#endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(DenoiseSkySettings)
 
@@ -273,17 +205,6 @@ class Ui_DenoiseSkySettings(object):
 #endif // QT_CONFIG(tooltip)
         self.erosionPixels.setSpecialValueText(QCoreApplication.translate("DenoiseSkySettings", u"None (0 px)", None))
         self.erosionPixels.setSuffix(QCoreApplication.translate("DenoiseSkySettings", u" px", None))
-#if QT_CONFIG(tooltip)
-        self.showMaskOverlayLabel.setToolTip(QCoreApplication.translate("DenoiseSkySettings", u"Show sky mask on canvas and enable interactive brush editing tools", None))
-#endif // QT_CONFIG(tooltip)
-        self.showMaskOverlayLabel.setText(QCoreApplication.translate("DenoiseSkySettings", u"Show Mask Overlay", None))
-#if QT_CONFIG(tooltip)
-        self.showMaskOverlay.setToolTip(QCoreApplication.translate("DenoiseSkySettings", u"Show sky mask on canvas and enable interactive brush editing tools", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(accessibility)
-        self.showMaskOverlay.setAccessibleName(QCoreApplication.translate("DenoiseSkySettings", u"Show and edit mask overlay", None))
-#endif // QT_CONFIG(accessibility)
-        self.showMaskOverlay.setText("")
         self.brushLabel.setText(QCoreApplication.translate("DenoiseSkySettings", u"Brush:", None))
         self.brushRadius.setSuffix(QCoreApplication.translate("DenoiseSkySettings", u" px", None))
 #if QT_CONFIG(tooltip)

@@ -14,7 +14,11 @@ import jsonpickle
 
 from support import QtTestCase
 from main import create_main_window
+from startrails.app import App
+from startrails.lib.project import Project
 from startrails.lib.project_denoise import DenoiseProject
+from startrails.lib.project_finish import FinishProject
+from startrails.lib.project_type import DENOISE_EXT, FINISH_EXT, STARTRAILS_EXT
 from startrails.paths import WORK_DIR_ENV, configure_work_directory
 
 
@@ -113,3 +117,75 @@ class StartupTests(QtTestCase):
                 self.assertEqual(warning.call_count, 1)
                 self.assertIn(str(path), warning.call_args.args[2])
                 window.close()
+
+    def test_corrupt_or_wrong_type_starter_project_does_not_block_startup(self):
+        projects_dir = self.root / "projects"
+        projects_dir.mkdir()
+
+        cases = (
+            (
+                f"default{FINISH_EXT}",
+                "{not json",
+                "selected.proj_startrails",
+                Project(projectFile=str(projects_dir / "selected.proj_startrails")),
+                Project,
+            ),
+            (
+                f"default{FINISH_EXT}",
+                jsonpickle.encode(Project(projectFile=str(projects_dir / f"default{FINISH_EXT}"))),
+                "selected.proj_denoise",
+                DenoiseProject(project_file=str(projects_dir / "selected.proj_denoise")),
+                DenoiseProject,
+            ),
+            (
+                f"default{DENOISE_EXT}",
+                jsonpickle.encode(FinishProject(project_file=str(projects_dir / f"default{DENOISE_EXT}"))),
+                "selected.proj_finish",
+                FinishProject(project_file=str(projects_dir / "selected.proj_finish")),
+                FinishProject,
+            ),
+        )
+
+        for starter_name, starter_body, selected_name, selected_proj, expected_cls in cases:
+            with self.subTest(starter=starter_name, selected=selected_name):
+                starter_path = projects_dir / starter_name
+                starter_path.write_text(starter_body, encoding="utf-8")
+
+                selected_path = projects_dir / selected_name
+                selected_path.write_text(jsonpickle.encode(selected_proj), encoding="utf-8")
+                Path("app.json").write_text(jsonpickle.encode({"projectFile": str(selected_path)}), encoding="utf-8")
+
+                try:
+                    with (
+                        patch("startrails.app.torch.cuda.init"),
+                        patch("startrails.app.GPUInfo"),
+                        self.assertLogs("startrails.app", level="WARNING") as logs,
+                    ):
+                        app = App()
+
+                    self.assertIsInstance(app.project, expected_cls)
+                    self.assertEqual(Path(app.project.projectFile).resolve(), selected_path.resolve())
+                    self.assertEqual(starter_path.read_text(encoding="utf-8"), starter_body)
+                    self.assertTrue(any(starter_name in line for line in logs.output))
+                finally:
+                    starter_path.unlink(missing_ok=True)
+
+    def test_corrupt_selected_default_finish_recovers_without_overwriting(self):
+        projects_dir = self.root / "projects"
+        projects_dir.mkdir()
+        starter_path = projects_dir / f"default{FINISH_EXT}"
+        corrupt_body = "{corrupt finish project"
+        starter_path.write_text(corrupt_body, encoding="utf-8")
+        Path("app.json").write_text(jsonpickle.encode({"projectFile": str(starter_path)}), encoding="utf-8")
+
+        with (
+            patch("startrails.app.torch.cuda.init"),
+            patch("startrails.app.GPUInfo"),
+            self.assertLogs("startrails.app", level="WARNING") as logs,
+        ):
+            app = App()
+
+        self.assertIsInstance(app.project, Project)
+        self.assertEqual(Path(app.project.projectFile), Path(f"projects/default{STARTRAILS_EXT}"))
+        self.assertEqual(starter_path.read_text(encoding="utf-8"), corrupt_body)
+        self.assertTrue(any(f"default{FINISH_EXT}" in line for line in logs.output))

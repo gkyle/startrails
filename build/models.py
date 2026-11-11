@@ -6,13 +6,30 @@ import re
 import sys
 import tomllib
 
-from release import create_models_archive, download_models_archive, models_archive_name, sha256
-from publish import sync_release
-
 ROOT = Path(__file__).resolve().parents[1]
+# Reuse the app's pinned asset identities and integrity checks without importing
+# inference libraries into the build tool.
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "src"))
+from build.release import create_models_archive, download_models_archive, models_archive_name, sha256
+from build.publish import sync_release
+from startrails.lib.finish.defaults import GRAXPERT_MODEL_RELATIVE_PATH
+
 DEFAULT_OUTPUT_DIR = ROOT / "out/models"
 DEFAULT_DOWNLOAD_DIR = DEFAULT_OUTPUT_DIR / "downloads"
 
+
+def prepare_graxpert_model_bundle(models_dir: Path) -> None:
+    """Verify bundled GraXpert attribution exist before archiving."""
+    graxpert_model = models_dir / GRAXPERT_MODEL_RELATIVE_PATH
+    if not graxpert_model.is_file():
+        raise ValueError(
+            f"Missing GraXpert model: {graxpert_model}. See {graxpert_model.parent / 'README.md'}."
+        )
+    notice_names = ("README.md", "LICENSE.html", "LICENSE.txt")
+    for notice in notice_names:
+        if not (graxpert_model.parent / notice).is_file():
+            raise ValueError(f"Missing GraXpert attribution/license notice: {graxpert_model.parent / notice}")
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -38,6 +55,7 @@ def main() -> None:
         print(f"Fetching published models for v{version}...", file=sys.stderr)
         archive = download_models_archive(output, version)
     else:
+        prepare_graxpert_model_bundle(ROOT / "models")
         output.mkdir(parents=True, exist_ok=True)
         archive = output / models_archive_name(version)
         create_models_archive(archive)

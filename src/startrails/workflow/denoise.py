@@ -8,17 +8,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 
-from startrails.op.denoise.base import DenoiseOperation
 from startrails.lib.file import DenoiseInputFile, OutputFile
 from startrails.lib.project_denoise import DenoiseProject
-from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
-from startrails.op.denoise.detect_sky import DetectSky
-from startrails.op.denoise.refine_mask import RefineMask
-from startrails.op.denoise.align_stars import AlignStars, AlignResult
-from startrails.op.denoise.stack_denoise import StackDenoise
+from startrails.lib.util import Observable
+from startrails.op.denoise.align_stars import AlignResult, AlignStars
 from startrails.op.denoise.compose_horizon import ComposeHorizon
 from startrails.op.denoise.pipeline import DenoisePipeline
+from startrails.op.denoise.stack_denoise import StackDenoise
 from startrails.workflow.base import Workflow
+from startrails.workflow.masking import SkyMaskingWorkflowMixin
 
 if TYPE_CHECKING:
     from startrails.app import App
@@ -27,7 +25,7 @@ if TYPE_CHECKING:
 ProgressObserver = Callable[[int, int, int, bool, Optional[dict[str, Any]]], None]
 
 
-class DenoiseWorkflow(Workflow):
+class DenoiseWorkflow(Workflow, SkyMaskingWorkflowMixin):
     """Workflow controller orchestrating the Denoise mode pipeline and data."""
 
     def __init__(self, app):
@@ -40,7 +38,10 @@ class DenoiseWorkflow(Workflow):
     def operation_session(self):
         self._cancel_event = Event()
         revision = self.project.processing_revision
-        session = DenoiseOperation(self._cancel_event, lambda: self.project is not self.app.project or revision != self.project.processing_revision)
+        session = Observable(
+            self._cancel_event,
+            lambda: self.project is not self.app.project or revision != self.project.processing_revision,
+        )
         session.startJob(1)
         self._session_operation = session
         self.app.activeOperation = session
@@ -54,7 +55,11 @@ class DenoiseWorkflow(Workflow):
     def _new_operation(self, operation_type, *args):
         revision = self.project.processing_revision
         signature = self.project.source_signature(stacking=True)
-        check = lambda: self.project is not self.app.project or revision != self.project.processing_revision or signature != self.project.source_signature(stacking=True)
+        check = lambda: (
+            self.project is not self.app.project
+            or revision != self.project.processing_revision
+            or signature != self.project.source_signature(stacking=True)
+        )
         if self._session_operation is not None:
             input_check = check
             session_check = self._session_operation.shouldInterrupt
@@ -97,7 +102,9 @@ class DenoiseWorkflow(Workflow):
         for p in paths:
             file_obj = DenoiseInputFile(basename=os.path.basename(p), path=p)
             self.project.star_files.append(file_obj)
-        reference_changed = previous_reference is not None and self.project.get_reference_file() is not previous_reference
+        reference_changed = (
+            previous_reference is not None and self.project.get_reference_file() is not previous_reference
+        )
         self.invalidate_results(reference_changed=clear or reference_changed)
 
     def remove_star_file(self, file: DenoiseInputFile) -> None:
@@ -116,9 +123,7 @@ class DenoiseWorkflow(Workflow):
         if clear:
             self.project.noise_files = []
         for p in paths:
-            self.project.noise_files.append(
-                DenoiseInputFile(basename=os.path.basename(p), path=p)
-            )
+            self.project.noise_files.append(DenoiseInputFile(basename=os.path.basename(p), path=p))
         self.invalidate_results()
 
     def remove_noise_file(self, file: DenoiseInputFile) -> None:
@@ -141,72 +146,14 @@ class DenoiseWorkflow(Workflow):
         """Return a DenoiseProject representation of current project state."""
         self.project.validate_cached_results()
         if self.project.mask_path and not self.project.mask_invalidated and not Path(self.project.mask_path).is_file():
-            raise FileNotFoundError(f"Sky mask is missing: {self.project.mask_path}. Detect or paint a replacement mask.")
+            raise FileNotFoundError(
+                f"Sky mask is missing: {self.project.mask_path}. Detect or paint a replacement mask."
+            )
         return self.project.to_denoise_config()
 
     # -------------------------------------------------------------------------
     # Observable pipeline operations
     # -------------------------------------------------------------------------
-
-    def do_detect_sky(
-        self,
-        image: np.ndarray,
-        progress_bar: Optional[ProgressObserver] = None,
-        *,
-        model_type: str,
-        model_path: Optional[str],
-        device: str,
-        input_size: int,
-    ) -> Optional[np.ndarray]:
-        """Run autonomous neural sky detection."""
-        detector = self._new_operation(DetectSky)
-        if progress_bar is not None:
-            detector.addObserver(progress_bar)
-        self.app.activeOperation = detector
-        try:
-            mask = detector.detect(
-                image,
-                model_type=model_type,
-                model_path=model_path,
-                device=device,
-                input_size=input_size,
-            )
-            return mask
-        finally:
-            self.app.activeOperation = self._session_operation
-            if progress_bar is not None:
-                detector.removeObserver(progress_bar)
-            self.save_project()
-
-    def do_refine_mask(
-        self,
-        image: np.ndarray,
-        coarse_mask: np.ndarray,
-        progress_bar: Optional[ProgressObserver] = None,
-        *,
-        search_radius: Optional[int],
-        erosion_pixels: int,
-        foliage_protection: bool,
-    ) -> Optional[np.ndarray]:
-        """Refine celestial sky mask along high-frequency terrain boundaries."""
-        refiner = self._new_operation(RefineMask)
-        if progress_bar is not None:
-            refiner.addObserver(progress_bar)
-        self.app.activeOperation = refiner
-        try:
-            refined = refiner.refine(
-                image,
-                coarse_mask,
-                search_radius=search_radius,
-                erosion_pixels=erosion_pixels,
-                foliage_protection=foliage_protection,
-            )
-            return refined
-        finally:
-            self.app.activeOperation = self._session_operation
-            if progress_bar is not None:
-                refiner.removeObserver(progress_bar)
-            self.save_project()
 
     @staticmethod
     def has_cached_alignment(config: DenoiseProject) -> bool:
@@ -214,8 +161,10 @@ class DenoiseWorkflow(Workflow):
         if not config.star_images:
             return False
         base_path = AlignStars.get_base_image_path(config)
-        return all(Path(path).resolve() == base_path or config.homographies.get(Path(path).resolve()) is not None
-                   for path in config.star_images)
+        return all(
+            Path(path).resolve() == base_path or config.homographies.get(Path(path).resolve()) is not None
+            for path in config.star_images
+        )
 
     def do_align_stars(
         self,
@@ -260,7 +209,7 @@ class DenoiseWorkflow(Workflow):
             return "project"
         name = Path(self.project.projectFile).name
         if name.endswith(".proj_denoise"):
-            return name[:-len(".proj_denoise")]
+            return name[: -len(".proj_denoise")]
         if name.endswith(".json"):
             return name[:-5]
         return Path(self.project.projectFile).stem
@@ -288,7 +237,12 @@ class DenoiseWorkflow(Workflow):
         )
         candidates = [
             (final_comp, "Final Composite"),
-            (Path(self.project.output_path).resolve() if getattr(self.project, "output_path", None) else (out_dir / f"{stem}.tif").resolve(), "Composite"),
+            (
+                Path(self.project.output_path).resolve()
+                if getattr(self.project, "output_path", None)
+                else (out_dir / f"{stem}.tif").resolve(),
+                "Composite",
+            ),
             (self.project.artifact_path("sky_stack"), "Sky Stack"),
             (self.project.artifact_path("ground_stack"), "Ground Stack"),
             ((out_dir / "base_composite.tif").resolve(), "Base Stack"),
@@ -308,7 +262,9 @@ class DenoiseWorkflow(Workflow):
                 if p.suffix.lower() in [".tif", ".tiff", ".png", ".jpg", ".jpeg"]:
                     seen_paths.add(str(p.resolve()))
                     mtime = p.stat().st_mtime
-                    out_files.append(OutputFile(basename=p.name, path=str(p.resolve()), operation="Output", mtime=mtime))
+                    out_files.append(
+                        OutputFile(basename=p.name, path=str(p.resolve()), operation="Output", mtime=mtime)
+                    )
 
         return out_files
 
@@ -322,15 +278,27 @@ class DenoiseWorkflow(Workflow):
             except Exception:
                 pass
         if self.project is not None:
-            if getattr(self.project, "final_output_path", None) and Path(self.project.final_output_path).resolve() == p.resolve():
+            if (
+                getattr(self.project, "final_output_path", None)
+                and Path(self.project.final_output_path).resolve() == p.resolve()
+            ):
                 self.project.final_output_path = None
             if getattr(self.project, "output_path", None) and Path(self.project.output_path).resolve() == p.resolve():
                 self.project.output_path = None
-            if getattr(self.project, "gradient_mask_path", None) and Path(self.project.gradient_mask_path).resolve() == p.resolve():
+            if (
+                getattr(self.project, "gradient_mask_path", None)
+                and Path(self.project.gradient_mask_path).resolve() == p.resolve()
+            ):
                 self.project.gradient_mask_path = None
-            if getattr(self.project, "sky_stack_path", None) and Path(self.project.sky_stack_path).resolve() == p.resolve():
+            if (
+                getattr(self.project, "sky_stack_path", None)
+                and Path(self.project.sky_stack_path).resolve() == p.resolve()
+            ):
                 self.project.sky_stack_path = None
-            if getattr(self.project, "ground_stack_path", None) and Path(self.project.ground_stack_path).resolve() == p.resolve():
+            if (
+                getattr(self.project, "ground_stack_path", None)
+                and Path(self.project.ground_stack_path).resolve() == p.resolve()
+            ):
                 self.project.ground_stack_path = None
             if getattr(self.project, "mask_path", None) and Path(self.project.mask_path).resolve() == p.resolve():
                 self.project.mask_path = None
@@ -481,6 +449,7 @@ class DenoiseWorkflow(Workflow):
 
         if mask is None:
             from startrails.lib.denoise.mask import MaskHandler
+
             if not self.project.mask_invalidated:
                 mask_path = getattr(self.project, "mask_path", None)
                 if mask_path and Path(mask_path).exists():

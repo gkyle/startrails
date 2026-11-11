@@ -66,8 +66,6 @@ class SidebarDenoise(QWidget):
         self._step_cards = (self.skyCard, self.alignCard, self.stackCard, self.tuneCard, self.exportCard)
         for card in self._step_cards:
             card.expanded.connect(lambda c=card: self._collapse_other_steps(c))
-        self.skyCard.expansion_changed.connect(self.skySettings.ui.showMaskOverlay.setChecked)
-        self.skySettings.ui.showMaskOverlay.setChecked(self.skyCard.is_expanded)
         self.sync_expanded_step()
 
         self.update_operations_progress(app)
@@ -90,7 +88,13 @@ class SidebarDenoise(QWidget):
 
     def init_app(self, app) -> None:
         self.app = app
-        for settings in (self.skySettings, self.alignSettings, self.stackSettings, self.tuneSettings, self.exportSettings):
+        for settings in (
+            self.skySettings,
+            self.alignSettings,
+            self.stackSettings,
+            self.tuneSettings,
+            self.exportSettings,
+        ):
             if hasattr(settings, "init_app"):
                 settings.init_app(app)
             elif hasattr(settings, "app"):
@@ -103,7 +107,8 @@ class SidebarDenoise(QWidget):
         self.stackSettings.reset()
         self.tuneSettings.reset()
         self.exportSettings.reset()
-        self.skySettings.ui.showMaskOverlay.setChecked(self.skyCard.is_expanded)
+        if hasattr(self, "skyCard") and self.skyCard is not None:
+            self.skyCard.reset_before_after(emit=False)
         if hasattr(self, "exportCard") and self.exportCard is not None:
             self.exportCard.set_alert(False)
 
@@ -133,7 +138,7 @@ class SidebarDenoise(QWidget):
         can_process = has_stars and has_mask
 
         has_manual = bool(getattr(proj, "has_manual_sky_corrections", False))
-        self.skySettings.refresh_inputs(has_manual_corrections=has_manual)
+        self.skySettings.refresh_inputs(has_source=has_stars)
         self.exportSettings.refresh_inputs(has_manual_corrections=has_manual)
         if hasattr(self, "exportCard") and self.exportCard is not None:
             self.exportCard.set_alert(has_manual)
@@ -144,31 +149,38 @@ class SidebarDenoise(QWidget):
         if not has_stars:
             self.skyCard.setStatus("locked", "Add star images to begin")
         else:
-            self.skyCard.setStatus("done" if has_mask else "ready",
-                                   "Sky mask defined" if has_mask else "Ready to detect or paint mask")
+            self.skyCard.setStatus(
+                "done" if has_mask else "ready", "Sky mask defined" if has_mask else "Ready to detect or paint mask"
+            )
 
         if not can_process:
             prerequisite = "Add star images to begin" if not has_stars else "Requires sky mask"
             self.alignCard.setStatus("locked", prerequisite)
             self.stackCard.setStatus("locked", prerequisite)
         else:
-            self.alignCard.setStatus("done" if has_homo else "ready",
-                                     f"{len(homographies)} frames aligned" if has_homo else "Ready to align")
-            self.stackCard.setStatus("done" if has_compositor else "ready",
-                                     "Base stacks ready" if has_compositor else
-                                     ("Ready to stack" if has_homo else "Ready to align and stack"))
+            self.alignCard.setStatus(
+                "done" if has_homo else "ready", f"{len(homographies)} frames aligned" if has_homo else "Ready to align"
+            )
+            self.stackCard.setStatus(
+                "done" if has_compositor else "ready",
+                "Base stacks ready"
+                if has_compositor
+                else ("Ready to stack" if has_homo else "Ready to align and stack"),
+            )
 
         if not has_compositor:
             self.tuneCard.setStatus("locked", "Requires base stacks")
         else:
             self.tuneCard.setStatus("done" if output_saved else "ready", "Live canvas tuning active")
 
-        completed = sum([
-            1 if has_mask else 0,
-            1 if has_homo else 0,
-            1 if has_compositor else 0,
-            1 if output_saved else 0,
-        ])
+        completed = sum(
+            [
+                1 if has_mask else 0,
+                1 if has_homo else 0,
+                1 if has_compositor else 0,
+                1 if output_saved else 0,
+            ]
+        )
         if self.lbl_ops_progress is not None:
             self.lbl_ops_progress.setText(f"{completed} of 4 steps complete")
         if self.ops_progress_bar is not None:

@@ -1,0 +1,177 @@
+# -*- coding: utf-8 -*-
+
+################################################################################
+## Form generated from reading UI file 'step_separate.ui'
+##
+## Created by: Qt User Interface Compiler version 6.12.0
+##
+## WARNING! All changes made in this file will be lost when recompiling UI file!
+################################################################################
+
+from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
+    QMetaObject, QObject, QPoint, QRect,
+    QSize, QTime, QUrl, Qt)
+from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
+    QFont, QFontDatabase, QGradient, QIcon,
+    QImage, QKeySequence, QLinearGradient, QPainter,
+    QPalette, QPixmap, QRadialGradient, QTransform)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame,
+    QHBoxLayout, QLabel, QPushButton, QSizePolicy,
+    QSpacerItem, QToolButton, QVBoxLayout, QWidget)
+
+from startrails.ui.checkbox_label import CheckboxLabel
+from . import resources_rc
+
+class Ui_SeparateStarsSettings(object):
+    def setupUi(self, SeparateStarsSettings):
+        if not SeparateStarsSettings.objectName():
+            SeparateStarsSettings.setObjectName(u"SeparateStarsSettings")
+        SeparateStarsSettings.resize(300, 200)
+        SeparateStarsSettings.setStyleSheet(u"QLabel#lbl_stride {\n"
+"    font-size: 11px;\n"
+"    color: #475569;\n"
+"}\n"
+"QComboBox#combo_stride {\n"
+"    font-size: 11px;\n"
+"    padding: 2px 4px;\n"
+"}")
+        self.layout = QVBoxLayout(SeparateStarsSettings)
+        self.layout.setSpacing(8)
+        self.layout.setObjectName(u"layout")
+        self.layout.setContentsMargins(4, 4, 4, 4)
+        self.unconfigured_box = QFrame(SeparateStarsSettings)
+        self.unconfigured_box.setObjectName(u"unconfigured_box")
+        self.unconf_layout = QVBoxLayout(self.unconfigured_box)
+        self.unconf_layout.setSpacing(6)
+        self.unconf_layout.setObjectName(u"unconf_layout")
+        self.unconf_layout.setContentsMargins(6, 6, 6, 6)
+        self.lbl_unconf_msg = QLabel(self.unconfigured_box)
+        self.lbl_unconf_msg.setObjectName(u"lbl_unconf_msg")
+        self.lbl_unconf_msg.setWordWrap(True)
+
+        self.unconf_layout.addWidget(self.lbl_unconf_msg)
+
+
+        self.layout.addWidget(self.unconfigured_box)
+
+        self.configured_box = QWidget(SeparateStarsSettings)
+        self.configured_box.setObjectName(u"configured_box")
+        self.conf_layout = QVBoxLayout(self.configured_box)
+        self.conf_layout.setSpacing(6)
+        self.conf_layout.setObjectName(u"conf_layout")
+        self.conf_layout.setContentsMargins(0, 0, 0, 0)
+        self.chroma_row = QHBoxLayout()
+        self.chroma_row.setObjectName(u"chroma_row")
+        self.lbl_chroma_postfilter = CheckboxLabel(self.configured_box)
+        self.lbl_chroma_postfilter.setObjectName(u"lbl_chroma_postfilter")
+        self.lbl_chroma_postfilter.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.lbl_chroma_postfilter.setStyleSheet(u"color: #475569; font-size: 11px;")
+
+        self.chroma_row.addWidget(self.lbl_chroma_postfilter)
+
+        self.check_chroma_postfilter = QCheckBox(self.configured_box)
+        self.check_chroma_postfilter.setObjectName(u"check_chroma_postfilter")
+        self.check_chroma_postfilter.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.check_chroma_postfilter.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.check_chroma_postfilter.setChecked(True)
+
+        self.chroma_row.addWidget(self.check_chroma_postfilter, 0, Qt.AlignmentFlag.AlignRight)
+
+
+        self.conf_layout.addLayout(self.chroma_row)
+
+        self.runLayout = QHBoxLayout()
+        self.runLayout.setSpacing(0)
+        self.runLayout.setObjectName(u"runLayout")
+        self.run = QPushButton(self.configured_box)
+        self.run.setObjectName(u"run")
+        self.run.setEnabled(False)
+        self.run.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.run.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+        self.runLayout.addWidget(self.run)
+
+        self.advancedToggle = QToolButton(self.configured_box)
+        self.advancedToggle.setObjectName(u"advancedToggle")
+        self.advancedToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.advancedToggle.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.advancedToggle.setCheckable(True)
+        self.advancedToggle.setChecked(False)
+        self.advancedToggle.setArrowType(Qt.ArrowType.RightArrow)
+
+        self.runLayout.addWidget(self.advancedToggle)
+
+
+        self.conf_layout.addLayout(self.runLayout)
+
+        self.advancedBody = QWidget(self.configured_box)
+        self.advancedBody.setObjectName(u"advancedBody")
+        self.advancedLayout = QVBoxLayout(self.advancedBody)
+        self.advancedLayout.setSpacing(6)
+        self.advancedLayout.setObjectName(u"advancedLayout")
+        self.advancedLayout.setContentsMargins(4, 2, 4, 2)
+        self.stride_row = QHBoxLayout()
+        self.stride_row.setSpacing(6)
+        self.stride_row.setObjectName(u"stride_row")
+        self.lbl_stride = QLabel(self.advancedBody)
+        self.lbl_stride.setObjectName(u"lbl_stride")
+
+        self.stride_row.addWidget(self.lbl_stride)
+
+        self.combo_stride = QComboBox(self.advancedBody)
+        self.combo_stride.setObjectName(u"combo_stride")
+
+        self.stride_row.addWidget(self.combo_stride)
+
+        self.stride_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.stride_row.addItem(self.stride_spacer)
+
+
+        self.advancedLayout.addLayout(self.stride_row)
+
+
+        self.conf_layout.addWidget(self.advancedBody)
+
+
+        self.layout.addWidget(self.configured_box)
+
+        self.lbl_status = QLabel(SeparateStarsSettings)
+        self.lbl_status.setObjectName(u"lbl_status")
+        self.lbl_status.setWordWrap(True)
+
+        self.layout.addWidget(self.lbl_status)
+
+#if QT_CONFIG(shortcut)
+        self.lbl_chroma_postfilter.setBuddy(self.check_chroma_postfilter)
+#endif // QT_CONFIG(shortcut)
+
+        self.retranslateUi(SeparateStarsSettings)
+
+        QMetaObject.connectSlotsByName(SeparateStarsSettings)
+    # setupUi
+
+    def retranslateUi(self, SeparateStarsSettings):
+        self.lbl_unconf_msg.setText(QCoreApplication.translate("SeparateStarsSettings", u"Star removal model is missing or unavailable.", None))
+        self.lbl_chroma_postfilter.setText(QCoreApplication.translate("SeparateStarsSettings", u"Chroma postfilter", None))
+#if QT_CONFIG(accessibility)
+        self.check_chroma_postfilter.setAccessibleName(QCoreApplication.translate("SeparateStarsSettings", u"Chroma postfilter", None))
+#endif // QT_CONFIG(accessibility)
+#if QT_CONFIG(tooltip)
+        self.check_chroma_postfilter.setToolTip(QCoreApplication.translate("SeparateStarsSettings", u"Suppress residual color halos around removed stars while preserving sky background.", None))
+#endif // QT_CONFIG(tooltip)
+        self.check_chroma_postfilter.setText("")
+        self.run.setText(QCoreApplication.translate("SeparateStarsSettings", u"Separate Stars", None))
+#if QT_CONFIG(tooltip)
+        self.advancedToggle.setToolTip(QCoreApplication.translate("SeparateStarsSettings", u"Show advanced settings", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(accessibility)
+        self.advancedToggle.setAccessibleName(QCoreApplication.translate("SeparateStarsSettings", u"Show advanced settings", None))
+#endif // QT_CONFIG(accessibility)
+        self.advancedToggle.setText("")
+        self.lbl_stride.setText(QCoreApplication.translate("SeparateStarsSettings", u"Stride:", None))
+        self.lbl_status.setText("")
+        pass
+    # retranslateUi
+
+Ui_separateStarsSettings = Ui_SeparateStarsSettings

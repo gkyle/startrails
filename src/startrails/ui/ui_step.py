@@ -16,7 +16,9 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLabel,
-    QPushButton, QSizePolicy, QVBoxLayout, QWidget)
+    QPushButton, QSizePolicy, QToolButton, QVBoxLayout,
+    QWidget)
+from . import resources_rc
 
 class Ui_StepCard(object):
     def setupUi(self, StepCard):
@@ -125,6 +127,34 @@ class Ui_StepCard(object):
 
         self.headerLayout.addLayout(self.textColumn)
 
+        self.previewToggle = QToolButton(self.headerWidget)
+        self.previewToggle.setObjectName(u"previewToggle")
+        self.previewToggle.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.previewToggle.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.previewToggle.setStyleSheet(u"QToolButton#previewToggle {\n"
+"           border: none;\n"
+"           background: transparent;\n"
+"           padding: 0px;\n"
+"           min-width: 20px;\n"
+"           max-width: 20px;\n"
+"           min-height: 20px;\n"
+"           max-height: 20px;\n"
+"           qproperty-icon: url(:/startrails/ui/preview_eye.svg);\n"
+"           qproperty-iconSize: 14px 14px;\n"
+"       }\n"
+"       QToolButton#previewToggle[showingBefore=\"true\"] {\n"
+"           qproperty-icon: url(:/startrails/ui/preview_eye_off.svg);\n"
+"       }")
+        icon = QIcon()
+        icon.addFile(u":/startrails/ui/preview_eye.svg", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.previewToggle.setIcon(icon)
+        self.previewToggle.setIconSize(QSize(14, 14))
+        self.previewToggle.setCheckable(True)
+        self.previewToggle.setChecked(False)
+        self.previewToggle.setProperty(u"showingBefore", False)
+
+        self.headerLayout.addWidget(self.previewToggle)
+
         self.statusBadge = QLabel(self.headerWidget)
         self.statusBadge.setObjectName(u"statusBadge")
         self.statusBadge.setStyleSheet(u"QLabel#statusBadge {\n"
@@ -172,6 +202,13 @@ class Ui_StepCard(object):
         self.number.setText(QCoreApplication.translate("StepCard", u"1", None))
         self.toggle.setText(QCoreApplication.translate("StepCard", u"Step Title", None))
         self.subtitle.setText(QCoreApplication.translate("StepCard", u"Ready", None))
+#if QT_CONFIG(tooltip)
+        self.previewToggle.setToolTip(QCoreApplication.translate("StepCard", u"Compare before and after preview", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(accessibility)
+        self.previewToggle.setAccessibleName(QCoreApplication.translate("StepCard", u"Compare before and after preview", None))
+#endif // QT_CONFIG(accessibility)
+        self.previewToggle.setText("")
         self.statusBadge.setText(QCoreApplication.translate("StepCard", u"\u2713 Ready", None))
         self.chevron.setText("")
         pass

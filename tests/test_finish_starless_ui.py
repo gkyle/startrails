@@ -1,0 +1,1310 @@
+"""Focused UI unit and interaction tests for Finish Starless controls (Step 8)."""
+
+from __future__ import annotations
+
+from dataclasses import replace
+from pathlib import Path
+from unittest.mock import patch
+
+import numpy as np
+from PySide6.QtCore import QCoreApplication, QEvent, QObject, QPoint, Qt
+from PySide6.QtTest import QTest
+from startrails.lib.file import OutputFile
+from startrails.lib.finish.defaults import (
+    DEFAULT_DENOISE_SCOPE,
+    DEFAULT_DENOISE_STRENGTH_PERCENT,
+    DEFAULT_DETAIL_AMOUNT_PERCENT,
+    DEFAULT_STRUCTURE_AMOUNT_PERCENT,
+    FINISH_EXT,
+    ROLE_DENOISED_STARLESS,
+    ROLE_FINISHED_COMPOSITE,
+    ROLE_FINISHED_STARLESS,
+    ROLE_SEPARATED_STARLESS,
+    ROLE_SEPARATED_STARS,
+    ROLE_SKY_MASK,
+    SCOPE_SKY_ONLY,
+    SCOPE_WHOLE_IMAGE,
+)
+from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
+from startrails.lib.image_io import imwrite
+from startrails.lib.project_finish import FinishProject
+from startrails.ui.canvasLabel import CanvasLabel
+from startrails.ui.sidebar_finish import SidebarFinish
+from startrails.ui.steps_starless import FinishStarlessSettings
+from startrails.ui.views.finish import FinishView
+from startrails.workflow.finish import FinishWorkflow
+from support import QtTestCase
+
+
+class TestFinishStarlessSettings(QtTestCase):
+    """Unit tests for the Step 3 FinishStarlessSettings card body widget."""
+
+    def setUp(self):
+        super().setUp()
+        self.widget = FinishStarlessSettings()
+        self.widget.show()
+        self.addCleanup(self.widget.deleteLater)
+
+    def test_default_control_values(self):
+        """Initial widget state matches authoritative defaults."""
+        self.assertEqual(self.widget.get_strength(), DEFAULT_DENOISE_STRENGTH_PERCENT)
+        self.assertEqual(self.widget.spin_strength.text(), f"{int(DEFAULT_DENOISE_STRENGTH_PERCENT)}%")
+        self.assertEqual(self.widget.spin_strength.value(), int(DEFAULT_DENOISE_STRENGTH_PERCENT))
+        self.assertEqual(self.widget.get_scope(), DEFAULT_DENOISE_SCOPE)
+        self.assertTrue(self.widget.radio_sky_only.isChecked())
+        self.assertFalse(self.widget.radio_whole_image.isChecked())
+        self.assertEqual(self.widget.get_structure(), DEFAULT_STRUCTURE_AMOUNT_PERCENT)
+        self.assertEqual(self.widget.spin_structure.text(), f"{int(DEFAULT_STRUCTURE_AMOUNT_PERCENT)}%")
+        self.assertEqual(self.widget.spin_structure.value(), 20)
+        self.assertEqual(self.widget.slider_structure.value(), 20)
+        self.assertEqual(self.widget.get_detail(), DEFAULT_DETAIL_AMOUNT_PERCENT)
+        self.assertEqual(self.widget.spin_detail.text(), f"{int(DEFAULT_DETAIL_AMOUNT_PERCENT)}%")
+        self.assertEqual(self.widget.spin_detail.value(), 20)
+        self.assertEqual(self.widget.slider_detail.value(), 20)
+        self.assertFalse(self.widget.unconfigured_box.isHidden())
+        self.assertTrue(self.widget.get_enable_denoise())
+        self.assertTrue(self.widget.get_enable_sharpen())
+        self.assertTrue(self.widget.check_enable_denoise.isChecked())
+        self.assertTrue(self.widget.check_enable_sharpen.isChecked())
+
+    def test_strength_slider_interaction(self):
+        """Adjusting strength slider or spinbox keeps both synced and emits strength_changed."""
+        signals = []
+        self.widget.strength_changed.connect(signals.append)
+
+        self.widget.slider_strength.setValue(75)
+        self.assertEqual(self.widget.spin_strength.value(), 75)
+        self.assertEqual(self.widget.get_strength(), 75.0)
+        self.assertEqual(signals, [75.0])
+
+        self.widget.spin_strength.setValue(40)
+        self.assertEqual(self.widget.slider_strength.value(), 40)
+        self.assertEqual(self.widget.get_strength(), 40.0)
+        self.assertEqual(signals, [75.0, 40.0])
+
+    def test_structure_slider_interaction(self):
+        """Adjusting structure slider or spinbox keeps both synced and emits signals."""
+        amount_signals = []
+        alias_signals = []
+        settings_signals = []
+        self.widget.structure_amount_changed.connect(amount_signals.append)
+        self.widget.structure_changed.connect(alias_signals.append)
+        self.widget.settings_changed.connect(lambda: settings_signals.append(True))
+
+        self.widget.slider_structure.setValue(45)
+        self.assertEqual(self.widget.spin_structure.value(), 45)
+        self.assertEqual(self.widget.get_structure(), 45.0)
+        self.assertEqual(self.widget.get_structure_amount(), 45.0)
+        self.assertEqual(amount_signals, [45.0])
+        self.assertEqual(alias_signals, [45.0])
+        self.assertEqual(settings_signals, [True])
+
+        self.widget.spin_structure.setValue(20)
+        self.assertEqual(self.widget.slider_structure.value(), 20)
+        self.assertEqual(amount_signals, [45.0, 20.0])
+        self.assertEqual(alias_signals, [45.0, 20.0])
+        self.assertEqual(len(settings_signals), 2)
+
+    def test_detail_slider_interaction(self):
+        """Adjusting detail slider or spinbox keeps both synced and emits signals."""
+        amount_signals = []
+        alias_signals = []
+        settings_signals = []
+        self.widget.detail_amount_changed.connect(amount_signals.append)
+        self.widget.detail_changed.connect(alias_signals.append)
+        self.widget.settings_changed.connect(lambda: settings_signals.append(True))
+
+        self.widget.slider_detail.setValue(60)
+        self.assertEqual(self.widget.spin_detail.value(), 60)
+        self.assertEqual(self.widget.get_detail(), 60.0)
+        self.assertEqual(self.widget.get_detail_amount(), 60.0)
+        self.assertEqual(amount_signals, [60.0])
+        self.assertEqual(alias_signals, [60.0])
+        self.assertEqual(settings_signals, [True])
+
+        self.widget.spin_detail.setValue(15)
+        self.assertEqual(self.widget.slider_detail.value(), 15)
+        self.assertEqual(amount_signals, [60.0, 15.0])
+        self.assertEqual(alias_signals, [60.0, 15.0])
+        self.assertEqual(len(settings_signals), 2)
+
+    def test_scope_radio_interaction(self):
+        """Toggling scope radios updates state and emits scope_changed."""
+        scopes = []
+        self.widget.scope_changed.connect(scopes.append)
+
+        self.widget.radio_whole_image.setChecked(True)
+        self.assertEqual(self.widget.get_scope(), SCOPE_WHOLE_IMAGE)
+        self.assertEqual(scopes, [SCOPE_WHOLE_IMAGE])
+
+        self.widget.radio_sky_only.setChecked(True)
+        self.assertEqual(self.widget.get_scope(), SCOPE_SKY_ONLY)
+        self.assertEqual(scopes, [SCOPE_WHOLE_IMAGE, SCOPE_SKY_ONLY])
+
+    def test_programmatic_setters_block_signals(self):
+        """set_strength, set_scope, set_structure, and set_detail do not fire signals."""
+        strength_sig = []
+        scope_sig = []
+        structure_sig = []
+        detail_sig = []
+        settings_sig = []
+        self.widget.strength_changed.connect(strength_sig.append)
+        self.widget.scope_changed.connect(scope_sig.append)
+        self.widget.structure_changed.connect(structure_sig.append)
+        self.widget.detail_changed.connect(detail_sig.append)
+        self.widget.settings_changed.connect(lambda: settings_sig.append(True))
+
+        self.widget.set_strength(80.0)
+        self.widget.set_scope(SCOPE_WHOLE_IMAGE)
+        self.widget.set_structure(35.0)
+        self.widget.set_detail(75.0)
+
+        self.assertEqual(self.widget.get_strength(), 80.0)
+        self.assertEqual(self.widget.spin_strength.value(), 80)
+        self.assertEqual(self.widget.get_scope(), SCOPE_WHOLE_IMAGE)
+        self.assertEqual(self.widget.get_structure(), 35.0)
+        self.assertEqual(self.widget.get_structure_amount(), 35.0)
+        self.assertEqual(self.widget.spin_structure.value(), 35)
+        self.assertEqual(self.widget.get_detail(), 75.0)
+        self.assertEqual(self.widget.get_detail_amount(), 75.0)
+        self.assertEqual(self.widget.spin_detail.value(), 75)
+        self.assertEqual(strength_sig, [])
+        self.assertEqual(scope_sig, [])
+        self.assertEqual(structure_sig, [])
+        self.assertEqual(detail_sig, [])
+        self.assertEqual(settings_sig, [])
+
+        # Clamping behavior
+        self.widget.set_structure_amount(-10.0)
+        self.assertEqual(self.widget.get_structure(), 0.0)
+        self.assertEqual(self.widget.spin_structure.value(), 0)
+        self.widget.set_structure_amount(150.0)
+        self.assertEqual(self.widget.get_structure(), 100.0)
+        self.assertEqual(self.widget.spin_structure.value(), 100)
+
+        self.widget.set_detail_amount(-20.0)
+        self.assertEqual(self.widget.get_detail(), 0.0)
+        self.assertEqual(self.widget.spin_detail.value(), 0)
+        self.widget.set_detail_amount(120.0)
+        self.assertEqual(self.widget.get_detail(), 100.0)
+        self.assertEqual(self.widget.spin_detail.value(), 100)
+
+    def test_set_from_project_restores_structure_and_detail(self):
+        """set_from_project updates structure and detail controls from project settings."""
+        proj = FinishProject(project_file=str(self.root / f"temp{FINISH_EXT}"))
+        settings = proj.get_settings()
+        from dataclasses import replace
+
+        proj.update_settings(replace(settings, structure_amount=33.0, detail_amount=66.0))
+
+        self.widget.set_from_project(proj)
+        self.assertEqual(self.widget.get_structure(), 33.0)
+        self.assertEqual(self.widget.get_detail(), 66.0)
+        self.assertEqual(self.widget.spin_structure.value(), 33)
+        self.assertEqual(self.widget.spin_detail.value(), 66)
+
+    def test_enable_starless_toggle_and_control_enabling(self):
+        """Toggling denoise and post-denoise sharpen updates controls and remembers sharpen state."""
+        self.assertEqual(self.widget.lbl_enable_sharpen.text(), "Enable post-denoise sharpen")
+        self.assertTrue(self.widget.get_enable_denoise())
+        self.assertTrue(self.widget.get_enable_sharpen())
+        self.assertTrue(self.widget.check_enable_denoise.isChecked())
+        self.assertTrue(self.widget.check_enable_sharpen.isChecked())
+        self.assertTrue(self.widget.slider_strength.isEnabled())
+        self.assertTrue(self.widget.spin_strength.isEnabled())
+        self.assertTrue(self.widget.slider_structure.isEnabled())
+        self.assertTrue(self.widget.spin_structure.isEnabled())
+        self.assertTrue(self.widget.slider_detail.isEnabled())
+        self.assertTrue(self.widget.spin_detail.isEnabled())
+        self.assertTrue(self.widget.radio_sky_only.isEnabled())
+
+        denoise_sigs = []
+        sharpen_sigs = []
+        self.widget.enable_denoise_changed.connect(denoise_sigs.append)
+        self.widget.enable_sharpen_changed.connect(sharpen_sigs.append)
+
+        # Uncheck denoise -> implicitly unchecks/disables post-denoise sharpen without emitting sharpen signal
+        self.widget.check_enable_denoise.setChecked(False)
+        self.assertFalse(self.widget.get_enable_denoise())
+        self.assertFalse(self.widget.get_enable_sharpen())
+        self.assertFalse(self.widget.check_enable_sharpen.isChecked())
+        self.assertFalse(self.widget.check_enable_sharpen.isEnabled())
+        self.assertFalse(self.widget.lbl_enable_sharpen.isEnabled())
+        self.assertEqual(denoise_sigs, [False])
+        self.assertEqual(sharpen_sigs, [])
+        self.assertFalse(self.widget.slider_strength.isEnabled())
+        self.assertFalse(self.widget.spin_strength.isEnabled())
+        self.assertFalse(self.widget.radio_sky_only.isEnabled())
+        self.assertFalse(self.widget.radio_whole_image.isEnabled())
+        self.assertFalse(self.widget.slider_structure.isEnabled())
+        self.assertFalse(self.widget.spin_structure.isEnabled())
+        self.assertFalse(self.widget.slider_detail.isEnabled())
+        self.assertFalse(self.widget.spin_detail.isEnabled())
+        self.assertTrue(self.widget.check_enable_denoise.isEnabled())
+
+        # Re-check denoise -> re-enables and restores remembered sharpen=True state
+        self.widget.check_enable_denoise.setChecked(True)
+        self.assertTrue(self.widget.get_enable_denoise())
+        self.assertTrue(self.widget.get_enable_sharpen())
+        self.assertTrue(self.widget.check_enable_sharpen.isChecked())
+        self.assertTrue(self.widget.check_enable_sharpen.isEnabled())
+        self.assertTrue(self.widget.slider_structure.isEnabled())
+        self.assertTrue(self.widget.spin_structure.isEnabled())
+        self.assertTrue(self.widget.slider_detail.isEnabled())
+        self.assertTrue(self.widget.spin_detail.isEnabled())
+        self.assertEqual(denoise_sigs, [False, True])
+        self.assertEqual(sharpen_sigs, [])
+
+        # Uncheck sharpen explicitly -> remembered as False across denoise disable/re-enable
+        self.widget.check_enable_sharpen.setChecked(False)
+        self.assertFalse(self.widget.get_enable_sharpen())
+        self.assertEqual(sharpen_sigs, [False])
+        self.assertFalse(self.widget.slider_structure.isEnabled())
+        self.assertFalse(self.widget.spin_structure.isEnabled())
+        self.assertFalse(self.widget.slider_detail.isEnabled())
+        self.assertFalse(self.widget.spin_detail.isEnabled())
+
+        self.widget.check_enable_denoise.setChecked(False)
+        self.widget.check_enable_denoise.setChecked(True)
+        self.assertTrue(self.widget.check_enable_sharpen.isEnabled())
+        self.assertFalse(self.widget.check_enable_sharpen.isChecked())
+        self.assertFalse(self.widget.slider_structure.isEnabled())
+        self.assertFalse(self.widget.spin_structure.isEnabled())
+
+        # Programmatic setters block signals
+        self.widget.set_enable_denoise(True)
+        self.widget.set_enable_sharpen(True)
+        self.assertTrue(self.widget.get_enable_denoise())
+        self.assertTrue(self.widget.get_enable_sharpen())
+        self.assertTrue(self.widget.slider_strength.isEnabled())
+        self.assertTrue(self.widget.slider_structure.isEnabled())
+        self.assertEqual(denoise_sigs, [False, True, False, True])
+        self.assertEqual(sharpen_sigs, [False])
+
+    def test_refresh_status_ready_hides_unconfigured_box(self):
+        """Ready GraXpert status hides the unconfigured warning box."""
+        status = {
+            "configured": True,
+            "model_ready": True,
+            "device": "cuda",
+            "setup_error": None,
+        }
+        self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
+
+        self.assertTrue(self.widget.unconfigured_box.isHidden())
+
+    def test_refresh_status_missing_model_shows_warning(self):
+        """Missing GraXpert model shows unconfigured warning."""
+        status = {
+            "configured": False,
+            "model_ready": False,
+            "setup_error": "Model file not found",
+        }
+        self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
+        self.assertFalse(self.widget.unconfigured_box.isHidden())
+
+    def test_cached_endpoint_surfaces_cached_blending_message(self):
+        """When a cached endpoint exists, notice indicates cached endpoint is available for blending."""
+        status = {
+            "configured": False,
+            "model_ready": False,
+            "setup_error": "Model file missing",
+        }
+        self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=True)
+
+        self.assertFalse(self.widget.unconfigured_box.isHidden())
+        self.assertIn("Cached denoise endpoint is available for blending", self.widget.lbl_unconf_msg.text())
+
+    def test_refresh_status_missing_prerequisites_disables_controls(self):
+        """Missing prerequisites disables adjustment sliders regardless of readiness."""
+        status = {
+            "configured": True,
+            "model_ready": True,
+            "device": "cuda",
+            "setup_error": None,
+        }
+        self.widget.refresh_status(status, has_prerequisites=False, has_endpoint=False)
+        self.assertFalse(self.widget.slider_strength.isEnabled())
+        self.assertFalse(self.widget.radio_sky_only.isEnabled())
+        self.assertFalse(self.widget.slider_structure.isEnabled())
+        self.assertFalse(self.widget.slider_detail.isEnabled())
+
+        # When prerequisites are present, sliders become enabled
+        self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
+        self.assertTrue(self.widget.slider_structure.isEnabled())
+        self.assertTrue(self.widget.slider_detail.isEnabled())
+        self.assertTrue(self.widget.slider_strength.isEnabled())
+
+
+class TestSidebarFinishPrerequisites(QtTestCase):
+    """Test SidebarFinish step 3 prerequisite status progression."""
+
+    def setUp(self):
+        super().setUp()
+        self.proj_path = self.root / f"test_sidebar{FINISH_EXT}"
+        self.project = FinishProject(project_file=str(self.proj_path))
+        self.app = self.make_app(self.project)
+        self.workflow = FinishWorkflow(self.app)
+        self.app.workflow = self.workflow
+        self.sidebar = SidebarFinish(app=self.app)
+        self.sidebar.show()
+        self.addCleanup(self.sidebar.deleteLater)
+
+    def test_step3_card_prerequisite_states(self):
+        """Step 3 transitions: locked -> GraXpert setup required / ready -> done."""
+        # 1. No source image -> locked
+        self.sidebar.update_prerequisites(self.project)
+        self.assertEqual(self.sidebar.starlessCard.status, "locked")
+        self.assertIn("Source image required", self.sidebar.starlessCard.ui.subtitle.text())
+
+        # 2. Add source, no mask -> locked
+        src_path = self.root / "src.tif"
+        imwrite(src_path, np.full((512, 512, 3), 30000, dtype=np.uint16), bit_depth=16)
+        self.project.set_source_image(src_path)
+        self.sidebar.update_prerequisites(self.project)
+        self.assertEqual(self.sidebar.starlessCard.status, "locked")
+
+        # 3. Add mask, no separated starless -> locked
+        mask_path = self.root / "mask.png"
+        imwrite(mask_path, np.full((512, 512), 255, dtype=np.uint8), bit_depth=8)
+        self.project.record_artifact(ROLE_SKY_MASK, mask_path)
+        self.sidebar.update_prerequisites(self.project)
+        self.assertEqual(self.sidebar.starlessCard.status, "locked")
+        self.assertIn("Separated starless required", self.sidebar.starlessCard.ui.subtitle.text())
+
+        # 4. Add separated layers, GraXpert not verified -> setup required
+        starless_p = self.root / "starless.tif"
+        stars_p = self.root / "stars.tif"
+        imwrite(starless_p, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        imwrite(stars_p, np.full((512, 512, 3), 10000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_SEPARATED_STARLESS, starless_p)
+        self.project.record_artifact(ROLE_SEPARATED_STARS, stars_p)
+
+        with patch.object(
+            FinishWorkflow,
+            "get_graxpert_status",
+            return_value={"configured": False, "model_ready": False, "setup_error": "missing"},
+        ):
+            self.sidebar.update_prerequisites(self.project)
+            self.assertEqual(self.sidebar.starlessCard.status, "ready")
+            self.assertEqual(self.sidebar.starlessCard.ui.subtitle.text(), "GraXpert setup required")
+
+        # 5. Add verified GraXpert -> ready
+        with patch.object(
+            FinishWorkflow,
+            "get_graxpert_status",
+            return_value={
+                "configured": True,
+                "model_ready": True,
+                "device": "cuda",
+                "setup_error": None,
+            },
+        ):
+            self.sidebar.update_prerequisites(self.project)
+            self.assertEqual(self.sidebar.starlessCard.status, "ready")
+            self.assertEqual(self.sidebar.starlessCard.ui.subtitle.text(), "Ready to finish starless")
+
+        # 6. The inference cache alone does not finish the current settings.
+        denoised_p = self.root / "denoised.tif"
+        imwrite(denoised_p, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, denoised_p)
+        with patch.object(
+            FinishWorkflow,
+            "get_graxpert_status",
+            return_value={
+                "configured": True,
+                "model_ready": True,
+                "device": "cuda",
+                "setup_error": None,
+            },
+        ):
+            self.sidebar.update_prerequisites(self.project)
+            self.assertEqual(self.sidebar.starlessCard.status, "ready")
+            self.assertEqual(self.sidebar.starlessCard.ui.subtitle.text(), "Ready to update starless")
+
+            finished_p = self.root / "finished.tif"
+            imwrite(finished_p, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+            self.project.record_artifact(ROLE_FINISHED_STARLESS, finished_p)
+            self.sidebar.update_prerequisites(self.project)
+            self.assertEqual(self.sidebar.starlessCard.status, "done")
+            self.assertEqual(self.sidebar.starlessCard.ui.subtitle.text(), "Starless finished")
+
+            self.project.update_settings(replace(self.project.get_settings(), structure_amount=25.0))
+            self.sidebar.update_prerequisites(self.project)
+            self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+            self.assertEqual(self.sidebar.starlessCard.status, "ready")
+            self.assertEqual(self.sidebar.starlessCard.ui.subtitle.text(), "Ready to update starless")
+
+
+class TestFinishViewStarlessInteraction(QtTestCase):
+    """Integration and interaction tests for FinishView handling Finish Starless actions."""
+
+    def setUp(self):
+        super().setUp()
+        self.proj_path = self.root / f"test_view{FINISH_EXT}"
+        self.project = FinishProject(project_file=str(self.proj_path))
+        self.app = self.make_app(self.project)
+        self.workflow = FinishWorkflow(self.app)
+        self.app.workflow = self.workflow
+
+        # Create source image & valid mask
+        self.source_path = self.root / "source.tif"
+        imwrite(self.source_path, np.full((512, 512, 3), 30000, dtype=np.uint16), bit_depth=16)
+        self.project.set_source_image(self.source_path)
+
+        self.mask_path = self.root / "mask.png"
+        imwrite(self.mask_path, np.full((512, 512), 255, dtype=np.uint8), bit_depth=8)
+        self.project.record_artifact(ROLE_SKY_MASK, self.mask_path)
+
+        self.starless_path = self.root / "starless.tif"
+        self.stars_path = self.root / "stars.tif"
+        imwrite(self.starless_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        imwrite(self.stars_path, np.full((512, 512, 3), 10000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_SEPARATED_STARLESS, self.starless_path)
+        self.project.record_artifact(ROLE_SEPARATED_STARS, self.stars_path)
+
+        self.canvas = CanvasLabel()
+        self.canvas.resize(600, 600)
+        self.addCleanup(self.canvas.deleteLater)
+
+        class Shell(QObject):
+            def __init__(self, canvas):
+                super().__init__()
+                self.canvas_main = canvas
+                self.progressBar = None
+                self.label_progressBar = None
+
+            def enqueue_task(self, task_id, title, total, desc, work):
+                work()
+                return True
+
+        self.shell = Shell(self.canvas)
+        self.addCleanup(self.shell.deleteLater)
+
+        self.view = FinishView(self.app, self.shell)
+        self.addCleanup(self.view.teardown)
+        self.sidebar = self.view.build_sidebar(None)
+        self.view.bind()
+        self.view.resetProjectView()
+
+    def test_explicit_run_denoise_updates_settings_runs_workflow_and_shows_preview(self):
+        """Clicking Run Denoise snapshots settings, saves project, runs denoise, recombines, and previews."""
+        denoised_artifact = self.root / "denoised_starless.tif"
+        imwrite(denoised_artifact, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+
+        composite_artifact = self.root / "composite.tif"
+        imwrite(composite_artifact, np.full((512, 512, 3), 30000, dtype=np.uint16), bit_depth=16)
+
+        def mock_denoise(**kwargs):
+            self.project.record_artifact(ROLE_DENOISED_STARLESS, denoised_artifact)
+            self.project.record_artifact(ROLE_FINISHED_STARLESS, denoised_artifact)
+            return np.zeros((512, 512, 3), dtype=np.float32), denoised_artifact
+
+        def mock_recombine(**kwargs):
+            self.project.record_artifact(ROLE_FINISHED_COMPOSITE, composite_artifact)
+            return np.zeros((512, 512, 3), dtype=np.float32), composite_artifact
+
+        # Set UI values
+        self.sidebar.starlessSettings.set_strength(70.0)
+        self.sidebar.starlessSettings.set_scope(SCOPE_WHOLE_IMAGE)
+        self.sidebar.starlessSettings.set_structure(35.0)
+        self.sidebar.starlessSettings.set_detail(55.0)
+
+        # Set zoom to verify preservation
+        self.canvas.zoom_factor = 2.0
+        self.canvas.posX = 40
+        self.canvas.posY = -20
+
+        with (
+            patch.object(
+                FinishWorkflow,
+                "get_graxpert_status",
+                return_value={
+                    "configured": True,
+                    "model_ready": True,
+                    "device": "cuda",
+                    "setup_error": None,
+                },
+            ),
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise) as mock_d,
+            patch.object(FinishWorkflow, "do_recombine", side_effect=mock_recombine) as mock_r,
+            patch.object(FinishWorkflow, "save_project") as mock_save,
+        ):
+            self.view.on_run_denoise()
+            self.qt.processEvents()
+
+            mock_d.assert_called_once()
+            mock_r.assert_not_called()
+            mock_save.assert_called()
+
+        # Check persisted project settings
+        settings = self.project.get_settings()
+        self.assertEqual(settings.denoise_strength, 70.0)
+        self.assertEqual(settings.denoise_scope, SCOPE_WHOLE_IMAGE)
+        self.assertEqual(settings.structure_amount, 35.0)
+        self.assertEqual(settings.detail_amount, 55.0)
+
+        # Canvas displays the finished starless file, preserving zoom/pan
+        self.assertIsNotNone(self.canvas.file)
+        self.assertEqual(Path(self.canvas.file.path), denoised_artifact.resolve())
+        self.assertAlmostEqual(self.canvas.zoom_factor, 2.0)
+        self.assertEqual((self.canvas.posX, self.canvas.posY), (40, -20))
+
+    def test_strength_change_with_cached_endpoint_debounces_recompute(self):
+        """Slider change when cached endpoint exists debounces and recomputes without inference."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        recompute_called = []
+
+        def mock_denoise(**kwargs):
+            recompute_called.append(True)
+            return np.zeros((512, 512, 3), dtype=np.float32), endpoint_path
+
+        with (
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise),
+            patch.object(FinishWorkflow, "do_recombine", return_value=(np.zeros((512, 512, 3)), Path("c.tif"))),
+        ):
+            # Change slider to 85%
+            self.sidebar.starlessSettings.slider_strength.setValue(85)
+            # Before timer fires, recompute not yet called
+            self.assertEqual(recompute_called, [])
+
+            # Trigger timer
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_called, [True])
+
+        self.assertEqual(self.project.get_settings().denoise_strength, 85.0)
+
+    def test_strength_change_without_endpoint_does_not_infer_unless_zero(self):
+        """Changing strength without cached endpoint does not implicitly run inference when strength > 0 and GraXpert unconfigured."""
+        # Ensure no cached endpoint
+        self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+
+        recompute_called = []
+
+        def mock_denoise(**kwargs):
+            recompute_called.append(True)
+            return None
+
+        with (
+            patch.object(
+                FinishWorkflow,
+                "get_graxpert_status",
+                return_value={
+                    "policy": None,
+                    "model_ready": False,
+                    "setup_error": "Model missing",
+                    "configured": False,
+                },
+            ),
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise),
+        ):
+            # Move slider to 40% (positive, no endpoint and unconfigured -> no inference)
+            self.sidebar.starlessSettings.slider_strength.setValue(40)
+            if self.view._denoise_timer is not None:
+                self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_called, [])
+            self.assertEqual(self.project.get_settings().denoise_strength, 40.0)
+
+            # Move slider to 0% (zero-strength identity is safe without endpoint)
+            self.sidebar.starlessSettings.slider_strength.setValue(0)
+            self.assertIsNotNone(self.view._denoise_timer)
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_called, [True])
+            self.assertEqual(self.project.get_settings().denoise_strength, 0.0)
+
+    def test_structure_change_with_cached_endpoint_debounces_recompute(self):
+        """Structure slider change when cached endpoint exists debounces and recomputes without inference."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        # Pre-set zoom/pan on canvas to verify preservation
+        self.canvas.zoom_factor = 2.5
+        self.canvas.posX = 15
+        self.canvas.posY = -30
+
+        recompute_called = []
+
+        def mock_denoise(**kwargs):
+            recompute_called.append(True)
+            return np.zeros((512, 512, 3), dtype=np.float32), endpoint_path
+
+        with (
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise),
+            patch.object(FinishWorkflow, "do_recombine", return_value=(np.zeros((512, 512, 3)), Path("c.tif"))),
+        ):
+            # Change structure slider to 40%
+            self.sidebar.starlessSettings.slider_structure.setValue(40)
+            self.assertEqual(recompute_called, [])
+            self.assertTrue(self.view._denoise_timer.isActive())
+
+            # Trigger debounced timer
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_called, [True])
+
+        self.assertEqual(self.project.get_settings().structure_amount, 40.0)
+        self.assertAlmostEqual(self.canvas.zoom_factor, 2.5)
+        self.assertEqual((self.canvas.posX, self.canvas.posY), (15, -30))
+
+    def test_detail_change_with_cached_endpoint_debounces_recompute(self):
+        """Detail slider change when cached endpoint exists debounces and recomputes without inference."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        recompute_called = []
+
+        def mock_denoise(**kwargs):
+            recompute_called.append(True)
+            return np.zeros((512, 512, 3), dtype=np.float32), endpoint_path
+
+        with (
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise),
+            patch.object(FinishWorkflow, "do_recombine", return_value=(np.zeros((512, 512, 3)), Path("c.tif"))),
+        ):
+            # Change detail slider to 65%
+            self.sidebar.starlessSettings.slider_detail.setValue(65)
+            self.assertEqual(recompute_called, [])
+            self.assertTrue(self.view._denoise_timer.isActive())
+
+            # Trigger debounced timer
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_called, [True])
+
+        self.assertEqual(self.project.get_settings().detail_amount, 65.0)
+
+    def test_structure_and_detail_rapid_changes_coalesce_to_single_update(self):
+        """Rapid slider updates coalesce within 100 ms and trigger only a single preview update."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        recompute_calls = []
+
+        def mock_denoise(**kwargs):
+            recompute_calls.append(True)
+            return np.zeros((512, 512, 3), dtype=np.float32), endpoint_path
+
+        with (
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise),
+            patch.object(FinishWorkflow, "do_recombine", return_value=(np.zeros((512, 512, 3)), Path("c.tif"))),
+        ):
+            # Rapid sequential slider adjustments
+            self.sidebar.starlessSettings.slider_structure.setValue(20)
+            self.sidebar.starlessSettings.slider_structure.setValue(35)
+            self.sidebar.starlessSettings.slider_detail.setValue(50)
+
+            # Recompute should not have run yet during rapid interaction
+            self.assertEqual(recompute_calls, [])
+            self.assertTrue(self.view._denoise_timer.isActive())
+
+            # Single coalesced debounce timeout
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_calls, [True])
+
+        # Final settings are persisted
+        self.assertEqual(self.project.get_settings().structure_amount, 35.0)
+        self.assertEqual(self.project.get_settings().detail_amount, 50.0)
+
+    def test_latest_preview_retried_when_previous_preview_is_still_queued(self):
+        """The queue's duplicate-ID rejection must not lose the final slider settings."""
+        queued = {}
+        applied = []
+
+        def enqueue(task_id, title, total, desc, work):
+            if task_id in queued:
+                return False
+            queued[task_id] = work
+            return True
+
+        def run_queued():
+            task_id, work = next(iter(queued.items()))
+            try:
+                work()
+            finally:
+                del queued[task_id]
+
+        def finish(**kwargs):
+            applied.append(self.project.get_settings())
+            return None
+
+        def dispatch_timer():
+            # Consume the single-shot timeout without depending on wall time.
+            self.view._denoise_timer.stop()
+            self.view._denoise_timer.timeout.emit()
+
+        with (
+            patch.object(self.shell, "enqueue_task", side_effect=enqueue),
+            patch.object(self.workflow, "do_denoise_starless", side_effect=finish),
+        ):
+            self.sidebar.starlessSettings.slider_strength.setValue(0)
+            self.sidebar.starlessSettings.slider_structure.setValue(20)
+            dispatch_timer()
+            self.assertEqual(len(queued), 1)
+
+            self.sidebar.starlessSettings.slider_structure.setValue(60)
+            self.sidebar.starlessSettings.slider_detail.setValue(40)
+            dispatch_timer()
+            self.assertEqual(len(queued), 1)
+            self.assertTrue(self.view._denoise_timer.isActive())
+
+            run_queued()  # The old job's revision guard rejects it.
+            self.assertEqual(applied, [])
+            dispatch_timer()
+            run_queued()
+            self.assertEqual(len(applied), 1)
+            self.assertEqual(applied[0].denoise_strength, 0.0)
+            self.assertEqual(applied[0].structure_amount, 60.0)
+            self.assertEqual(applied[0].detail_amount, 40.0)
+            self.assertFalse(self.view._denoise_timer.isActive())
+
+    def test_structure_detail_change_without_endpoint_does_not_infer_unless_zero(self):
+        """Without cached endpoint, structure/detail changes do not run inference when strength > 0 and GraXpert unconfigured."""
+        self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+        self.assertEqual(self.project.get_settings().denoise_strength, DEFAULT_DENOISE_STRENGTH_PERCENT)  # 50.0
+
+        recompute_called = []
+
+        def mock_denoise(**kwargs):
+            recompute_called.append(True)
+            return None
+
+        with (
+            patch.object(
+                FinishWorkflow,
+                "get_graxpert_status",
+                return_value={
+                    "policy": None,
+                    "model_ready": False,
+                    "setup_error": "Model missing",
+                    "configured": False,
+                },
+            ),
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise),
+        ):
+            # Change structure to 30% (positive strength, no endpoint and unconfigured -> no inference)
+            self.sidebar.starlessSettings.slider_structure.setValue(30)
+            if self.view._denoise_timer is not None and self.view._denoise_timer.isActive():
+                self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_called, [])
+            self.assertEqual(self.project.get_settings().structure_amount, 30.0)
+
+            # Change detail to 45% (positive strength, no endpoint and unconfigured -> no inference)
+            self.sidebar.starlessSettings.slider_detail.setValue(45)
+            if self.view._denoise_timer is not None and self.view._denoise_timer.isActive():
+                self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_called, [])
+            self.assertEqual(self.project.get_settings().detail_amount, 45.0)
+
+            # Now set denoise strength to 0.0 (zero-strength identity is safe without endpoint)
+            self.sidebar.starlessSettings.slider_strength.setValue(0)
+            self.assertIsNotNone(self.view._denoise_timer)
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_called, [True])
+            recompute_called.clear()
+
+            # Now with strength == 0, structure adjustment triggers debounced preview update
+            self.sidebar.starlessSettings.slider_structure.setValue(55)
+            self.assertTrue(self.view._denoise_timer.isActive())
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_called, [True])
+            self.assertEqual(self.project.get_settings().structure_amount, 55.0)
+
+            # And detail adjustment triggers debounced preview update
+            recompute_called.clear()
+            self.sidebar.starlessSettings.slider_detail.setValue(70)
+            self.assertTrue(self.view._denoise_timer.isActive())
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_called, [True])
+            self.assertEqual(self.project.get_settings().detail_amount, 70.0)
+
+    def test_stale_job_guard_for_structure_change(self):
+        """Stale background result from structure adjustment is discarded if revision changes."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        def worker_that_advances_revision():
+            self.project.invalidate_results()
+            return np.zeros((512, 512, 3)), endpoint_path
+
+        initial_canvas_file = self.canvas.file
+
+        with (
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=worker_that_advances_revision),
+            patch.object(FinishWorkflow, "do_recombine"),
+        ):
+            self.sidebar.starlessSettings.slider_structure.setValue(50)
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+
+        # Canvas file should not have been updated to the stale output
+        self.assertEqual(self.canvas.file, initial_canvas_file)
+
+    def test_run_denoise_with_cached_endpoint_succeeds_even_when_graxpert_unavailable(self):
+        """If an endpoint is cached, on_run_denoise proceeds with reblending even if model is unavailable."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        recompute_called = []
+        with (
+            patch.object(
+                FinishWorkflow,
+                "get_graxpert_status",
+                return_value={"configured": False, "model_ready": False, "setup_error": "Model missing"},
+            ),
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=lambda **kw: recompute_called.append(True)),
+            patch.object(FinishWorkflow, "do_recombine"),
+        ):
+            self.sidebar.starlessSettings.set_strength(60.0)
+            self.view.on_run_denoise()
+            self.qt.processEvents()
+
+        self.assertEqual(recompute_called, [True])
+
+    def test_stale_job_guard_rejects_outdated_results(self):
+        """If project revision changes before background task finishes, stale result is dropped."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        def worker_that_advances_revision():
+            # Simulate another operation or edit advancing processing_revision mid-task
+            self.project.invalidate_results()
+            return np.zeros((512, 512, 3)), endpoint_path
+
+        initial_canvas_file = self.canvas.file
+
+        with (
+            patch.object(
+                FinishWorkflow,
+                "get_graxpert_status",
+                return_value={
+                    "configured": True,
+                    "model_ready": True,
+                    "device": "cuda",
+                    "setup_error": None,
+                },
+            ),
+            patch.object(FinishWorkflow, "do_denoise_starless", side_effect=worker_that_advances_revision),
+        ):
+            self.view.on_run_denoise()
+            self.qt.processEvents()
+
+        # Canvas file should not have been updated to the stale output
+        self.assertEqual(self.canvas.file, initial_canvas_file)
+
+    def test_update_ready_states_invokes_graxpert_invalidation(self):
+        """updateReadyStates calls invalidate_if_graxpert_changed and clears stale outputs."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        invalidation_calls = []
+
+        def mock_invalidate_graxpert():
+            invalidation_calls.append(True)
+            self.project.invalidate_denoise_descendants()
+            return True
+
+        with patch.object(FinishWorkflow, "invalidate_if_graxpert_changed", side_effect=mock_invalidate_graxpert):
+            self.view.updateReadyStates()
+
+        self.assertEqual(invalidation_calls, [True])
+        output_operations = [f.operation for f in self.sidebar.outputFiles.model.files]
+        self.assertNotIn("Denoised", output_operations)
+        self.assertNotIn("Finished Starless", output_operations)
+
+    def test_update_ready_states_invokes_starless_filter_invalidation(self):
+        """updateReadyStates calls invalidate_if_starless_filter_changed alongside denoise invalidation."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        finished_path = self.root / "finished_starless.tif"
+        imwrite(finished_path, np.full((512, 512, 3), 22000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_FINISHED_STARLESS, finished_path)
+
+        invalidation_calls = []
+
+        def mock_invalidate_filter():
+            invalidation_calls.append(True)
+            self.project.invalidate_artifact_roles({ROLE_FINISHED_STARLESS, ROLE_FINISHED_COMPOSITE})
+            return True
+
+        with patch.object(self.workflow, "invalidate_if_starless_filter_changed", mock_invalidate_filter, create=True):
+            self.view.updateReadyStates()
+
+        self.assertEqual(invalidation_calls, [True])
+        output_operations = [f.operation for f in self.sidebar.outputFiles.model.files]
+        self.assertNotIn("Finished Starless", output_operations)
+        self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+
+    def test_independent_toggles_switch_between_stored_outputs_without_worker(self):
+        """Toggling denoise and post-denoise sharpen switches preview with zero recomputation."""
+        self.project.update_settings(replace(self.project.get_settings(), structure_amount=30.0))
+
+        denoised_path = self.root / "denoised_starless.tif"
+        imwrite(denoised_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, denoised_path)
+
+        finished_path = self.root / "finished_starless.tif"
+        imwrite(finished_path, np.full((512, 512, 3), 22000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(
+            ROLE_FINISHED_STARLESS, finished_path, options={"starless_filter_version": STARLESS_FILTER_VERSION}
+        )
+        self.view.updateReadyStates()
+
+        fin_file = OutputFile(basename=finished_path.name, path=str(finished_path), operation="Finished Starless")
+        self.view.showFile(fin_file)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        worker_called = []
+        with patch.object(FinishWorkflow, "do_denoise_starless", side_effect=lambda **kw: worker_called.append(True)):
+            # 1. Toggle Denoise OFF (even with structure > 0) -> visually disables sharpen & shows Starless
+            self.sidebar.starlessSettings.check_enable_denoise.setChecked(False)
+            self.qt.processEvents()
+            self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+            self.assertFalse(self.sidebar.starlessSettings.check_enable_sharpen.isChecked())
+            self.assertFalse(self.sidebar.starlessSettings.check_enable_sharpen.isEnabled())
+            self.assertTrue(self.project.get_settings().enable_starless_sharpen)
+            self.assertEqual(worker_called, [])
+
+            # 2. Toggle Denoise back ON -> restores sharpen=True and displays Finished Starless
+            self.sidebar.starlessSettings.check_enable_denoise.setChecked(True)
+            self.qt.processEvents()
+            self.assertTrue(self.sidebar.starlessSettings.check_enable_sharpen.isChecked())
+            self.assertTrue(self.sidebar.starlessSettings.check_enable_sharpen.isEnabled())
+            self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+            self.assertEqual(worker_called, [])
+
+            # 3. Toggle Sharpen OFF -> displays Denoised Starless without recomputation
+            self.sidebar.starlessSettings.check_enable_sharpen.setChecked(False)
+            self.qt.processEvents()
+            self.assertEqual(Path(self.canvas.file.path).resolve(), denoised_path.resolve())
+            self.assertEqual(worker_called, [])
+
+            # 4. Disable Denoise -> Starless; Re-enable Denoise -> remembers sharpen=False and shows Denoised
+            self.sidebar.starlessSettings.check_enable_denoise.setChecked(False)
+            self.qt.processEvents()
+            self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+            self.sidebar.starlessSettings.check_enable_denoise.setChecked(True)
+            self.qt.processEvents()
+            self.assertFalse(self.sidebar.starlessSettings.check_enable_sharpen.isChecked())
+            self.assertEqual(Path(self.canvas.file.path).resolve(), denoised_path.resolve())
+            self.assertEqual(worker_called, [])
+
+            # Artifacts remain valid on disk and in manifest
+            self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
+            self.assertIsNotNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+
+    def test_slider_interaction_produces_zero_vertical_reflow(self):
+        """Focusing, clicking, and updating sliders (and invalidating/publishing outputs) produces zero vertical shift."""
+        self.sidebar.starlessCard.setExpanded(True)
+        self.sidebar.recombineCard.setExpanded(True)
+        self.qt.processEvents()
+
+        # Capture initial vertical positions of all sliders mapped to sidebar coordinates
+        init_strength_y = self.sidebar.starlessSettings.slider_strength.mapTo(self.sidebar, QPoint(0, 0)).y()
+        init_structure_y = self.sidebar.starlessSettings.slider_structure.mapTo(self.sidebar, QPoint(0, 0)).y()
+        init_detail_y = self.sidebar.starlessSettings.slider_detail.mapTo(self.sidebar, QPoint(0, 0)).y()
+        init_star_amount_y = self.sidebar.recombineSettings.slider_star_amount.mapTo(self.sidebar, QPoint(0, 0)).y()
+
+        # Simulate slider interactions, focus transitions, and output invalidations
+        self.sidebar.starlessSettings.slider_strength.setFocus()
+        self.view.on_denoise_strength_changed(75.0)
+        self.qt.processEvents()
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_strength.mapTo(self.sidebar, QPoint(0, 0)).y(), init_strength_y
+        )
+
+        self.sidebar.starlessSettings.slider_structure.setFocus()
+        self.view.on_structure_amount_changed(40.0)
+        self.qt.processEvents()
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_structure.mapTo(self.sidebar, QPoint(0, 0)).y(), init_structure_y
+        )
+
+        self.sidebar.starlessSettings.slider_detail.setFocus()
+        self.view.on_detail_amount_changed(50.0)
+        self.qt.processEvents()
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_detail.mapTo(self.sidebar, QPoint(0, 0)).y(), init_detail_y
+        )
+
+        self.sidebar.recombineSettings.slider_star_amount.setFocus()
+        self.view.on_star_amount_changed(80.0)
+        self.qt.processEvents()
+        self.assertEqual(
+            self.sidebar.recombineSettings.slider_star_amount.mapTo(self.sidebar, QPoint(0, 0)).y(),
+            init_star_amount_y,
+        )
+
+        # Re-publish outputs and verify again
+        finished_path = self.root / "finished_starless.tif"
+        imwrite(finished_path, np.full((512, 512, 3), 22000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(
+            ROLE_FINISHED_STARLESS, finished_path, options={"starless_filter_version": STARLESS_FILTER_VERSION}
+        )
+        self.view.updateReadyStates()
+        self.qt.processEvents()
+
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_strength.mapTo(self.sidebar, QPoint(0, 0)).y(), init_strength_y
+        )
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_structure.mapTo(self.sidebar, QPoint(0, 0)).y(), init_structure_y
+        )
+        self.assertEqual(
+            self.sidebar.starlessSettings.slider_detail.mapTo(self.sidebar, QPoint(0, 0)).y(), init_detail_y
+        )
+        self.assertEqual(
+            self.sidebar.recombineSettings.slider_star_amount.mapTo(self.sidebar, QPoint(0, 0)).y(),
+            init_star_amount_y,
+        )
+
+    def test_canvas_stays_on_starless_image_when_changing_sliders(self):
+        """Slider changes keep pending Denoised/Finished Starless in outputs and on canvas."""
+        denoised_path = self.root / "denoised_starless.tif"
+        finished_path = self.root / "finished_starless.tif"
+        imwrite(denoised_path, np.full((512, 512, 3), 21000, dtype=np.uint16), bit_depth=16)
+        imwrite(finished_path, np.full((512, 512, 3), 22000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(
+            ROLE_DENOISED_STARLESS, denoised_path, options={"starless_filter_version": STARLESS_FILTER_VERSION}
+        )
+        self.project.record_artifact(
+            ROLE_FINISHED_STARLESS, finished_path, options={"starless_filter_version": STARLESS_FILTER_VERSION}
+        )
+        self.view.updateReadyStates()
+
+        output_ops = [f.operation for f in self.sidebar.outputFiles.model.files]
+        self.assertIn("Denoised Starless", output_ops)
+        self.assertIn("Finished Starless", output_ops)
+
+        # Viewing Denoised Starless stays on denoised_starless.tif and in outputFiles when strength changes
+        den_file = OutputFile(basename=denoised_path.name, path=str(denoised_path), operation="Denoised Starless")
+        self.view.showFile(den_file)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), denoised_path.resolve())
+
+        self.view.on_denoise_strength_changed(65.0)
+        self.assertIsNone(self.project.current_artifact_path(ROLE_DENOISED_STARLESS))
+        self.assertEqual(Path(self.canvas.file.path).resolve(), denoised_path.resolve())
+        pending_ops = [f.operation for f in self.sidebar.outputFiles.model.files]
+        self.assertIn("Denoised Starless", pending_ops)
+        self.assertIn("Finished Starless", pending_ops)
+
+        # Viewing Finished Starless also stays on finished_starless.tif across slider changes
+        fin_file = OutputFile(basename=finished_path.name, path=str(finished_path), operation="Finished Starless")
+        self.view.showFile(fin_file)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # Change strength: update_settings invalidates ROLE_FINISHED_STARLESS
+        self.view.on_denoise_strength_changed(75.0)
+        self.assertIsNone(self.project.current_artifact_path(ROLE_FINISHED_STARLESS))
+        # Canvas MUST stay on finished_starless.tif (not jumping to source.tif)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+        pending_ops = [f.operation for f in self.sidebar.outputFiles.model.files]
+        self.assertIn("Denoised Starless", pending_ops)
+        self.assertIn("Finished Starless", pending_ops)
+
+        # Change structure
+        self.view.on_structure_amount_changed(40.0)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # Change detail
+        self.view.on_detail_amount_changed(30.0)
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # If finished_starless.tif was deleted on disk, updateReadyStates falls back to Starless
+        finished_path.unlink()
+        self.view.updateReadyStates()
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+
+    def test_active_slider_drag_holds_off_worker_execution_until_release(self):
+        """While a slider is actively held down (isSliderDown=True), worker execution is held off until release."""
+        endpoint_path = self.root / "endpoint.tif"
+        imwrite(endpoint_path, np.full((512, 512, 3), 20000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, endpoint_path)
+
+        recompute_calls = []
+
+        def mock_denoise(**kwargs):
+            recompute_calls.append(True)
+            return np.zeros((512, 512, 3), dtype=np.float32), endpoint_path
+
+        slider = self.sidebar.starlessSettings.slider_strength
+        with patch.object(FinishWorkflow, "do_denoise_starless", side_effect=mock_denoise):
+            # 1. Mouse down / active drag starts
+            slider.setSliderDown(True)
+            slider.setValue(85)
+            self.qt.processEvents()
+
+            # Spinbox updated immediately for responsive visual feedback
+            self.assertEqual(self.sidebar.starlessSettings.spin_strength.value(), 85)
+            # Settings NOT yet committed, worker NOT executed
+            self.assertEqual(self.project.get_settings().denoise_strength, DEFAULT_DENOISE_STRENGTH_PERCENT)
+            self.assertEqual(recompute_calls, [])
+
+            # Even if timer was somehow started or timeout emits mid-drag, worker is held off
+            if self.view._denoise_timer is not None and self.view._denoise_timer.isActive():
+                self.view._denoise_timer.timeout.emit()
+                self.qt.processEvents()
+                self.assertEqual(recompute_calls, [])
+
+            # 2. Release slider
+            slider.setSliderDown(False)
+            slider.sliderReleased.emit()
+            self.qt.processEvents()
+
+            # Settings updated, debounce timer active
+            self.assertEqual(self.project.get_settings().denoise_strength, 85.0)
+            self.assertTrue(self.view._denoise_timer.isActive())
+            self.assertEqual(self.view._denoise_timer.interval(), 200)
+
+            # Timer fires after release
+            self.view._denoise_timer.timeout.emit()
+            self.qt.processEvents()
+            self.assertEqual(recompute_calls, [True])
+
+    def test_toggle_enable_denoise_persists_setting_with_single_project_save(self):
+        """Toggling Denoise switch updates project setting and saves project exactly once."""
+        self.assertTrue(self.project.get_settings().enable_starless_denoise)
+        save_calls = []
+
+        with patch.object(self.workflow, "save_project", side_effect=lambda: save_calls.append(True)):
+            self.sidebar.starlessSettings.check_enable_denoise.setChecked(False)
+            self.qt.processEvents()
+
+        self.assertFalse(self.project.get_settings().enable_starless_denoise)
+        self.assertEqual(len(save_calls), 1)
+
+    def test_step3_before_after_chip_visibility_and_preview(self):
+        """Step 3 eye chip is visible only when expanded and done, toggling Step 2 starless and finished starless."""
+        self.sidebar.show()
+        self.qt.processEvents()
+
+        # Step 3 is initially ready -> chip is hidden even when expanded.
+        self.view.updateReadyStates()
+        self.sidebar.starlessCard.setExpanded(True)
+        self.assertEqual(self.sidebar.starlessCard.status, "ready")
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isVisible())
+        self.sidebar.starlessCard.setExpanded(False)
+
+        denoised_path = self.root / "denoised_starless.tif"
+        finished_path = self.root / "finished_starless.tif"
+        imwrite(denoised_path, np.full((512, 512, 3), 24000, dtype=np.uint16), bit_depth=16)
+        imwrite(finished_path, np.full((512, 512, 3), 28000, dtype=np.uint16), bit_depth=16)
+        self.project.record_artifact(ROLE_DENOISED_STARLESS, denoised_path)
+        self.project.record_artifact(
+            ROLE_FINISHED_STARLESS,
+            finished_path,
+            options={"starless_filter_version": STARLESS_FILTER_VERSION},
+        )
+
+        with patch.object(
+            FinishWorkflow,
+            "get_graxpert_status",
+            return_value={"configured": True, "model_ready": True, "device": "cpu", "setup_error": None},
+        ):
+            self.view.updateReadyStates()
+
+        # Done while collapsed -> chip remains hidden until expanded.
+        self.assertEqual(self.sidebar.starlessCard.status, "done")
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isVisible())
+
+        # Expand Step 3 -> chip becomes visible and defaults to after (finished starless).
+        self.sidebar.starlessCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertTrue(self.sidebar.starlessCard.ui.previewToggle.isVisible())
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # Click chip -> switches to Step 2 separated starless ("before").
+        self.sidebar.starlessCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertTrue(self.sidebar.starlessCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+
+        # Click again -> switches back to finished starless ("after").
+        self.sidebar.starlessCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+        # Collapse while in "before" hides the chip AND restores finished starless ("after") on the canvas.
+        self.sidebar.starlessCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertEqual(Path(self.canvas.file.path).resolve(), self.starless_path.resolve())
+        self.sidebar.starlessCard.setExpanded(False)
+        self.qt.processEvents()
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isVisible())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+        self.sidebar.starlessCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertTrue(self.sidebar.starlessCard.ui.previewToggle.isVisible())
+        self.assertFalse(self.sidebar.starlessCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.canvas.file.path).resolve(), finished_path.resolve())
+
+    def test_structure_slider_click_does_not_reflow_starless_card(self):
+        """First click on the Structure slider must not shift outputFiles or starlessCard geometry."""
+        with (
+            patch.object(
+                FinishWorkflow,
+                "get_graxpert_status",
+                return_value={"configured": True, "model_ready": True, "device": "cpu", "setup_error": None},
+            ),
+            patch.object(FinishWorkflow, "save_project"),
+        ):
+            self.sidebar.resize(300, 800)
+            self.sidebar.show()
+            self.view.updateReadyStates()
+            self.sidebar.starlessCard.setExpanded(True)
+            self.qt.processEvents()
+
+            # Showing and expanding posts nested layout requests; settle these
+            # before measuring the layout that the mouse press must preserve.
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.LayoutRequest)
+            self.qt.processEvents()
+
+            output_height_before = self.sidebar.outputFiles.ui.files.height()
+            card_geom_before = self.sidebar.starlessCard.geometry()
+            settings_geom_before = self.sidebar.starlessSettings.geometry()
+            slider = self.sidebar.starlessSettings.slider_structure
+            slider_geom_before = slider.geometry()
+
+            pos = QPoint(slider.width() // 2, slider.height() // 2)
+            QTest.mousePress(slider, Qt.LeftButton, pos=pos)
+            self.qt.processEvents()
+            self.assertEqual(self.sidebar.outputFiles.ui.files.height(), output_height_before)
+            self.assertEqual(self.sidebar.starlessCard.geometry(), card_geom_before)
+            self.assertEqual(self.sidebar.starlessSettings.geometry(), settings_geom_before)
+            self.assertEqual(slider.geometry(), slider_geom_before)
+
+            QTest.mouseRelease(slider, Qt.LeftButton, pos=pos)
+            self.qt.processEvents()
+            self.assertEqual(self.sidebar.outputFiles.ui.files.height(), output_height_before)
+            self.assertEqual(self.sidebar.starlessCard.geometry(), card_geom_before)
+            self.assertEqual(self.sidebar.starlessSettings.geometry(), settings_geom_before)
+            self.assertEqual(slider.geometry(), slider_geom_before)
+
+
+__all__ = [
+    "TestFinishStarlessSettings",
+    "TestSidebarFinishPrerequisites",
+    "TestFinishViewStarlessInteraction",
+]

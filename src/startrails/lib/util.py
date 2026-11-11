@@ -1,7 +1,8 @@
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Union
+from threading import Event
+from typing import Callable, Optional, Union
 import cv2
 import numpy
 try:
@@ -26,17 +27,23 @@ class Job:
         self.interrupt = False
 
 
-class Observable():
-    def __init__(self):
-        self.job: Job = None
+class Observable:
+    def __init__(
+        self,
+        cancel_event: Optional[Event] = None,
+        cancel_check: Optional[Callable[[], bool]] = None,
+    ):
+        self.job: Optional[Job] = None
         self.observers = []
+        self.cancel_event = cancel_event if cancel_event is not None else Event()
+        self.cancel_check = cancel_check
 
     def startJob(self, total):
         self.job = Job(total)
         self.notifyObservers()
 
     def updateJob(self, increment, data=None):
-        if not self.job is None:
+        if self.job is not None:
             self.job.count += increment
             if self.job.count >= self.job.total:
                 self.job.done = True
@@ -53,11 +60,16 @@ class Observable():
                 data)
 
     def requestInterrupt(self):
+        self.cancel_event.set()
         if self.job is not None:
             self.job.interrupt = True
 
     def shouldInterrupt(self):
-        return self.job.interrupt if self.job is not None else False
+        return (
+            self.cancel_event.is_set()
+            or (self.job.interrupt if self.job is not None else False)
+            or bool(self.cancel_check and self.cancel_check())
+        )
 
     def addObserver(self, observer):
         self.observers.append(observer)
