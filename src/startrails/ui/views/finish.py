@@ -135,7 +135,6 @@ class FinishView(ModeView):
                 self.connect_signal(
                     self.sidebar.starlessSettings.enable_sharpen_changed, self.on_enable_sharpen_changed
                 )
-            self.connect_signal(self.sidebar.starlessSettings.enable_starless_changed, self.on_enable_starless_changed)
             self.connect_signal(self.sidebar.starlessSettings.run_denoise_requested, self.on_run_denoise)
             self.connect_signal(
                 self.sidebar.starlessSettings.denoise_strength_changed, self.on_denoise_strength_changed

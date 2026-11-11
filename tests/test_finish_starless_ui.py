@@ -1266,6 +1266,18 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             self.qt.processEvents()
             self.assertEqual(recompute_calls, [True])
 
+    def test_toggle_enable_denoise_persists_setting_with_single_project_save(self):
+        """Toggling Denoise switch updates project setting and saves project exactly once."""
+        self.assertTrue(self.project.get_settings().enable_starless_denoise)
+        save_calls = []
+
+        with patch.object(self.workflow, "save_project", side_effect=lambda: save_calls.append(True)):
+            self.sidebar.starlessSettings.check_enable_denoise.setChecked(False)
+            self.qt.processEvents()
+
+        self.assertFalse(self.project.get_settings().enable_starless_denoise)
+        self.assertEqual(len(save_calls), 1)
+
 
 __all__ = [
     "TestFinishStarlessSettings",
