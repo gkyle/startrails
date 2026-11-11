@@ -47,10 +47,7 @@ class FinishStarlessSettings(QWidget):
 
         # Direct attribute aliases on self for backward compatibility and test access
         self.unconfigured_box = self.ui.unconfigured_box
-        self.configured_box = self.ui.configured_box
         self.lbl_unconf_msg = self.ui.lbl_unconf_msg
-        self.lbl_provider_dot = self.ui.lbl_provider_dot
-        self.lbl_provider_info = self.ui.lbl_provider_info
 
         self.lbl_enable_denoise = self.ui.lbl_enable_denoise
         self.check_enable_denoise = self.ui.check_enable_denoise
@@ -89,7 +86,6 @@ class FinishStarlessSettings(QWidget):
 
         self.lbl_status.hide()
         self.unconfigured_box.setVisible(True)
-        self.configured_box.setVisible(False)
         self._update_controls_enabled()
 
         self._init_events()
@@ -333,7 +329,6 @@ class FinishStarlessSettings(QWidget):
         self._is_ready = is_ready
 
         self.unconfigured_box.setVisible(not is_ready)
-        self.configured_box.setVisible(is_ready)
 
         if not is_ready:
             setup_error = status.get("setup_error")
@@ -353,43 +348,9 @@ class FinishStarlessSettings(QWidget):
                     self.lbl_unconf_msg.setText("GraXpert AI model (3.0.2) is missing or unverified.")
                 else:
                     self.lbl_unconf_msg.setText(self._default_unconf_msg)
-        else:
-            configured_device = str(status.get("device") or "cpu")
-            configured_label = self._format_device_label(configured_device)
-            exec_device = status.get("execution_device")
-            fallback_reason = status.get("fallback_reason")
-
-            if exec_device and exec_device != configured_device:
-                actual_label = self._format_device_label(str(exec_device))
-                if fallback_reason:
-                    details = f"{actual_label} (fallback: {fallback_reason}; configured: {configured_label})"
-                else:
-                    details = f"{actual_label} (fallback from {configured_label})"
-                self.lbl_provider_dot.setStyleSheet("color: #f59e0b;")
-            elif fallback_reason:
-                details = f"{configured_label} (fallback: {fallback_reason})"
-                self.lbl_provider_dot.setStyleSheet("color: #f59e0b;")
-            else:
-                details = configured_label
-                self.lbl_provider_dot.setStyleSheet("color: #10b981;")
-
-            info_text = f"GraXpert AI 3.0.2 • {details}"
-            self.lbl_provider_info.setText(info_text)
-            self.configured_box.setToolTip(info_text)
 
         # Control enable states
         self._update_controls_enabled()
-
-    @staticmethod
-    def _format_device_label(device: str) -> str:
-        lower = device.strip().lower()
-        if lower == "cuda" or lower.startswith("cuda:"):
-            return "CUDA (GPU)"
-        if lower == "mps":
-            return "MPS (GPU)"
-        if lower == "cpu":
-            return "CPU"
-        return device
 
 
 __all__ = ["FinishStarlessSettings"]

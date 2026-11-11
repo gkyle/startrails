@@ -231,7 +231,7 @@ class Ui_SidebarFinish(object):
         self.separateCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarFinish", u"Separate into starless and stars layers", None))
         self.starlessCard.setProperty(u"title", QCoreApplication.translate("SidebarFinish", u"Finish Starless", None))
         self.starlessCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarFinish", u"AI denoise with Structure and Detail controls", None))
-        self.recombineCard.setProperty(u"title", QCoreApplication.translate("SidebarFinish", u"Recombine & Save", None))
+        self.recombineCard.setProperty(u"title", QCoreApplication.translate("SidebarFinish", u"Recombine and Save", None))
         self.recombineCard.setProperty(u"subtitle", QCoreApplication.translate("SidebarFinish", u"Blend layers and export image", None))
         pass
     # retranslateUi

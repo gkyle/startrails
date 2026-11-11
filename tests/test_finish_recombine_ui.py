@@ -129,25 +129,10 @@ class TestFinishRecombineSettings(QtTestCase):
         self.assertTrue(self.widget.slider_star_threshold.isEnabled())
         self.assertTrue(self.widget.combo_star_blend_mode.isEnabled())
 
-    def test_compare_original_and_export_layers_controls(self):
-        """Pill switch and Export Layers button operate correctly with signals and prerequisites."""
-        self.assertFalse(self.widget.get_compare_original())
-
-        compare_sigs = []
+    def test_export_layers_controls(self):
+        """Export Layers button operates correctly with signals and prerequisites."""
         export_sigs = []
-        self.widget.compare_original_toggled.connect(compare_sigs.append)
         self.widget.export_layers_requested.connect(lambda: export_sigs.append(True))
-
-        # Toggle compare original on
-        self.widget.check_compare_original.setChecked(True)
-        self.assertEqual(compare_sigs, [True])
-        self.assertTrue(self.widget.get_compare_original())
-
-        # Programmatic setter blocks signals
-        compare_sigs.clear()
-        self.widget.set_compare_original(False)
-        self.assertEqual(compare_sigs, [])
-        self.assertFalse(self.widget.get_compare_original())
 
         # Enable prerequisites to test click
         self.widget.refresh_prerequisites(True)
@@ -157,18 +142,12 @@ class TestFinishRecombineSettings(QtTestCase):
         self.widget.btn_export_layers.click()
         self.assertEqual(export_sigs, [True])
 
-        # refresh_prerequisites(False) disables controls and resets compare_original if checked
-        self.widget.set_compare_original(True)
+        # refresh_prerequisites(False) disables controls
         self.widget.refresh_prerequisites(False)
-        self.assertFalse(self.widget.get_compare_original())
-        self.assertFalse(self.widget.check_compare_original.isEnabled())
-        self.assertFalse(self.widget.lbl_compare_original.isEnabled())
         self.assertFalse(self.widget.btn_export_layers.isEnabled())
 
         # refresh_prerequisites(True) re-enables controls
         self.widget.refresh_prerequisites(True)
-        self.assertTrue(self.widget.check_compare_original.isEnabled())
-        self.assertTrue(self.widget.lbl_compare_original.isEnabled())
         self.assertTrue(self.widget.btn_export_layers.isEnabled())
 
         # Tooltip explains positive-only, negative correction, and reconstruction
@@ -601,50 +580,14 @@ class TestFinishViewRecombineInteraction(QtTestCase):
             self.assertIsNotNone(self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
             self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
 
-    def test_compare_original_toggling_preserves_zoom_pan_and_syncs(self):
-        """check_compare_original toggles canvas between source and composite while keeping zoom/pan."""
-        self.canvas.zoom_factor = 2.5
-        self.canvas.posX = 35
-        self.canvas.posY = -20
-
-        # Initially composite is displayed
-        self.sidebar.outputFiles.showFile.emit(
-            OutputFile(basename=self.composite_path.name, path=str(self.composite_path), operation="Composite")
-        )
-        QApplication.processEvents()
-        self.assertFalse(self.sidebar.check_compare_original.isChecked())
-
-        # 1. Turn compare original ON -> shows source image
-        self.sidebar.check_compare_original.setChecked(True)
-        QApplication.processEvents()
-
-        self.assertEqual(Path(self.canvas.file.path).resolve(), self.source_path.resolve())
-        self.assertAlmostEqual(self.canvas.zoom_factor, 2.5)
-        self.assertEqual((self.canvas.posX, self.canvas.posY), (35, -20))
-        self.assertTrue(self.sidebar.inputFiles.ui.files.currentIndex().isValid())
-        self.assertFalse(self.sidebar.outputFiles.ui.files.currentIndex().isValid())
-        self.assertTrue(self.sidebar.recombineSettings.get_compare_original())
-
-        # 2. Turn compare original OFF -> returns to composite
-        self.sidebar.check_compare_original.setChecked(False)
-        QApplication.processEvents()
-
-        self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
-        self.assertAlmostEqual(self.canvas.zoom_factor, 2.5)
-        self.assertEqual((self.canvas.posX, self.canvas.posY), (35, -20))
-        self.assertFalse(self.sidebar.inputFiles.ui.files.currentIndex().isValid())
-        self.assertTrue(self.sidebar.outputFiles.ui.files.currentIndex().isValid())
-        self.assertFalse(self.sidebar.recombineSettings.get_compare_original())
-
     def test_selection_sync_between_input_and_output_files_and_mask_mode(self):
-        """Selecting an output file clears inputFiles; original comparison does NOT show green mask overlay."""
+        """Selecting an output file clears inputFiles; viewing source outside Step 1 does NOT show green mask overlay."""
         # 1. In Step 1 (skyCard expanded), viewing source shows mask overlay for editing
         self.sidebar.skyCard.setExpanded(True)
         self.sidebar.skySettings.ui.showMaskOverlay.setChecked(True)
         self.view.showFile(self.project.source_file)
         QApplication.processEvents()
         self.assertTrue(self.canvas.is_mask_edit_mode())
-        self.assertFalse(self.sidebar.check_compare_original.isChecked())
 
         # 2. Select Output File (Composite in Step 4) -> disables mask edit mode
         self.sidebar.skyCard.setExpanded(False)
@@ -656,25 +599,22 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         self.assertTrue(self.sidebar.outputFiles.ui.files.currentIndex().isValid())
         self.assertFalse(self.sidebar.inputFiles.ui.files.currentIndex().isValid())
         self.assertFalse(self.canvas.is_mask_edit_mode())
-        self.assertFalse(self.sidebar.check_compare_original.isChecked())
 
-        # 3. Turn on Compare with original -> shows clean Original without green mask overlay
-        self.sidebar.check_compare_original.setChecked(True)
+        # 3. Select Input File while in Step 4 -> shows clean Original without green mask overlay
+        self.sidebar.inputFiles.showFile.emit(self.project.source_file)
         QApplication.processEvents()
 
         self.assertTrue(self.sidebar.inputFiles.ui.files.currentIndex().isValid())
         self.assertFalse(self.sidebar.outputFiles.ui.files.currentIndex().isValid())
-        self.assertTrue(self.sidebar.check_compare_original.isChecked())
         self.assertFalse(self.canvas.is_mask_edit_mode())
 
-        # 4. Turn off Compare with original -> returns to Composite with mask overlay off
-        self.sidebar.check_compare_original.setChecked(False)
+        # 4. Select Output File again -> returns to Composite with mask overlay off
+        self.sidebar.outputFiles.showFile.emit(comp_file)
         QApplication.processEvents()
 
         self.assertTrue(self.sidebar.outputFiles.ui.files.currentIndex().isValid())
         self.assertFalse(self.sidebar.inputFiles.ui.files.currentIndex().isValid())
         self.assertFalse(self.canvas.is_mask_edit_mode())
-        self.assertFalse(self.sidebar.check_compare_original.isChecked())
 
     def test_export_layers_action_success_cancel_and_error(self):
         """Export layers prompts for directory, calls workflow.do_export_layers, and handles errors."""
@@ -758,40 +698,6 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         self.view.updateReadyStates()
         self.assertEqual(self.sidebar.recombineCard.status, "done")
         self.assertEqual(self.sidebar.recombineCard.ui.subtitle.text(), "Finished image saved")
-
-    def test_compare_original_survives_late_recombine_callback(self):
-        """Late completion of interactive recombine does NOT overwrite canvas while compare switch is ON."""
-        # 1. Trigger recombine
-        self.view.on_star_amount_changed(75.0)
-        self.assertTrue(self.view._recombine_timer.isActive())
-
-        # 2. While recombine worker is pending/running, turn compare original ON
-        self.sidebar.check_compare_original.setChecked(True)
-        QApplication.processEvents()
-        self.assertEqual(Path(self.canvas.file.path).resolve(), self.source_path.resolve())
-        self.assertTrue(self.sidebar.recombineSettings.get_compare_original())
-
-        # 3. Fire recombine timer / complete late worker callback
-        def fake_recombine(**kwargs):
-            self.project.record_artifact(
-                ROLE_FINISHED_COMPOSITE,
-                self.composite_path,
-                options={"separation_signature": self.separation_signature},
-            )
-            return (np.zeros((64, 64, 3)), self.composite_path)
-
-        with patch.object(self.workflow, "do_recombine", side_effect=fake_recombine):
-            self.view._recombine_timer.timeout.emit()
-            QApplication.processEvents()
-
-        # Canvas STILL shows source image; compare switch remains ON
-        self.assertEqual(Path(self.canvas.file.path).resolve(), self.source_path.resolve())
-        self.assertTrue(self.sidebar.recombineSettings.get_compare_original())
-
-        # 4. Turn compare original OFF -> now shows the new composite
-        self.sidebar.check_compare_original.setChecked(False)
-        QApplication.processEvents()
-        self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
 
 
 if __name__ == "__main__":

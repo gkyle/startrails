@@ -22,22 +22,6 @@ QLabel#lbl_unconf_msg {
     font-size: 11px;
     line-height: 1.3;
 }
-QFrame#configured_box {
-    background-color: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 6px 8px;
-}
-QLabel#lbl_provider_dot {
-    color: #10b981;
-    font-size: 11px;
-    font-weight: bold;
-}
-QLabel#lbl_provider_info {
-    font-size: 11px;
-    font-weight: 600;
-    color: #1e293b;
-}
 QLabel#lbl_strength_title, QLabel#lbl_scope_title, QLabel#lbl_structure_title, QLabel#lbl_detail_title {
     font-size: 11px;
     font-weight: 600;
@@ -155,57 +139,6 @@ QLabel#lbl_status {
          <bool>true</bool>
         </property>
        </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QFrame" name="configured_box">
-     <layout class="QHBoxLayout" name="conf_layout">
-      <property name="spacing">
-       <number>6</number>
-      </property>
-      <property name="leftMargin">
-       <number>6</number>
-      </property>
-      <property name="topMargin">
-       <number>4</number>
-      </property>
-      <property name="rightMargin">
-       <number>6</number>
-      </property>
-      <property name="bottomMargin">
-       <number>4</number>
-      </property>
-      <item>
-       <widget class="QLabel" name="lbl_provider_dot">
-        <property name="text">
-         <string>●</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="lbl_provider_info">
-        <property name="text">
-         <string>GraXpert AI 3.0.2</string>
-        </property>
-        <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="conf_spacer">
-        <property name="orientation">
-         <enum>Qt::Orientation::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
       </item>
      </layout>
     </widget>

@@ -451,8 +451,12 @@ class TestFinishSeparation(QtTestCase):
         self.assertAlmostEqual(canvas.zoom_factor, 2.5)
         self.assertEqual((canvas.posX, canvas.posY), (50, -30))
 
-        select(outputs, starless_entry)
+        # Expanding Step 2: Separate stars displays the starless image when both separated layers exist.
+        sidebar.separateCard.setExpanded(False)
+        sidebar.separateCard.setExpanded(True)
         self.assertEqual(Path(canvas.file.path), Path(starless_entry.path))
+        self.assertAlmostEqual(canvas.zoom_factor, 2.5)
+        self.assertEqual((canvas.posX, canvas.posY), (50, -30))
 
         # Default zoom is the state a project reset would clear; keep a panned transform.
         canvas.zoom_factor = 1.0

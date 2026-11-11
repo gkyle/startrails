@@ -367,7 +367,7 @@ class Ui_StackSettings(object):
         self.useGPU.setAccessibleName(QCoreApplication.translate("StackSettings", u"Use GPU for stacking", None))
 #endif // QT_CONFIG(accessibility)
         self.useGPU.setText("")
-        self.batchLabel.setText(QCoreApplication.translate("StackSettings", u"&Batch size", None))
+        self.batchLabel.setText(QCoreApplication.translate("StackSettings", u"Batch size", None))
 #if QT_CONFIG(accessibility)
         self.batchSize.setAccessibleName(QCoreApplication.translate("StackSettings", u"Batch size", None))
 #endif // QT_CONFIG(accessibility)

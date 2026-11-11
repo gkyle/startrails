@@ -1,4 +1,4 @@
-"""Settings and controls widget for Step 4: Recombine & Save."""
+"""Settings and controls widget for Step 4: Recombine and Save."""
 
 from __future__ import annotations
 
@@ -22,7 +22,6 @@ class FinishRecombineSettings(QWidget):
     blend_mode_changed = Signal(str)
     slider_dragging = Signal()
     settings_changed = Signal()
-    compare_original_toggled = Signal(bool)
     export_layers_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -38,8 +37,6 @@ class FinishRecombineSettings(QWidget):
         self.lbl_star_threshold_value = self.ui.lbl_star_threshold_value
         self.slider_star_threshold = self.ui.slider_star_threshold
         self.combo_star_blend_mode = self.ui.combo_star_blend_mode
-        self.lbl_compare_original = self.ui.lbl_compare_original
-        self.check_compare_original = self.ui.check_compare_original
         self.lbl_status = self.ui.lbl_status
         self.btn_save_output = self.ui.btn_save_output
         self.btn_export_layers = self.ui.btn_export_layers
@@ -66,7 +63,6 @@ class FinishRecombineSettings(QWidget):
             slider.sliderPressed.connect(self.slider_dragging.emit)
             slider.sliderReleased.connect(lambda s=slider, l=label, sg=sig: self._on_percent_slider_released(s, l, sg))
         self.combo_star_blend_mode.currentIndexChanged.connect(self._on_star_blend_mode_changed)
-        self.check_compare_original.toggled.connect(self.compare_original_toggled.emit)
         self.btn_export_layers.clicked.connect(self.export_layers_requested.emit)
 
     def _on_percent_slider_changed(self, slider: QSlider, label: QLabel, signal: Signal, value: int) -> None:
@@ -132,23 +128,12 @@ class FinishRecombineSettings(QWidget):
         self.set_star_threshold(settings.star_threshold)
         self.set_blend_mode(settings.blend_mode)
 
-    def get_compare_original(self) -> bool:
-        return bool(self.check_compare_original.isChecked())
-
-    def set_compare_original(self, checked: bool) -> None:
-        with QSignalBlocker(self.check_compare_original):
-            self.check_compare_original.setChecked(checked)
-
     def refresh_prerequisites(self, has_prerequisites: bool = True) -> None:
         self.slider_star_amount.setEnabled(has_prerequisites)
         self.slider_star_threshold.setEnabled(has_prerequisites)
         self.combo_star_blend_mode.setEnabled(has_prerequisites)
-        self.check_compare_original.setEnabled(has_prerequisites)
-        self.lbl_compare_original.setEnabled(has_prerequisites)
         self.btn_save_output.setEnabled(has_prerequisites)
         self.btn_export_layers.setEnabled(has_prerequisites)
-        if not has_prerequisites and self.check_compare_original.isChecked():
-            self.set_compare_original(False)
 
 
 __all__ = ["FinishRecombineSettings"]

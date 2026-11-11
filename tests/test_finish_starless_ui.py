@@ -58,7 +58,6 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertEqual(self.widget.lbl_detail_value.text(), f"{int(DEFAULT_DETAIL_AMOUNT_PERCENT)}%")
         self.assertEqual(self.widget.slider_detail.value(), 0)
         self.assertFalse(self.widget.unconfigured_box.isHidden())
-        self.assertTrue(self.widget.configured_box.isHidden())
         self.assertTrue(self.widget.get_enable_denoise())
         self.assertTrue(self.widget.get_enable_sharpen())
         self.assertTrue(self.widget.check_enable_denoise.isChecked())
@@ -289,8 +288,8 @@ class TestFinishStarlessSettings(QtTestCase):
         self.assertTrue(self.widget.check_enable_denoise.isChecked())
         self.assertTrue(self.widget.check_enable_sharpen.isChecked())
 
-    def test_refresh_status_verified_cuda(self):
-        """Configured CUDA device displays GPU info badge."""
+    def test_refresh_status_ready_hides_unconfigured_box(self):
+        """Ready GraXpert status hides the unconfigured warning box."""
         status = {
             "configured": True,
             "model_ready": True,
@@ -300,41 +299,6 @@ class TestFinishStarlessSettings(QtTestCase):
         self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
 
         self.assertTrue(self.widget.unconfigured_box.isHidden())
-        self.assertFalse(self.widget.configured_box.isHidden())
-        self.assertIn("CUDA (GPU)", self.widget.lbl_provider_info.text())
-
-    def test_refresh_status_verified_cpu(self):
-        """Configured CPU device displays CPU badge."""
-        status = {
-            "configured": True,
-            "model_ready": True,
-            "device": "cpu",
-            "setup_error": None,
-        }
-        self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
-
-        self.assertTrue(self.widget.unconfigured_box.isHidden())
-        self.assertFalse(self.widget.configured_box.isHidden())
-        self.assertIn("CPU", self.widget.lbl_provider_info.text())
-
-    def test_refresh_status_displays_fallback_and_configured_provider(self):
-        """When execution_device and fallback_reason are present, UI displays actual device, fallback, and configured."""
-        status = {
-            "configured": True,
-            "model_ready": True,
-            "device": "cuda",
-            "setup_error": None,
-            "execution_device": "cpu",
-            "fallback_reason": "CUDA out of memory",
-        }
-        self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
-
-        info_text = self.widget.lbl_provider_info.text()
-        self.assertIn("CPU", info_text)
-        self.assertIn("CUDA (GPU)", info_text)
-        self.assertIn("CUDA out of memory", info_text)
-        self.assertTrue(self.widget.unconfigured_box.isHidden())
-        self.assertFalse(self.widget.configured_box.isHidden())
 
     def test_refresh_status_missing_model_shows_warning(self):
         """Missing GraXpert model shows unconfigured warning."""
@@ -345,7 +309,6 @@ class TestFinishStarlessSettings(QtTestCase):
         }
         self.widget.refresh_status(status, has_prerequisites=True, has_endpoint=False)
         self.assertFalse(self.widget.unconfigured_box.isHidden())
-        self.assertTrue(self.widget.configured_box.isHidden())
 
     def test_cached_endpoint_surfaces_cached_blending_message(self):
         """When a cached endpoint exists, notice indicates cached endpoint is available for blending."""

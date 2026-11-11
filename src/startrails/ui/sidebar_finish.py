@@ -63,7 +63,6 @@ class SidebarFinish(QWidget):
         self.btn_detect_sky = self.skySettings.ui.detect
         self.btn_save_output = self.recombineSettings.btn_save_output
         self.btn_export_layers = self.recombineSettings.btn_export_layers
-        self.check_compare_original = self.recombineSettings.check_compare_original
         self.slider_star_amount = self.recombineSettings.slider_star_amount
         self.slider_star_threshold = self.recombineSettings.slider_star_threshold
 

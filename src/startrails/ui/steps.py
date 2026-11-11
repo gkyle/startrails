@@ -95,7 +95,7 @@ class StepCard(QFrame):
         self.ui.contentLayout.addWidget(body)
 
     def _set_title(self, value):
-        self.ui.toggle.setText(value)
+        self.ui.toggle.setText(value.replace("&", "&&"))
         self.ui.toggle.setAccessibleName(value)
 
     def _set_step_number(self, value):
@@ -106,7 +106,7 @@ class StepCard(QFrame):
             self.ui.statusBadge.setVisible(self.has_number)
         self._update_status_appearance()
 
-    title = Property(str, lambda self: self.ui.toggle.text(), _set_title)
+    title = Property(str, lambda self: self.ui.toggle.text().replace("&&", "&"), _set_title)
     step_number = Property(
         int,
         lambda self: (
@@ -145,8 +145,7 @@ class StepCard(QFrame):
             if body is not None:
                 self.ui.contentLayout.addWidget(body)
 
-        self.ui.toggle.setText(title)
-        self.ui.toggle.setAccessibleName(title)
+        self._set_title(title)
         if self.ui.number is not None:
             self.ui.number.setVisible(True)
             self.ui.number.setText(str(number) if number is not None else "")

@@ -468,7 +468,7 @@ QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:check
 }</string>
           </property>
           <property name="text">
-           <string>&amp;Batch size</string>
+           <string>Batch size</string>
           </property>
           <property name="buddy">
            <cstring>batchSize</cstring>

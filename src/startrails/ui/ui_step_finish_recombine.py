@@ -15,11 +15,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QHBoxLayout,
+from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout,
     QLabel, QPushButton, QSizePolicy, QSlider,
-    QSpacerItem, QVBoxLayout, QWidget)
+    QVBoxLayout, QWidget)
 
-from startrails.ui.checkbox_label import CheckboxLabel
 from . import resources_rc
 
 class Ui_FinishRecombineSettings(object):
@@ -56,45 +55,16 @@ class Ui_FinishRecombineSettings(object):
 "    border: 1px solid #0369a1;\n"
 "    outline: none;\n"
 "}\n"
-"QLabel#lbl_compare_original {\n"
-"    font-size: 11px;\n"
-"    font-weight: 500;\n"
-"    color: #334155;\n"
-"}\n"
 "QSlider {\n"
 "    border: none;\n"
 "    padding: 0px;\n"
 "    margin: 0px;\n"
 "    min-height: 20px;\n"
 "    max-height: 20px;\n"
-""
-                        "}\n"
+"}\n"
 "QSlider:focus {\n"
 "    border: none;\n"
 "    outline: none;\n"
-"}\n"
-"QCheckBox#check_compare_original {\n"
-"    spacing: 0px;\n"
-"    border: none;\n"
-"    padding: 0px;\n"
-"    background: transparent;\n"
-"}\n"
-"QCheckBox#check_compare_original::indicator {\n"
-"    width: 36px;\n"
-"    height: 20px;\n"
-"    border-radius: 10px;\n"
-"}\n"
-"QCheckBox#check_compare_original::indicator:unchecked {\n"
-"    image: url(:/startrails/ui/switch_off.svg);\n"
-"}\n"
-"QCheckBox#check_compare_original::indicator:checked {\n"
-"    image: url(:/startrails/ui/switch_on.svg);\n"
-"}\n"
-"QCheckBox#check_compare_original:focus,\n"
-"QCheckBox#check_compare_original:focus:enabled {\n"
-"    border: none;\n"
-"    outline: none;\n"
-"    padding: 0px;\n"
 "}\n"
 "QLabel#lbl_status {\n"
 "    color: #b91c1c;\n"
@@ -192,29 +162,6 @@ class Ui_FinishRecombineSettings(object):
 
         self.layout.addLayout(self.fin_mode_layout)
 
-        self.compare_layout = QHBoxLayout()
-        self.compare_layout.setObjectName(u"compare_layout")
-        self.lbl_compare_original = CheckboxLabel(FinishRecombineSettings)
-        self.lbl_compare_original.setObjectName(u"lbl_compare_original")
-        self.lbl_compare_original.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-
-        self.compare_layout.addWidget(self.lbl_compare_original)
-
-        self.compare_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.compare_layout.addItem(self.compare_spacer)
-
-        self.check_compare_original = QCheckBox(FinishRecombineSettings)
-        self.check_compare_original.setObjectName(u"check_compare_original")
-        self.check_compare_original.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.check_compare_original.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.check_compare_original.setChecked(False)
-
-        self.compare_layout.addWidget(self.check_compare_original)
-
-
-        self.layout.addLayout(self.compare_layout)
-
         self.lbl_status = QLabel(FinishRecombineSettings)
         self.lbl_status.setObjectName(u"lbl_status")
         self.lbl_status.setWordWrap(True)
@@ -239,9 +186,6 @@ class Ui_FinishRecombineSettings(object):
 
         self.layout.addLayout(self.actions_layout)
 
-#if QT_CONFIG(shortcut)
-        self.lbl_compare_original.setBuddy(self.check_compare_original)
-#endif // QT_CONFIG(shortcut)
 
         self.retranslateUi(FinishRecombineSettings)
 
@@ -257,8 +201,6 @@ class Ui_FinishRecombineSettings(object):
         self.combo_star_blend_mode.setItemText(0, QCoreApplication.translate("FinishRecombineSettings", u"Add", None))
         self.combo_star_blend_mode.setItemText(1, QCoreApplication.translate("FinishRecombineSettings", u"Screen", None))
 
-        self.lbl_compare_original.setText(QCoreApplication.translate("FinishRecombineSettings", u"Compare with original", None))
-        self.check_compare_original.setText("")
         self.lbl_status.setText("")
         self.btn_save_output.setText(QCoreApplication.translate("FinishRecombineSettings", u"Save Image", None))
 #if QT_CONFIG(tooltip)

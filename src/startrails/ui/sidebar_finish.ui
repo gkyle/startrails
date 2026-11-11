@@ -298,7 +298,7 @@ QPushButton#openProject:focus:enabled {
        <item>
         <widget class="StepCard" name="recombineCard">
          <property name="title" stdset="0">
-          <string>Recombine &amp; Save</string>
+          <string>Recombine and Save</string>
          </property>
          <property name="step_number" stdset="0">
           <number>4</number>

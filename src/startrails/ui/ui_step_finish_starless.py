@@ -38,22 +38,6 @@ class Ui_FinishStarlessSettings(object):
 "    font-size: 11px;\n"
 "    line-height: 1.3;\n"
 "}\n"
-"QFrame#configured_box {\n"
-"    background-color: #f8fafc;\n"
-"    border: 1px solid #e2e8f0;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 8px;\n"
-"}\n"
-"QLabel#lbl_provider_dot {\n"
-"    color: #10b981;\n"
-"    font-size: 11px;\n"
-"    font-weight: bold;\n"
-"}\n"
-"QLabel#lbl_provider_info {\n"
-"    font-size: 11px;\n"
-"    font-weight: 600;\n"
-"    color: #1e293b;\n"
-"}\n"
 "QLabel#lbl_strength_title, QLabel#lbl_scope_title, QLabel#lbl_structure_title, QLabel#lbl_detail_title {\n"
 "    font-size: 11px;\n"
 "    font-weight: 600;\n"
@@ -147,30 +131,6 @@ class Ui_FinishStarlessSettings(object):
 
 
         self.layout.addWidget(self.unconfigured_box)
-
-        self.configured_box = QFrame(FinishStarlessSettings)
-        self.configured_box.setObjectName(u"configured_box")
-        self.conf_layout = QHBoxLayout(self.configured_box)
-        self.conf_layout.setSpacing(6)
-        self.conf_layout.setObjectName(u"conf_layout")
-        self.conf_layout.setContentsMargins(6, 4, 6, 4)
-        self.lbl_provider_dot = QLabel(self.configured_box)
-        self.lbl_provider_dot.setObjectName(u"lbl_provider_dot")
-
-        self.conf_layout.addWidget(self.lbl_provider_dot)
-
-        self.lbl_provider_info = QLabel(self.configured_box)
-        self.lbl_provider_info.setObjectName(u"lbl_provider_info")
-        self.lbl_provider_info.setWordWrap(True)
-
-        self.conf_layout.addWidget(self.lbl_provider_info)
-
-        self.conf_spacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.conf_layout.addItem(self.conf_spacer)
-
-
-        self.layout.addWidget(self.configured_box)
 
         self.enableDenoiseRow = QHBoxLayout()
         self.enableDenoiseRow.setObjectName(u"enableDenoiseRow")
@@ -387,8 +347,6 @@ class Ui_FinishStarlessSettings(object):
 
     def retranslateUi(self, FinishStarlessSettings):
         self.lbl_unconf_msg.setText(QCoreApplication.translate("FinishStarlessSettings", u"GraXpert AI model (3.0.2) is missing or unverified. Zero-strength finishing remains available.", None))
-        self.lbl_provider_dot.setText(QCoreApplication.translate("FinishStarlessSettings", u"\u25cf", None))
-        self.lbl_provider_info.setText(QCoreApplication.translate("FinishStarlessSettings", u"GraXpert AI 3.0.2", None))
         self.lbl_enable_denoise.setText(QCoreApplication.translate("FinishStarlessSettings", u"Enable denoise", None))
 #if QT_CONFIG(accessibility)
         self.check_enable_denoise.setAccessibleName(QCoreApplication.translate("FinishStarlessSettings", u"Enable denoise", None))

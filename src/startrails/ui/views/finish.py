@@ -130,6 +130,9 @@ class FinishView(ModeView):
                 self.sidebar.separateSettings.chroma_postfilter_changed, self.on_chroma_postfilter_changed
             )
 
+        if hasattr(self.sidebar, "separateCard"):
+            self.connect_signal(self.sidebar.separateCard.expanded, self._on_separate_card_expanded)
+
         if hasattr(self.sidebar, "starlessSettings"):
             if hasattr(self.sidebar.starlessSettings, "enable_denoise_changed"):
                 self.connect_signal(
@@ -159,9 +162,6 @@ class FinishView(ModeView):
             self.connect_signal(self.sidebar.recombineSettings.star_threshold_changed, self.on_star_threshold_changed)
             self.connect_signal(self.sidebar.recombineSettings.blend_mode_changed, self.on_blend_mode_changed)
             self.connect_signal(self.sidebar.recombineSettings.slider_dragging, self._on_recombine_slider_dragging)
-            self.connect_signal(
-                self.sidebar.recombineSettings.compare_original_toggled, self.on_compare_original_toggled
-            )
 
         if hasattr(self.sidebar, "recombineCard"):
             self.connect_signal(self.sidebar.recombineCard.expanded, self._on_recombine_card_expanded)
@@ -385,23 +385,6 @@ class FinishView(ModeView):
             if isinstance(file, OutputFile):
                 self._last_output_file = file
 
-            if hasattr(self.sidebar, "recombineSettings"):
-                has_separated = (
-                    self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is not None
-                    and self._project.current_artifact_path(ROLE_SEPARATED_STARS) is not None
-                )
-                is_sky_active = bool(hasattr(self.sidebar, "skyCard") and self.sidebar.skyCard.is_expanded)
-                if (
-                    file is not None
-                    and getattr(self._project, "source_file", None) is not None
-                    and getattr(file, "path", None) == self._project.source_file.path
-                    and has_separated
-                    and not is_sky_active
-                ):
-                    self.sidebar.recombineSettings.set_compare_original(True)
-                elif isinstance(file, OutputFile) or is_sky_active:
-                    self.sidebar.recombineSettings.set_compare_original(False)
-
         canvas = getattr(self.shell, "canvas_main", None)
         if canvas is not None:
             if isinstance(file, OutputFile):
@@ -415,16 +398,12 @@ class FinishView(ModeView):
                 and getattr(self._project, "source_file", None) is not None
                 and getattr(file, "path", None) == self._project.source_file.path
             ):
-                is_comparing = bool(
-                    self.sidebar is not None
-                    and hasattr(self.sidebar, "recombineSettings")
-                    and self.sidebar.recombineSettings.get_compare_original()
+                is_sky_active = bool(
+                    self.sidebar is not None and hasattr(self.sidebar, "skyCard") and self.sidebar.skyCard.is_expanded
                 )
-                if is_comparing:
-                    if hasattr(canvas, "set_mask_edit_mode") and canvas.is_mask_edit_mode():
-                        canvas.set_mask_edit_mode(False)
-                elif (
-                    self.sidebar is not None
+                if (
+                    is_sky_active
+                    and self.sidebar is not None
                     and hasattr(self.sidebar, "skySettings")
                     and hasattr(self.sidebar.skySettings, "ui")
                     and hasattr(self.sidebar.skySettings.ui, "showMaskOverlay")
@@ -432,6 +411,8 @@ class FinishView(ModeView):
                 ):
                     if hasattr(canvas, "set_mask_edit_mode"):
                         canvas.set_mask_edit_mode(True)
+                elif hasattr(canvas, "set_mask_edit_mode") and canvas.is_mask_edit_mode():
+                    canvas.set_mask_edit_mode(False)
 
     def _build_output_files(self) -> list[OutputFile]:
         """Return project outputs plus retained starless outputs awaiting recomputation."""
@@ -757,40 +738,6 @@ class FinishView(ModeView):
             work=work,
         )
 
-    def on_compare_original_toggled(self, checked: bool) -> None:
-        """Toggle canvas preview between source image and recombined output."""
-        if not self._project or not self._project.source_is_current() or self._project.source_file is None:
-            return
-
-        if checked:
-            self.showFile(self._project.source_file, preserve_view=True)
-            canvas = getattr(self.shell, "canvas_main", None)
-            if canvas is not None and hasattr(canvas, "set_mask_edit_mode"):
-                canvas.set_mask_edit_mode(False)
-            return
-
-        target_file: Optional[OutputFile] = None
-        if (
-            self._last_output_file is not None
-            and Path(self._last_output_file.path).exists()
-            and any(f.path == self._last_output_file.path for f in self.app.workflow.get_output_file_list())
-        ):
-            target_file = self._last_output_file
-        else:
-            comp_path = self._project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
-            if comp_path is not None:
-                target_file = OutputFile(basename=comp_path.name, path=str(comp_path), operation="Composite")
-            elif self._active_starless_output_file() is not None:
-                target_file = self._active_starless_output_file()
-
-        if target_file is not None:
-            self.showFile(target_file, preserve_view=True)
-        elif (
-            self._project.current_artifact_path(ROLE_SEPARATED_STARLESS) is not None
-            and self._project.current_artifact_path(ROLE_SEPARATED_STARS) is not None
-        ):
-            self._debounce_recombine()
-
     def on_run_separation(self) -> None:
         """Execute star separation workflow in background task."""
         if not self._project or not self._project.source_is_current():
@@ -866,6 +813,17 @@ class FinishView(ModeView):
         self.app.workflow.save_project()
         self.updateReadyStates()
 
+    def _on_separate_card_expanded(self) -> None:
+        """When Separate Stars card is expanded, display the separated starless image if present."""
+        if not self._project or not self._project.source_is_current():
+            return
+        starless_path = self._project.current_artifact_path(ROLE_SEPARATED_STARLESS)
+        stars_path = self._project.current_artifact_path(ROLE_SEPARATED_STARS)
+        if starless_path is not None and stars_path is not None and starless_path.exists():
+            starless_file = OutputFile(basename=starless_path.name, path=str(starless_path), operation="Starless")
+            self.sidebar.outputFiles.focus_file(starless_file)
+            self.showFile(starless_file, preserve_view=True)
+
     def on_run_denoise(self) -> None:
         """Execute GraXpert AI denoising on the separated starless plate."""
         if not self._project or not self._project.source_is_current():
@@ -923,12 +881,6 @@ class FinishView(ModeView):
             active_file = self._active_starless_output_file()
             if active_file is not None and Path(active_file.path).exists():
                 self._last_output_file = active_file
-                if (
-                    self.sidebar is not None
-                    and hasattr(self.sidebar, "recombineSettings")
-                    and self.sidebar.recombineSettings.get_compare_original()
-                ):
-                    return
                 self.sidebar.outputFiles.focus_file(active_file)
                 self.showFile(active_file, preserve_view=True, reload=True)
 
@@ -1177,12 +1129,6 @@ class FinishView(ModeView):
             active_file = self._active_starless_output_file()
             if active_file is not None and Path(active_file.path).exists():
                 self._last_output_file = active_file
-                if (
-                    self.sidebar is not None
-                    and hasattr(self.sidebar, "recombineSettings")
-                    and self.sidebar.recombineSettings.get_compare_original()
-                ):
-                    return
                 canvas = getattr(self.shell, "canvas_main", None)
                 if canvas is not None and hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
                     return
@@ -1281,12 +1227,6 @@ class FinishView(ModeView):
                     basename=composite_path.name, path=str(composite_path), operation="Composite"
                 )
                 self._last_output_file = composite_file
-                if (
-                    self.sidebar is not None
-                    and hasattr(self.sidebar, "recombineSettings")
-                    and self.sidebar.recombineSettings.get_compare_original()
-                ):
-                    return
                 self.sidebar.outputFiles.focus_file(composite_file)
                 canvas = getattr(self.shell, "canvas_main", None)
                 if canvas is not None and hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
@@ -1328,12 +1268,6 @@ class FinishView(ModeView):
             if p:
                 composite_file = OutputFile(basename=p.name, path=str(p), operation="Composite")
                 self._last_output_file = composite_file
-                if (
-                    self.sidebar is not None
-                    and hasattr(self.sidebar, "recombineSettings")
-                    and self.sidebar.recombineSettings.get_compare_original()
-                ):
-                    return
                 self.sidebar.outputFiles.focus_file(composite_file)
                 canvas = getattr(self.shell, "canvas_main", None)
                 if canvas is not None and hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
