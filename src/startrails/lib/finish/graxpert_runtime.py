@@ -14,11 +14,11 @@ from startrails.lib.finish.graxpert import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_STRIDE,
     GRAXPERT_MODEL_RELATIVE_PATH,
+    MODEL_SCALE_FACTOR,
+    MODEL_THRESHOLD,
     WINDOW_SIZE,
     compute_graxpert_stats,
     graxpert_model_identity,
-    graxpert_tile_postprocess,
-    graxpert_tile_preprocess,
     load_graxpert_model,
 )
 from startrails.lib.gpu import (
@@ -153,7 +153,7 @@ class GraXpertSession:
 
         # 2D Hann window for smooth overlap interpolation without boundary grid seams
         w1d = np.sin(np.pi * (np.arange(WINDOW_SIZE) + 0.5) / WINDOW_SIZE) ** 2
-        window_weight = np.outer(w1d, w1d)[:, :, None].astype(np.float32)
+        window_weight = torch.from_numpy(np.outer(w1d, w1d).astype(np.float32)).to(device=self.device)
 
         y_coords = list(range(0, max(1, h - WINDOW_SIZE + 1), DEFAULT_STRIDE))
         if not y_coords or y_coords[-1] + WINDOW_SIZE < h:
@@ -169,8 +169,24 @@ class GraXpertSession:
             for x in x_coords
         ]
         total_tiles = len(tile_positions)
-        accum_denoised = np.zeros((h, w, c), dtype=np.float32)
-        accum_weight = np.zeros((h, w, 1), dtype=np.float32)
+
+        # Keep padded image, normalization, gating, and Hann accumulation on
+        # self.device in NCHW to eliminate per-batch CPU/GPU round-trips and
+        # per-forward NHWC/NCHW transposes.
+        padded_t = (
+            torch.from_numpy(np.ascontiguousarray(padded))
+            .to(device=self.device, dtype=torch.float32)
+            .permute(2, 0, 1)
+            .contiguous()
+        )
+        med_t = torch.from_numpy(median).to(device=self.device, dtype=torch.float32).view(c, 1, 1)
+        mad_t = torch.from_numpy(mad).to(device=self.device, dtype=torch.float32).view(c, 1, 1)
+        orig_scaled = (padded_t - med_t) / mad_t * MODEL_SCALE_FACTOR
+        del padded_t
+        inp_scaled = orig_scaled.clamp(-MODEL_THRESHOLD, MODEL_THRESHOLD).to(dtype=self.dtype)
+
+        accum_denoised = torch.zeros((c, h, w), dtype=torch.float32, device=self.device)
+        accum_weight = torch.zeros((h, w), dtype=torch.float32, device=self.device)
 
         completed_tiles = 0
         if progress_bar is not None:
@@ -181,23 +197,21 @@ class GraXpertSession:
                 raise CancelledError("GraXpert denoising cancelled by user")
 
             batch_pos = tile_positions[b_idx : b_idx + batch_size]
-            tiles = [
-                graxpert_tile_preprocess(padded[y : y + WINDOW_SIZE, x : x + WINDOW_SIZE], median, mad)
-                for y, x in batch_pos
-            ]
-            batch_arr = np.stack(tiles, axis=0).astype(np.float32, copy=False)
-            batch_tensor = torch.from_numpy(batch_arr).to(device=self.device, dtype=self.dtype)
+            batch_tensor = torch.stack(
+                [inp_scaled[:, y : y + WINDOW_SIZE, x : x + WINDOW_SIZE] for y, x in batch_pos]
+            )
 
             out_tensor = self.model(batch_tensor)
             if isinstance(out_tensor, torch.Tensor):
-                out_batch = out_tensor.detach().cpu().float().numpy()
+                out_batch = out_tensor.detach().to(device=self.device, dtype=torch.float32)
             else:
-                out_batch = np.asarray(out_tensor, dtype=np.float32)
+                out_batch = torch.as_tensor(np.asarray(out_tensor, dtype=np.float32), device=self.device)
 
             for i, (y, x) in enumerate(batch_pos):
-                orig_tile = padded[y : y + WINDOW_SIZE, x : x + WINDOW_SIZE]
-                denoised_tile = graxpert_tile_postprocess(out_batch[i], orig_tile, median, mad)
-                accum_denoised[y : y + WINDOW_SIZE, x : x + WINDOW_SIZE] += denoised_tile * window_weight
+                orig_tile_scaled = orig_scaled[:, y : y + WINDOW_SIZE, x : x + WINDOW_SIZE]
+                gated = torch.where(orig_tile_scaled < MODEL_THRESHOLD, out_batch[i], orig_tile_scaled)
+                restored = (gated / MODEL_SCALE_FACTOR * mad_t + med_t).clamp(0.0, 1.0)
+                accum_denoised[:, y : y + WINDOW_SIZE, x : x + WINDOW_SIZE] += restored * window_weight
                 accum_weight[y : y + WINDOW_SIZE, x : x + WINDOW_SIZE] += window_weight
 
             step_tiles = len(batch_pos)
@@ -216,8 +230,8 @@ class GraXpertSession:
 
         # Every covered weight is positive, even at image corners. Flooring tiny
         # Hann weights would darken those pixels instead of normalizing them.
-        denoised_full = (accum_denoised / accum_weight)[:source_h, :source_w]
-        denoised_full = np.clip(denoised_full, 0.0, 1.0).astype(np.float32)
+        denoised_t = (accum_denoised / accum_weight)[:, :source_h, :source_w].clamp(0.0, 1.0)
+        denoised_full = denoised_t.permute(1, 2, 0).cpu().numpy().astype(np.float32, copy=False)
 
         if self.device.type != "cpu":
             free_gpu_memory()
