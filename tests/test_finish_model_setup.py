@@ -60,6 +60,16 @@ class TestFinishModelSetup(unittest.TestCase):
         self.assertEqual(tuple(out_nhwc.shape), (1, 64, 64, 3))
         self.assertTrue(torch.isfinite(out_nhwc).all())
 
+        odd_nhwc = torch.full((1, 65, 67, 3), 0.25, dtype=torch.float32)
+        odd_nchw = torch.full((1, 3, 65, 67), 0.25, dtype=torch.float32)
+        with torch.no_grad():
+            out_odd_nhwc = model(odd_nhwc)
+            out_odd_nchw = model(odd_nchw)
+        self.assertEqual(tuple(out_odd_nhwc.shape), (1, 65, 67, 3))
+        self.assertEqual(tuple(out_odd_nchw.shape), (1, 3, 65, 67))
+        self.assertTrue(torch.isfinite(out_odd_nhwc).all())
+        self.assertTrue(torch.isfinite(out_odd_nchw).all())
+
         with tempfile.TemporaryDirectory() as tmpdir:
             missing = Path(tmpdir) / "missing.pt"
             with self.assertRaises(FileNotFoundError):

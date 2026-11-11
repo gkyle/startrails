@@ -452,7 +452,8 @@ class CascadedGaze(nn.Module):
         _, _, h, w = inp.shape
         mod_pad_h = (self.padder_size - h % self.padder_size) % self.padder_size
         mod_pad_w = (self.padder_size - w % self.padder_size) % self.padder_size
-        x = F.pad(inp, (0, mod_pad_w, 0, mod_pad_h))
+        padded_inp = F.pad(inp, (0, mod_pad_w, 0, mod_pad_h))
+        x = padded_inp
 
         x = self.intro(x)
         encs: List[torch.Tensor] = []
@@ -469,7 +470,7 @@ class CascadedGaze(nn.Module):
             x = decoder(x)
 
         x = self.ending(x)
-        x = x + inp
+        x = x + padded_inp
         out = x[:, :, :h, :w]
 
         if is_nhwc:
