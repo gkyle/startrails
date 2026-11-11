@@ -146,14 +146,15 @@ class TestFinishDependencies(unittest.TestCase):
         session.execution_device = "cpu"
         session.fallback_reason = "cuda allocation failure: out of memory; retried on cpu."
         session.denoise_full_strength.return_value = np.zeros((256, 256, 3), np.float32)
-        with patch("setup.check_finish_models.GraXpertSession", return_value=session):
-            report = check_graxpert(model_path, sample)
+        with patch("setup.check_finish_models.GraXpertSession", return_value=session) as session_class:
+            report = check_graxpert(model_path, sample, device="cuda")
             self.assertEqual(report["configured_device"], "cuda")
             self.assertEqual(report["execution_device"], "cpu")
             self.assertIn("out of memory", report["fallback_reason"])
+            self.assertEqual(session_class.call_args.kwargs["device"], "cuda")
             session.denoise_full_strength.side_effect = RuntimeError("CPU inference failed")
             with self.assertRaisesRegex(RuntimeError, "CPU inference failed"):
-                check_graxpert(model_path, sample)
+                check_graxpert(model_path, sample, device="cuda")
 
     def test_missing_model_setup_does_not_block_other_modes(self):
         from setup.check_runtime import main
@@ -409,6 +410,22 @@ class TestFinishDependencies(unittest.TestCase):
 
         mock_check_graxpert.assert_called_once()
         mock_check_nox.assert_called_once()
+        self.assertEqual(mock_check_graxpert.call_args.kwargs["device"], "cpu")
+        self.assertEqual(mock_check_nox.call_args.kwargs["device"], "cpu")
+
+    def test_variant_resolves_to_explicit_runtime_device(self):
+        from setup.check_finish_models import resolve_variant_device
+
+        for variant, expected in (
+            ("cpu", "cpu"),
+            ("mps", "mps"),
+            ("cu118", "cuda"),
+            ("cu124", "cuda"),
+            ("cu133", "cuda"),
+            (None, "auto"),
+        ):
+            with self.subTest(variant=variant):
+                self.assertEqual(resolve_variant_device(variant), expected)
 
     def test_ui_separate_stars_settings(self):
         from support import qt_app

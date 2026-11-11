@@ -29,6 +29,21 @@ from startrails.paths import APPLICATION_DIR
 
 SMOKE_IMAGE_SIZE = NOX_WINDOW_SIZE
 
+# Each installer variant selects one wheel lane; setup checks request the
+# matching runtime device explicitly instead of leaving inference on auto.
+VARIANT_DEVICES = {
+    "cpu": "cpu",
+    "mps": "mps",
+    "cu118": "cuda",
+    "cu124": "cuda",
+    "cu133": "cuda",
+}
+
+
+def resolve_variant_device(variant: str | None) -> str:
+    """Map an installer wheel variant to the explicit runtime device request."""
+    return "auto" if variant is None else VARIANT_DEVICES[variant]
+
 
 def create_smoke_image(size: int = SMOKE_IMAGE_SIZE) -> np.ndarray:
     """Create a deterministic uint16 RGB starfield sample matching real dynamic range."""
@@ -50,7 +65,7 @@ def create_smoke_image(size: int = SMOKE_IMAGE_SIZE) -> np.ndarray:
     return np.round(np.clip(sky, 0.0, 1.0) * 65535.0).astype(np.uint16)
 
 
-def check_graxpert(model_path: Path, image: np.ndarray) -> dict:
+def check_graxpert(model_path: Path, image: np.ndarray, *, device: str) -> dict:
     """Verify GraXpert weights and smoke-test tiled PyTorch inference."""
     if not model_path.is_file():
         raise ValueError(f"Missing GraXpert model: {model_path}")
@@ -58,7 +73,7 @@ def check_graxpert(model_path: Path, image: np.ndarray) -> dict:
     tile = image[:GRAXPERT_WINDOW_SIZE, :GRAXPERT_WINDOW_SIZE]
     if tile.shape != (GRAXPERT_WINDOW_SIZE, GRAXPERT_WINDOW_SIZE, 3):
         raise ValueError("GraXpert setup requires at least a 256-pixel RGB sample.")
-    session = GraXpertSession(model_path=model_path)
+    session = GraXpertSession(model_path=model_path, device=device)
     denoised = session.denoise_full_strength(tile)
     if denoised.shape != tile.shape or denoised.dtype != np.float32 or not np.isfinite(denoised).all():
         raise ValueError("GraXpert inference returned invalid model output.")
@@ -72,12 +87,14 @@ def check_graxpert(model_path: Path, image: np.ndarray) -> dict:
     }
 
 
-def check_nox(model_path: Path, image: np.ndarray, *, chroma_postfilter: bool = True) -> tuple[np.ndarray, dict]:
+def check_nox(
+    model_path: Path, image: np.ndarray, *, device: str, chroma_postfilter: bool = True
+) -> tuple[np.ndarray, dict]:
     """Verify Nox star removal weights and smoke-test tiled inference."""
     if not model_path.is_file():
         raise ValueError(f"Missing Nox model: {model_path}")
     started = perf_counter()
-    session = NoxSession(model_path=model_path)
+    session = NoxSession(model_path=model_path, device=device)
     starless = session.remove_stars(image, stride=DEFAULT_STRIDE)
     if starless.shape != image.shape or starless.dtype != np.float32 or not np.isfinite(starless).all():
         raise ValueError("Nox star removal returned invalid model output.")
@@ -106,6 +123,7 @@ def main():
     parser.add_argument("--image", type=Path, help="Sample RGB image; check its central 512-pixel crop")
     parser.add_argument("--variant", choices=("cpu", "cu118", "cu124", "cu133", "mps"))
     args = parser.parse_args()
+    device = resolve_variant_device(args.variant)
     if args.image is None:
         pixels = create_smoke_image()
     else:
@@ -119,8 +137,8 @@ def main():
     image = normalize_image(pixels)
     report = {}
     if not args.skip_nox:
-        image, report["nox"] = check_nox(args.nox_model, image)
-    report["graxpert"] = check_graxpert(args.graxpert_model, image)
+        image, report["nox"] = check_nox(args.nox_model, image, device=device)
+    report["graxpert"] = check_graxpert(args.graxpert_model, image, device=device)
     print(json.dumps(report, indent=2))
 
 

@@ -48,6 +48,8 @@ smoke check before approving a platform release:
 .venv/bin/python src/setup/check_finish_models.py --variant cpu --image /path/to/sample.tif
 ```
 
+Use the installed variant to request its device explicitly (`cpu`, `mps`, or
+`cu118`/`cu124`/`cu133` for CUDA). Omitting `--variant` selects the device automatically.
 
 Select one dependency extra (`cpu`, `cu118`, `cu124`, `cu133`, or `mps`) through the
 normal setup scripts. Both Nox and GraXpert run on the installed PyTorch device (`cuda`,

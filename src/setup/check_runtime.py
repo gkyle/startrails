@@ -45,11 +45,12 @@ def main():
             print(notice, file=sys.stderr)
 
     # Smoke-test the bundled GraXpert PyTorch model when present.
-    from setup.check_finish_models import check_graxpert
+    from setup.check_finish_models import check_graxpert, resolve_variant_device
     from startrails.lib.finish.graxpert import GRAXPERT_MODEL_RELATIVE_PATH
     from startrails.paths import APPLICATION_DIR
     import numpy as np
 
+    device = resolve_variant_device(args.variant)
     model_path = APPLICATION_DIR / "models" / GRAXPERT_MODEL_RELATIVE_PATH
     if not model_path.is_file():
         message = "GraXpert model is missing. Install the model archive and run repair to enable Finish denoising."
@@ -59,7 +60,7 @@ def main():
             args.notice_file.write_text(notice, encoding="utf-8")
         return  # Other modes and neutral finishing remain usable.
     sample = np.full((256, 256, 3), 0.5, dtype=np.float32)
-    report = check_graxpert(model_path, sample)
+    report = check_graxpert(model_path, sample, device=device)
     print(f"GraXpert runtime: {report['execution_device']} (configured: {report['configured_device']})")
     if report["fallback_reason"]:
         gpu_msg = f"GraXpert GPU execution fell back to CPU: {report['fallback_reason']}"
