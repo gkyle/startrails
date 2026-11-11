@@ -192,3 +192,4 @@ class Ui_SeparateStarsSettings(object):
         pass
     # retranslateUi
 
+Ui_separateStarsSettings = Ui_SeparateStarsSettings

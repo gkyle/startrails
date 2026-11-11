@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QHBoxLayout,
     QSlider, QSpacerItem, QVBoxLayout, QWidget)
 
 from startrails.ui.checkbox_label import CheckboxLabel
-import resources_rc
+from . import resources_rc
 
 class Ui_FinishStarlessSettings(object):
     def setupUi(self, FinishStarlessSettings):
@@ -413,3 +413,4 @@ class Ui_FinishStarlessSettings(object):
         pass
     # retranslateUi
 
+Ui_finishStarlessSettings = Ui_FinishStarlessSettings

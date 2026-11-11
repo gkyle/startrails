@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 from typing import Optional, Literal, override
 from PySide6.QtCore import Qt, Signal, QSize, QUrl
-from PySide6.QtGui import QColor, QDesktopServices, QFont, QIcon, QKeyEvent, QPainter, QPixmap
+from PySide6.QtGui import QColor, QDesktopServices, QFont, QIcon, QKeyEvent, QPainter, QPainterPath, QPixmap
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -40,14 +40,35 @@ import startrails.ui.resources_rc
 logger = logging.getLogger(__name__)
 
 
+_PROJECT_ICON_WIDTH = 160
+_PROJECT_ICON_HEIGHT = 160
+_PROJECT_ICON_CORNER_RADIUS = 16
+
+
 def _load_project_pixmap(project_type: str) -> QPixmap:
-    """Load project icon from Qt resources with filesystem fallback."""
+    """Load project icon from Qt resources with filesystem fallback and rounded corners."""
     pix = QPixmap(f":/startrails/ui/project_{project_type}.png")
     if pix.isNull():
         disk_path = Path(__file__).resolve().parent / "icons" / f"project_{project_type}.png"
         if disk_path.exists():
             pix = QPixmap(str(disk_path))
-    return pix
+    if pix.isNull():
+        return pix
+
+    scaled = pix.scaled(_PROJECT_ICON_WIDTH, _PROJECT_ICON_HEIGHT, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    rounded = QPixmap(scaled.size())
+    rounded.fill(Qt.transparent)
+    painter = QPainter(rounded)
+    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+    clip_path = QPainterPath()
+    clip_path.addRoundedRect(
+        0, 0, scaled.width(), scaled.height(), _PROJECT_ICON_CORNER_RADIUS, _PROJECT_ICON_CORNER_RADIUS
+    )
+    painter.setClipPath(clip_path)
+    painter.drawPixmap(0, 0, scaled)
+    painter.end()
+    return rounded
 
 
 OverlayMode = Literal["welcome", "new", "open"]
@@ -162,7 +183,7 @@ class ProjectWelcomeOverlay(QWidget):
         self.lbl_icon_st.setFixedHeight(175)
         st_pix = _load_project_pixmap("startrails")
         if not st_pix.isNull():
-            self.lbl_icon_st.setPixmap(st_pix.scaled(176, 174, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.lbl_icon_st.setPixmap(st_pix)
         layout_st.addWidget(self.lbl_icon_st)
 
         # Title & Badge
@@ -172,7 +193,7 @@ class ProjectWelcomeOverlay(QWidget):
         layout_st.addWidget(lbl_st_title)
 
         lbl_st_desc = QLabel(
-            "Align & stack time-lapse sequences with AI satellite streak removal and gap filling.",
+            "Stack night sky sequences with satellite streak removal and gap filling.",
             self.card_startrails,
         )
         lbl_st_desc.setObjectName("CardDescription")
@@ -216,17 +237,17 @@ class ProjectWelcomeOverlay(QWidget):
         self.lbl_icon_dn.setFixedHeight(175)
         dn_pix = _load_project_pixmap("denoise")
         if not dn_pix.isNull():
-            self.lbl_icon_dn.setPixmap(dn_pix.scaled(176, 174, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.lbl_icon_dn.setPixmap(dn_pix)
         layout_dn.addWidget(self.lbl_icon_dn)
 
         # Title & Badge
-        lbl_dn_title = QLabel("Astro Denoise", self.card_denoise)
+        lbl_dn_title = QLabel("Astro Denoise Stacking", self.card_denoise)
         lbl_dn_title.setObjectName("CardHeaderTitle")
         lbl_dn_title.setAlignment(Qt.AlignCenter)
         layout_dn.addWidget(lbl_dn_title)
 
         lbl_dn_desc = QLabel(
-            "Dual sky/ground alignment with AI landscape mask generation and horizon blending.",
+            "Detect sky, align, and stack images to reduce noise.",
             self.card_denoise,
         )
         lbl_dn_desc.setObjectName("CardDescription")
@@ -270,9 +291,9 @@ class ProjectWelcomeOverlay(QWidget):
         self.lbl_icon_fn.setFixedHeight(175)
         fn_pix = _load_project_pixmap("finish")
         if not fn_pix.isNull():
-            self.lbl_icon_fn.setPixmap(fn_pix.scaled(176, 174, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.lbl_icon_fn.setPixmap(fn_pix)
         elif not dn_pix.isNull():
-            self.lbl_icon_fn.setPixmap(dn_pix.scaled(176, 174, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            self.lbl_icon_fn.setPixmap(dn_pix)
         layout_fn.addWidget(self.lbl_icon_fn)
 
         # Title & Badge
@@ -282,7 +303,7 @@ class ProjectWelcomeOverlay(QWidget):
         layout_fn.addWidget(lbl_fn_title)
 
         lbl_fn_desc = QLabel(
-            "Star separation with AI starless denoise and recombination.",
+            "Separate stars from night sky for different processing.",
             self.card_finish,
         )
         lbl_fn_desc.setObjectName("CardDescription")
