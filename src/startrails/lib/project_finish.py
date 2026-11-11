@@ -159,6 +159,20 @@ def _file_stamp(path: Path) -> Optional[Tuple[int, int]]:
         return None
 
 
+def _publication_stamp(path: Path, transaction: Optional[ArtifactTransaction]) -> Optional[Tuple[int, int]]:
+    """Stamp a caller-supplied output, accepting its staged file before commit.
+
+    Publishers pass canonical destinations that a transaction may have written
+    but not yet installed, so the destination itself can still be absent. The
+    staged file is what commit will install, so validate that instead.
+    """
+    if transaction is not None:
+        staged = transaction.staged.get(path)
+        if staged is not None:
+            return _file_stamp(staged)
+    return _file_stamp(path)
+
+
 def probe_source_image(path: Union[str, Path]) -> int:
     """Validate a developed RGB source and determine depth before normalization."""
     p = Path(path).resolve()
@@ -439,6 +453,21 @@ class FinishProject(Unpickle):
             entry["options"] = options
         self.artifact_manifest[role] = entry
 
+    def _job_is_current(
+        self,
+        *,
+        expected_revision: Optional[int],
+        expected_separation_signature: Any = _UNSET,
+    ) -> bool:
+        """Return whether the caller's expected job snapshot is still current."""
+        if expected_revision is not None and (
+            expected_revision != self.processing_revision or not self.source_is_current()
+        ):
+            return False
+        if expected_separation_signature is not _UNSET and expected_separation_signature != self.separation_signature:
+            return False
+        return True
+
     def _commit_if_current(
         self,
         transaction: Optional[ArtifactTransaction],
@@ -447,11 +476,10 @@ class FinishProject(Unpickle):
         expected_separation_signature: Any = _UNSET,
     ) -> bool:
         """Commit staged files while the caller holds the state lock and the job is current."""
-        if expected_revision is not None and (
-            expected_revision != self.processing_revision or not self.source_is_current()
+        if not self._job_is_current(
+            expected_revision=expected_revision,
+            expected_separation_signature=expected_separation_signature,
         ):
-            return False
-        if expected_separation_signature is not _UNSET and expected_separation_signature != self.separation_signature:
             return False
         if transaction is not None:
             transaction.commit()
@@ -696,15 +724,30 @@ class FinishProject(Unpickle):
             destinations = {starless, stars}
             if composite is not None and composite in destinations:
                 raise ValueError("Composite artifact path must differ from the separated layers.")
-            if not self._commit_if_current(transaction, expected_revision=expected_revision):
+            if not self._job_is_current(expected_revision=expected_revision):
                 return False
-            stamps = {ROLE_SEPARATED_STARLESS: _file_stamp(starless), ROLE_SEPARATED_STARS: _file_stamp(stars)}
+
+            output_paths = [
+                (ROLE_SEPARATED_STARLESS, starless),
+                (ROLE_SEPARATED_STARS, stars),
+            ]
+            if composite is not None:
+                output_paths.append((ROLE_FINISHED_COMPOSITE, composite))
+            missing = [
+                str(path) for _, path in output_paths if _publication_stamp(path, transaction) is None
+            ]
+            if missing:
+                raise FileNotFoundError(f"Cannot register missing separation outputs: {', '.join(missing)}")
+
+            if transaction is not None:
+                transaction.commit()
+
+            # Commit installs any staged files at the canonical destinations;
+            # record the final identities used by freshness checks.
+            stamps = {role: _file_stamp(path) for role, path in output_paths}
             if any(stamp is None for stamp in stamps.values()):
                 raise FileNotFoundError("Cannot register separation outputs that are missing.")
-            if composite is not None:
-                composite_stamp = _file_stamp(composite)
-                if composite_stamp is None:
-                    raise FileNotFoundError("Cannot register a missing composite output.")
+            composite_stamp = stamps.get(ROLE_FINISHED_COMPOSITE)
 
             self.invalidate_separation_descendants()
             self.separation_signature = signature
@@ -777,8 +820,7 @@ class FinishProject(Unpickle):
                 raise ValueError(f"Detail amount must be in range [0.0, 100.0], got {detail_amount}")
             if type(starless_filter_version) is not int or starless_filter_version < 1:
                 raise ValueError(f"Starless filter version must be a positive integer, got {starless_filter_version}")
-            if not self._commit_if_current(
-                transaction,
+            if not self._job_is_current(
                 expected_revision=expected_revision,
                 expected_separation_signature=separation_signature,
             ):
@@ -800,6 +842,17 @@ class FinishProject(Unpickle):
             if ROLE_DENOISE_ENDPOINT in published and (endpoint_signature is None or model_identity is None):
                 raise ValueError("A published denoise endpoint requires its signature and model identity.")
 
+            missing = [
+                str(path) for path in published.values() if _publication_stamp(path, transaction) is None
+            ]
+            if missing:
+                raise FileNotFoundError(f"Cannot register missing denoise outputs: {', '.join(missing)}")
+
+            if transaction is not None:
+                transaction.commit()
+
+            # Commit installs any staged files at the canonical destinations;
+            # record the final identities used by freshness checks.
             stamps = {role: _file_stamp(path) for role, path in published.items()}
             missing = [str(path) for role, path in published.items() if stamps[role] is None]
             if missing:

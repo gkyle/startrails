@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from dataclasses import replace
+import copy
 import json
 import os
 import shutil
@@ -11,6 +12,7 @@ import numpy as np
 from PySide6.QtCore import QObject
 
 from support import QtTestCase
+from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.finish.defaults import (
     BLEND_SCREEN,
     FINISH_DEFAULTS,
@@ -325,6 +327,33 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(project.separation_signature, "signature-a")
         self.assertIsNotNone(project.current_artifact_path(ROLE_SEPARATED_STARLESS))
 
+        # A missing optional composite is a caller error: reject it before any
+        # staged replacement replaces the current destinations.
+        manifest = copy.deepcopy(project.artifact_manifest)
+        published_bytes = {
+            role: project.current_artifact_path(role).read_bytes()
+            for role in (ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS)
+        }
+        with ArtifactTransaction() as transaction:
+            for role in (ROLE_SEPARATED_STARLESS, ROLE_SEPARATED_STARS):
+                staged = transaction.stage(project.artifact_path(role, for_write=True))
+                Path(staged).write_bytes(f"replacement {role}".encode())
+            with self.assertRaises(FileNotFoundError):
+                project.publish_separation(
+                    starless,
+                    stars,
+                    signature="signature-c",
+                    model_identity="model-c",
+                    expected_revision=project.processing_revision,
+                    composite_path=self.root / "missing_composite.tif",
+                    transaction=transaction,
+                )
+        for role, content in published_bytes.items():
+            self.assertIsNotNone(project.current_artifact_path(role))
+            self.assertEqual(project.artifact_path(role).read_bytes(), content)
+        self.assertEqual(project.artifact_manifest, manifest)
+        self.assertEqual(project.separation_signature, "signature-a")
+
     def test_export_and_blend_settings_invalidate_only_their_dependents(self):
         project = FinishProject(project_file=str(self.root / f"settings{FINISH_EXT}"))
         source = self.create_synthetic_image("settings_source.tif")
@@ -502,6 +531,48 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(finished_options["starless_filter_version"], STARLESS_FILTER_VERSION)
         self.assertIsNone(project.current_artifact_path(ROLE_FINISHED_COMPOSITE))
         self.assertIsNone(project.current_export_path())
+
+        # Caller errors are rejected before staged files replace published plates.
+        manifest = copy.deepcopy(project.artifact_manifest)
+        published_bytes = {
+            role: project.artifact_path(role).read_bytes()
+            for role in (ROLE_DENOISE_ENDPOINT, ROLE_DENOISED_STARLESS, ROLE_FINISHED_STARLESS)
+        }
+        with ArtifactTransaction() as transaction:
+            endpoint_dest = project.artifact_path(ROLE_DENOISE_ENDPOINT, for_write=True)
+            Path(transaction.stage(endpoint_dest)).write_bytes(b"replacement endpoint")
+            with self.assertRaisesRegex(ValueError, "signature and model identity"):
+                project.publish_denoise_results(
+                    separation_signature="separation-a",
+                    expected_revision=project.processing_revision,
+                    strength=50.0,
+                    scope="sky_only",
+                    structure_amount=35.0,
+                    detail_amount=15.0,
+                    starless_filter_version=STARLESS_FILTER_VERSION,
+                    endpoint_path=endpoint_dest,
+                    transaction=transaction,
+                )
+        with ArtifactTransaction() as transaction:
+            denoised_dest = project.artifact_path(ROLE_DENOISED_STARLESS, for_write=True)
+            Path(transaction.stage(denoised_dest)).write_bytes(b"replacement denoised")
+            with self.assertRaisesRegex(ValueError, "paths must differ"):
+                project.publish_denoise_results(
+                    denoised_dest,
+                    separation_signature="separation-a",
+                    expected_revision=project.processing_revision,
+                    strength=50.0,
+                    scope="sky_only",
+                    structure_amount=35.0,
+                    detail_amount=15.0,
+                    starless_filter_version=STARLESS_FILTER_VERSION,
+                    finished_starless_path=denoised_dest,
+                    transaction=transaction,
+                )
+        for role, content in published_bytes.items():
+            self.assertEqual(project.artifact_path(role).read_bytes(), content)
+        self.assertEqual(project.artifact_manifest, manifest)
+        self.assertEqual(project.denoise_signature, "endpoint-key")
 
         # Publishing only the denoised plate preserves an already-current finished plate.
         finished_record = project.artifact_manifest[ROLE_FINISHED_STARLESS]
