@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FinishRecombineSettings</class>
+ <widget class="QWidget" name="FinishRecombineSettings">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>300</width>
+    <height>260</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QLabel#lbl_star_amount_title, QLabel#lbl_star_threshold_title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+}
+QLabel#lbl_star_amount_value, QLabel#lbl_star_threshold_value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #0369a1;
+}
+QLabel#lbl_fin_mode {
+    font-size: 11px;
+    font-weight: 500;
+    color: #64748b;
+}
+QComboBox#combo_star_blend_mode {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: #1e293b;
+    min-height: 20px;
+    max-height: 24px;
+}
+QComboBox#combo_star_blend_mode:focus {
+    border: 1px solid #0369a1;
+    outline: none;
+}
+QLabel#lbl_compare_original {
+    font-size: 11px;
+    font-weight: 500;
+    color: #334155;
+}
+QSlider {
+    border: none;
+    padding: 0px;
+    margin: 0px;
+    min-height: 20px;
+    max-height: 20px;
+}
+QSlider:focus {
+    border: none;
+    outline: none;
+}
+QCheckBox#check_compare_original {
+    spacing: 0px;
+    border: none;
+    padding: 0px;
+    background: transparent;
+}
+QCheckBox#check_compare_original::indicator {
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+}
+QCheckBox#check_compare_original::indicator:unchecked {
+    image: url(:/startrails/ui/switch_off.svg);
+}
+QCheckBox#check_compare_original::indicator:checked {
+    image: url(:/startrails/ui/switch_on.svg);
+}
+QCheckBox#check_compare_original:focus,
+QCheckBox#check_compare_original:focus:enabled {
+    border: none;
+    outline: none;
+    padding: 0px;
+}
+QLabel#lbl_status {
+    color: #b91c1c;
+    font-size: 11px;
+    line-height: 1.3;
+}
+QPushButton#btn_save_output, QPushButton#btn_export_layers {
+    font-weight: 600;
+    padding: 6px;
+    background-color: #ffffff;
+    color: #0284c7;
+    border: 1px solid #0284c7;
+    border-radius: 4px;
+    font-size: 11px;
+}
+QPushButton#btn_save_output:hover, QPushButton#btn_export_layers:hover {
+    background-color: #f0f9ff;
+}
+QPushButton#btn_save_output:disabled, QPushButton#btn_export_layers:disabled {
+    background-color: #f8fafc;
+    color: #cbd5e1;
+    border-color: #e2e8f0;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="layout">
+   <property name="spacing">
+    <number>8</number>
+   </property>
+   <property name="leftMargin">
+    <number>4</number>
+   </property>
+   <property name="topMargin">
+    <number>4</number>
+   </property>
+   <property name="rightMargin">
+    <number>4</number>
+   </property>
+   <property name="bottomMargin">
+    <number>4</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="star_amount_header_layout">
+     <item>
+      <widget class="QLabel" name="lbl_star_amount_title">
+       <property name="text">
+        <string>Stars</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lbl_star_amount_value">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QSlider" name="slider_star_amount">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="maximum">
+      <number>100</number>
+     </property>
+     <property name="singleStep">
+      <number>1</number>
+     </property>
+     <property name="pageStep">
+      <number>10</number>
+     </property>
+     <property name="tracking">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="star_threshold_header_layout">
+     <item>
+      <widget class="QLabel" name="lbl_star_threshold_title">
+       <property name="text">
+        <string>Threshold</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lbl_star_threshold_value">
+       <property name="text">
+        <string/>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QSlider" name="slider_star_threshold">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+     <property name="maximum">
+      <number>100</number>
+     </property>
+     <property name="singleStep">
+      <number>1</number>
+     </property>
+     <property name="pageStep">
+      <number>10</number>
+     </property>
+     <property name="tracking">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="fin_mode_layout">
+     <item>
+      <widget class="QLabel" name="lbl_fin_mode">
+       <property name="text">
+        <string>Blend Mode</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="combo_star_blend_mode">
+       <item>
+        <property name="text">
+         <string>Add</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Screen</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="compare_layout">
+     <item>
+      <widget class="CheckboxLabel" name="lbl_compare_original">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="text">
+        <string>Compare with original</string>
+       </property>
+       <property name="buddy">
+        <cstring>check_compare_original</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="compare_spacer">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="check_compare_original">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::FocusPolicy::StrongFocus</enum>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="lbl_status">
+     <property name="text">
+      <string/>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="actions_layout">
+     <property name="spacing">
+      <number>6</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="btn_save_output">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="text">
+        <string>Save Image</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btn_export_layers">
+       <property name="cursor">
+        <cursorShape>PointingHandCursor</cursorShape>
+       </property>
+       <property name="toolTip">
+        <string>Export separated and finished layers to disk. Stars is positive-only (the internal Add negative correction is not exported), so external layer recombination or JPEG export may not reconstruct the source exactly.</string>
+       </property>
+       <property name="text">
+        <string>Export Layers</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CheckboxLabel</class>
+   <extends>QLabel</extends>
+   <header>startrails.ui.checkbox_label</header>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>
