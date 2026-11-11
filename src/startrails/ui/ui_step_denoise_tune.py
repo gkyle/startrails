@@ -36,7 +36,6 @@ class Ui_DenoiseTuneSettings(object):
         self.enableCorrectionsLabel = CheckboxLabel(DenoiseTuneSettings)
         self.enableCorrectionsLabel.setObjectName(u"enableCorrectionsLabel")
         self.enableCorrectionsLabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.enableCorrectionsLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.enableCorrectionsRow.addWidget(self.enableCorrectionsLabel)
 
@@ -55,7 +54,6 @@ class Ui_DenoiseTuneSettings(object):
         self.showGradientMaskLabel = CheckboxLabel(DenoiseTuneSettings)
         self.showGradientMaskLabel.setObjectName(u"showGradientMaskLabel")
         self.showGradientMaskLabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.showGradientMaskLabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.showGradientMaskRow.addWidget(self.showGradientMaskLabel)
 
@@ -202,14 +200,12 @@ class Ui_DenoiseTuneSettings(object):
 
         self.tuneHint = QLabel(DenoiseTuneSettings)
         self.tuneHint.setObjectName(u"tuneHint")
-        self.tuneHint.setStyleSheet(u"color: #64748b; font-size: 11px;")
         self.tuneHint.setWordWrap(True)
 
         self.layout.addWidget(self.tuneHint)
 
         self.tuneStatus = QLabel(DenoiseTuneSettings)
         self.tuneStatus.setObjectName(u"tuneStatus")
-        self.tuneStatus.setStyleSheet(u"color: #64748b; font-size: 11px;")
         self.tuneStatus.setWordWrap(True)
 
         self.layout.addWidget(self.tuneStatus)

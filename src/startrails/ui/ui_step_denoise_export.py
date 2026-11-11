@@ -28,20 +28,11 @@ class Ui_DenoiseExportSettings(object):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.contributeHeading = QLabel(DenoiseExportSettings)
         self.contributeHeading.setObjectName(u"contributeHeading")
-        self.contributeHeading.setStyleSheet(u"font-size: 11px;\n"
-"font-weight: 600;\n"
-"color: #475569;\n"
-"text-transform: uppercase;\n"
-"letter-spacing: 0.5px;\n"
-"margin-top: 2px;")
 
         self.layout.addWidget(self.contributeHeading)
 
         self.contributeHint = QLabel(DenoiseExportSettings)
         self.contributeHint.setObjectName(u"contributeHint")
-        self.contributeHint.setStyleSheet(u"font-size: 11px;\n"
-"color: #64748b;\n"
-"line-height: 1.3;")
         self.contributeHint.setWordWrap(True)
 
         self.layout.addWidget(self.contributeHint)
@@ -50,25 +41,6 @@ class Ui_DenoiseExportSettings(object):
         self.contribute.setObjectName(u"contribute")
         self.contribute.setEnabled(False)
         self.contribute.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.contribute.setStyleSheet(u"QPushButton#contribute {\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    border: 2px solid #0369a1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#contribute:hover {\n"
-"    background-color: #075985;\n"
-"    border-color: #075985;\n"
-"}\n"
-"QPushButton#contribute:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
-"QPushButton#contribute:focus:enabled { border-color: #0f172a; }")
 
         self.layout.addWidget(self.contribute)
 
@@ -76,25 +48,6 @@ class Ui_DenoiseExportSettings(object):
         self.training.setObjectName(u"training")
         self.training.setEnabled(False)
         self.training.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.training.setStyleSheet(u"QPushButton#training {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 2px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#training:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#training:disabled {\n"
-"    background-color: #f8fafc;\n"
-"    color: #94a3b8;\n"
-"    border-color: #e2e8f0;\n"
-"}\n"
-"QPushButton#training:focus:enabled { border-color: #0f172a; }")
 
         self.layout.addWidget(self.training)
 

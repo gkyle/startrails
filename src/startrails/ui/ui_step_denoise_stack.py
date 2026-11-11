@@ -95,13 +95,11 @@ class Ui_DenoiseStackSettings(object):
 
         self.outputFileName = QLabel(DenoiseStackSettings)
         self.outputFileName.setObjectName(u"outputFileName")
-        self.outputFileName.setStyleSheet(u"font-size: 11px; color: #64748b;")
 
         self.layout.addWidget(self.outputFileName)
 
         self.stackStatus = QLabel(DenoiseStackSettings)
         self.stackStatus.setObjectName(u"stackStatus")
-        self.stackStatus.setStyleSheet(u"color: #64748b; font-size: 11px;")
         self.stackStatus.setWordWrap(True)
 
         self.layout.addWidget(self.stackStatus)
@@ -117,7 +115,6 @@ class Ui_DenoiseStackSettings(object):
         self.useGPULabel = CheckboxLabel(self.advancedBody)
         self.useGPULabel.setObjectName(u"useGPULabel")
         self.useGPULabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.useGPULabel.setStyleSheet(u"color: #334155; font-size: 12px;")
 
         self.useGPURow.addWidget(self.useGPULabel)
 

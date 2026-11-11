@@ -54,22 +54,6 @@ class Ui_DenoiseSkySettings(object):
         self.detect.setObjectName(u"detect")
         self.detect.setEnabled(False)
         self.detect.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.detect.setStyleSheet(u"QPushButton#detect {\n"
-"    font-weight: bold;\n"
-"    background-color: #2b5b84;\n"
-"    color: #ffffff;\n"
-"    padding: 6px 10px;\n"
-"    border-radius: 4px;\n"
-"    font-size: 12px;\n"
-"    border: 1px solid transparent;\n"
-"}\n"
-"QPushButton#detect:hover {\n"
-"    background-color: #3873a8;\n"
-"}\n"
-"QPushButton#detect:disabled {\n"
-"    background-color: #cbd5e1;\n"
-"    color: #94a3b8;\n"
-"}")
 
         self.actLayout.addWidget(self.detect)
 
@@ -166,38 +150,12 @@ class Ui_DenoiseSkySettings(object):
         self.clearMask = QPushButton(DenoiseSkySettings)
         self.clearMask.setObjectName(u"clearMask")
         self.clearMask.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.clearMask.setStyleSheet(u"QPushButton#clearMask {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
-"    border-radius: 4px;\n"
-"    padding: 5px 8px;\n"
-"    font-size: 11px;\n"
-"    font-weight: 500;\n"
-"}\n"
-"QPushButton#clearMask:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}")
 
         self.utilLayout.addWidget(self.clearMask)
 
         self.fullFrameMask = QPushButton(DenoiseSkySettings)
         self.fullFrameMask.setObjectName(u"fullFrameMask")
         self.fullFrameMask.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.fullFrameMask.setStyleSheet(u"QPushButton#fullFrameMask {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 1px solid #cbd5e1;\n"
-"    border-radius: 4px;\n"
-"    padding: 5px 8px;\n"
-"    font-size: 11px;\n"
-"    font-weight: 500;\n"
-"}\n"
-"QPushButton#fullFrameMask:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}")
 
         self.utilLayout.addWidget(self.fullFrameMask)
 
@@ -206,7 +164,6 @@ class Ui_DenoiseSkySettings(object):
 
         self.brushHint = QLabel(DenoiseSkySettings)
         self.brushHint.setObjectName(u"brushHint")
-        self.brushHint.setStyleSheet(u"color: #64748b; font-size: 11px;")
         self.brushHint.setWordWrap(True)
 
         self.layout.addWidget(self.brushHint)

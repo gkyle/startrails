@@ -70,24 +70,6 @@
        <property name="toolTip">
         <string>Run automatic celestial sky detection and horizon refinement</string>
        </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton#detect {
-    font-weight: bold;
-    background-color: #2b5b84;
-    color: #ffffff;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    border: 1px solid transparent;
-}
-QPushButton#detect:hover {
-    background-color: #3873a8;
-}
-QPushButton#detect:disabled {
-    background-color: #cbd5e1;
-    color: #94a3b8;
-}</string>
-       </property>
        <property name="text">
         <string>Detect Sky</string>
        </property>
@@ -263,21 +245,6 @@ QPushButton#refineMask:disabled {
        <property name="toolTip">
         <string>Clear the entire sky mask (set to all ground)</string>
        </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton#clearMask {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    padding: 5px 8px;
-    font-size: 11px;
-    font-weight: 500;
-}
-QPushButton#clearMask:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}</string>
-       </property>
        <property name="text">
         <string>Clear</string>
        </property>
@@ -291,21 +258,6 @@ QPushButton#clearMask:hover {
        <property name="toolTip">
         <string>Set entire image frame as sky (100% sky for deep sky scenes)</string>
        </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton#fullFrameMask {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    padding: 5px 8px;
-    font-size: 11px;
-    font-weight: 500;
-}
-QPushButton#fullFrameMask:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}</string>
-       </property>
        <property name="text">
         <string>Full Frame</string>
        </property>
@@ -315,9 +267,6 @@ QPushButton#fullFrameMask:hover {
    </item>
    <item>
     <widget class="QLabel" name="brushHint">
-     <property name="styleSheet">
-      <string notr="true">color: #64748b; font-size: 11px;</string>
-     </property>
      <property name="text">
       <string>Brush: Left-click paint sky, Right-click erase.
 Hotkeys: [ / ] or Ctrl+Wheel to resize.</string>

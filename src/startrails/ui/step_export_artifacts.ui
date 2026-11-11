@@ -20,11 +20,6 @@
    </property>
    <item>
     <widget class="QLabel" name="hint">
-    <property name="styleSheet">
-     <string notr="true">font-size: 11px;
-color: #64748b;
-line-height: 1.4;</string>
-    </property>
      <property name="text">
       <string>Export masks or manually reviewed training samples. These exports are optional.</string>
      </property>
@@ -42,27 +37,6 @@ line-height: 1.4;</string>
    </item>
    <item>
     <widget class="QPushButton" name="masks">
-    <property name="styleSheet">
-     <string notr="true">QPushButton#masks {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 2px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-weight: 500;
-    font-size: 12px;
-}
-QPushButton#masks:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}
-QPushButton#masks:disabled {
-    background-color: #f8fafc;
-    color: #94a3b8;
-    border-color: #e2e8f0;
-}
-QPushButton#masks:focus:enabled { border-color: #0f172a; }</string>
-    </property>
      <property name="cursor">
       <cursorShape>PointingHandCursor</cursorShape>
      </property>
@@ -79,27 +53,6 @@ QPushButton#masks:focus:enabled { border-color: #0f172a; }</string>
    </item>
    <item>
     <widget class="QPushButton" name="training">
-    <property name="styleSheet">
-     <string notr="true">QPushButton#training {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 2px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-weight: 500;
-    font-size: 12px;
-}
-QPushButton#training:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}
-QPushButton#training:disabled {
-    background-color: #f8fafc;
-    color: #94a3b8;
-    border-color: #e2e8f0;
-}
-QPushButton#training:focus:enabled { border-color: #0f172a; }</string>
-    </property>
      <property name="cursor">
       <cursorShape>PointingHandCursor</cursorShape>
      </property>

@@ -87,9 +87,6 @@ class Ui_DetectSettings(object):
 
         self.detectMergeContainer = QFrame(self.advancedBody)
         self.detectMergeContainer.setObjectName(u"detectMergeContainer")
-        self.detectMergeContainer.setStyleSheet(u"background-color: #f1f5f9;\n"
-"border-radius: 6px;\n"
-"padding: 2px;")
         self.detectMergeLayout = QHBoxLayout(self.detectMergeContainer)
         self.detectMergeLayout.setSpacing(2)
         self.detectMergeLayout.setObjectName(u"detectMergeLayout")
@@ -100,29 +97,6 @@ class Ui_DetectSettings(object):
         self.detectMergeGroup.addButton(self.detectMergeNMS)
         self.detectMergeNMS.setObjectName(u"detectMergeNMS")
         self.detectMergeNMS.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.detectMergeNMS.setStyleSheet(u"QPushButton {\n"
-"    padding: 3px 4px;\n"
-"    border-radius: 4px;\n"
-"    border: none;\n"
-"    font-size: 11px;\n"
-"    font-weight: 500;\n"
-"    color: #334155;\n"
-"}\n"
-"QPushButton:checked {\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    font-weight: bold;\n"
-"}\n"
-"QPushButton:hover:!checked {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #0f172a;\n"
-"}\n"
-"QPushButton:focus:enabled {\n"
-"    border: 1px solid #0f172a;\n"
-"}\n"
-"QPushButton:checked:focus:enabled {\n"
-"    border: 1px solid #ffffff;\n"
-"}")
         self.detectMergeNMS.setCheckable(True)
         self.detectMergeNMS.setChecked(True)
 
@@ -132,29 +106,6 @@ class Ui_DetectSettings(object):
         self.detectMergeGroup.addButton(self.detectMergeNMM)
         self.detectMergeNMM.setObjectName(u"detectMergeNMM")
         self.detectMergeNMM.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.detectMergeNMM.setStyleSheet(u"QPushButton {\n"
-"    padding: 3px 4px;\n"
-"    border-radius: 4px;\n"
-"    border: none;\n"
-"    font-size: 11px;\n"
-"    font-weight: 500;\n"
-"    color: #334155;\n"
-"}\n"
-"QPushButton:checked {\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    font-weight: bold;\n"
-"}\n"
-"QPushButton:hover:!checked {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #0f172a;\n"
-"}\n"
-"QPushButton:focus:enabled {\n"
-"    border: 1px solid #0f172a;\n"
-"}\n"
-"QPushButton:checked:focus:enabled {\n"
-"    border: 1px solid #ffffff;\n"
-"}")
         self.detectMergeNMM.setCheckable(True)
 
         self.detectMergeLayout.addWidget(self.detectMergeNMM)

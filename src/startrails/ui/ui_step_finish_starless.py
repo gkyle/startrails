@@ -27,16 +27,8 @@ class Ui_FinishStarlessSettings(object):
         if not FinishStarlessSettings.objectName():
             FinishStarlessSettings.setObjectName(u"FinishStarlessSettings")
         FinishStarlessSettings.resize(300, 340)
-        FinishStarlessSettings.setStyleSheet(u"QFrame#unconfigured_box {\n"
-"    background-color: #fffbeb;\n"
-"    border: 1px solid #fef3c7;\n"
-"    border-radius: 6px;\n"
-"    padding: 8px;\n"
-"}\n"
-"QLabel#lbl_unconf_msg {\n"
-"    color: #92400e;\n"
-"    font-size: 11px;\n"
-"    line-height: 1.3;\n"
+        FinishStarlessSettings.setStyleSheet(u"QLabel#lbl_enable_denoise, QLabel#lbl_enable_sharpen {\n"
+"    font-weight: 600;\n"
 "}\n"
 "QLabel#lbl_scope_title {\n"
 "    font-size: 11px;\n"
@@ -52,44 +44,6 @@ class Ui_FinishStarlessSettings(object):
 "QRadioButton:focus {\n"
 "    border: none;\n"
 "    outline: none;\n"
-"}\n"
-"QSlider {\n"
-"    border: none;\n"
-"    padding: 0px;\n"
-"    margin: 0px;\n"
-"    min-height: 20px;\n"
-"    max-height: 20px;\n"
-"}\n"
-"QSlider:focus {\n"
-"    border: none;\n"
-"    outline: none;\n"
-"}\n"
-"QCheckBox#check_enable_denoise, QCheckBox#check_enable_sharpen {\n"
-"    spacing: 0px;\n"
-"    border: none;\n"
-"    padding: 0px;\n"
-"}\n"
-"QCheckBox#check_enable_denoise::indicator, QCheckBox#check_enable_sharpen::indicator {\n"
-"    width: 3"
-                        "6px;\n"
-"    height: 20px;\n"
-"    border-radius: 10px;\n"
-"}\n"
-"QCheckBox#check_enable_denoise::indicator:unchecked, QCheckBox#check_enable_sharpen::indicator:unchecked {\n"
-"    image: url(:/startrails/ui/switch_off.svg);\n"
-"}\n"
-"QCheckBox#check_enable_denoise::indicator:checked, QCheckBox#check_enable_sharpen::indicator:checked {\n"
-"    image: url(:/startrails/ui/switch_on.svg);\n"
-"}\n"
-"QCheckBox#check_enable_denoise:focus, QCheckBox#check_enable_sharpen:focus,\n"
-"QCheckBox#check_enable_denoise:focus:enabled, QCheckBox#check_enable_sharpen:focus:enabled {\n"
-"    border: none;\n"
-"    outline: none;\n"
-"}\n"
-"QLabel#lbl_status {\n"
-"    color: #b91c1c;\n"
-"    font-size: 11px;\n"
-"    line-height: 1.3;\n"
 "}")
         self.layout = QVBoxLayout(FinishStarlessSettings)
         self.layout.setSpacing(10)
@@ -115,7 +69,6 @@ class Ui_FinishStarlessSettings(object):
         self.lbl_enable_denoise = CheckboxLabel(FinishStarlessSettings)
         self.lbl_enable_denoise.setObjectName(u"lbl_enable_denoise")
         self.lbl_enable_denoise.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.lbl_enable_denoise.setStyleSheet(u"color: #334155; font-size: 12px; font-weight: 600;")
 
         self.enableDenoiseRow.addWidget(self.lbl_enable_denoise)
 
@@ -209,7 +162,6 @@ class Ui_FinishStarlessSettings(object):
         self.lbl_enable_sharpen = CheckboxLabel(FinishStarlessSettings)
         self.lbl_enable_sharpen.setObjectName(u"lbl_enable_sharpen")
         self.lbl_enable_sharpen.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.lbl_enable_sharpen.setStyleSheet(u"color: #334155; font-size: 12px; font-weight: 600;")
 
         self.enableSharpenRow.addWidget(self.lbl_enable_sharpen)
 

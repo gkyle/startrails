@@ -38,10 +38,6 @@ class Ui_StackSettings(object):
         self.fields.setContentsMargins(0, 0, 0, 0)
         self.methodLabel = QLabel(StackSettings)
         self.methodLabel.setObjectName(u"methodLabel")
-        self.methodLabel.setStyleSheet(u"QLabel#methodLabel {\n"
-"    color: #334155;\n"
-"    font-size: 12px;\n"
-"}")
 
         self.fields.addWidget(self.methodLabel, 0, 0, 1, 1)
 
@@ -62,46 +58,11 @@ class Ui_StackSettings(object):
 
         self.streaksLabel = QLabel(StackSettings)
         self.streaksLabel.setObjectName(u"streaksLabel")
-        self.streaksLabel.setStyleSheet(u"QLabel#streaksLabel {\n"
-"    color: #334155;\n"
-"    font-size: 12px;\n"
-"}")
 
         self.fields.addWidget(self.streaksLabel, 1, 0, 1, 1)
 
         self.stackStreaksContainer = QFrame(StackSettings)
         self.stackStreaksContainer.setObjectName(u"stackStreaksContainer")
-        self.stackStreaksContainer.setStyleSheet(u"QFrame#stackStreaksContainer {\n"
-"    background-color: #f1f5f9;\n"
-"    border-radius: 5px;\n"
-"    padding: 2px;\n"
-"}\n"
-"QPushButton#stackStreaksKeep, QPushButton#stackStreaksRemove {\n"
-"    background-color: transparent;\n"
-"    color: #334155;\n"
-"    border: 2px solid transparent;\n"
-"    border-radius: 4px;\n"
-"    font-size: 12px;\n"
-"    font-weight: 500;\n"
-"    padding: 4px 14px;\n"
-"    min-height: 18px;\n"
-"}\n"
-"QPushButton#stackStreaksKeep:checked, QPushButton#stackStreaksRemove:checked {\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    font-weight: 600;\n"
-"}\n"
-"QPushButton#stackStreaksKeep:hover:!checked, QPushButton#stackStreaksRemove:hover:!checked {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #0f172a;\n"
-"}\n"
-"QPushButton#stackStreaksRemove:disabled {\n"
-"    color: #94a3b8;\n"
-"    background-color: transparent;\n"
-"}\n"
-"QPushButton#stackStreaksKeep:focus:enabled, QPushButton#stackStreaksRemove:focus:enabled { border-color: #0f172a; }\n"
-"QPushButton#stackStre"
-                        "aksKeep:checked:focus:enabled, QPushButton#stackStreaksRemove:checked:focus:enabled { border-color: #ffffff; }")
         self.stackStreaksLayout = QHBoxLayout(self.stackStreaksContainer)
         self.stackStreaksLayout.setSpacing(2)
         self.stackStreaksLayout.setObjectName(u"stackStreaksLayout")
@@ -130,42 +91,11 @@ class Ui_StackSettings(object):
 
         self.fadeLabel = QLabel(StackSettings)
         self.fadeLabel.setObjectName(u"fadeLabel")
-        self.fadeLabel.setStyleSheet(u"QLabel#fadeLabel {\n"
-"    color: #334155;\n"
-"    font-size: 12px;\n"
-"}")
 
         self.fields.addWidget(self.fadeLabel, 2, 0, 1, 1)
 
         self.stackFadeContainer = QFrame(StackSettings)
         self.stackFadeContainer.setObjectName(u"stackFadeContainer")
-        self.stackFadeContainer.setStyleSheet(u"QFrame#stackFadeContainer {\n"
-"    background-color: #f1f5f9;\n"
-"    border-radius: 5px;\n"
-"    padding: 2px;\n"
-"}\n"
-"QPushButton#stackFadeOff, QPushButton#stackFadeStart, QPushButton#stackFadeEnd, QPushButton#stackFadeBoth {\n"
-"    background-color: transparent;\n"
-"    color: #334155;\n"
-"    border: 2px solid transparent;\n"
-"    border-radius: 4px;\n"
-"    font-size: 11px;\n"
-"    font-weight: 500;\n"
-"    padding: 4px 8px;\n"
-"    min-height: 18px;\n"
-"}\n"
-"QPushButton#stackFadeOff:checked, QPushButton#stackFadeStart:checked, QPushButton#stackFadeEnd:checked, QPushButton#stackFadeBoth:checked {\n"
-"    background-color: #0369a1;\n"
-"    color: #ffffff;\n"
-"    font-weight: 600;\n"
-"}\n"
-"QPushButton#stackFadeOff:hover:!checked, QPushButton#stackFadeStart:hover:!checked, QPushButton#stackFadeEnd:hover:!checked, QPushButton#stackFadeBoth:hover:!checked {\n"
-"    background-color: #e2e8f0;\n"
-"    color: #0f172a;\n"
-"}\n"
-"QPushButton#stackFadeOff:focus:enabled, QPushButton#stackFadeStart:focus:enable"
-                        "d, QPushButton#stackFadeEnd:focus:enabled, QPushButton#stackFadeBoth:focus:enabled { border-color: #0f172a; }\n"
-"QPushButton#stackFadeOff:checked:focus:enabled, QPushButton#stackFadeStart:checked:focus:enabled, QPushButton#stackFadeEnd:checked:focus:enabled, QPushButton#stackFadeBoth:checked:focus:enabled { border-color: #ffffff; }")
         self.stackFadeLayout = QHBoxLayout(self.stackFadeContainer)
         self.stackFadeLayout.setSpacing(2)
         self.stackFadeLayout.setObjectName(u"stackFadeLayout")
@@ -269,10 +199,6 @@ class Ui_StackSettings(object):
         self.useGPULabel = CheckboxLabel(self.advancedBody)
         self.useGPULabel.setObjectName(u"useGPULabel")
         self.useGPULabel.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.useGPULabel.setStyleSheet(u"QLabel#useGPULabel {\n"
-"    color: #334155;\n"
-"    font-size: 12px;\n"
-"}")
 
         self.gpuBatchGrid.addWidget(self.useGPULabel, 0, 0, 1, 1)
 
@@ -286,10 +212,6 @@ class Ui_StackSettings(object):
 
         self.batchLabel = QLabel(self.advancedBody)
         self.batchLabel.setObjectName(u"batchLabel")
-        self.batchLabel.setStyleSheet(u"QLabel#batchLabel {\n"
-"    color: #334155;\n"
-"    font-size: 12px;\n"
-"}")
 
         self.gpuBatchGrid.addWidget(self.batchLabel, 1, 0, 1, 1)
 
@@ -309,11 +231,6 @@ class Ui_StackSettings(object):
 
         self.memory = QLabel(self.advancedBody)
         self.memory.setObjectName(u"memory")
-        self.memory.setStyleSheet(u"QLabel#memory {\n"
-"    font-size: 11px;\n"
-"    color: #64748b;\n"
-"    padding-top: 2px;\n"
-"}")
         self.memory.setWordWrap(True)
 
         self.advancedLayout.addWidget(self.memory)

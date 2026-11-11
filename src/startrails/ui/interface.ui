@@ -340,21 +340,6 @@
                        <pointsize>-1</pointsize>
                       </font>
                      </property>
-                     <property name="styleSheet">
-                      <string notr="true">QProgressBar#progressBar_gpu_util {
-    background-color: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 3px;
-    font-size: 9px;
-    color: #334155;
-    max-height: 14px;
-    min-height: 14px;
-}
-QProgressBar#progressBar_gpu_util::chunk {
-    background-color: green;
-    border-radius: 2px;
-}</string>
-                     </property>
                      <property name="value">
                       <number>0</number>
                      </property>
@@ -402,21 +387,6 @@ QProgressBar#progressBar_gpu_util::chunk {
                       <font>
                        <pointsize>-1</pointsize>
                       </font>
-                     </property>
-                     <property name="styleSheet">
-                      <string notr="true">QProgressBar#progressBar_gpu_mem {
-    background-color: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 3px;
-    font-size: 9px;
-    color: #334155;
-    max-height: 14px;
-    min-height: 14px;
-}
-QProgressBar#progressBar_gpu_mem::chunk {
-    background-color: green;
-    border-radius: 2px;
-}</string>
                      </property>
                      <property name="value">
                       <number>0</number>

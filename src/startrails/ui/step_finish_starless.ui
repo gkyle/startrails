@@ -11,16 +11,8 @@
    </rect>
   </property>
   <property name="styleSheet">
-   <string notr="true">QFrame#unconfigured_box {
-    background-color: #fffbeb;
-    border: 1px solid #fef3c7;
-    border-radius: 6px;
-    padding: 8px;
-}
-QLabel#lbl_unconf_msg {
-    color: #92400e;
-    font-size: 11px;
-    line-height: 1.3;
+   <string notr="true">QLabel#lbl_enable_denoise, QLabel#lbl_enable_sharpen {
+    font-weight: 600;
 }
 QLabel#lbl_scope_title {
     font-size: 11px;
@@ -36,43 +28,6 @@ QRadioButton {
 QRadioButton:focus {
     border: none;
     outline: none;
-}
-QSlider {
-    border: none;
-    padding: 0px;
-    margin: 0px;
-    min-height: 20px;
-    max-height: 20px;
-}
-QSlider:focus {
-    border: none;
-    outline: none;
-}
-QCheckBox#check_enable_denoise, QCheckBox#check_enable_sharpen {
-    spacing: 0px;
-    border: none;
-    padding: 0px;
-}
-QCheckBox#check_enable_denoise::indicator, QCheckBox#check_enable_sharpen::indicator {
-    width: 36px;
-    height: 20px;
-    border-radius: 10px;
-}
-QCheckBox#check_enable_denoise::indicator:unchecked, QCheckBox#check_enable_sharpen::indicator:unchecked {
-    image: url(:/startrails/ui/switch_off.svg);
-}
-QCheckBox#check_enable_denoise::indicator:checked, QCheckBox#check_enable_sharpen::indicator:checked {
-    image: url(:/startrails/ui/switch_on.svg);
-}
-QCheckBox#check_enable_denoise:focus, QCheckBox#check_enable_sharpen:focus,
-QCheckBox#check_enable_denoise:focus:enabled, QCheckBox#check_enable_sharpen:focus:enabled {
-    border: none;
-    outline: none;
-}
-QLabel#lbl_status {
-    color: #b91c1c;
-    font-size: 11px;
-    line-height: 1.3;
 }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
@@ -128,9 +83,6 @@ QLabel#lbl_status {
       <widget class="CheckboxLabel" name="lbl_enable_denoise">
        <property name="cursor">
         <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">color: #334155; font-size: 12px; font-weight: 600;</string>
        </property>
        <property name="text">
         <string>Enable denoise</string>
@@ -329,9 +281,6 @@ QLabel#lbl_status {
       <widget class="CheckboxLabel" name="lbl_enable_sharpen">
        <property name="cursor">
         <cursorShape>PointingHandCursor</cursorShape>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">color: #334155; font-size: 12px; font-weight: 600;</string>
        </property>
        <property name="text">
         <string>Enable post-denoise sharpen</string>

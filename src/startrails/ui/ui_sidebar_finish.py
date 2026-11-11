@@ -34,40 +34,6 @@ class Ui_SidebarFinish(object):
         SidebarFinish.resize(213, 400)
         SidebarFinish.setMinimumSize(QSize(0, 0))
         SidebarFinish.setMaximumSize(QSize(16777215, 16777215))
-        SidebarFinish.setStyleSheet(u"QWidget#SidebarFinish {\n"
-"    background-color: #f8fafc;\n"
-"}\n"
-"QScrollArea#scroll {\n"
-"    border: none;\n"
-"    background: transparent;\n"
-"}\n"
-"QWidget#content {\n"
-"    background-color: #f8fafc;\n"
-"}\n"
-"QScrollBar:vertical {\n"
-"    border: none;\n"
-"    background: #f1f5f9;\n"
-"    width: 6px;\n"
-"    border-radius: 3px;\n"
-"    margin: 2px 0px 2px 0px;\n"
-"}\n"
-"QScrollBar::handle:vertical {\n"
-"    background: #cbd5e1;\n"
-"    min-height: 24px;\n"
-"    border-radius: 3px;\n"
-"}\n"
-"QScrollBar::handle:vertical:hover {\n"
-"    background: #94a3b8;\n"
-"}\n"
-"QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {\n"
-"    height: 0px;\n"
-"}\n"
-"QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {\n"
-"    background: none;\n"
-"}\n"
-"QScrollBar:horizontal {\n"
-"    height: 0px;\n"
-"}")
         self.root_layout = QVBoxLayout(SidebarFinish)
         self.root_layout.setSpacing(0)
         self.root_layout.setObjectName(u"root_layout")
@@ -90,50 +56,12 @@ class Ui_SidebarFinish(object):
         self.newProject = QPushButton(self.content)
         self.newProject.setObjectName(u"newProject")
         self.newProject.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.newProject.setStyleSheet(u"QPushButton#newProject {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 2px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#newProject:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#newProject:pressed {\n"
-"    background-color: #e2e8f0;\n"
-"}\n"
-"QPushButton#newProject:focus:enabled {\n"
-"    border-color: #0f172a;\n"
-"}")
 
         self.projectActions.addWidget(self.newProject)
 
         self.openProject = QPushButton(self.content)
         self.openProject.setObjectName(u"openProject")
         self.openProject.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.openProject.setStyleSheet(u"QPushButton#openProject {\n"
-"    background-color: #ffffff;\n"
-"    color: #1e293b;\n"
-"    border: 2px solid #cbd5e1;\n"
-"    border-radius: 6px;\n"
-"    padding: 6px 12px;\n"
-"    font-weight: 500;\n"
-"    font-size: 12px;\n"
-"}\n"
-"QPushButton#openProject:hover {\n"
-"    background-color: #f1f5f9;\n"
-"    border-color: #94a3b8;\n"
-"}\n"
-"QPushButton#openProject:pressed {\n"
-"    background-color: #e2e8f0;\n"
-"}\n"
-"QPushButton#openProject:focus:enabled {\n"
-"    border-color: #0f172a;\n"
-"}")
 
         self.projectActions.addWidget(self.openProject)
 

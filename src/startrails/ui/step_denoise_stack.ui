@@ -146,9 +146,6 @@
    </item>
    <item>
     <widget class="QLabel" name="outputFileName">
-     <property name="styleSheet">
-      <string notr="true">font-size: 11px; color: #64748b;</string>
-     </property>
      <property name="text">
       <string>Output: project.tif</string>
      </property>
@@ -156,9 +153,6 @@
    </item>
    <item>
     <widget class="QLabel" name="stackStatus">
-     <property name="styleSheet">
-      <string notr="true">color: #64748b; font-size: 11px;</string>
-     </property>
      <property name="text">
       <string>Base stacks: Not generated</string>
      </property>
@@ -191,9 +185,6 @@
          <widget class="CheckboxLabel" name="useGPULabel">
           <property name="cursor">
            <cursorShape>PointingHandCursor</cursorShape>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">color: #334155; font-size: 12px;</string>
           </property>
           <property name="text">
            <string>Use GPU Acceleration</string>

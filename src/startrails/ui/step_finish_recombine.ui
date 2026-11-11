@@ -29,56 +29,6 @@ QComboBox#combo_star_blend_mode {
 QComboBox#combo_star_blend_mode:focus {
     border: 1px solid #0369a1;
     outline: none;
-}
-QSlider {
-    border: none;
-    padding: 0px;
-    margin: 0px;
-    min-height: 20px;
-    max-height: 20px;
-}
-QSlider:focus {
-    border: none;
-    outline: none;
-}
-QLabel#lbl_status {
-    color: #b91c1c;
-    font-size: 11px;
-    line-height: 1.3;
-}
-QPushButton#btn_save_output {
-    font-weight: bold;
-    background-color: #2b5b84;
-    color: #ffffff;
-    padding: 6px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    border: 1px solid transparent;
-}
-QPushButton#btn_save_output:hover {
-    background-color: #3873a8;
-}
-QPushButton#btn_save_output:disabled {
-    background-color: #cbd5e1;
-    color: #94a3b8;
-}
-QPushButton#btn_export_layers {
-    background-color: #ffffff;
-    color: #1e293b;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    padding: 6px 10px;
-    font-size: 12px;
-    font-weight: 500;
-}
-QPushButton#btn_export_layers:hover {
-    background-color: #f1f5f9;
-    border-color: #94a3b8;
-}
-QPushButton#btn_export_layers:disabled {
-    background-color: #f8fafc;
-    color: #94a3b8;
-    border-color: #e2e8f0;
 }</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
