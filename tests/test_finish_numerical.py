@@ -20,7 +20,7 @@ class TestFinishNumerical(unittest.TestCase):
     def setUp(self):
         directory = TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        self.root = Path(directory.name)
+        self.root = Path(directory.name).resolve()
         self.source = np.array([[[0.2, 0.5, 0.8]], [[0.1, 0.4, 0.7]], [[0.3, 0.6, 0.9]]], np.float32)
         self.model = np.full_like(self.source, 0.4)
         self.mask = np.array([[1], [0.5], [0]], np.float32)

@@ -377,12 +377,6 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         self.assertIsNotNone(self.view._recombine_timer)
         self.assertTrue(self.view._recombine_timer.isActive())
 
-    def test_slider_change_schedules_debounced_worker_job(self):
-        """Slider change triggers debounce timer before launching recombine worker job."""
-        self.view.on_star_amount_changed(60.0)
-        self.assertIsNotNone(self.view._recombine_timer)
-        self.assertTrue(self.view._recombine_timer.isActive())
-
     def test_debounced_worker_recombine_executes_outside_gui(self):
         """Debounce timer timeout executes do_recombine and updates output composite."""
         self.shell.enqueued_tasks.clear()
@@ -471,15 +465,23 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         self.assertEqual(delivered_done, [])
 
     def test_duplicate_task_rejection_retries_via_debounce(self):
-        """When task queue rejects a duplicate task ID, view retries with debounce."""
-        debounce_called = []
-        with (
-            patch.object(self.shell, "enqueue_task", return_value=False),
-            patch.object(self.view, "_debounce_recombine", side_effect=lambda: debounce_called.append(True)),
-        ):
-            self.view._apply_interactive_recombine()
+        """A rejected preview is recomputed once the queue accepts work again."""
+        with patch.object(self.workflow, "do_recombine", wraps=self.workflow.do_recombine) as recombine:
+            with patch.object(self.shell, "enqueue_task", return_value=False):
+                self.view.on_star_amount_changed(0.0)
+                self.view._recombine_timer.timeout.emit()
+                recombine.assert_not_called()
 
-        self.assertEqual(debounce_called, [True])
+            self.view._recombine_timer.timeout.emit()
+            QApplication.processEvents()
+            self.assertEqual(recombine.call_count, 1)
+
+        result = self.project.current_artifact_path(ROLE_FINISHED_COMPOSITE)
+        self.assertIsNotNone(result)
+        # With no stars added, the output is the separated starless plate.
+        from startrails.lib.image_io import imread
+
+        np.testing.assert_array_equal(imread(result), imread(self.starless_path))
 
     def test_save_enabled_after_composition_edits_and_recombines_fullres(self):
         """Save button remains enabled after composition-only edits and recombines before exporting."""

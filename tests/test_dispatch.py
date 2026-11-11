@@ -243,7 +243,8 @@ class DispatchTests(QtTestCase):
              patch.object(StarTrailsView, "_notify_contribution_result") as mock_notify:
             worker_thread = Thread(target=ui.op_queue.workers[0].work)
             worker_thread.start()
-            worker_thread.join()
+            worker_thread.join(timeout=5)
+            self.assertFalse(worker_thread.is_alive(), "Contribution worker did not finish")
             qt_app().processEvents()
 
         self.assertEqual(len(contribute_calls), 1)

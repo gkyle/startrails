@@ -1,7 +1,7 @@
 """Settings edits, validation, and fade semantics survive UI refresh."""
 
 from types import SimpleNamespace
-import time
+from unittest.mock import patch
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 from support import QtTestCase
@@ -185,6 +185,25 @@ class SettingsTests(QtTestCase):
         self.assertEqual(card.ui.number.property("stepStatus"), "ready")
 
     def test_step_card_before_after_toggle(self):
+        # Control elapsed time at the clock boundary; no wall-clock sleeps or
+        # dependence on how quickly the machine delivers mouse events.
+        class ManualTimer:
+            now_ms = 0
+            started_ms = None
+
+            def start(self):
+                self.started_ms = self.now_ms
+
+            restart = start
+
+            def isValid(self):
+                return self.started_ms is not None
+
+            def elapsed(self):
+                return self.now_ms - self.started_ms
+
+        timer = ManualTimer()
+        self.enterContext(patch("startrails.ui.steps.QElapsedTimer", return_value=timer))
         card = StepCard("Finish Starless", FillSettings(), 3, expanded=False)
         card.show()
         self.qt.processEvents()
@@ -252,7 +271,7 @@ class SettingsTests(QtTestCase):
         QTest.mousePress(card.ui.previewToggle, Qt.LeftButton)
         self.assertEqual(events[-1], True)
         self.assertTrue(card.is_showing_before())
-        time.sleep((PREVIEW_LONG_PRESS_MS + 30) / 1000.0)
+        timer.now_ms += PREVIEW_LONG_PRESS_MS
         QTest.mouseRelease(card.ui.previewToggle, Qt.LeftButton)
         self.assertEqual(events[-1], False)
         self.assertFalse(card.ui.previewToggle.isChecked())
@@ -268,7 +287,7 @@ class SettingsTests(QtTestCase):
         # Long press when starting in "before" also returns to "after" on release.
         QTest.mousePress(card.ui.previewToggle, Qt.LeftButton)
         self.assertTrue(card.is_showing_before())
-        time.sleep((PREVIEW_LONG_PRESS_MS + 30) / 1000.0)
+        timer.now_ms += PREVIEW_LONG_PRESS_MS
         QTest.mouseRelease(card.ui.previewToggle, Qt.LeftButton)
         self.assertEqual(events[-1], False)
         self.assertFalse(card.ui.previewToggle.isChecked())
@@ -291,7 +310,7 @@ class SettingsTests(QtTestCase):
         # A slow synchronous preview load during mouse down must not turn a quick click into a long press.
         def slow_handler(showing_before):
             if showing_before:
-                time.sleep((PREVIEW_LONG_PRESS_MS + 30) / 1000.0)
+                timer.now_ms += PREVIEW_LONG_PRESS_MS
 
         card.before_after_toggled.connect(slow_handler)
         try:

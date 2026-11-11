@@ -31,10 +31,11 @@ class TestFinishMasking(QtTestCase):
     def create_synthetic_image(self, filename: str, bit_depth: int = 8, shape=(64, 64, 3)) -> Path:
         target = self.root / filename
         target.parent.mkdir(parents=True, exist_ok=True)
+        rng = np.random.default_rng(42)
         if bit_depth == 8:
-            arr = np.random.randint(0, 256, shape, dtype=np.uint8)
+            arr = rng.integers(0, 256, shape, dtype=np.uint8)
         elif bit_depth == 16:
-            arr = np.random.randint(0, 65536, shape, dtype=np.uint16)
+            arr = rng.integers(0, 65536, shape, dtype=np.uint16)
         else:
             raise ValueError(f"Unsupported bit depth: {bit_depth}")
         imwrite(target, arr, bit_depth=bit_depth)

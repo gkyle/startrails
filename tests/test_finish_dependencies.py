@@ -40,10 +40,22 @@ from support import QtTestCase
 class TestFinishDependencies(unittest.TestCase):
     def setUp(self):
         self.tmp_dir = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp_dir.name)
+        self.root = Path(self.tmp_dir.name).resolve()
 
     def tearDown(self):
         self.tmp_dir.cleanup()
+
+    def fail_cuda_transfer(self, message):
+        """Inject an accelerator failure without requiring a CUDA build or device."""
+        original_to = torch.Tensor.to
+
+        def transfer(tensor, *args, **kwargs):
+            device = kwargs.get("device", args[0] if args else None)
+            if isinstance(device, (str, torch.device)) and torch.device(device).type == "cuda":
+                raise RuntimeError(message)
+            return original_to(tensor, *args, **kwargs)
+
+        return patch.object(torch.Tensor, "to", transfer)
 
     def test_nox_session_tiling_hann_blending_and_cancellation(self):
         model_path = self.root / "fake_nox.pt"
@@ -90,17 +102,14 @@ class TestFinishDependencies(unittest.TestCase):
         model_path.write_bytes(b"dummy")
         image = np.random.default_rng(0).uniform(0.1, 0.8, (256, 256, 3)).astype(np.float32)
 
-        class CudaOomModel:
-            def __call__(self, batch):
-                raise RuntimeError("CUDA out of memory. Tried to allocate 512.00 MiB")
-
         class CpuIdentityModel:
             def __call__(self, batch):
                 return batch.clone()
 
         with (
             patch("torch.cuda.is_available", return_value=True),
-            patch("startrails.lib.finish.nox.load_nox_model", side_effect=[CudaOomModel(), CpuIdentityModel()]) as load,
+            self.fail_cuda_transfer("CUDA out of memory. Tried to allocate 512.00 MiB"),
+            patch("startrails.lib.finish.nox.load_nox_model", side_effect=[object(), CpuIdentityModel()]) as load,
         ):
             session = NoxSession(model_path=model_path, device="cuda")
             result = session.remove_stars(image, stride=256)
@@ -118,13 +127,10 @@ class TestFinishDependencies(unittest.TestCase):
         model_path.write_bytes(b"dummy")
         image = np.full((256, 256, 3), 0.5, dtype=np.float32)
 
-        class BrokenModel:
-            def __call__(self, batch):
-                raise RuntimeError("CUDA kernel launch failed: invalid argument")
-
         with (
             patch("torch.cuda.is_available", return_value=True),
-            patch("startrails.lib.finish.nox.load_nox_model", return_value=BrokenModel()) as load,
+            self.fail_cuda_transfer("CUDA kernel launch failed: invalid argument"),
+            patch("startrails.lib.finish.nox.load_nox_model", return_value=object()) as load,
         ):
             session = NoxSession(model_path=model_path, device="cuda")
             with self.assertRaisesRegex(RuntimeError, "invalid argument"):
@@ -172,27 +178,10 @@ class TestFinishDependencies(unittest.TestCase):
             with self.assertRaises(CancelledError):
                 session.denoise_full_strength(image, should_interrupt=should_interrupt)
 
-    def test_graxpert_session_uses_fp16_on_mps(self):
-        model_path = self.root / "fake_graxpert.pt"
-        model_path.write_bytes(b"dummy")
-
-        with (
-            patch("startrails.lib.finish.graxpert_runtime.resolve_graxpert_device", return_value=torch.device("mps")),
-            patch("startrails.lib.finish.graxpert_runtime.load_graxpert_model") as load,
-        ):
-            session = GraXpertSession(model_path=model_path)
-
-        self.assertEqual(session.dtype, torch.float16)
-        load.assert_called_once_with(model_path, torch.device("mps"), dtype=torch.float16)
-
     def test_graxpert_session_retries_recognized_cuda_allocation_failure_on_cpu(self):
         model_path = self.root / "fake_graxpert.pt"
         model_path.write_bytes(b"dummy")
         image = np.random.default_rng(0).uniform(0.1, 0.8, (256, 256, 3)).astype(np.float32)
-
-        class CudaOomModel:
-            def __call__(self, batch):
-                raise RuntimeError("CUDA out of memory. Tried to allocate 512.00 MiB")
 
         class CpuIdentityModel:
             def __call__(self, batch):
@@ -200,9 +189,10 @@ class TestFinishDependencies(unittest.TestCase):
 
         with (
             patch("torch.cuda.is_available", return_value=True),
+            self.fail_cuda_transfer("CUDA out of memory. Tried to allocate 512.00 MiB"),
             patch(
                 "startrails.lib.finish.graxpert_runtime.load_graxpert_model",
-                side_effect=[CudaOomModel(), CpuIdentityModel()],
+                side_effect=[object(), CpuIdentityModel()],
             ) as load,
         ):
             session = GraXpertSession(model_path=model_path, device="cuda")
@@ -221,13 +211,10 @@ class TestFinishDependencies(unittest.TestCase):
         model_path.write_bytes(b"dummy")
         image = np.full((256, 256, 3), 0.5, dtype=np.float32)
 
-        class BrokenModel:
-            def __call__(self, batch):
-                raise RuntimeError("CUDA kernel launch failed: invalid argument")
-
         with (
             patch("torch.cuda.is_available", return_value=True),
-            patch("startrails.lib.finish.graxpert_runtime.load_graxpert_model", return_value=BrokenModel()) as load,
+            self.fail_cuda_transfer("CUDA kernel launch failed: invalid argument"),
+            patch("startrails.lib.finish.graxpert_runtime.load_graxpert_model", return_value=object()) as load,
         ):
             session = GraXpertSession(model_path=model_path, device="cuda")
             with self.assertRaisesRegex(RuntimeError, "invalid argument"):

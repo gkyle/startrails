@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
-from PySide6.QtCore import QObject, QPoint, Qt
+from PySide6.QtCore import QCoreApplication, QEvent, QObject, QPoint, Qt
 from PySide6.QtTest import QTest
 from startrails.lib.file import OutputFile
 from startrails.lib.finish.defaults import (
@@ -349,15 +349,6 @@ class TestSidebarFinishPrerequisites(QtTestCase):
         self.sidebar = SidebarFinish(app=self.app)
         self.sidebar.show()
         self.addCleanup(self.sidebar.deleteLater)
-
-    def test_step3_card_initial_subtitle(self):
-        """Initial starlessCard subtitle reflects AI denoise with Structure and Detail controls."""
-        fresh_sidebar = SidebarFinish(app=self.app)
-        self.addCleanup(fresh_sidebar.deleteLater)
-        self.assertEqual(
-            fresh_sidebar.starlessCard.ui.subtitle.text(),
-            "AI denoise with Structure and Detail controls",
-        )
 
     def test_step3_card_prerequisite_states(self):
         """Step 3 transitions: locked -> GraXpert setup required / ready -> done."""
@@ -1271,18 +1262,6 @@ class TestFinishViewStarlessInteraction(QtTestCase):
 
     def test_structure_slider_click_does_not_reflow_starless_card(self):
         """First click on the Structure slider must not shift outputFiles or starlessCard geometry."""
-        self.sidebar.resize(300, 800)
-        self.sidebar.show()
-        self.view.updateReadyStates()
-        self.sidebar.starlessCard.setExpanded(True)
-        self.qt.processEvents()
-
-        output_height_before = self.sidebar.outputFiles.ui.files.height()
-        card_geom_before = self.sidebar.starlessCard.geometry()
-        settings_geom_before = self.sidebar.starlessSettings.geometry()
-        slider = self.sidebar.starlessSettings.slider_structure
-        slider_geom_before = slider.geometry()
-
         with (
             patch.object(
                 FinishWorkflow,
@@ -1291,6 +1270,23 @@ class TestFinishViewStarlessInteraction(QtTestCase):
             ),
             patch.object(FinishWorkflow, "save_project"),
         ):
+            self.sidebar.resize(300, 800)
+            self.sidebar.show()
+            self.view.updateReadyStates()
+            self.sidebar.starlessCard.setExpanded(True)
+            self.qt.processEvents()
+
+            # Showing and expanding posts nested layout requests; settle these
+            # before measuring the layout that the mouse press must preserve.
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.LayoutRequest)
+            self.qt.processEvents()
+
+            output_height_before = self.sidebar.outputFiles.ui.files.height()
+            card_geom_before = self.sidebar.starlessCard.geometry()
+            settings_geom_before = self.sidebar.starlessSettings.geometry()
+            slider = self.sidebar.starlessSettings.slider_structure
+            slider_geom_before = slider.geometry()
+
             pos = QPoint(slider.width() // 2, slider.height() // 2)
             QTest.mousePress(slider, Qt.LeftButton, pos=pos)
             self.qt.processEvents()

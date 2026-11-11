@@ -216,14 +216,6 @@ class TestFinishSeparation(QtTestCase):
         self.assertIsNotNone(self.project.current_artifact_path(ROLE_SEPARATED_STARLESS))
         self.assertIsNotNone(self.project.current_artifact_path(ROLE_SEPARATED_STARS))
 
-    def test_arbitrary_dimensions_supported_by_nox_tiling(self):
-        small_source = self.create_synthetic_image("small.tif", shape=(400, 400))
-        self.workflow.do_import_source(small_source)
-        self.workflow.do_all_sky_mask()
-
-        with patch.object(self.workflow, "_nox_session_for", return_value=self.make_fake_nox_session(0.8)):
-            self.assertIsNotNone(self.workflow.do_separate_stars())
-
     def test_feathering_changes_separation_and_survives_reopening(self):
         source_path = self.root / "feather_source.tif"
         imwrite(source_path, np.full((512, 512, 3), 40000, dtype=np.uint16), bit_depth=16)

@@ -301,7 +301,8 @@ class DenoiseViewTrainingUITests(QtTestCase):
                         self.assertEqual(len(queued_work), 1)
                         worker_thread = Thread(target=queued_work[0])
                         worker_thread.start()
-                        worker_thread.join()
+                        worker_thread.join(timeout=5)
+                        self.assertFalse(worker_thread.is_alive(), "Contribution worker did not finish")
                         qt_app().processEvents()
                         mock_notify.assert_called_once()
                         receipt, err = mock_notify.call_args[0]
@@ -333,6 +334,7 @@ class DenoiseViewTrainingUITests(QtTestCase):
 
         # Verify view.bind() connects them
         fresh_view = DenoiseView(self.app, self.shell)
+        self.addCleanup(fresh_view.teardown)
         fresh_sidebar = SidebarDenoise(app=self.app)
         self.addCleanup(fresh_sidebar.deleteLater)
         with patch.object(fresh_view, "do_export_training_sky") as mock_export, \
@@ -344,5 +346,4 @@ class DenoiseViewTrainingUITests(QtTestCase):
             fresh_sidebar.exportSettings.ui.contribute.click()
             mock_export.assert_called_once()
             mock_contrib.assert_called_once()
-        fresh_view.teardown()
 

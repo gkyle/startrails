@@ -13,6 +13,7 @@ from startrails.lib.finish.graxpert import (
     MIN_MAD_EPSILON,
     build_graxpert_model,
     compute_graxpert_stats,
+    graxpert_inference_dtype,
     graxpert_model_identity,
     graxpert_tile_postprocess,
     graxpert_tile_preprocess,
@@ -42,6 +43,12 @@ class TestFinishModelSetup(unittest.TestCase):
             "denoiseSky/graxpert/graxpert-denoise-3.0.2-mixed-int4-int8.pt",
         )
         self.assertIn(GRAXPERT_MODEL_RELATIVE_PATH, graxpert_model_identity())
+
+    def test_graxpert_precision_policy(self):
+        # Check the policy owner without model loading or accelerator hardware.
+        for device, expected in (("cpu", torch.float32), ("cuda", torch.float16), ("mps", torch.float16)):
+            with self.subTest(device=device):
+                self.assertEqual(graxpert_inference_dtype(torch.device(device)), expected)
 
     def test_graxpert_architecture_and_checkpoint_validation(self):
         model = build_graxpert_model()
@@ -182,10 +189,6 @@ class TestFinishModelSetup(unittest.TestCase):
         # The model returns standardized-space samples; -6 restores to 0.05.
         restored = graxpert_tile_postprocess(np.full_like(original, -6.0), original, median, mad)
         np.testing.assert_allclose(restored, [[[0.05, 0.5, 0.8]]], atol=1e-6)
-
-        # Model identity keys endpoints but is independent of the selected provider.
-        self.assertEqual(graxpert_model_identity(), graxpert_model_identity())
-        self.assertIn("3.0.2", graxpert_model_identity())
 
 
 if __name__ == "__main__":
