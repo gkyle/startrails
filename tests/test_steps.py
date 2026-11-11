@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 from unittest.mock import patch
+import torch
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtTest import QTest
 from support import QtTestCase
@@ -94,6 +95,44 @@ class SettingsTests(QtTestCase):
             else:
                 setting.refresh_inputs()
             self.assertTrue(setting.ui.useGPU.isEnabled())
+
+    def test_detector_accelerator_available_when_stacking_gpu_unavailable(self):
+        self.files.append(InputFile("image", "image"))
+        self.app.gpuInfo = SimpleNamespace(get_gpu_present=lambda: True)
+
+        with patch(
+            "startrails.ui.steps.resolve_torch_device",
+            side_effect=lambda *, use_gpu: torch.device("mps" if use_gpu else "cpu"),
+        ):
+            detect = DetectSettings(self.app)
+            stack = StackSettings(self.app)
+
+            # Detector auto-selects available Torch inference accelerator.
+            self.assertTrue(detect.ui.useGPU.isEnabled())
+            self.assertTrue(detect.ui.useGPU.isChecked())
+            self.assertTrue(detect.values()["useGPU"])
+
+            # Stacking remains CPU because CuPy is unavailable.
+            self.assertTrue(stack.ui.useGPU.isEnabled())
+            self.assertFalse(stack.ui.useGPU.isChecked())
+            self.assertFalse(stack.values()["useGPU"])
+            self.assertIn("CPU", stack.ui.memory.text())
+
+            # Manual unchecking of detector is honored and survives refresh.
+            detect.ui.useGPU.click()
+            self.assertFalse(detect.ui.useGPU.isChecked())
+            self.assertFalse(detect.values()["useGPU"])
+            detect.refresh_inputs()
+            self.assertFalse(detect.ui.useGPU.isChecked())
+            self.assertFalse(detect.values()["useGPU"])
+
+            # Manual checking of detector is honored and forwards useGPU=True.
+            detect.ui.useGPU.click()
+            self.assertTrue(detect.ui.useGPU.isChecked())
+            self.assertTrue(detect.values()["useGPU"])
+
+            # Stacking remains CPU.
+            self.assertFalse(stack.values()["useGPU"])
 
     def test_align_controls_support_keyboard_navigation_and_activation(self):
         align = DenoiseAlignSettings()

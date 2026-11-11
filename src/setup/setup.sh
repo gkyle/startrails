@@ -27,6 +27,12 @@ fi
 application_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 cd "$application_dir"
 
+uv_version_matches() {
+    local reported
+    reported=$("$1" --version) || return 1
+    [[ $reported == "uv $uv_version" || $reported == "uv $uv_version "* ]]
+}
+
 if $packaged; then
     # release.conf is generated from the build's pinned toolchain metadata.
     source "$application_dir/release.conf"
@@ -57,19 +63,26 @@ if $packaged; then
     fi
 else
     ready=false
+    uv_version=$(sed -n 's/.*"uv_version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' build/toolchain.json)
+    if [[ -z $uv_version ]]; then printf 'Pinned uv version is missing from build/toolchain.json.\n' >&2; exit 1; fi
     if ! command -v uv >/dev/null 2>&1; then
-        printf 'Installing uv...\n'
-        curl -LsSf https://astral.sh/uv/install.sh | sh
+        printf 'Installing uv %s...\n' "$uv_version"
+        curl -LsSf "https://astral.sh/uv/$uv_version/install.sh" | UV_NO_MODIFY_PATH=1 sh
         export PATH="$HOME/.local/bin:$PATH"
-    else
-        uv self update || printf 'Could not update uv; continuing with the installed version.\n' >&2
     fi
     uv=$(command -v uv)
     if [[ -z $uv ]]; then printf 'uv installation failed.\n' >&2; exit 1; fi
+    if ! uv_version_matches "$uv"; then
+        UV_NO_MODIFY_PATH=1 "$uv" self update "$uv_version" || true
+    fi
+    if ! uv_version_matches "$uv"; then
+        printf 'uv %s is required. Install that version with the official installer or update the installed uv.\n' "$uv_version" >&2
+        exit 1
+    fi
 fi
 
 prepare_environment() {
-    if $packaged && [[ ! -x $uv || $("$uv" --version) != "uv $uv_version "* ]]; then
+    if $packaged && { [[ ! -x $uv ]] || ! uv_version_matches "$uv"; }; then
         printf 'Bundled uv is missing or does not match this release. Reinstall StarTrails AI.\n' >&2
         return 1
     fi
@@ -79,11 +92,10 @@ prepare_environment() {
     else
         run_args=(run --no-sync --)
     fi
-    torch_variant=$("$uv" "${run_args[@]}" src/setup/probeGPU.py)
-    "$uv" "${run_args[@]}" src/setup/check_setup.py --variant "$torch_variant"
+    torch_variant=$("$uv" "${run_args[@]}" src/setup/probeGPU.py --uv "$uv")
     printf 'Using torch variant: %s\n' "$torch_variant"
-    sync_args=(sync --extra "$torch_variant")
-    if $packaged; then sync_args+=(--locked --python "$python_version"); fi
+    sync_args=(sync --locked --extra "$torch_variant")
+    if $packaged; then sync_args+=(--python "$python_version"); fi
     "$uv" "${sync_args[@]}"
     check_args=(run --no-sync)
     if $packaged; then check_args+=(--python "$python_version"); fi

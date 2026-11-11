@@ -14,6 +14,7 @@ from startrails.lib.finish.defaults import (
     GRAXPERT_MODEL_FILENAME,
     GRAXPERT_MODEL_RELATIVE_PATH,
 )
+from startrails.lib.gpu import torch_inference_dtype
 
 CHANNELS = 3
 WINDOW_SIZE = 256
@@ -33,7 +34,7 @@ CHECKPOINT_FORMAT_MIXED_INT4_INT8 = "graxpert_pytorch_mixed_int4_int8"
 
 def graxpert_inference_dtype(device: torch.device) -> torch.dtype:
     """Select model precision for GraXpert inference on the chosen device."""
-    return torch.float16 if device.type in ("cuda", "mps") else torch.float32
+    return torch_inference_dtype(device)
 
 
 def graxpert_model_identity() -> str:
@@ -510,7 +511,7 @@ def load_graxpert_model(
     device: Union[str, torch.device] = "cpu",
     dtype: Optional[torch.dtype] = None,
 ) -> CascadedGaze:
-    """Load a CascadedGaze checkpoint, defaulting to FP16 on CUDA/MPS and FP32 on CPU."""
+    """Load a checkpoint, defaulting to FP16 on CUDA/ROCm/MPS and FP32 on XPU/CPU."""
     checkpoint_path = Path(model_path)
     if not checkpoint_path.is_file():
         raise FileNotFoundError(f"GraXpert checkpoint not found at: {checkpoint_path}")

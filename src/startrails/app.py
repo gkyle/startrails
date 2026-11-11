@@ -6,9 +6,8 @@ from threading import RLock
 from typing import Any, Dict, List, Optional
 import jsonpickle
 
-# Use deferred loading for torch and modules that use torch to reduce startup latency.
+# Use deferred loading for modules that use torch to reduce startup latency.
 from deferred_import import deferred_import
-torch = deferred_import("torch")
 dsm = deferred_import("startrails.op.detectStreaks")
 fgm = deferred_import("startrails.op.fillGaps")
 
@@ -43,10 +42,6 @@ class App:
     _persistence_lock = RLock()
 
     def __init__(self):
-        try:
-            torch.cuda.init()
-        except Exception:
-            pass
         self.activeOperation: Optional[Observable] = None
         self.gpuInfo = GPUInfo()
         self._workflow: Optional[Workflow] = None

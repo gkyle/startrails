@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from typing import Final
 from PySide6.QtCore import QElapsedTimer, QEvent, Qt, QSignalBlocker, QObject, Signal, Property
 from PySide6.QtWidgets import QButtonGroup, QFrame, QSlider, QSpinBox, QWidget
+from startrails.lib.gpu import resolve_torch_device
 
 PREVIEW_LONG_PRESS_MS: Final[int] = 250
 
@@ -472,12 +473,9 @@ class DetectSettings(QWidget):
             self.suggest_device(True)
 
     def suggest_device(self, use_gpu):
-        if self._first_file is None or not self.app or not hasattr(self.app, "stackSuggestBatchSize"):
+        if self._first_file is None:
             return
-        try:
-            _, _, available = self.app.stackSuggestBatchSize(self._first_file, use_gpu)
-        except (OSError, ValueError):
-            available = False
+        available = resolve_torch_device(use_gpu=use_gpu).type != "cpu"
         with QSignalBlocker(self.ui.useGPU):
             self.ui.useGPU.setChecked(bool(available) and self.ui.useGPU.isEnabled())
 

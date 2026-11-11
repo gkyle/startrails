@@ -29,7 +29,7 @@ class DetectSky(Observable):
             image_or_path: Input image array or filepath.
             model_type: "nightstack" or "segformer", selected by the caller.
             model_path: Optional custom path or HF model id.
-            device: "auto", "cuda", or "cpu".
+            device: "auto", "cuda" (NVIDIA or ROCm), "mps", "xpu", or "cpu".
             input_size: Maximum dimension during neural inference.
 
         Returns:

@@ -15,7 +15,7 @@ from startrails.lib.denoise.defaults import (
     DEFAULT_SKY_DETECTION_INPUT_SIZE,
     DENOISE_DEFAULTS,
 )
-from startrails.lib.gpu import free_gpu_memory, resolve_torch_device
+from startrails.lib.gpu import configure_torch_inference, free_gpu_memory, resolve_torch_device
 from startrails.paths import APPLICATION_DIR
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class AutoSkyDetector:
             image: 2D or 3D numpy array (H, W) or (H, W, C), uint8 [0, 255] or float [0.0, 1.0]
             model_type: "nightstack" (default) or "segformer"
             model_path: Optional custom path or HF model id
-            device: "auto", "cuda", or "cpu"
+            device: "auto", "cuda", "mps", "xpu", or "cpu"
             input_size: Maximum dimension to downsample image during neural inference
 
         Returns:
@@ -80,20 +80,23 @@ class AutoSkyDetector:
                 f"Unknown model_type: '{model_type}'. Expected 'nightstack' or 'segformer'."
             )
 
-        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        selected_device = device
 
         # 3. Execute neural inference
         try:
+            resolved_device = resolve_torch_device(device)
+            configure_torch_inference(resolved_device)
+            selected_device = str(resolved_device)
             return cls._detect_segformer(
                 rgb,
                 model_path=model_path,
-                device=device,
+                device=selected_device,
                 input_size=input_size,
             )
         except Exception as e:
-            if device != "cpu":
+            if selected_device != "cpu":
                 logger.warning(
-                    f"Neural inference on {device} failed ({e}). Retrying neural inference on CPU..."
+                    f"Neural inference on {selected_device} failed ({e}). Retrying neural inference on CPU..."
                 )
                 try:
                     free_gpu_memory()
@@ -122,7 +125,7 @@ class AutoSkyDetector:
         if target_p.is_file():
             target_path = str(target_p.parent)
 
-        device = str(resolve_torch_device(device_str))
+        device = device_str
 
         cache_key = f"{target_path}_{device}"
         if cache_key in _MODEL_CACHE:

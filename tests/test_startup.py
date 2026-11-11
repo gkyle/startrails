@@ -157,7 +157,6 @@ class StartupTests(QtTestCase):
 
                 try:
                     with (
-                        patch("startrails.app.torch.cuda.init"),
                         patch("startrails.app.GPUInfo"),
                         self.assertLogs("startrails.app", level="WARNING") as logs,
                     ):
@@ -179,7 +178,6 @@ class StartupTests(QtTestCase):
         Path("app.json").write_text(jsonpickle.encode({"projectFile": str(starter_path)}), encoding="utf-8")
 
         with (
-            patch("startrails.app.torch.cuda.init"),
             patch("startrails.app.GPUInfo"),
             self.assertLogs("startrails.app", level="WARNING") as logs,
         ):

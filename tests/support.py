@@ -41,7 +41,11 @@ class IsolatedTestCase(TestCase):
         app.state = {}
         app.stateFile = str(self.root / "app.json")
         app.activeOperation = None
-        app.gpuInfo = SimpleNamespace(get_gpu_present=lambda: False, getGpuPresent=lambda: False)
+        app.gpuInfo = SimpleNamespace(
+            get_gpu_present=lambda: False,
+            getGpuPresent=lambda: False,
+            get_gpu_memory_available=lambda: None,
+        )
         app._workflow = None
         return app
 

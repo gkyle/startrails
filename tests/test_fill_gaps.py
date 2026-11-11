@@ -26,7 +26,7 @@ class FillGapsTests(IsolatedTestCase):
         weights["final_conv.bias"].zero_()
         with (
             patch("startrails.op.fillGaps.torch.load", return_value=weights),
-            patch("startrails.op.fillGaps.torch.cuda.is_available", return_value=False),
+            patch("startrails.op.fillGaps.resolve_torch_device", return_value=torch.device("cpu")),
         ):
             filler = FillGaps()
         previous_threads = torch.get_num_threads()
@@ -62,7 +62,7 @@ class FillGapsTests(IsolatedTestCase):
         with (
             patch("startrails.op.fillGaps.UNet", return_value=IdentityGapModel()),
             patch("startrails.op.fillGaps.torch.load", return_value={}),
-            patch("startrails.op.fillGaps.torch.cuda.is_available", return_value=False),
+            patch("startrails.op.fillGaps.resolve_torch_device", return_value=torch.device("cpu")),
         ):
             filler = FillGaps()
         source = self.root / "input.png"

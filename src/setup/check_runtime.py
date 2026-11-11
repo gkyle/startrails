@@ -3,6 +3,32 @@
 import argparse
 from pathlib import Path
 import sys
+import tomllib
+
+
+APPLICATION_DIR = Path(__file__).resolve().parents[2]
+EXACT_FAMILIES = {"cpu", "mps", "xpu"}
+
+
+def supported_variants() -> set[str]:
+    """Return the dependency extras declared by the authoritative project file."""
+    with (APPLICATION_DIR / "pyproject.toml").open("rb") as stream:
+        project = tomllib.load(stream)
+    return set(project["project"]["optional-dependencies"])
+
+
+def variant_family(variant: str, supported: set[str]) -> str:
+    """Return the accelerator family a declared dependency extra installs."""
+    if variant not in supported:
+        expected = ", ".join(sorted(supported))
+        raise ValueError(f"Unknown accelerator variant {variant!r}; expected one of: {expected}")
+    if variant in EXACT_FAMILIES:
+        return variant
+    if variant.startswith("rocm"):
+        return "rocm"
+    if variant.startswith("cu"):
+        return "cuda"
+    raise ValueError(f"Unsupported accelerator variant: {variant!r}")
 
 
 def main():
@@ -10,20 +36,28 @@ def main():
     parser.add_argument("--variant", required=True)
     parser.add_argument("--notice-file", type=Path, help="Write prerequisite guidance for the installer to display.")
     args = parser.parse_args()
+    try:
+        family = variant_family(args.variant, supported_variants())
+    except (OSError, ValueError, KeyError) as error:
+        parser.error(str(error))
     # These imports exercise native dependencies before a packaged install is ready.
     import cv2
     import openvino
     from PySide6 import QtWidgets
     import torch
     import torchvision
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from startrails.lib.gpu import torch_accelerator_kind
 
     print(
         f"Loaded Qt {QtWidgets.__name__}, OpenCV {cv2.__version__}, OpenVINO {openvino.__version__}, "
         f"PyTorch {torch.__version__}, torchvision {torchvision.__version__}."
     )
     notice = ""
-    if args.variant.startswith("cu"):
+    if family == "cuda":
         try:
+            if torch_accelerator_kind() != "nvidia":
+                raise RuntimeError("The installed NVIDIA PyTorch build has no usable CUDA device")
             import cupy as cp
 
             # A kernel also checks the toolkit compiler components needed by CuPy.
@@ -35,12 +69,22 @@ def main():
                 "CPU stacking remains available."
             )
             print(f"{notice} Details: {error}", file=sys.stderr)
-    elif args.variant == "mps":
+    elif family == "mps":
         if torch.backends.mps.is_available():
             torch.ones(1, device="mps").sum().item()
         else:
             notice = "Apple GPU acceleration is unavailable. CPU processing remains available."
             print(notice, file=sys.stderr)
+    elif family in {"rocm", "xpu"}:
+        kind = family
+        try:
+            if torch_accelerator_kind() != kind:
+                raise RuntimeError("No usable device was detected")
+            device = "cuda" if kind == "rocm" else "xpu"
+            torch.ones(1, device=device).sum().item()
+        except Exception as error:
+            notice = f"{kind.upper()} acceleration is unavailable. CPU processing remains available."
+            print(f"{notice} Details: {error}", file=sys.stderr)
     if args.notice_file is not None:
         args.notice_file.write_text(notice, encoding="utf-8")
 

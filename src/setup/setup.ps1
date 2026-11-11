@@ -102,19 +102,26 @@ try {
     } else {
         $needsSetup = $true
         Write-Host 'Checking for uv...'
+        $toolchain = Get-Content -LiteralPath (Join-Path $applicationDir 'build/toolchain.json') -Raw | ConvertFrom-Json
+        $requiredUvVersion = $toolchain.uv_version
         if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
-            Invoke-RestMethod 'https://astral.sh/uv/install.ps1' | Invoke-Expression
+            Invoke-RestMethod "https://astral.sh/uv/$requiredUvVersion/install.ps1" | Invoke-Expression
             $env:PATH += ";$env:USERPROFILE\.local\bin"
             if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
                 throw 'uv installation failed.'
             }
-        } else {
-            & uv self update
-            if ($LASTEXITCODE -ne 0) {
-                Write-Warning 'Could not update uv; continuing with the installed version.'
-            }
         }
         $uv = (Get-Command uv -CommandType Application | Select-Object -First 1).Source
+        $uvVersion = Invoke-Uv -Executable $uv -Arguments @('--version')
+        $expectedVersion = '^uv ' + [regex]::Escape($requiredUvVersion) + '( |$)'
+        if ($uvVersion -notmatch $expectedVersion) {
+            try { Invoke-Uv -Executable $uv -Arguments @('self', 'update', $requiredUvVersion) | Out-Null }
+            catch { Write-Warning "Could not update uv: $_" }
+            $uvVersion = Invoke-Uv -Executable $uv -Arguments @('--version')
+        }
+        if ($uvVersion -notmatch $expectedVersion) {
+            throw "uv $requiredUvVersion is required. Install that version with the official installer or update the installed uv."
+        }
     }
 
     if ($needsSetup) {
@@ -125,17 +132,14 @@ try {
         } else {
             $runArgs += '--no-sync'
         }
-        $torchVariant = Invoke-Uv -Executable $uv -Arguments ($runArgs + @('--', 'src/setup/probeGPU.py')) -RetryPythonLinkFailure:$Packaged
-        # Read supported variants from the dependency policy instead of maintaining another list.
-        Invoke-Uv -Executable $uv -Arguments ($runArgs + @('--', 'src/setup/check_setup.py', '--variant', $torchVariant)) |
-            ForEach-Object { Write-Host $_ }
+        $torchVariant = Invoke-Uv -Executable $uv -Arguments ($runArgs + @('--', 'src/setup/probeGPU.py', '--uv', $uv)) -RetryPythonLinkFailure:$Packaged
         Write-Host "Using torch variant: $torchVariant"
         if ($torchVariant -eq 'cpu') {
             Write-Host 'No compatible GPU was found. CPU processing will be available. Re-run setup after installing drivers to enable GPU support.'
         }
-        $syncArgs = @('sync', '--extra', $torchVariant)
+        $syncArgs = @('sync', '--locked', '--extra', $torchVariant)
         if ($Packaged) {
-            $syncArgs += @('--locked', '--python', $release.python_version)
+            $syncArgs += @('--python', $release.python_version)
         }
         Write-Host 'Downloading and installing dependencies...'
         Invoke-Uv -Executable $uv -Arguments $syncArgs | ForEach-Object { Write-Host $_ }

@@ -8,6 +8,7 @@ import cv2
 from startrails.lib.util import imwrite, Observable
 from startrails.models.fillGaps.model import UNet
 from startrails.lib.file import OutputFile, InputFile
+from startrails.lib.gpu import resolve_torch_device
 from startrails.paths import APPLICATION_DIR
 
 ROI_SIZE = 128
@@ -18,7 +19,7 @@ class FillGaps(Observable):
     def __init__(self):
         super().__init__()
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = resolve_torch_device()
         self.model = UNet(in_channels=3, out_channels=4).to(self.device)
         self.model.load_state_dict(torch.load(MODEL_PATH,
                                    map_location=self.device, weights_only=True))

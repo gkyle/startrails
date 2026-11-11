@@ -26,6 +26,7 @@ from startrails.lib.gpu import (
     free_gpu_memory,
     is_cuda_allocation_failure,
     resolve_torch_device as resolve_nox_device,
+    torch_inference_dtype,
 )
 from startrails.lib.image_io import validate_image_array
 from startrails.paths import APPLICATION_DIR
@@ -647,7 +648,7 @@ class NoxSession:
         w_accum = torch.zeros((hp, wp), dtype=torch.float32, device=self.device)
         padded_dev = padded.to(self.device)
 
-        use_fp16_autocast = self.device.type in ("cuda", "mps")
+        use_fp16_autocast = torch_inference_dtype(self.device) == torch.float16
         completed_tiles = 0
         for i in range(0, total_tiles, batch_size):
             if should_interrupt and should_interrupt():

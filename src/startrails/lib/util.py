@@ -5,10 +5,6 @@ from threading import Event
 from typing import Callable, Optional, Union
 import cv2
 import numpy
-try:
-    import cupy as cp
-except:
-    pass
 
 from startrails.lib.image_io import IMWRITE_OPTIONS, imread, imwrite
 

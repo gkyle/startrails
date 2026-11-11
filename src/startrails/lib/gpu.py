@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import psutil
@@ -58,14 +59,22 @@ def resolve_torch_device(
             return torch.device("cuda")
         if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             return torch.device("mps")
+        if torch.xpu.is_available():
+            return torch.device("xpu")
         return torch.device("cpu")
     if choice in ("gpu", "cuda"):
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA device requested but torch.cuda.is_available() is False.")
         return torch.device("cuda")
     if choice.startswith("cuda:") or choice.startswith("gpu:"):
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA device requested but torch.cuda.is_available() is False.")
         idx = choice.split(":")[-1]
         return torch.device(f"cuda:{idx}")
+    if choice == "xpu" or choice.startswith("xpu:"):
+        if not torch.xpu.is_available():
+            raise RuntimeError("XPU device requested but torch.xpu.is_available() is False.")
+        return torch.device(choice)
     if choice == "mps":
         if not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
             raise RuntimeError("MPS device requested but torch.backends.mps.is_available() is False.")
@@ -75,11 +84,34 @@ def resolve_torch_device(
     raise ValueError(f"Unknown device specification: {device}")
 
 
+def torch_accelerator_kind() -> str:
+    """Return the active PyTorch accelerator vendor, or CPU when unavailable."""
+    device_type = resolve_torch_device().type
+    if device_type == "cuda":
+        return "rocm" if torch.version.hip else "nvidia"
+    return device_type
+
+
+def configure_torch_inference(device: torch.device) -> None:
+    """Apply accelerator environment settings needed by neural inference."""
+    if device.type == "cuda" and not torch.version.hip:
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+
+
+def torch_inference_dtype(device: torch.device) -> torch.dtype:
+    """Use half precision on CUDA and MPS, and full precision elsewhere."""
+    return torch.float16 if device.type in {"cuda", "mps"} else torch.float32
+
+
 def is_cupy_available() -> bool:
-    """Check if CuPy is installed and a functional CUDA device is available."""
+    """Check for usable CUDA CuPy, excluding PyTorch ROCm and XPU environments."""
     global _CUPY_AVAILABLE, _CUPY_MODULE
     if _CUPY_AVAILABLE is not None:
         return _CUPY_AVAILABLE
+
+    if torch.version.hip:
+        _CUPY_AVAILABLE = False
+        return False
 
     try:
         import cupy as cp
@@ -107,18 +139,24 @@ def get_array_module(use_gpu: bool = True) -> Tuple[Any, bool]:
 
 
 def free_gpu_memory() -> None:
-    """Release unused memory blocks back to the GPU allocator."""
-    if _CUPY_AVAILABLE and _CUPY_MODULE is not None:
-        try:
-            _CUPY_MODULE.get_default_memory_pool().free_all_blocks()
-            _CUPY_MODULE.get_default_pinned_memory_pool().free_all_blocks()
-        except Exception:
-            pass
+    """Release unused memory blocks from supported accelerator allocators."""
     try:
+        free_cupy_memory()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-    except Exception:
-        pass
+        if torch.xpu.is_available():
+            torch.xpu.empty_cache()
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+    except RuntimeError:
+        logger.debug("Could not release accelerator cache", exc_info=True)
+
+
+def free_cupy_memory() -> None:
+    """Release CuPy allocation pools when CUDA CuPy has been initialized."""
+    if _CUPY_AVAILABLE and _CUPY_MODULE is not None:
+        _CUPY_MODULE.get_default_memory_pool().free_all_blocks()
+        _CUPY_MODULE.get_default_pinned_memory_pool().free_all_blocks()
 
 
 def to_gb(bytes_val: float | int) -> float:
@@ -134,28 +172,19 @@ class GPUInfo:
     """Hardware detector and telemetry provider for GPU resources."""
 
     def __init__(self):
-        try:
-            self.cudaAvailable = torch.cuda.is_available()
-        except Exception:
-            self.cudaAvailable = False
-
-        try:
-            self.mpsAvailable = torch.backends.mps.is_available()
-        except Exception:
-            self.mpsAvailable = False
-
-        try:
-            pynvml.nvmlInit()
-            device_count = pynvml.nvmlDeviceGetCount()
-            if device_count > 0:
-                self.useNVML = True
-                self.nvmlHandle = pynvml.nvmlDeviceGetHandleByIndex(0)
-            else:
-                self.useNVML = False
-                self.nvmlHandle = None
-        except Exception:
-            self.useNVML = False
-            self.nvmlHandle = None
+        self.kind = torch_accelerator_kind()
+        self.cudaAvailable = self.kind in {"nvidia", "rocm"}
+        self.mpsAvailable = self.kind == "mps"
+        self.xpuAvailable = self.kind == "xpu"
+        self.nvmlHandle = None
+        if self.kind == "nvidia":
+            try:
+                pynvml.nvmlInit()
+                if pynvml.nvmlDeviceGetCount() > 0:
+                    self.nvmlHandle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            except pynvml.NVMLError:
+                logger.debug("NVIDIA telemetry is unavailable", exc_info=True)
+        self.useNVML = self.nvmlHandle is not None
 
     def get_gpu_names(self) -> List[List[str]]:
         try:
@@ -166,6 +195,8 @@ class GPUInfo:
                     [f"cuda:{i}", torch.cuda.get_device_name(i)]
                     for i in range(torch.cuda.device_count())
                 ]
+            if self.xpuAvailable:
+                return [[f"xpu:{i}", torch.xpu.get_device_name(i)] for i in range(torch.xpu.device_count())]
             if is_cupy_available():
                 import cupy as cp
 
@@ -178,13 +209,16 @@ class GPUInfo:
         return []
 
     def get_gpu_present(self) -> bool:
-        return self.cudaAvailable or self.mpsAvailable or is_cupy_available()
+        return self.cudaAvailable or self.mpsAvailable or self.xpuAvailable or is_cupy_available()
 
     def get_gpu_memory_bytes(self) -> Optional[Tuple[int, int]]:
         """Return (total_bytes, free_bytes) from PyTorch, MPS, or CuPy."""
         try:
             if self.cudaAvailable:
                 free_bytes, total_bytes = torch.cuda.mem_get_info()
+                return int(total_bytes), int(free_bytes)
+            if self.xpuAvailable:
+                free_bytes, total_bytes = torch.xpu.mem_get_info()
                 return int(total_bytes), int(free_bytes)
             if self.mpsAvailable:
                 vm = psutil.virtual_memory()
@@ -229,6 +263,8 @@ class GPUInfo:
             if self.cudaAvailable and self.nvmlHandle:
                 gpu_utilization = pynvml.nvmlDeviceGetUtilizationRates(self.nvmlHandle).gpu / 100.0
                 return gpu_utilization
+            if self.xpuAvailable:
+                return torch.xpu.utilization() / 100.0
         except Exception:
             pass
         return None
@@ -247,6 +283,8 @@ class GPUInfo:
         try:
             if self.cudaAvailable:
                 dev_id = torch.cuda.current_device()
+            elif self.xpuAvailable:
+                dev_id = torch.xpu.current_device()
             elif is_cupy_available():
                 import cupy as cp
 
