@@ -647,7 +647,7 @@ class NoxSession:
         w_accum = torch.zeros((hp, wp), dtype=torch.float32, device=self.device)
         padded_dev = padded.to(self.device)
 
-        use_fp16_autocast = self.device.type == "cuda"
+        use_fp16_autocast = self.device.type in ("cuda", "mps")
         completed_tiles = 0
         for i in range(0, total_tiles, batch_size):
             if should_interrupt and should_interrupt():
@@ -658,7 +658,7 @@ class NoxSession:
                 [padded_dev[:, y : y + window_size, x : x + window_size] for y, x in chunk]
             )
             if use_fp16_autocast:
-                with torch.amp.autocast("cuda", dtype=torch.float16):
+                with torch.amp.autocast(self.device.type, dtype=torch.float16):
                     pred = self.model(batch_t)
             else:
                 pred = self.model(batch_t)

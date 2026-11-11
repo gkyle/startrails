@@ -172,6 +172,19 @@ class TestFinishDependencies(unittest.TestCase):
             with self.assertRaises(CancelledError):
                 session.denoise_full_strength(image, should_interrupt=should_interrupt)
 
+    def test_graxpert_session_uses_fp16_on_mps(self):
+        model_path = self.root / "fake_graxpert.pt"
+        model_path.write_bytes(b"dummy")
+
+        with (
+            patch("startrails.lib.finish.graxpert_runtime.resolve_graxpert_device", return_value=torch.device("mps")),
+            patch("startrails.lib.finish.graxpert_runtime.load_graxpert_model") as load,
+        ):
+            session = GraXpertSession(model_path=model_path)
+
+        self.assertEqual(session.dtype, torch.float16)
+        load.assert_called_once_with(model_path, torch.device("mps"), dtype=torch.float16)
+
     def test_graxpert_session_retries_recognized_cuda_allocation_failure_on_cpu(self):
         model_path = self.root / "fake_graxpert.pt"
         model_path.write_bytes(b"dummy")

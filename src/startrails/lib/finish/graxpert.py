@@ -31,6 +31,11 @@ CHECKPOINT_FORMAT_FP16 = "graxpert_pytorch_fp16"
 CHECKPOINT_FORMAT_MIXED_INT4_INT8 = "graxpert_pytorch_mixed_int4_int8"
 
 
+def graxpert_inference_dtype(device: torch.device) -> torch.dtype:
+    """Select model precision for GraXpert inference on the chosen device."""
+    return torch.float16 if device.type in ("cuda", "mps") else torch.float32
+
+
 def graxpert_model_identity() -> str:
     """Return the identity of the bundled GraXpert weights used in cache keys.
 
@@ -505,13 +510,13 @@ def load_graxpert_model(
     device: Union[str, torch.device] = "cpu",
     dtype: Optional[torch.dtype] = None,
 ) -> CascadedGaze:
-    """Load a CascadedGaze model from a PyTorch mixed INT4/INT8 or FP16 checkpoint."""
+    """Load a CascadedGaze checkpoint, defaulting to FP16 on CUDA/MPS and FP32 on CPU."""
     checkpoint_path = Path(model_path)
     if not checkpoint_path.is_file():
         raise FileNotFoundError(f"GraXpert checkpoint not found at: {checkpoint_path}")
 
     target_device = torch.device(device)
-    target_dtype = dtype if dtype is not None else (torch.float16 if target_device.type == "cuda" else torch.float32)
+    target_dtype = dtype if dtype is not None else graxpert_inference_dtype(target_device)
 
     try:
         ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
@@ -586,6 +591,7 @@ __all__ = [
     "WINDOW_SIZE",
     "build_graxpert_model",
     "compute_graxpert_stats",
+    "graxpert_inference_dtype",
     "graxpert_model_identity",
     "graxpert_tile_postprocess",
     "graxpert_tile_preprocess",

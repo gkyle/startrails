@@ -18,6 +18,7 @@ from startrails.lib.finish.graxpert import (
     MODEL_THRESHOLD,
     WINDOW_SIZE,
     compute_graxpert_stats,
+    graxpert_inference_dtype,
     graxpert_model_identity,
     load_graxpert_model,
 )
@@ -50,7 +51,7 @@ class GraXpertSession:
 
         self.configured_device = resolve_graxpert_device(device)
         self.device = self.configured_device
-        self.dtype = torch.float16 if self.device.type == "cuda" else torch.float32
+        self.dtype = graxpert_inference_dtype(self.device)
         self.fallback_reason: Optional[str] = None
         self.model_identity = graxpert_model_identity()
 
