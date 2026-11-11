@@ -93,12 +93,24 @@ def torch_version_from_report(output: str) -> str:
 
 
 def run_uv(arguments: list[str]) -> subprocess.CompletedProcess[str]:
+    executable = arguments[0]
     try:
-        return subprocess.run(arguments, capture_output=True, text=True, check=True, timeout=PROBE_TIMEOUT_SECONDS)
+        return subprocess.run(
+            arguments,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=True,
+            timeout=PROBE_TIMEOUT_SECONDS,
+        )
+    except OSError as error:
+        raise RuntimeError(f"Could not run {executable}: {error}") from error
     except subprocess.CalledProcessError as error:
-        raise RuntimeError(f"uv GPU probe failed: {error.stderr.strip()}") from error
+        detail = error.stderr.strip()
+        raise RuntimeError(f"uv GPU probe failed ({executable}): {detail}") from error
     except subprocess.TimeoutExpired as error:
-        raise RuntimeError(f"uv GPU probe exceeded {PROBE_TIMEOUT_SECONDS} seconds") from error
+        raise RuntimeError(f"uv GPU probe exceeded {PROBE_TIMEOUT_SECONDS} seconds ({executable})") from error
 
 
 def probe_torch_version(uv: Path) -> str:
@@ -118,17 +130,18 @@ def main() -> None:
     parser.add_argument("--uv", type=Path, required=True, help="Verified uv executable")
     args = parser.parse_args()
     application_dir = Path(__file__).resolve().parents[2]
-    with (application_dir / "pyproject.toml").open("rb") as stream:
-        supported = supported_backends(tomllib.load(stream))
-    if sys.platform == "darwin" and platform.machine() == "arm64":
-        if "mps" not in supported:
-            parser.error("No locked MPS extra is available")
-        print("mps", end="")
-        return
     try:
-        print(select_extra(probe_torch_version(args.uv), supported), end="")
-    except (RuntimeError, ValueError) as error:
+        with (application_dir / "pyproject.toml").open("rb") as stream:
+            supported = supported_backends(tomllib.load(stream))
+        if sys.platform == "darwin" and platform.machine() == "arm64":
+            if "mps" not in supported:
+                raise ValueError("No locked MPS extra is available")
+            selected = "mps"
+        else:
+            selected = select_extra(probe_torch_version(args.uv), supported)
+    except (OSError, RuntimeError, TypeError, ValueError, KeyError) as error:
         parser.error(str(error))
+    print(selected, end="")
 
 
 if __name__ == "__main__":

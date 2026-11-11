@@ -4,10 +4,14 @@ import json
 import io
 from contextlib import redirect_stderr
 from pathlib import Path
+import shutil
+import subprocess
+import sys
+from tempfile import TemporaryDirectory
 import tomllib
 import unittest
 
-from src.setup.probeGPU import select_extra, supported_backends, torch_version_from_report
+from src.setup.probeGPU import run_uv, select_extra, supported_backends, torch_version_from_report
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,3 +59,39 @@ class GpuProbeTests(unittest.TestCase):
                 torch_version_from_report(json.dumps({**report, "changes": change}))
         with self.assertRaisesRegex(ValueError, "Unexpected uv JSON schema"):
             torch_version_from_report(json.dumps({**report, "schema": {"version": "future"}}))
+
+
+class GpuProbeProcessTests(unittest.TestCase):
+    def test_run_uv_reports_launch_failure_with_command(self):
+        with TemporaryDirectory() as directory:
+            executable = Path(directory) / "missing-uv"
+            with self.assertRaises(RuntimeError) as context:
+                run_uv([str(executable), "venv"])
+        self.assertIn("Could not run", str(context.exception))
+        self.assertIn(str(executable), str(context.exception))
+
+    def test_run_uv_replaces_undecodable_diagnostics(self):
+        with self.assertRaises(RuntimeError) as context:
+            run_uv([
+                sys.executable,
+                "-c",
+                "import sys; sys.stderr.buffer.write(b'\\x81'); sys.exit(1)",
+            ])
+        self.assertIn("uv GPU probe failed", str(context.exception))
+        self.assertIn(sys.executable, str(context.exception))
+
+    def test_cli_reports_invalid_project_config_as_usage_error(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            script = root / "src/setup/probeGPU.py"
+            script.parent.mkdir(parents=True)
+            shutil.copyfile(ROOT / "src/setup/probeGPU.py", script)
+            (root / "pyproject.toml").write_text("not = [valid", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(script), "--uv", sys.executable],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
