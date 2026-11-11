@@ -53,9 +53,15 @@ class App:
 
         self.loadAppState()
 
-        # Ensure default denoise and finish projects exist on disk
-        DenoiseProject.ensure_default_project(f"projects/default{DENOISE_EXT}")
-        FinishProject.ensure_default_project(f"projects/default{FINISH_EXT}")
+        # Ensure starter projects exist on disk without letting a corrupt file block startup.
+        for project_cls, default_path in (
+            (DenoiseProject, f"projects/default{DENOISE_EXT}"),
+            (FinishProject, f"projects/default{FINISH_EXT}"),
+        ):
+            try:
+                project_cls.ensure_default_project(default_path)
+            except Exception as e:
+                logger.warning("Could not ensure default project %s: %s", default_path, e)
 
         default_proj = self.state.get("projectFile", f"projects/default{STARTRAILS_EXT}")
         if not os.path.exists(default_proj) and os.path.exists("projects/default.project.json"):
@@ -283,6 +289,7 @@ class App:
         with self._persistence_lock:
             project = self.project
             encoded = jsonpickle.encode(project, indent=4)
+            Path(project.projectFile).parent.mkdir(parents=True, exist_ok=True)
             with open(project.projectFile, "w+") as f:
                 f.write(encoded)
             if project is self.project:
