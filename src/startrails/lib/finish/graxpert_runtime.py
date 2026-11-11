@@ -174,12 +174,18 @@ class GraXpertSession:
         # Keep padded image, normalization, gating, and Hann accumulation on
         # self.device in NCHW to eliminate per-batch CPU/GPU round-trips and
         # per-forward NHWC/NCHW transposes.
+        # Cached inputs (e.g. from FinishWorkflow) can be read-only; copy only
+        # when non-writable so torch.from_numpy does not warn.
+        padded_np = np.ascontiguousarray(padded)
+        if not padded_np.flags.writeable:
+            padded_np = padded_np.copy()
         padded_t = (
-            torch.from_numpy(np.ascontiguousarray(padded))
+            torch.from_numpy(padded_np)
             .to(device=self.device, dtype=torch.float32)
             .permute(2, 0, 1)
             .contiguous()
         )
+        del padded_np
         med_t = torch.from_numpy(median).to(device=self.device, dtype=torch.float32).view(c, 1, 1)
         mad_t = torch.from_numpy(mad).to(device=self.device, dtype=torch.float32).view(c, 1, 1)
         orig_scaled = (padded_t - med_t) / mad_t * MODEL_SCALE_FACTOR
