@@ -26,11 +26,10 @@ from startrails.lib.finish.defaults import (
 )
 from startrails.lib.finish.graxpert import (
     GRAXPERT_MODEL_RELATIVE_PATH,
-    GRAXPERT_MODEL_VERSION,
     graxpert_model_identity,
 )
 from startrails.lib.finish.graxpert_runtime import GraXpertSession
-from startrails.lib.finish.nox import NOX_MODEL_RELATIVE_PATH, NOX_MODEL_VERSION, NoxSession
+from startrails.lib.finish.nox import NOX_MODEL_RELATIVE_PATH, NoxSession
 from startrails.lib.project_finish import FinishProject
 from startrails.op.finish.graxpert_denoise import GraXpertDenoise
 from startrails.op.finish.remove_stars import RemoveStars
@@ -369,7 +368,6 @@ class TestFinishDependencies(unittest.TestCase):
             self.assertTrue(status_ready["configured"])
             self.assertTrue(status_ready["model_ready"])
             self.assertEqual(status_ready["device"], "cpu")
-            self.assertEqual(status_ready["version"], NOX_MODEL_VERSION)
 
         # GraXpert status surfaces model readiness and resolved device for diagnostics.
         fake_graxpert = self.root / "models" / GRAXPERT_MODEL_RELATIVE_PATH
@@ -383,7 +381,6 @@ class TestFinishDependencies(unittest.TestCase):
         self.assertTrue(gx_status["configured"])
         self.assertTrue(gx_status["model_ready"])
         self.assertEqual(gx_status["device"], "cuda")
-        self.assertEqual(gx_status["version"], GRAXPERT_MODEL_VERSION)
 
     def test_check_finish_models_runs_graxpert_and_nox(self):
         from setup.check_finish_models import main as check_models_main
@@ -391,11 +388,11 @@ class TestFinishDependencies(unittest.TestCase):
         with (
             patch(
                 "setup.check_finish_models.check_graxpert",
-                return_value={"version": GRAXPERT_MODEL_VERSION, "execution_device": "cpu"},
+                return_value={"execution_device": "cpu"},
             ) as mock_check_graxpert,
             patch(
                 "setup.check_finish_models.check_nox",
-                return_value=(np.zeros((512, 512, 3), dtype=np.float32), {"version": "1.0.0"}),
+                return_value=(np.zeros((512, 512, 3), dtype=np.float32), {"execution_device": "cpu"}),
             ) as mock_check_nox,
             patch(
                 "sys.argv",
@@ -525,7 +522,7 @@ class TestFinishDependencyUI(QtTestCase):
                 starless_path,
                 stars_path,
                 signature="separation-a",
-                model_identity="starnet-model",
+                model_identity="nox-model",
                 expected_revision=project.processing_revision,
             )
         )

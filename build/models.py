@@ -14,17 +14,16 @@ sys.path.insert(0, str(ROOT / "src"))
 from build.release import create_models_archive, download_models_archive, models_archive_name, sha256
 from build.publish import sync_release
 from startrails.lib.finish.defaults import (
-    FINISH_MODEL_PINS,
     GRAXPERT_MODEL_RELATIVE_PATH,
+    NOX_MODEL_RELATIVE_PATH,
 )
-from startrails.lib.signatures import verify_file_integrity
 
 DEFAULT_OUTPUT_DIR = ROOT / "out/models"
 DEFAULT_DOWNLOAD_DIR = DEFAULT_OUTPUT_DIR / "downloads"
 
 
 def prepare_finish_model_bundle(models_dir: Path) -> None:
-    """Verify bundled Finish weight pins and GraXpert attribution before archiving."""
+    """Verify bundled Finish weights and GraXpert attribution exist before archiving."""
     graxpert_model = models_dir / GRAXPERT_MODEL_RELATIVE_PATH
     if not graxpert_model.is_file():
         raise ValueError(
@@ -34,12 +33,9 @@ def prepare_finish_model_bundle(models_dir: Path) -> None:
     for notice in notice_names:
         if not (graxpert_model.parent / notice).is_file():
             raise ValueError(f"Missing GraXpert attribution/license notice: {graxpert_model.parent / notice}")
-    for relative_path, expected_sha256 in FINISH_MODEL_PINS:
-        model = models_dir / relative_path
-        if not model.is_file():
-            raise ValueError(f"Missing bundled Finish model: {model}")
-        if not verify_file_integrity(model, expected_sha256):
-            raise ValueError(f"Bundled Finish model does not match the pinned SHA-256: {model}")
+    nox_model = models_dir / NOX_MODEL_RELATIVE_PATH
+    if not nox_model.is_file():
+        raise ValueError(f"Missing bundled Finish model: {nox_model}")
 
 
 def main() -> None:

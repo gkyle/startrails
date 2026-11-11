@@ -18,11 +18,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from startrails.lib.finish.defaults import (
-    DEFAULT_STARNET_STRIDE,
+    DEFAULT_NOX_STRIDE,
     NOX_MODEL_FILENAME,
     NOX_MODEL_RELATIVE_PATH,
-    NOX_MODEL_SHA256,
-    NOX_MODEL_VERSION,
 )
 from startrails.lib.gpu import (
     free_gpu_memory,
@@ -50,7 +48,7 @@ EXPECTED_WEIGHT_TENSOR_COUNT = 60
 ARCHITECTURE = "nox_color"
 
 WINDOW_SIZE = 512
-DEFAULT_STRIDE = DEFAULT_STARNET_STRIDE
+DEFAULT_STRIDE = DEFAULT_NOX_STRIDE
 MIN_STRIDE = 2
 MAX_STRIDE = 512
 DEFAULT_BATCH_SIZE = 4
@@ -60,7 +58,7 @@ WEIGHT_NORM_EPS = 1e-8
 
 def nox_model_identity() -> str:
     """Return the identity of the bundled Nox weights used in separation cache keys."""
-    return f"{ARCHITECTURE}:{NOX_MODEL_VERSION}:{NOX_MODEL_SHA256}"
+    return f"{ARCHITECTURE}:{NOX_MODEL_RELATIVE_PATH}"
 
 
 def validate_separation_stride(stride: int, window_size: int = WINDOW_SIZE) -> None:
@@ -710,8 +708,6 @@ __all__ = [
     "MIN_STRIDE",
     "NOX_MODEL_FILENAME",
     "NOX_MODEL_RELATIVE_PATH",
-    "NOX_MODEL_SHA256",
-    "NOX_MODEL_VERSION",
     "NoxColor",
     "NoxSession",
     "OUT_CHANNELS",

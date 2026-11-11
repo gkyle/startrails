@@ -74,7 +74,7 @@ _UNSET = object()
 # These settings are captured by the next separation signature rather than by a
 # stored artifact. Stored layers remain current, but an in-flight separation that
 # started with the previous value must not publish.
-_SEPARATION_INPUT_SETTING_NAMES: Final[Tuple[str, ...]] = ("starnet_stride", "chroma_postfilter")
+_SEPARATION_INPUT_SETTING_NAMES: Final[Tuple[str, ...]] = ("nox_stride", "chroma_postfilter")
 
 # User-facing layer exports keep the project stem and append a role-specific
 # tail so every separated or finished layer is identifiable after export.
@@ -757,7 +757,7 @@ class FinishProject(Unpickle):
                 if "stride" in options:
                     # Persist the actual producing settings so reopening the project
                     # shows the settings that created these layers.
-                    self.starnet_stride = int(options["stride"])
+                    self.nox_stride = int(options["stride"])
                 if "chroma_postfilter" in options:
                     self.chroma_postfilter = bool(options["chroma_postfilter"])
             source = self._source_key()

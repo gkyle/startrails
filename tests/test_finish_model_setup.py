@@ -10,8 +10,6 @@ from startrails.lib.finish.graxpert import (
     EXPECTED_PARAM_COUNT as GRAXPERT_EXPECTED_PARAM_COUNT,
     EXPECTED_WEIGHT_TENSOR_COUNT as GRAXPERT_EXPECTED_WEIGHT_TENSOR_COUNT,
     GRAXPERT_MODEL_RELATIVE_PATH,
-    GRAXPERT_MODEL_SHA256,
-    GRAXPERT_MODEL_VERSION,
     MIN_MAD_EPSILON,
     build_graxpert_model,
     compute_graxpert_stats,
@@ -24,8 +22,6 @@ from startrails.lib.finish.nox import (
     EXPECTED_PARAM_COUNT,
     EXPECTED_WEIGHT_TENSOR_COUNT,
     NOX_MODEL_RELATIVE_PATH,
-    NOX_MODEL_SHA256,
-    NOX_MODEL_VERSION,
     NoxColor,
     RadialChromaConfig,
     apply_radial_chroma_postfilter,
@@ -38,20 +34,14 @@ from startrails.lib.finish.nox import (
 
 class TestFinishModelSetup(unittest.TestCase):
     def test_bundled_model_identities_and_paths(self):
-        self.assertEqual(NOX_MODEL_VERSION, "1.0.0")
         self.assertEqual(NOX_MODEL_RELATIVE_PATH, "removeStars/nox_color_finetuned_best.pt")
-        nox_identity = nox_model_identity()
-        self.assertIn(NOX_MODEL_VERSION, nox_identity)
-        self.assertIn(NOX_MODEL_SHA256, nox_identity)
+        self.assertIn(NOX_MODEL_RELATIVE_PATH, nox_model_identity())
 
-        self.assertEqual(GRAXPERT_MODEL_VERSION, "3.0.2")
         self.assertEqual(
             GRAXPERT_MODEL_RELATIVE_PATH,
             "denoiseSky/graxpert/graxpert-denoise-3.0.2-mixed-int4-int8.pt",
         )
-        graxpert_identity = graxpert_model_identity()
-        self.assertIn(GRAXPERT_MODEL_VERSION, graxpert_identity)
-        self.assertIn(GRAXPERT_MODEL_SHA256, graxpert_identity)
+        self.assertIn(GRAXPERT_MODEL_RELATIVE_PATH, graxpert_model_identity())
 
     def test_graxpert_architecture_and_checkpoint_validation(self):
         model = build_graxpert_model()

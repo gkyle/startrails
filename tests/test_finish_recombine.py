@@ -88,7 +88,7 @@ class TestFinishRecombine(QtTestCase):
                 starless,
                 stars,
                 signature=f"{name}-separation",
-                model_identity="starnet-model",
+                model_identity="nox-model",
                 expected_revision=project.processing_revision,
             )
         )
@@ -120,7 +120,7 @@ class TestFinishRecombine(QtTestCase):
                 starless_path,
                 stars_path,
                 signature=f"{name}-separation",
-                model_identity="starnet-model",
+                model_identity="nox-model",
                 expected_revision=project.processing_revision,
             )
         )

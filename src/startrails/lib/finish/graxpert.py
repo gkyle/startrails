@@ -13,8 +13,6 @@ import torch.nn.functional as F
 from startrails.lib.finish.defaults import (
     GRAXPERT_MODEL_FILENAME,
     GRAXPERT_MODEL_RELATIVE_PATH,
-    GRAXPERT_MODEL_SHA256,
-    GRAXPERT_MODEL_VERSION,
 )
 
 CHANNELS = 3
@@ -39,7 +37,7 @@ def graxpert_model_identity() -> str:
     Device selection is deliberately excluded: CPU and GPU lanes run the same
     numerical pipeline, so switching an accelerator does not invalidate endpoints.
     """
-    return f"graxpert:{GRAXPERT_MODEL_VERSION}:{GRAXPERT_MODEL_SHA256}"
+    return f"graxpert:{GRAXPERT_MODEL_RELATIVE_PATH}"
 
 
 def compute_graxpert_stats(image: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -576,8 +574,6 @@ __all__ = [
     "EXPECTED_WEIGHT_TENSOR_COUNT",
     "GRAXPERT_MODEL_FILENAME",
     "GRAXPERT_MODEL_RELATIVE_PATH",
-    "GRAXPERT_MODEL_SHA256",
-    "GRAXPERT_MODEL_VERSION",
     "GlobalContextExtractor",
     "LAYER_NORM_EPS",
     "LayerNorm2d",

@@ -13,7 +13,7 @@ from PySide6.QtCore import QObject
 from PySide6.QtWidgets import QMessageBox
 
 from startrails.lib.finish.defaults import (
-    DEFAULT_STARNET_STRIDE,
+    DEFAULT_NOX_STRIDE,
     FINISH_EXT,
     ROLE_FINISHED_COMPOSITE,
     ROLE_SEPARATED_STARLESS,
@@ -151,12 +151,12 @@ class TestFinishSeparation(QtTestCase):
 
         with patch.object(self.workflow, "_nox_session_for", return_value=session):
             self.assertIsNotNone(self.workflow.do_separate_stars(chroma_postfilter=True))
-            self.assertEqual(strides, [DEFAULT_STARNET_STRIDE])
+            self.assertEqual(strides, [DEFAULT_NOX_STRIDE])
             sig_with_postfilter = self.project.separation_signature
 
             # Toggling chroma_postfilter reuses ROLE_UNMASKED_STARLESS and updates signature.
             self.assertIsNotNone(self.workflow.do_separate_stars(chroma_postfilter=False))
-            self.assertEqual(strides, [DEFAULT_STARNET_STRIDE])
+            self.assertEqual(strides, [DEFAULT_NOX_STRIDE])
             self.assertNotEqual(self.project.separation_signature, sig_with_postfilter)
             self.assertFalse(self.project.chroma_postfilter)
 
@@ -172,7 +172,7 @@ class TestFinishSeparation(QtTestCase):
                 progress.append((total, increment, count))
 
             self.assertIsNotNone(self.workflow.do_separate_stars(chroma_postfilter=False, progress_bar=record))
-            self.assertEqual(strides, [DEFAULT_STARNET_STRIDE])
+            self.assertEqual(strides, [DEFAULT_NOX_STRIDE])
             self.assertEqual({total for total, _, _ in progress}, {SEPARATION_PROGRESS_TOTAL})
             self.assertEqual(
                 sum(increment for _, increment, _ in progress),
@@ -181,16 +181,16 @@ class TestFinishSeparation(QtTestCase):
             self.assertEqual(progress[-1][2], SEPARATION_PROGRESS_TOTAL)
 
             # The project-owned nondefault stride is forwarded and invalidates the unmasked cache.
-            self.project.update_settings(replace(self.project.get_settings(), starnet_stride=NON_DEFAULT_STRIDE))
+            self.project.update_settings(replace(self.project.get_settings(), nox_stride=NON_DEFAULT_STRIDE))
             self.assertIsNotNone(self.workflow.do_separate_stars())
-            self.assertEqual(strides, [DEFAULT_STARNET_STRIDE, NON_DEFAULT_STRIDE])
+            self.assertEqual(strides, [DEFAULT_NOX_STRIDE, NON_DEFAULT_STRIDE])
 
             # Replacing the source also invalidates the unmasked plate.
             source2 = self.create_synthetic_image("source2.tif")
             self.workflow.do_replace_source(source2)
             self.workflow.do_all_sky_mask()
             self.assertIsNotNone(self.workflow.do_separate_stars())
-            self.assertEqual(strides, [DEFAULT_STARNET_STRIDE, NON_DEFAULT_STRIDE, NON_DEFAULT_STRIDE])
+            self.assertEqual(strides, [DEFAULT_NOX_STRIDE, NON_DEFAULT_STRIDE, NON_DEFAULT_STRIDE])
 
     def test_mask_detection_setting_change_keeps_separation_current(self):
         """A mask detection setting invalidates no output, so the running separation still publishes."""

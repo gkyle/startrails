@@ -108,7 +108,7 @@ class SeparateStarsSettings(QWidget):
     def set_from_project(self, project: FinishProject) -> None:
         """Populate widget controls from active FinishProject settings."""
         settings = project.get_settings()
-        self.set_stride(settings.starnet_stride)
+        self.set_stride(settings.nox_stride)
         self.set_chroma_postfilter(settings.chroma_postfilter)
 
 

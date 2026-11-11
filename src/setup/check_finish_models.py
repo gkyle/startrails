@@ -12,14 +12,12 @@ import numpy as np
 
 from startrails.lib.finish.graxpert import (
     GRAXPERT_MODEL_RELATIVE_PATH,
-    GRAXPERT_MODEL_VERSION,
     WINDOW_SIZE as GRAXPERT_WINDOW_SIZE,
 )
 from startrails.lib.finish.graxpert_runtime import GraXpertSession
 from startrails.lib.finish.nox import (
     DEFAULT_STRIDE,
     NOX_MODEL_RELATIVE_PATH,
-    NOX_MODEL_VERSION,
     NoxSession,
     WINDOW_SIZE as NOX_WINDOW_SIZE,
     apply_radial_chroma_postfilter,
@@ -78,7 +76,6 @@ def check_graxpert(model_path: Path, image: np.ndarray, *, device: str) -> dict:
     if denoised.shape != tile.shape or denoised.dtype != np.float32 or not np.isfinite(denoised).all():
         raise ValueError("GraXpert inference returned invalid model output.")
     return {
-        "version": GRAXPERT_MODEL_VERSION,
         "configured_device": str(session.configured_device),
         "execution_device": session.execution_device,
         "fallback_reason": session.fallback_reason,
@@ -103,7 +100,6 @@ def check_nox(
         starless, stats = apply_radial_chroma_postfilter(image, starless)
         detected_stars = stats.detected_stars
     return starless, {
-        "version": NOX_MODEL_VERSION,
         "configured_device": str(session.configured_device),
         "execution_device": session.execution_device,
         "fallback_reason": session.fallback_reason,

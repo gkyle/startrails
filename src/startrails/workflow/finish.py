@@ -35,14 +35,12 @@ from startrails.lib.finish.defaults import (
 )
 from startrails.lib.finish.graxpert import (
     GRAXPERT_MODEL_RELATIVE_PATH,
-    GRAXPERT_MODEL_VERSION,
     graxpert_model_identity,
 )
 from startrails.lib.finish.nox import (
     MAX_STRIDE,
     MIN_STRIDE,
     NOX_MODEL_RELATIVE_PATH,
-    NOX_MODEL_VERSION,
     NoxSession,
     apply_radial_chroma_postfilter,
     nox_model_identity,
@@ -287,7 +285,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         self.save_project()
         return True
 
-    invalidate_if_starnet_changed = invalidate_if_separation_changed
+    invalidate_if_nox_changed = invalidate_if_separation_changed
 
     def getInputFileList(self) -> List[InputFile]:  # noqa: N802 - standard host shell interface
         """Return list containing the single imported source image, if present."""
@@ -683,7 +681,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             "configured": model_ready,
             "model_ready": model_ready,
             "model_path": str(model_path),
-            "version": NOX_MODEL_VERSION,
             "device": device,
             "execution_device": session.execution_device if session is not None else None,
             "fallback_reason": session.fallback_reason if session is not None else None,
@@ -711,7 +708,6 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
             "configured": model_ready,
             "model_ready": model_ready,
             "model_path": str(model_path),
-            "version": GRAXPERT_MODEL_VERSION,
             "device": device,
             "execution_device": session.execution_device if session_matches_device else None,
             "fallback_reason": session.fallback_reason if session_matches_device else None,
@@ -862,7 +858,7 @@ class FinishWorkflow(Workflow, SkyMaskingWorkflowMixin):
         shared SEPARATION_PROGRESS_TOTAL scale.
         """
         project = self.project
-        stride = project.starnet_stride if stride is None else stride
+        stride = project.nox_stride if stride is None else stride
         validate_separation_stride(stride)
         chroma_postfilter = project.chroma_postfilter if chroma_postfilter is None else chroma_postfilter
         if type(chroma_postfilter) is not bool:

@@ -125,7 +125,7 @@ class FinishView(ModeView):
 
         if hasattr(self.sidebar, "separateSettings"):
             self.connect_signal(self.sidebar.separateSettings.run_separation_requested, self.on_run_separation)
-            self.connect_signal(self.sidebar.separateSettings.stride_changed, self.on_starnet_stride_changed)
+            self.connect_signal(self.sidebar.separateSettings.stride_changed, self.on_nox_stride_changed)
             self.connect_signal(
                 self.sidebar.separateSettings.chroma_postfilter_changed, self.on_chroma_postfilter_changed
             )
@@ -852,10 +852,10 @@ class FinishView(ModeView):
             work=work,
         )
 
-    def on_starnet_stride_changed(self, stride: int) -> None:
+    def on_nox_stride_changed(self, stride: int) -> None:
         """Persist the project-owned separation stride without discarding cached layers."""
         settings = self._project.get_settings()
-        self._project.update_settings(replace(settings, starnet_stride=stride))
+        self._project.update_settings(replace(settings, nox_stride=stride))
         self.app.workflow.save_project()
         self.updateReadyStates()
 

@@ -131,7 +131,7 @@ class TestFinishProject(QtTestCase):
         project.detail_amount = 15.0
         project.blend_mode = BLEND_SCREEN
         project.jpeg_quality = 90
-        project.starnet_stride = 128
+        project.nox_stride = 128
         project.chroma_postfilter = False
 
         # Serialize and reload
@@ -146,7 +146,7 @@ class TestFinishProject(QtTestCase):
         self.assertEqual(reloaded.detail_amount, 15.0)
         self.assertEqual(reloaded.blend_mode, BLEND_SCREEN)
         self.assertEqual(reloaded.jpeg_quality, 90)
-        self.assertEqual(reloaded.starnet_stride, 128)
+        self.assertEqual(reloaded.nox_stride, 128)
         self.assertFalse(reloaded.chroma_postfilter)
 
         # Authoritative defaults have one owner; Stars Amount and blend mode
@@ -476,7 +476,7 @@ class TestFinishProject(QtTestCase):
                 starless,
                 stars,
                 signature="separation-a",
-                model_identity="starnet-model",
+                model_identity="nox-model",
                 expected_revision=revision,
             )
         )
