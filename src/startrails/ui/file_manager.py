@@ -319,6 +319,14 @@ class FileModel(QAbstractTableModel):
 
     def index_for_file(self, file):
         row = self._rows.get(file)
+        if row is None and file is not None:
+            path = getattr(file, "path", None)
+            if path:
+                path_str = str(path)
+                row = next(
+                    (i for i, f in enumerate(self.files) if getattr(f, "path", None) and str(f.path) == path_str),
+                    None,
+                )
         return self.index(row, 0) if row is not None else QModelIndex()
 
 

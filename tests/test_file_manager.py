@@ -65,6 +65,21 @@ class FileModelTests(QtTestCase):
         self.assertIsNone(section.current_file())
         self.assertEqual(section.model.rowCount(), 0)
 
+    def test_focus_file_with_fresh_instance_matches_existing_path_without_expanding(self):
+        section = FileSection("Output Files", inputs=False)
+        self.addCleanup(section.close)
+        existing_file = OutputFile("stacked.tif", "/path/to/stacked.tif", "Stacked")
+        section.set_files([existing_file])
+        section.setExpanded(False)
+
+        fresh_file = OutputFile("stacked.tif", "/path/to/stacked.tif", "Base Stack")
+        self.assertIsNot(fresh_file, existing_file)
+
+        section.focus_file(fresh_file, expand=False)
+        self.assertFalse(section.ui.toggle.isChecked())
+        self.assertIs(section.current_file(), existing_file)
+        self.assertEqual(section.ui.files.currentIndex().row(), 0)
+
     def test_click_on_already_selected_item_emits_show_file(self):
         section = FileSection("Input Files", inputs=True)
         f1 = InputFile("a.jpg", "a.jpg")
