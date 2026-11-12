@@ -98,12 +98,6 @@ class Ui_DenoiseStackSettings(object):
 
         self.layout.addWidget(self.outputFileName)
 
-        self.stackStatus = QLabel(DenoiseStackSettings)
-        self.stackStatus.setObjectName(u"stackStatus")
-        self.stackStatus.setWordWrap(True)
-
-        self.layout.addWidget(self.stackStatus)
-
         self.advancedBody = QWidget(DenoiseStackSettings)
         self.advancedBody.setObjectName(u"advancedBody")
         self.advancedLayout = QVBoxLayout(self.advancedBody)
@@ -201,7 +195,6 @@ class Ui_DenoiseStackSettings(object):
 #endif // QT_CONFIG(accessibility)
         self.advancedToggle.setText("")
         self.outputFileName.setText(QCoreApplication.translate("DenoiseStackSettings", u"Output: project.tif", None))
-        self.stackStatus.setText(QCoreApplication.translate("DenoiseStackSettings", u"Base stacks: Not generated", None))
         self.useGPULabel.setText(QCoreApplication.translate("DenoiseStackSettings", u"Use GPU Acceleration", None))
 #if QT_CONFIG(accessibility)
         self.useGPU.setAccessibleName(QCoreApplication.translate("DenoiseStackSettings", u"Use GPU Acceleration", None))

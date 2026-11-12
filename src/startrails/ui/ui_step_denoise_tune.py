@@ -198,18 +198,6 @@ class Ui_DenoiseTuneSettings(object):
 
         self.layout.addLayout(self.blurRow)
 
-        self.tuneHint = QLabel(DenoiseTuneSettings)
-        self.tuneHint.setObjectName(u"tuneHint")
-        self.tuneHint.setWordWrap(True)
-
-        self.layout.addWidget(self.tuneHint)
-
-        self.tuneStatus = QLabel(DenoiseTuneSettings)
-        self.tuneStatus.setObjectName(u"tuneStatus")
-        self.tuneStatus.setWordWrap(True)
-
-        self.layout.addWidget(self.tuneStatus)
-
         self.error = QLabel(DenoiseTuneSettings)
         self.error.setObjectName(u"error")
         self.error.setWordWrap(True)
@@ -257,8 +245,6 @@ class Ui_DenoiseTuneSettings(object):
         self.blendPercent.setSuffix(QCoreApplication.translate("DenoiseTuneSettings", u" %", None))
         self.blurLabel.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Blur:", None))
         self.blurRadius.setSuffix(QCoreApplication.translate("DenoiseTuneSettings", u" px", None))
-        self.tuneHint.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Adjust sliders to configure settings. Live canvas update activates once base stacks are generated.", None))
-        self.tuneStatus.setText(QCoreApplication.translate("DenoiseTuneSettings", u"Requires base stacks", None))
         pass
     # retranslateUi
 

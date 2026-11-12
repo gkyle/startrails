@@ -880,8 +880,6 @@ class DenoiseView(ModeView):
                 self.tune_card.setStatus("done")
             if self.output_files is not None:
                 self.output_files.set_files(self.app.workflow.get_output_file_list())
-            if self.tune_settings is not None:
-                self.tune_settings.ui.tuneStatus.setText(f"Saved: {out_path.name}")
             self.update_ready_states()
         except Exception as error:
             staged_path.unlink(missing_ok=True)
@@ -931,8 +929,6 @@ class DenoiseView(ModeView):
             worker.project is not self.app.project or worker.is_cancelled() or worker.generation != self._generation
         ):
             return
-        if not self._disposed and self.tune_settings is not None:
-            self.tune_settings.ui.tuneStatus.setText(f"Failed: {message}")
 
     def _on_gradient_mask_toggled(self, checked: bool) -> None:
         if not hasattr(self.shell, "canvas_main") or self.shell.canvas_main is None:
@@ -1414,8 +1410,6 @@ class DenoiseView(ModeView):
                 if self.stack_card is not None:
                     self.stack_card.setStatus("done")
                 self.update_ready_states()
-                if self.tune_card is not None:
-                    self.tune_card.setExpanded(True)
                 self._schedule_horizon_tuning(save=True)
 
             self._post_result(generation, on_stack_done)
@@ -1473,8 +1467,6 @@ class DenoiseView(ModeView):
                     canvas.clear_horizon_overlay()
                     canvas.set_mask_edit_mode(False)
                     canvas.setFromNumpyArray(image, resetZoomAndPosition=False, is_bgr=False)
-                if self.tune_settings is not None:
-                    self.tune_settings.ui.tuneStatus.setText(f"Saved: {output_path.name}")
                 self.update_ready_states()
 
             self._post_result(generation, publish)

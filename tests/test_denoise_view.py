@@ -196,7 +196,18 @@ class DenoiseViewTests(QtTestCase):
         self.assertFalse(list(self.project.get_output_dir().glob("tmp*")))
 
     def test_stack_success_schedules_default_tune_autosave(self):
+        from startrails.lib.denoise.mask import MaskHandler
+
         self.project.star_files = [DenoiseInputFile("star.tif", str(self.root / "star.tif"))]
+        mask_path = self.project.artifact_path("mask")
+        MaskHandler.save_brush_mask(np.ones((4, 4), dtype=np.float32), mask_path)
+        self.project.mask_path = str(mask_path)
+        sidebar = SidebarDenoise(app=self.app)
+        self.addCleanup(sidebar.deleteLater)
+        self.view.sidebar = sidebar
+        self.view.bind()
+        sidebar.stackCard.setExpanded(True)
+        self.assertTrue(sidebar.stackCard.is_expanded)
         config = SimpleNamespace(
             stack_method="mean", sigma_clip_threshold=2.0, sigma_clip_iterations=2,
             compress_intermediate_tiffs=False, use_gpu=False, output_path=None,
@@ -217,6 +228,8 @@ class DenoiseViewTests(QtTestCase):
             self.view.do_stack_action()
         self.assertIs(self.view.last_compositor, compositor)
         self.assertFalse(self.view._output_saved)
+        self.assertTrue(sidebar.stackCard.is_expanded)
+        self.assertFalse(sidebar.tuneCard.is_expanded)
         schedule_save.assert_called_once_with(save=True)
 
     def test_saved_output_state_restores_only_while_file_exists(self):

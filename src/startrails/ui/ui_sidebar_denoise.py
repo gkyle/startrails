@@ -317,3 +317,4 @@ class Ui_SidebarDenoise(object):
         pass
     # retranslateUi
 
+Ui_sidebarDenoise = Ui_SidebarDenoise

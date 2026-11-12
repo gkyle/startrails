@@ -167,7 +167,6 @@ class DenoiseStackSettings(QWidget):
         with QSignalBlocker(self.ui.useGPU):
             self.ui.useGPU.setChecked(self.defaults.use_gpu)
         self.ui.outputFileName.setText("Output: project.tif")
-        self.ui.stackStatus.setText("Base stacks: Not generated")
         self.ui.error.clear()
         self.ui.error.hide()
         self.set_from_project()
@@ -237,10 +236,6 @@ class DenoiseStackSettings(QWidget):
     def refresh_inputs(self, ready: bool = False) -> None:
         update_gpu_checkbox(self.ui.useGPU, self.app)
         self.ui.run.setEnabled(ready)
-        if ready:
-            self.ui.stackStatus.setText("Ready to stack (alignment runs automatically if needed)")
-        else:
-            self.ui.stackStatus.setText("Requires star images and a sky mask")
 
 
 class DenoiseTuneSettings(QWidget):
@@ -360,7 +355,6 @@ class DenoiseTuneSettings(QWidget):
             self.ui.blurSlider.setValue(int(round(self.defaults.horizon_blur_radius)))
         with QSignalBlocker(self.ui.blurRadius):
             self.ui.blurRadius.setValue(self.defaults.horizon_blur_radius)
-        self.ui.tuneStatus.setText("Requires base stacks")
         self.ui.error.clear()
         self.ui.error.hide()
         self.set_from_project()
@@ -425,11 +419,6 @@ class DenoiseTuneSettings(QWidget):
     def refresh_inputs(self, ready: bool = False) -> None:
         if hasattr(self.ui, "run"):
             self.ui.run.setEnabled(ready)
-        if ready:
-            self.ui.tuneStatus.setText("Stacks ready for composite tuning")
-        else:
-            self.ui.tuneStatus.setText("Requires stacked sky and ground frames")
-
 
 class DenoiseExportSettings(QWidget):
     """Contribute and Export settings widget for Denoise mode."""

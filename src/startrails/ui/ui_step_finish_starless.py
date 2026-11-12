@@ -305,5 +305,3 @@ class Ui_FinishStarlessSettings(object):
     # retranslateUi
 
 Ui_finishStarlessSettings = Ui_FinishStarlessSettings
-
-
