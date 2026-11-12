@@ -317,6 +317,9 @@
            <property name="is_expanded" stdset="0">
             <bool>false</bool>
            </property>
+           <property name="before_after_enabled" stdset="0">
+            <bool>true</bool>
+           </property>
            <widget class="DenoiseStackSettings" name="stackSettings" native="true">
             <property name="geometry">
              <rect>
@@ -346,6 +349,9 @@
            </property>
            <property name="is_expanded" stdset="0">
             <bool>false</bool>
+           </property>
+           <property name="before_after_enabled" stdset="0">
+            <bool>true</bool>
            </property>
            <widget class="DenoiseTuneSettings" name="tuneSettings" native="true">
             <property name="geometry">

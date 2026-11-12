@@ -396,26 +396,6 @@
     </layout>
    </item>
    <item>
-    <widget class="QLabel" name="tuneHint">
-     <property name="text">
-      <string>Adjust sliders to configure settings. Live canvas update activates once base stacks are generated.</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="tuneStatus">
-     <property name="text">
-      <string>Requires base stacks</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QLabel" name="error">
      <property name="wordWrap">
       <bool>true</bool>

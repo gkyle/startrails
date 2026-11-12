@@ -778,17 +778,23 @@ class TestFinishViewRecombineInteraction(QtTestCase):
         self.assertFalse(self.sidebar.recombineCard.ui.previewToggle.isChecked())
         self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
 
-        # Click chip -> switches canvas cleanly to the input source image ("before").
+        # Click chip -> switches canvas cleanly to the input source image ("before") without expanding collapsed lists.
+        self.sidebar.inputFiles.setExpanded(False)
+        self.sidebar.outputFiles.setExpanded(False)
         self.sidebar.recombineCard.ui.previewToggle.click()
         QApplication.processEvents()
         self.assertTrue(self.sidebar.recombineCard.ui.previewToggle.isChecked())
+        self.assertFalse(self.sidebar.inputFiles.ui.toggle.isChecked())
+        self.assertFalse(self.sidebar.outputFiles.ui.toggle.isChecked())
         self.assertEqual(Path(self.canvas.file.path).resolve(), self.source_path.resolve())
         self.assertFalse(self.canvas.is_mask_edit_mode())
 
-        # Click again -> switches back to the composite ("after").
+        # Click again -> switches back to the composite ("after") without expanding collapsed lists.
         self.sidebar.recombineCard.ui.previewToggle.click()
         QApplication.processEvents()
         self.assertFalse(self.sidebar.recombineCard.ui.previewToggle.isChecked())
+        self.assertFalse(self.sidebar.inputFiles.ui.toggle.isChecked())
+        self.assertFalse(self.sidebar.outputFiles.ui.toggle.isChecked())
         self.assertEqual(Path(self.canvas.file.path).resolve(), self.composite_path.resolve())
 
         # Collapse while in "before" hides the chip AND restores composite ("after") on the canvas.

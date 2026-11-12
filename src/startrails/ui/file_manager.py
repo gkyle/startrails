@@ -319,6 +319,14 @@ class FileModel(QAbstractTableModel):
 
     def index_for_file(self, file):
         row = self._rows.get(file)
+        if row is None and file is not None:
+            path = getattr(file, "path", None)
+            if path:
+                path_str = str(path)
+                row = next(
+                    (i for i, f in enumerate(self.files) if getattr(f, "path", None) and str(f.path) == path_str),
+                    None,
+                )
         return self.index(row, 0) if row is not None else QModelIndex()
 
 
@@ -577,7 +585,7 @@ class FileSection(QFrame):
                 self.ui.files.clearSelection()
         self._refresh()
 
-    def focus_file(self, file):
+    def focus_file(self, file, expand: bool = True):
         try:
             index = self.model.index_for_file(file)
             with QSignalBlocker(self.ui.files.selectionModel()):
@@ -590,8 +598,10 @@ class FileSection(QFrame):
                     self.ui.files.setCurrentIndex(QModelIndex())
                     self.ui.files.clearSelection()
             if index.isValid():
-                self.setExpanded(True)
-                self.ui.files.scrollTo(index)
+                if expand:
+                    self.setExpanded(True)
+                if self.ui.toggle.isChecked():
+                    self.ui.files.scrollTo(index)
             self._refresh()
         except RuntimeError:
             pass

@@ -89,7 +89,7 @@
       </widget>
      </item>
     </layout>
-   </item>
+   </item>
    <item>
     <layout class="QHBoxLayout" name="runLayout">
      <property name="spacing">
@@ -152,16 +152,6 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="stackStatus">
-     <property name="text">
-      <string>Base stacks: Not generated</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QWidget" name="advancedBody" native="true">
      <layout class="QVBoxLayout" name="advancedLayout">
       <property name="spacing">
@@ -178,7 +168,7 @@
       </property>
       <property name="bottomMargin">
        <number>2</number>
-      </property>
+      </property>
       <item>
        <layout class="QHBoxLayout" name="useGPURow">
         <item>

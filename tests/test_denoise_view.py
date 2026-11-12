@@ -1,5 +1,6 @@
 """Project ownership of queued results, errors, and real background publication."""
 
+from pathlib import Path
 from types import SimpleNamespace
 from io import StringIO
 from unittest.mock import patch
@@ -7,6 +8,7 @@ from unittest.mock import patch
 import jsonpickle
 import numpy as np
 from PySide6.QtCore import QEventLoop, QObject, QTimer
+from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import QLabel
 from shiboken6 import isValid
 
@@ -19,7 +21,7 @@ from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.sidebar_denoise import SidebarDenoise
 from startrails.ui.ui_wrap import MainWindow
 from startrails.ui.views.denoise import DenoiseView
-from startrails.ui.workers_denoise import FinalCompositeSaveWorker
+from startrails.ui.workers_denoise import FinalCompositeSaveWorker, HorizonOverlayWorker
 from startrails.ui.progress import ProgressBarUpdater
 from startrails.op.denoise.align_stars import AlignStars
 
@@ -194,7 +196,18 @@ class DenoiseViewTests(QtTestCase):
         self.assertFalse(list(self.project.get_output_dir().glob("tmp*")))
 
     def test_stack_success_schedules_default_tune_autosave(self):
+        from startrails.lib.denoise.mask import MaskHandler
+
         self.project.star_files = [DenoiseInputFile("star.tif", str(self.root / "star.tif"))]
+        mask_path = self.project.artifact_path("mask")
+        MaskHandler.save_brush_mask(np.ones((4, 4), dtype=np.float32), mask_path)
+        self.project.mask_path = str(mask_path)
+        sidebar = SidebarDenoise(app=self.app)
+        self.addCleanup(sidebar.deleteLater)
+        self.view.sidebar = sidebar
+        self.view.bind()
+        sidebar.stackCard.setExpanded(True)
+        self.assertTrue(sidebar.stackCard.is_expanded)
         config = SimpleNamespace(
             stack_method="mean", sigma_clip_threshold=2.0, sigma_clip_iterations=2,
             compress_intermediate_tiffs=False, use_gpu=False, output_path=None,
@@ -215,6 +228,8 @@ class DenoiseViewTests(QtTestCase):
             self.view.do_stack_action()
         self.assertIs(self.view.last_compositor, compositor)
         self.assertFalse(self.view._output_saved)
+        self.assertTrue(sidebar.stackCard.is_expanded)
+        self.assertFalse(sidebar.tuneCard.is_expanded)
         schedule_save.assert_called_once_with(save=True)
 
     def test_saved_output_state_restores_only_while_file_exists(self):
@@ -241,3 +256,309 @@ class DenoiseViewTests(QtTestCase):
         window.ui.app.workflow = window.ui.app._create_workflow(original)
         window.ui.switch_to_project_mode()
         self.assertEqual(window.ui.active_view.mode_name, "startrails")
+
+    def _setup_completed_denoise_sidebar(self):
+        shape = (16, 20, 3)
+        star_path = self.root / "star_input.tif"
+        imwrite(star_path, np.full(shape, 0.2, dtype=np.float32), convertBGR=True)
+        self.project.star_files = [DenoiseInputFile(star_path.name, str(star_path))]
+        self.project.reference_file = self.project.star_files[0]
+
+        out_dir = self.project.get_output_dir()
+        out_dir.mkdir(parents=True, exist_ok=True)
+        mask_path = self.project.artifact_path("mask")
+        from startrails.lib.denoise.mask import MaskHandler
+
+        mask = np.zeros(shape[:2], dtype=np.float32)
+        mask[:8, :] = 1.0
+        MaskHandler.save_brush_mask(mask, mask_path)
+        self.project.mask_path = str(mask_path)
+        self.project.homographies = {str(star_path): np.eye(3).tolist()}
+        self.project.alignment_signature = self.project.source_signature()
+
+        sky_stack = np.full(shape, 0.6, dtype=np.float32)
+        ground_stack = np.full(shape, 0.4, dtype=np.float32)
+        sky_path = self.project.artifact_path("sky_stack")
+        ground_path = self.project.artifact_path("ground_stack")
+        imwrite(sky_path, sky_stack, convertBGR=True)
+        imwrite(ground_path, ground_stack, convertBGR=True)
+        self.project.sky_stack_path = str(sky_path)
+        self.project.ground_stack_path = str(ground_path)
+
+        grad_mask = np.zeros(shape[:2], dtype=np.float32)
+        grad_path = self.project.artifact_path("gradient_mask")
+        MaskHandler.save_mask(grad_mask, grad_path)
+        self.project.gradient_mask_path = str(grad_path)
+
+        compositor = HorizonCompositor(sky_stack, ground_stack, grad_mask, mask)
+        base_comp_path = out_dir / "base_composite.tif"
+        imwrite(base_comp_path, compositor.base_composite, convertBGR=True)
+        self.project.output_path = str(out_dir / f"{self.project.get_project_stem()}.tif")
+        self.project.record_stacks()
+
+        final_path = out_dir / f"{self.project.get_project_stem()}_final.tif"
+        imwrite(final_path, np.full(shape, 0.85, dtype=np.float32), convertBGR=True)
+        self.project.final_output_path = str(final_path)
+
+        sidebar = SidebarDenoise(app=self.app)
+        self.addCleanup(sidebar.deleteLater)
+        self.view.sidebar = sidebar
+        self.view.bind()
+        self.view.reset_project_view()
+        sidebar.show()
+        self.shell.canvas_main.resize(200, 200)
+        self.shell.canvas_main.show()
+        self.qt.processEvents()
+        return sidebar, star_path, base_comp_path, final_path
+
+    def _canvas_center_rgb(self):
+        canvas = self.shell.canvas_main
+        if canvas.width() <= 0 or canvas.height() <= 0:
+            canvas.resize(200, 200)
+        pm = QPixmap(canvas.size())
+        canvas.render(pm)
+        img = pm.toImage()
+        c = QColor(img.pixel(img.width() // 2, img.height() // 2))
+        return c.red(), c.green(), c.blue()
+
+    def test_step3_before_after_toggles_input_and_stacked_composite(self):
+        sidebar, star_path, base_comp_path, _ = self._setup_completed_denoise_sidebar()
+
+        # Hidden while collapsed even when done.
+        self.assertEqual(sidebar.stackCard.status, "done")
+        self.assertFalse(sidebar.stackCard.ui.previewToggle.isVisible())
+
+        # Turn on gradient mask checkbox to verify roundtrip across Before/After
+        sidebar.tuneSettings.ui.showGradientMask.setChecked(True)
+
+        # Expanding Step 3 displays the stacked sky+ground composite ("after") and shows the eye chip.
+        sidebar.stackCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.starFiles.ui.toggle.isChecked())
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertTrue(sidebar.stackCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.stackCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+        self.assertIsNotNone(sidebar.outputFiles.current_file())
+        self.assertEqual(Path(sidebar.outputFiles.current_file().path).resolve(), base_comp_path.resolve())
+        self.assertFalse(self.shell.canvas_main.is_mask_edit_mode())
+        self.assertTrue(self.shell.canvas_main.is_gradient_mask_visible())
+        after_rgb = self._canvas_center_rgb()
+
+        # Toggling before shows the clean input image without expanding collapsed file sections.
+        sidebar.stackCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertTrue(sidebar.stackCard.ui.previewToggle.isChecked())
+        self.assertFalse(sidebar.starFiles.ui.toggle.isChecked())
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), star_path.resolve())
+        self.assertIsNotNone(sidebar.starFiles.current_file())
+        self.assertEqual(Path(sidebar.starFiles.current_file().path).resolve(), star_path.resolve())
+        self.assertIsNone(sidebar.outputFiles.current_file())
+        self.assertFalse(self.shell.canvas_main.is_mask_edit_mode())
+        # Gradient mask must NEVER be visible on source before
+        self.assertFalse(self.shell.canvas_main.is_gradient_mask_visible())
+        before_rgb = self._canvas_center_rgb()
+        self.assertLess(before_rgb[0], after_rgb[0])
+
+        # Toggling again restores the stacked composite ("after") without expanding file sections.
+        sidebar.stackCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertFalse(sidebar.stackCard.ui.previewToggle.isChecked())
+        self.assertFalse(sidebar.starFiles.ui.toggle.isChecked())
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+        self.assertIsNotNone(sidebar.outputFiles.current_file())
+        self.assertEqual(Path(sidebar.outputFiles.current_file().path).resolve(), base_comp_path.resolve())
+        self.assertTrue(self.shell.canvas_main.is_gradient_mask_visible())
+        self.assertEqual(self._canvas_center_rgb(), after_rgb)
+
+        # Collapsing while showing "before" resets the toggle and restores the stacked composite.
+        sidebar.stackCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), star_path.resolve())
+        sidebar.stackCard.setExpanded(False)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.stackCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.stackCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+
+    def test_step4_before_after_toggles_stacked_and_final_composite(self):
+        sidebar, _, base_comp_path, final_path = self._setup_completed_denoise_sidebar()
+
+        # Hidden while collapsed even when done.
+        self.assertEqual(sidebar.tuneCard.status, "done")
+        self.assertFalse(sidebar.tuneCard.ui.previewToggle.isVisible())
+
+        # Expanding Step 4 displays the final composite ("after") and shows the eye chip.
+        sidebar.tuneCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertTrue(sidebar.tuneCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.tuneCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
+        self.assertIsNotNone(sidebar.outputFiles.current_file())
+        self.assertEqual(Path(sidebar.outputFiles.current_file().path).resolve(), final_path.resolve())
+        final_rgb = self._canvas_center_rgb()
+
+        # Toggling before shows the stacked composite ("before") with no horizon overlay or section expansion.
+        sidebar.tuneCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertTrue(sidebar.tuneCard.ui.previewToggle.isChecked())
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+        self.assertIsNotNone(sidebar.outputFiles.current_file())
+        self.assertEqual(Path(sidebar.outputFiles.current_file().path).resolve(), base_comp_path.resolve())
+        stacked_rgb = self._canvas_center_rgb()
+        self.assertLess(stacked_rgb[0], final_rgb[0])
+
+        # Construct cheap worker without thread
+        worker = HorizonOverlayWorker(
+            self.view.last_compositor,
+            self.view._horizon_params(),
+            self.view._horizon_request_id,
+            parent=self.view,
+        )
+        worker.project = self.project
+        worker.generation = self.view._generation
+        worker.finished_patches.connect(self.view._on_horizon_patches_ready)
+
+        patch_arr = np.full((16, 20, 3), 1.0, dtype=np.float32)
+
+        # While viewing "before", overlay patches arriving from a valid current worker are rejected
+        worker.finished_patches.emit([(patch_arr, (0, 0, 20, 16))], self.view._horizon_request_id)
+        self.assertEqual(self._canvas_center_rgb(), stacked_rgb)
+
+        # Toggling again restores the final composite ("after") without expanding file sections.
+        sidebar.tuneCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertFalse(sidebar.tuneCard.ui.previewToggle.isChecked())
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
+        self.assertEqual(self._canvas_center_rgb(), final_rgb)
+
+        # Genuine _show_stacked_composite displays live base (tuneAfter + expanded)
+        self.view._show_stacked_composite()
+        self.qt.processEvents()
+        worker.finished_patches.emit([(patch_arr, (0, 0, 20, 16))], self.view._horizon_request_id)
+        self.assertEqual(self._canvas_center_rgb(), (255, 255, 255))
+
+        # view.show_file(reference) clears identity without bumping request
+        ref_file = self.project.reference_file
+        self.view.show_file(ref_file)
+        self.qt.processEvents()
+        ref_rgb = self._canvas_center_rgb()
+
+        # Emit same current worker patches -> canvas unchanged, proving identity guard
+        worker.finished_patches.emit([(patch_arr, (0, 0, 20, 16))], self.view._horizon_request_id)
+        self.assertEqual(self._canvas_center_rgb(), ref_rgb)
+
+        # Switch back to step 4 before testing collapse
+        self.view._show_final_composite()
+        sidebar.tuneCard.setExpanded(True)
+        self.qt.processEvents()
+        sidebar.tuneCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+        sidebar.tuneCard.setExpanded(False)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.tuneCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.tuneCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
+
+    def test_reset_project_view_restores_expanded_step_after_preview_and_overlay(self):
+        sidebar, star_path, base_comp_path, final_path = self._setup_completed_denoise_sidebar()
+
+        for step_name in ("sky", "stack", "tune"):
+            with self.subTest(step=step_name):
+                card = getattr(sidebar, step_name + "Card")
+                card.setExpanded(True)
+                self.qt.processEvents()
+
+                # Toggle eye to "before" if active
+                if card.ui.previewToggle.isVisible():
+                    card.ui.previewToggle.click()
+                    self.qt.processEvents()
+                    self.assertTrue(card.is_showing_before())
+
+                self.view.reset_project_view()
+                self.qt.processEvents()
+
+                self.assertTrue(card.is_expanded)
+                self.assertFalse(card.is_showing_before())
+
+                if step_name == "sky":
+                    self.assertTrue(self.view.mask_controller.is_overlay_enabled())
+                    self.assertTrue(self.shell.canvas_main.is_mask_edit_mode())
+                    self.assertIsNotNone(self.shell.canvas_main.get_denoise_mask())
+                    self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), star_path.resolve())
+                elif step_name == "stack":
+                    self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+                    self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+                elif step_name == "tune":
+                    self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
+                    self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+
+    def test_background_error_surfaces_for_current_worker_and_ignores_stale(self):
+        sidebar, _, _, final_path = self._setup_completed_denoise_sidebar()
+        sidebar.tuneCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.tuneSettings.ui.error.isVisible())
+
+        worker = FinalCompositeSaveWorker(
+            self.view.last_compositor,
+            self.view._horizon_params(),
+            final_path,
+            self.view._final_save_request_id,
+            parent=self.view,
+        )
+        worker.project = self.project
+        worker.generation = self.view._generation
+        worker.failed_error.connect(self.view._on_background_error)
+
+        # Stale request -> hidden
+        worker.failed_error.emit("Stale error", self.view._final_save_request_id - 1)
+        self.assertFalse(sidebar.tuneSettings.ui.error.isVisible())
+
+        # Current request -> visible with finalpath unchanged
+        orig_final = self.project.final_output_path
+        worker.failed_error.emit("Save failed: permission denied", self.view._final_save_request_id)
+        self.assertTrue(sidebar.tuneSettings.ui.error.isVisible())
+        self.assertIn("permission denied", sidebar.tuneSettings.ui.error.text())
+        self.assertEqual(self.project.final_output_path, orig_final)
+
+        # Cancelled -> hidden after clear
+        sidebar.tuneSettings.ui.error.hide()
+        worker.cancel()
+        worker.failed_error.emit("Cancelled error", self.view._final_save_request_id)
+        self.assertFalse(sidebar.tuneSettings.ui.error.isVisible())
+
+    def test_stacked_composite_resolves_base_output_and_avoids_stale_disk_or_phantom_file(self):
+        sidebar, _, base_comp_path, _ = self._setup_completed_denoise_sidebar()
+        self.assertTrue(base_comp_path.is_file())
+
+        # When deleted from disk, in-memory compositor still renders without selecting a phantom file
+        base_comp_path.unlink()
+        self.view._show_stacked_composite()
+        self.assertIsNotNone(self.shell.canvas_main.pixmap)
+        self.assertFalse(self.shell.canvas_main.pixmap.isNull())
+        self.assertIsNone(self.shell.canvas_main.file)
+        self.assertIsNone(sidebar.outputFiles.current_file())
+
+        # When stacks are invalidated and old base exists on disk, it is never displayed
+        base_comp_path.write_bytes(b"stale")
+        self.project.invalidate_results(alignment=False)
+        self.view.last_compositor = None
+        self.view._show_stacked_composite()
+        self.assertNotEqual(
+            getattr(self.shell.canvas_main.file, "path", None),
+            str(base_comp_path),
+        )
+
+        # Even with step 3 expanded, reset must not display the stale disk file
+        sidebar.stackCard.setExpanded(True)
+        self.view.reset_project_view()
+        self.assertNotEqual(
+            getattr(self.shell.canvas_main.file, "path", None),
+            str(base_comp_path),
+        )
