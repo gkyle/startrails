@@ -18,7 +18,7 @@ from startrails.lib.file import (
     OutputFile,
     canonical_output,
 )
-from startrails.lib.source_map import locate_sources, output_sidecar, relative_path
+from startrails.lib.source_map import locate_sources, output_sidecar, relative_path, signature
 from startrails.op.exportMaskedImages import ExportMaskedImages
 from startrails.op.exportStreaksTraining import ExportStreaksDetectTraining
 from startrails.op.stackImages import StackImages
@@ -171,6 +171,7 @@ class StarTrailsWorkflow(Workflow):
             existing.sourceMap = None
             existing.sourceStack = None
             existing.gapMask = None
+            existing.source_stack_signature = None
             return existing
         file = OutputFile(basename, path, operation, fadeGradient=fadeGradient)
         self.project.outputFiles.append(file)
@@ -180,6 +181,20 @@ class StarTrailsWorkflow(Workflow):
         existing = canonical_output(self.project.outputFiles, operation)
         path = existing.path if existing is not None else fallback_path
         return os.path.splitext(os.path.basename(path))[1]
+
+    def _invalidate_fill_dependents(self, basis_path):
+        """Drop fill records produced from a replaced stack while keeping their files."""
+        basis = os.path.normcase(os.path.abspath(basis_path))
+        retained = []
+        for output in self.project.outputFiles:
+            if not isinstance(output, OutputFile) or output.operation not in (OP_FILL_GAPS, OP_FILL_GAPS_MASK):
+                retained.append(output)
+                continue
+            source = output_sidecar(output, "sourceStack")
+            if source is None or os.path.normcase(os.path.abspath(source)) == basis:
+                continue
+            retained.append(output)
+        self.project.outputFiles = retained
 
     # -------------------------------------------------------------------------
     # Stacking and Processing Operations
@@ -223,10 +238,12 @@ class StarTrailsWorkflow(Workflow):
         finally:
             self.app.activeOperation = None
             stackImages.removeObserver(progressBar)
+        self._invalidate_fill_dependents(filename)
         record = self._upsert_output_file(basename, filename, operation, fadeGradient=fadeGradient)
         record.sourceMap = file.sourceMap
         record.sourceStack = file.sourceStack
         record.gapMask = file.gapMask
+        record.source_stack_signature = file.source_stack_signature
         self.save_project()
         return record
 
@@ -321,6 +338,7 @@ class StarTrailsWorkflow(Workflow):
     def doFillGaps(self, file: OutputFile, progressBar) -> OutputFile:
         import startrails.app as app_module
         fgm_module = getattr(app_module, "fgm", getattr(self.app, "fgm", fgm))
+        basis_signature = signature(file.path)
         fillGaps = fgm_module.FillGaps()
         fillGaps.addObserver(progressBar)
         outDir = str(self.project.get_output_dir())
@@ -340,12 +358,16 @@ class StarTrailsWorkflow(Workflow):
         finally:
             self.app.activeOperation = None
             fillGaps.removeObserver(progressBar)
+        directory = os.path.dirname(os.path.abspath(fileFillGaps.path))
+        source_stack = relative_path(file.path, directory)
         fileFillGaps.fadeGradient = file.fadeGradient
         fileFillGapsMask.fadeGradient = file.fadeGradient
+        fileFillGaps.sourceStack = source_stack
+        fileFillGapsMask.sourceStack = source_stack
+        fileFillGaps.source_stack_signature = basis_signature
+        fileFillGapsMask.source_stack_signature = basis_signature
         if file.sourceMap:
-            directory = os.path.dirname(os.path.abspath(fileFillGaps.path))
             fileFillGaps.sourceMap = relative_path(output_sidecar(file, "sourceMap"), directory)
-            fileFillGaps.sourceStack = relative_path(file.path, directory)
             fileFillGaps.gapMask = relative_path(fileFillGapsMask.path, directory)
         record = self._upsert_output_file(
             fileFillGaps.basename, fileFillGaps.path, fileFillGaps.operation,
@@ -354,6 +376,7 @@ class StarTrailsWorkflow(Workflow):
         record.sourceMap = fileFillGaps.sourceMap
         record.sourceStack = fileFillGaps.sourceStack
         record.gapMask = fileFillGaps.gapMask
+        record.source_stack_signature = fileFillGaps.source_stack_signature
         mask_record = self._upsert_output_file(
             fileFillGapsMask.basename, fileFillGapsMask.path, fileFillGapsMask.operation,
             fadeGradient=fileFillGapsMask.fadeGradient,
@@ -361,6 +384,7 @@ class StarTrailsWorkflow(Workflow):
         mask_record.sourceMap = fileFillGapsMask.sourceMap
         mask_record.sourceStack = fileFillGapsMask.sourceStack
         mask_record.gapMask = fileFillGapsMask.gapMask
+        mask_record.source_stack_signature = fileFillGapsMask.source_stack_signature
         self.save_project()
         return record
 

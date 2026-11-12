@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 
 from startrails.lib.artifacts import ArtifactTransaction
+from startrails.lib.file import OP_FILL_GAPS, output_sidecar_path
 from startrails.lib.signatures import read_file_identity
 
 
@@ -75,8 +76,27 @@ def relative_path(path, directory):
 
 
 def output_sidecar(output, name):
-    value = getattr(output, name, None)
-    return Path(output.path).resolve().parent / value if value else None
+    return output_sidecar_path(output, name)
+
+
+def _check_fill_basis(output):
+    """Reject a fill whose producing stack cannot be verified as unchanged."""
+    expected = getattr(output, "source_stack_signature", None)
+    if expected is None:
+        raise SourceMapError(
+            "This gap-filled image has no verified source stack. Fill gaps again."
+        )
+    basis_path = output_sidecar(output, "sourceStack")
+    if basis_path is None:
+        raise SourceMapError("This gap-filled image does not record its source stack. Fill gaps again.")
+    try:
+        current = signature(basis_path)
+    except OSError as error:
+        raise SourceMapError("The stack used to fill gaps is unavailable. Fill gaps again.") from error
+    if current != expected:
+        raise SourceMapError(
+            "The stack has changed since this gap-filled image was made. Fill gaps again."
+        )
 
 
 def save_source_map(output, owners, sources, settings, transaction=None, stack_path=None):
@@ -130,6 +150,8 @@ def locate_sources(output, files, x, y, radius=6, limit=8):
     manifest_path = output_sidecar(output, "sourceMap")
     if manifest_path is None:
         raise SourceMapError("This output has no source map. Build a new stack to use Locate Source.")
+    if output.operation == OP_FILL_GAPS:
+        _check_fill_basis(output)
     owners = None
     try:
         with manifest_path.open(encoding="utf-8") as stream:
@@ -161,7 +183,7 @@ def locate_sources(output, files, x, y, radius=6, limit=8):
             region, values = region[..., None], values[..., None]
         valid = region != manifest["no_source"]
         synthesized = False
-        if output.operation == "FillGaps":
+        if output.operation == OP_FILL_GAPS:
             mask_path = output_sidecar(output, "gapMask")
             mask = (_lookup_images.read(mask_path, signature(mask_path))
                     if mask_path and mask_path.is_file() else None)

@@ -12,10 +12,17 @@ import jsonpickle
 import numpy as np
 
 from startrails.app import App
-from startrails.lib.file import InputFile, OutputFile
+from startrails.lib.file import (
+    OP_FILL_GAPS,
+    OP_FILL_GAPS_MASK,
+    InputFile,
+    OutputFile,
+    filled_output,
+    preferred_stacked_output,
+)
 from startrails.lib.util import Observable
 from startrails.lib.source_map import locate_sources, output_sidecar, source_dtype, SourceMapError
-from startrails.lib.source_map import save_source_map, snapshot_sources
+from startrails.lib.source_map import save_source_map, signature, snapshot_sources
 from startrails.lib.source_map import _LookupImageCache
 from startrails.op.stackImages import StackImages
 from startrails.ui.project import Project
@@ -54,6 +61,34 @@ class SourceMapTests(IsolatedTestCase):
         app.activeOperation = None
         app.gpuInfo = SimpleNamespace(get_gpu_present=lambda: False, getGpuPresent=lambda: False)
         return app
+
+    def fill_with_fake(self, app, basis, mask=None):
+        if mask is None:
+            mask = np.zeros(cv2.imread(basis.path).shape, np.uint8)
+
+        class FakeFill(Observable):
+            @staticmethod
+            def suggestOutFileName(directory, extension, mask_extension):
+                return (
+                    str(Path(directory) / "startrails-final.tif"),
+                    str(Path(directory) / "startrails-final-mask.tif"),
+                )
+
+            def fillGaps(self, file, filled, output_mask):
+                cv2.imwrite(filled.path, cv2.imread(file.path))
+                cv2.imwrite(output_mask.path, mask)
+
+            def shouldInterrupt(self):
+                return False
+
+        import startrails.app as app_module
+
+        original = app_module.fgm
+        app_module.fgm = SimpleNamespace(FillGaps=FakeFill)
+        try:
+            return app.doFillGaps(basis, lambda *args: None)
+        finally:
+            app_module.fgm = original
 
     def test_channel_winners_equal_stack_and_are_batch_order_independent(self):
         rng = np.random.default_rng(17)
@@ -134,7 +169,9 @@ class SourceMapTests(IsolatedTestCase):
     def test_cached_gap_mask_is_refreshed_when_replaced(self):
         self.input(np.full((16, 16, 3), 200, np.uint8))
         output, _, _ = self.stack()
-        output.operation = "FillGaps"
+        output.operation = OP_FILL_GAPS
+        output.sourceStack = Path(output.path).name
+        output.source_stack_signature = signature(output.path)
         output.gapMask = "mask.tif"
         mask_path = self.folder / output.gapMask
         cv2.imwrite(str(mask_path), np.zeros((16, 16), np.uint8))
@@ -180,6 +217,7 @@ class SourceMapTests(IsolatedTestCase):
     def test_invalid_clicks_and_legacy_output(self):
         self.input(np.full((6, 6, 3), 200, np.uint8))
         output, _, _ = self.stack()
+        manifest_name = output.sourceMap
         for point in ((-1, 0), (6, 0), (0, 6)):
             self.assertFalse(locate_sources(output, self.files, *point).candidates)
         output.sourceMap = None
@@ -189,6 +227,15 @@ class SourceMapTests(IsolatedTestCase):
         del output.sourceMap
         restored = jsonpickle.decode(jsonpickle.encode(output))
         self.assertIsNone(restored.sourceMap)
+        # A held legacy fill without a producing-basis fingerprint cannot be verified.
+        output.sourceMap = manifest_name
+        output.operation = OP_FILL_GAPS
+        output.sourceStack = Path(output.path).name
+        del output.source_stack_signature
+        legacy_fill = jsonpickle.decode(jsonpickle.encode(output))
+        self.assertIsNone(legacy_fill.source_stack_signature)
+        with self.assertRaisesRegex(SourceMapError, "Fill gaps again"):
+            locate_sources(legacy_fill, self.files, 2, 2)
 
     def test_cancelled_and_failed_stack_preserve_previous_record_and_files(self):
         for i in range(4):
@@ -227,6 +274,89 @@ class SourceMapTests(IsolatedTestCase):
             (record.sourceMap, record.sourceStack, record.gapMask), expected_metadata
         )
         self.assertEqual(app.locateSources(2, 2, record).candidates, previous_candidates)
+
+    def test_restack_invalidates_dependent_fill_and_rejects_stale_held_record(self):
+        low = self.input(np.full((6, 6, 3), 60, np.uint8))
+        high = self.input(np.full((6, 6, 3), 120, np.uint8))
+        app = self.app()
+        basis = app.doStack(False, lambda *args: None, useGPU=False)
+        filled = self.fill_with_fake(app, basis)
+        mask_record = next(
+            record for record in app.getOutputFileList()
+            if record.operation == OP_FILL_GAPS_MASK
+        )
+        self.assertTrue(filled.sourceStack)
+        self.assertEqual(filled.sourceStack, mask_record.sourceStack)
+        self.assertIsNotNone(filled.source_stack_signature)
+        self.assertIs(filled_output(app.getOutputFileList()), filled)
+        self.assertIs(app.locateSources(2, 2, filled).candidates[0], high)
+        image_bytes = Path(filled.path).read_bytes()
+        mask_bytes = Path(mask_record.path).read_bytes()
+
+        # A failed restack leaves the prior fill advertised and usable.
+        with patch("startrails.op.stackImages.imwrite", side_effect=OSError("disk full")):
+            with self.assertRaises(OSError):
+                app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(filled_output(app.getOutputFileList()), filled)
+        self.assertIs(app.locateSources(2, 2, filled).candidates[0], high)
+
+        # A successful restack with a new winner invalidates the dependent records.
+        self.assertTrue(cv2.imwrite(low.path, np.full((6, 6, 3), 200, np.uint8)))
+        restacked = app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(restacked, basis)
+        self.assertIsNone(filled_output(app.getOutputFileList()))
+        self.assertFalse(
+            any(
+                record.operation in (OP_FILL_GAPS, OP_FILL_GAPS_MASK)
+                for record in app.getOutputFileList()
+            )
+        )
+        self.assertEqual(Path(filled.path).read_bytes(), image_bytes)
+        self.assertEqual(Path(mask_record.path).read_bytes(), mask_bytes)
+        with self.assertRaisesRegex(SourceMapError, "changed since this gap-filled image"):
+            app.locateSources(2, 2, filled)
+        self.assertIs(app.locateSources(2, 2, restacked).candidates[0], low)
+
+    def test_fill_records_keep_basis_even_without_a_source_map(self):
+        self.input(np.full((6, 6, 3), 90, np.uint8))
+        app = self.app()
+        basis = app.doStack(False, lambda *args: None, useGPU=False)
+        basis.sourceMap = None
+        filled = self.fill_with_fake(app, basis)
+        mask_record = next(
+            record for record in app.getOutputFileList()
+            if record.operation == OP_FILL_GAPS_MASK
+        )
+        self.assertIsNone(filled.sourceMap)
+        self.assertTrue(filled.sourceStack)
+        self.assertEqual(filled.sourceStack, mask_record.sourceStack)
+        self.assertIsNotNone(filled.source_stack_signature)
+        self.assertEqual(filled.source_stack_signature, mask_record.source_stack_signature)
+
+    def test_new_preferred_stack_does_not_advertise_another_basis_fill(self):
+        self.input(np.full((6, 6, 3), 90, np.uint8))
+        app = self.app()
+        keep = app.doStack(False, lambda *args: None, useGPU=False)
+        keep_fill = self.fill_with_fake(app, keep)
+        keep_bytes = Path(keep_fill.path).read_bytes()
+
+        removed = app.doStack(True, lambda *args: None, useGPU=False)
+        self.assertIs(preferred_stacked_output(app.getOutputFileList()), removed)
+        self.assertIsNone(filled_output(app.getOutputFileList()))
+        self.assertIn(keep_fill, app.getOutputFileList())
+        self.assertEqual(Path(keep_fill.path).read_bytes(), keep_bytes)
+
+        # Filling the new preferred stack reuses the canonical fill role.
+        removed_fill = self.fill_with_fake(app, removed)
+        removed_bytes = Path(removed_fill.path).read_bytes()
+        self.assertEqual(Path(output_sidecar(removed_fill, "sourceStack")).resolve(), Path(removed.path).resolve())
+        self.assertIs(filled_output(app.getOutputFileList()), removed_fill)
+
+        # Restacking the non-preferred Keep must preserve the Removed fill.
+        app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(filled_output(app.getOutputFileList()), removed_fill)
+        self.assertEqual(Path(removed_fill.path).read_bytes(), removed_bytes)
+        self.assertIs(app.locateSources(2, 2, removed_fill).candidates[0], self.files[0])
 
     def test_standalone_source_map_writer_attaches_sidecars_after_success(self):
         source = self.input(np.full((4, 4, 3), 200, np.uint8))
@@ -268,27 +398,7 @@ class SourceMapTests(IsolatedTestCase):
         basis = app.doStack(False, lambda *args: None, useGPU=False)
         mask = np.zeros((16, 16, 3), np.uint8)
         mask[7:10, 7:10] = 255
-
-        class FakeFill(Observable):
-            @staticmethod
-            def suggestOutFileName(directory, extension, mask_extension):
-                return str(Path(directory) / "filled.tif"), str(Path(directory) / "gapmask.tif")
-
-            def fillGaps(self, file, filled, output_mask):
-                cv2.imwrite(filled.path, cv2.imread(file.path))
-                cv2.imwrite(output_mask.path, mask)
-
-            def shouldInterrupt(self):
-                return False
-
-        import startrails.app as app_module
-
-        original = app_module.fgm
-        try:
-            app_module.fgm = SimpleNamespace(FillGaps=FakeFill)
-            filled = app.doFillGaps(basis, lambda *args: None)
-        finally:
-            app_module.fgm = original
+        filled = self.fill_with_fake(app, basis, mask)
         self.assertEqual(output_sidecar(filled, "sourceMap"), output_sidecar(basis, "sourceMap"))
         result = app.locateSources(8, 8, filled)
         self.assertIn("generated by gap filling", result.message)

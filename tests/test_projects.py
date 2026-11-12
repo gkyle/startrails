@@ -358,12 +358,14 @@ class ProjectTests(IsolatedTestCase):
         keep_path.write_bytes(b"keep")
         legacy = OutputFile(legacy_path.name, str(legacy_path), OP_STACKED_REMOVE, mtime=200)
         keep = OutputFile(keep_path.name, str(keep_path), OP_STACKED_KEEP, mtime=100)
+        del legacy.source_stack_signature
         project = Project(
             projectFile=str(self.root / "mixed.proj_startrails"),
             outputFiles=[legacy, keep],
         )
         restored = jsonpickle.decode(jsonpickle.encode(project))
         self.assertIs(preferred_stacked_output(restored.outputFiles), restored.outputFiles[1])
+        self.assertIsNone(restored.outputFiles[0].source_stack_signature)
 
     def test_legacy_operation_is_not_reused_and_canonical_extension_stays_stable(self):
         legacy_path = self.root / "legacy-stacked-200.tif"
@@ -372,9 +374,10 @@ class ProjectTests(IsolatedTestCase):
         legacy.sourceMap = "legacy.sources.json"
         legacy.sourceStack = "legacy-stack.tif"
         legacy.gapMask = "legacy-mask.tif"
+        legacy.source_stack_signature = {"size": 3, "mtime_ns": 4}
         legacy_metadata = (
             legacy.basename, legacy.path, legacy.operation, legacy.sourceMap,
-            legacy.sourceStack, legacy.gapMask,
+            legacy.sourceStack, legacy.gapMask, legacy.source_stack_signature,
         )
         project = Project(
             projectFile=str(self.root / "stable.proj_startrails"),
@@ -397,6 +400,7 @@ class ProjectTests(IsolatedTestCase):
             (
                 restored_legacy.basename, restored_legacy.path, restored_legacy.operation,
                 restored_legacy.sourceMap, restored_legacy.sourceStack, restored_legacy.gapMask,
+                restored_legacy.source_stack_signature,
             ),
             legacy_metadata,
         )
@@ -416,6 +420,7 @@ class ProjectTests(IsolatedTestCase):
             (
                 restored_legacy.basename, restored_legacy.path, restored_legacy.operation,
                 restored_legacy.sourceMap, restored_legacy.sourceStack, restored_legacy.gapMask,
+                restored_legacy.source_stack_signature,
             ),
             legacy_metadata,
         )

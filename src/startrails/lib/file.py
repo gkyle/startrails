@@ -1,6 +1,7 @@
 import os
 import time
 from enum import Enum
+from pathlib import Path
 from uuid import uuid4
 import weakref
 
@@ -87,6 +88,7 @@ class OutputFile(File):
         self.sourceMap = None
         self.sourceStack = None
         self.gapMask = None
+        self.source_stack_signature = None
 
 
 class Operation(Enum):
@@ -117,6 +119,13 @@ OUTPUT_STEMS_BY_OPERATION = {
 def _output_stem(file: OutputFile) -> str:
     # The on-disk path is authoritative; a stale display basename must not decide identity.
     return os.path.splitext(os.path.basename(file.path))[0]
+
+
+def output_sidecar_path(output: OutputFile, name: str):
+    value = getattr(output, name, None)
+    if not value or not getattr(output, "path", None):
+        return None
+    return Path(output.path).resolve().parent / value
 
 
 def canonical_output(outputs, operation: str) -> OutputFile | None:
@@ -163,12 +172,27 @@ def preferred_stacked_output(outputs) -> OutputFile | None:
 
 
 def filled_output(outputs) -> OutputFile | None:
-    """Return the preferred existing Fill Gaps image, never a mask or missing record."""
+    """Return the preferred existing Fill Gaps image, never a mask or missing record.
+
+    When a stacked output is available, fill records bound to a different stack
+    are not advertised for the current Fill target. Records without a recorded
+    basis remain a legacy fallback.
+    """
     existing = [
         f
         for f in _existing_outputs(outputs)
         if f.operation != OP_FILL_GAPS_MASK and _output_stem(f) != FINAL_MASK_STEM
+        and (f.operation == OP_FILL_GAPS or _output_stem(f) == FINAL_OUTPUT_STEM)
     ]
+    preferred = preferred_stacked_output(outputs)
+    if preferred is not None:
+        preferred_path = Path(preferred.path).resolve()
+        eligible = []
+        for file in existing:
+            source = output_sidecar_path(file, "sourceStack")
+            if source is None or source.resolve() == preferred_path:
+                eligible.append(file)
+        existing = eligible
     match = _last_match(existing, lambda f: _output_stem(f) == FINAL_OUTPUT_STEM)
     if match is not None:
         return match
