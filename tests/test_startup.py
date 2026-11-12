@@ -15,7 +15,7 @@ import jsonpickle
 from support import QtTestCase
 from main import create_main_window
 from startrails.app import App
-from startrails.lib.project import Project
+from startrails.lib.project_startrails import Project
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.project_finish import FinishProject
 from startrails.lib.project_type import DENOISE_EXT, FINISH_EXT, STARTRAILS_EXT

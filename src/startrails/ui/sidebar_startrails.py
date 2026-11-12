@@ -1,9 +1,11 @@
 """Composition of the sidebar's Designer forms."""
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
-from startrails.lib.file import OutputFile
+from startrails.lib.file import OutputFile, filled_output, preferred_stacked_output
+from startrails.lib.project_startrails import Project
 from .file_manager import FileSection
-from .steps import StepCard, DetectSettings, ReviewSettings, StackSettings, FillSettings, AdditionalToolsSettings
+from .steps import StepCard
+from .steps_startrails import DetectSettings, ReviewSettings, StackSettings, FillSettings, AdditionalToolsSettings
 from .theme import system_theme
 
 
@@ -37,7 +39,7 @@ class Sidebar(QWidget):
             self.exportCard = self.toolsCard
             self.update_operations_progress(app)
         else:
-            from .ui_sidebar import Ui_Sidebar
+            from .ui_sidebar_startrails import Ui_Sidebar
             self.ui = Ui_Sidebar()
             self.ui.setupUi(self)
             self.ui.contentLayout.setAlignment(Qt.AlignTop)
@@ -122,8 +124,9 @@ class Sidebar(QWidget):
         outputs = app.getOutputFileList() if (app and hasattr(app, "getOutputFileList")) else []
         has_inputs = bool(inputs)
         has_masks = any(len(f.streaksMasks) > 0 or len(f.streaksManualMasks) > 0 for f in inputs)
-        has_stacked = any(isinstance(f, OutputFile) and f.operation == "Stacked" for f in outputs)
-        has_filled = any(isinstance(f, OutputFile) and f.operation == "FillGaps" for f in outputs)
+        stacked_output = preferred_stacked_output(outputs)
+        has_stacked = stacked_output is not None
+        has_filled = filled_output(outputs) is not None
 
         auto_count, manual_count, deleted_count = self.refresh_review_counts()
         total_detections = auto_count + manual_count
@@ -139,30 +142,48 @@ class Sidebar(QWidget):
         else:
             self.detectCard.setStatus("ready", "Ready to detect streaks")
 
-        corrections_count = manual_count + deleted_count
+        project = app.project if app is not None else Project()
+        has_pending = project.corrections_pending()
+        corrections_count = project.corrections_count()
+        applied_corrections = project.applied_corrections
+
         corrections_text = f"{corrections_count} correction" if corrections_count == 1 else f"{corrections_count} corrections"
+        has_unapplied_corrections = has_stacked and has_pending
 
         if not has_inputs:
             self.reviewCard.setStatus("locked", "Add input files to begin")
-        elif has_stacked:
-            self.reviewCard.setStatus("done", corrections_text)
-        else:
+        elif not has_stacked:
             self.reviewCard.setStatus("ready", corrections_text)
+        elif has_pending:
+            self.reviewCard.setStatus("ready", f"{applied_corrections} applied · corrections changed")
+        elif corrections_count > 0:
+            self.reviewCard.setStatus("done", f"{corrections_count} applied")
+        else:
+            self.reviewCard.setStatus("done", "0 corrections")
+
+        if hasattr(self, "review") and hasattr(self.review, "set_pending_notice_visible"):
+            self.review.set_pending_notice_visible(has_unapplied_corrections)
 
         if not has_inputs:
             self.stackCard.setStatus("locked", "Add input files to begin")
+        elif has_unapplied_corrections:
+            self.stackCard.setStatus("ready", "Ready · corrections updated")
         elif has_stacked:
             self.stackCard.setStatus("done", "Stacked image generated")
         else:
             self.stackCard.setStatus("ready", "Ready · detection is optional")
 
-        fill_eligible = isinstance(current_file, OutputFile) and current_file.operation == "Stacked"
+        can_compare = has_stacked and has_filled
+        self.fillCard.set_before_after_enabled(can_compare)
         if has_filled:
-            self.fillCard.setStatus("done", "Gaps filled for stacked image")
-        elif fill_eligible:
+            if has_stacked:
+                self.fillCard.setStatus("done", "Gaps filled for stacked image")
+            else:
+                self.fillCard.setStatus("done", "Gaps filled · stack unavailable")
+        elif has_stacked:
             self.fillCard.setStatus("ready", "Ready to fill gaps")
         else:
-            self.fillCard.setStatus("locked", "Select a stacked output image")
+            self.fillCard.setStatus("locked", "Stack images to fill gaps")
 
         completed = sum(1 for flag in (has_masks, has_stacked and has_masks, has_stacked, has_filled) if flag)
         self.ui.operationsProgress.setValue(completed)

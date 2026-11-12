@@ -1,13 +1,19 @@
-from datetime import datetime
 import os
+from concurrent.futures import CancelledError
 import torch
 import numpy as np
 from torchvision.transforms import ToTensor
 import cv2
 
+from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.util import imwrite, Observable
 from startrails.models.fillGaps.model import UNet
-from startrails.lib.file import OutputFile, InputFile
+from startrails.lib.file import (
+    OP_FILL_GAPS,
+    OP_FILL_GAPS_MASK,
+    OUTPUT_STEMS_BY_OPERATION,
+    OutputFile,
+)
 from startrails.lib.gpu import resolve_torch_device
 from startrails.paths import APPLICATION_DIR
 
@@ -47,6 +53,8 @@ class FillGaps(Observable):
         # Patch-wise inference
         for y in patch_rows:
             for x in patch_columns:
+                if self.shouldInterrupt():
+                    raise CancelledError("Gap filling cancelled")
 
                 # Extract the patch from the large image
                 patch = input_full_image[y:y + self.patch_size[0], x:x + self.patch_size[1]]
@@ -85,22 +93,24 @@ class FillGaps(Observable):
                 full_image[y:y + self.patch_size[0], x:x + self.patch_size[1]] = merged
                 full_mask[y:y + self.patch_size[0], x:x + self.patch_size[1]] = fmask
 
-            imwrite(fileFillGaps.path, full_image)
-            imwrite(fileFillGapsMask.path, full_mask)
-            self.updateJob(len(patch_columns), fileFillGaps)
+            self.updateJob(len(patch_columns))
 
-            if self.shouldInterrupt():
-                break
+        if self.shouldInterrupt():
+            raise CancelledError("Gap filling cancelled")
+
+        transaction = ArtifactTransaction(self.shouldInterrupt)
+        with transaction:
+            imwrite(transaction.stage(fileFillGaps.path), full_image, allow_alternate_path=False)
+            imwrite(transaction.stage(fileFillGapsMask.path), full_mask, allow_alternate_path=False)
+            transaction.commit()
 
         return full_image, full_mask
 
-    def suggestOutFileName(file: InputFile, outDir: str):
-        fileName = os.path.basename(file.path)
-        baseName, extension = os.path.splitext(fileName)
-        ts = datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
+    @staticmethod
+    def suggestOutFileName(outDir: str, extension: str, mask_extension: str):
         return [
-            "{}/fillgaps-{}-{}{}".format(outDir, baseName, ts, extension),
-            "{}/fillgaps_mask-{}-{}{}".format(outDir, baseName, ts, extension),
+            os.path.join(outDir, f"{OUTPUT_STEMS_BY_OPERATION[OP_FILL_GAPS]}{extension}"),
+            os.path.join(outDir, f"{OUTPUT_STEMS_BY_OPERATION[OP_FILL_GAPS_MASK]}{mask_extension}"),
         ]
 
 

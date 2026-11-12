@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QFrame, QGridLayout,
     QProgressBar, QSizePolicy, QSplitter, QVBoxLayout,
     QWidget)
 
-from startrails.ui.sidebar import Sidebar
+from startrails.ui.sidebar_startrails import Sidebar
 from . import resources_rc
 
 class Ui_MainWindow(object):

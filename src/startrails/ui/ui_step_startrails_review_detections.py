@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'step_review_detections.ui'
+## Form generated from reading UI file 'step_startrails_review_detections.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.12.0
 ##
@@ -143,6 +143,18 @@ class Ui_reviewSettings(object):
 
         self.layout.addLayout(self.showDeletedMasksLayout)
 
+        self.pendingCorrectionsNotice = QLabel(reviewSettings)
+        self.pendingCorrectionsNotice.setObjectName(u"pendingCorrectionsNotice")
+        self.pendingCorrectionsNotice.setStyleSheet(u"background-color: #fffbeb;\n"
+"border: 1px solid #fef3c7;\n"
+"border-radius: 6px;\n"
+"padding: 6px 8px;\n"
+"color: #92400e;\n"
+"font-size: 11px;")
+        self.pendingCorrectionsNotice.setWordWrap(True)
+
+        self.layout.addWidget(self.pendingCorrectionsNotice)
+
         self.sepFindBrightest = QFrame(reviewSettings)
         self.sepFindBrightest.setObjectName(u"sepFindBrightest")
         self.sepFindBrightest.setFrameShape(QFrame.Shape.HLine)
@@ -214,8 +226,12 @@ class Ui_reviewSettings(object):
         self.showDeletedMasks.setAccessibleName(QCoreApplication.translate("reviewSettings", u"Show Deleted Masks", None))
 #endif // QT_CONFIG(accessibility)
         self.showDeletedMasks.setText("")
+#if QT_CONFIG(accessibility)
+        self.pendingCorrectionsNotice.setAccessibleName(QCoreApplication.translate("reviewSettings", u"Pending corrections notice", None))
+#endif // QT_CONFIG(accessibility)
+        self.pendingCorrectionsNotice.setText(QCoreApplication.translate("reviewSettings", u"Regenerate the stack to apply corrections.", None))
         self.findBrightestHeading.setText(QCoreApplication.translate("reviewSettings", u"Locate Streaks", None))
-        self.findBrightestHint.setText(QCoreApplication.translate("reviewSettings", u"Click on a streak in a stacked or gap-filled image to locate its source frame.", None))
+        self.findBrightestHint.setText(QCoreApplication.translate("reviewSettings", u"Click on a streak in the image to locate its source frame.", None))
 #if QT_CONFIG(tooltip)
         self.findBrightest.setToolTip(QCoreApplication.translate("reviewSettings", u"Select a stacked or gap-filled output, then click a streak to locate its original source images.", None))
 #endif // QT_CONFIG(tooltip)

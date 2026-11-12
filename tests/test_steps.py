@@ -8,13 +8,12 @@ from PySide6.QtTest import QTest
 from support import QtTestCase
 from startrails.lib.file import InputFile
 from startrails.lib.project_denoise import DenoiseProject
-from startrails.ui.steps import (
-    PREVIEW_LONG_PRESS_MS,
+from startrails.ui.steps import PREVIEW_LONG_PRESS_MS, StepCard
+from startrails.ui.steps_startrails import (
+    AdditionalToolsSettings,
     DetectSettings,
     FillSettings,
     StackSettings,
-    StepCard,
-    AdditionalToolsSettings,
 )
 from startrails.ui.steps_denoise import (
     DenoiseAlignSettings,
@@ -51,6 +50,50 @@ class SettingsTests(QtTestCase):
         stack.set_has_masks(True)
         self.assertFalse(stack.values()["streaksRemoved"])
 
+    def test_stack_streaks_defaults_to_remove_when_masks_available_with_project(self):
+        from startrails.lib.project_startrails import Project
+        self.app.project = Project()
+        stack = StackSettings(self.app)
+        self.assertIsNone(self.app.project.streaksRemoved)
+        stack.ui.batchSize.setValue(5)
+        self.assertIsNone(self.app.project.streaksRemoved)
+
+        # 1. Automatic selection when masks available does not persist; project stays None
+        stack.set_has_masks(True)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 1)
+        self.assertTrue(stack.values()["streaksRemoved"])
+        self.assertIsNone(self.app.project.streaksRemoved)
+
+        # 2. Explicit detection action sets True and persists to project
+        stack.set_streaks_removed(True)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 1)
+        self.assertTrue(self.app.project.streaksRemoved)
+        self.assertTrue(stack.values()["streaksRemoved"])
+
+        # 3. True intent survives availability flips
+        stack.set_has_masks(False)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 0)
+        self.assertFalse(stack.values()["streaksRemoved"])
+        self.assertTrue(self.app.project.streaksRemoved)
+
+        stack.set_has_masks(True)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 1)
+        self.assertTrue(stack.values()["streaksRemoved"])
+        self.assertTrue(self.app.project.streaksRemoved)
+
+        # 4. Changed user control still persists
+        stack.ui.streaks.setCurrentIndex(0)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 0)
+        self.assertFalse(stack.values()["streaksRemoved"])
+        self.assertFalse(self.app.project.streaksRemoved)
+
+        # 5. False intent survives availability flips
+        stack.set_has_masks(False)
+        self.assertFalse(self.app.project.streaksRemoved)
+        stack.set_has_masks(True)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 0)
+        self.assertFalse(self.app.project.streaksRemoved)
+
     def test_collapse_and_fade_mapping(self):
         stack = StackSettings(self.app)
         card = StepCard("Stack Images", stack, 2)
@@ -61,6 +104,31 @@ class SettingsTests(QtTestCase):
             card.setExpanded(False)
             self.assertEqual(stack.values()["fadeAmount"], expected)
         self.assertTrue(stack.ui.fadeAmount.isEnabled())
+
+    def test_stack_and_detect_settings_default_to_startrails_defaults(self):
+        from startrails.lib.project_startrails import Project
+        from startrails.lib.startrails.defaults import (
+            DEFAULT_MERGE_METHOD_INDEX,
+            STARTRAILS_DEFAULTS,
+        )
+        detect = DetectSettings(self.app)
+        self.assertEqual(detect.ui.confidence.value(), STARTRAILS_DEFAULTS.conf_threshold)
+        self.assertEqual(detect.ui.mergeThreshold.value(), STARTRAILS_DEFAULTS.merge_threshold)
+        self.assertEqual(detect.ui.mergeMethod.currentIndex(), DEFAULT_MERGE_METHOD_INDEX)
+        self.assertEqual(detect.values()["mergeMethod"], STARTRAILS_DEFAULTS.merge_method)
+
+        # Standalone StackSettings with no files has default fade and batch settings
+        stack = StackSettings(self.app)
+        self.assertEqual(stack.ui.fade.currentIndex(), STARTRAILS_DEFAULTS.fade_mode)
+        self.assertEqual(stack.ui.fadeAmount.value(), STARTRAILS_DEFAULTS.fade_amount)
+        self.assertEqual(stack.ui.batchSize.value(), STARTRAILS_DEFAULTS.batch_size)
+
+        # Associated Project defaults match STARTRAILS_DEFAULTS
+        proj = Project()
+        self.assertEqual(proj.fadeMode, STARTRAILS_DEFAULTS.fade_mode)
+        self.assertEqual(proj.fadeAmount, STARTRAILS_DEFAULTS.fade_amount)
+        self.assertEqual(proj.batchSize, STARTRAILS_DEFAULTS.batch_size)
+        self.assertEqual(proj.useGPU, STARTRAILS_DEFAULTS.use_gpu)
 
     def test_invalid_text_does_not_produce_settings(self):
         detect = DetectSettings(self.app)
@@ -101,7 +169,7 @@ class SettingsTests(QtTestCase):
         self.app.gpuInfo = SimpleNamespace(get_gpu_present=lambda: True)
 
         with patch(
-            "startrails.ui.steps.resolve_torch_device",
+            "startrails.ui.steps_startrails.resolve_torch_device",
             side_effect=lambda *, use_gpu: torch.device("mps" if use_gpu else "cpu"),
         ):
             detect = DetectSettings(self.app)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'step_fill_gaps.ui'
+## Form generated from reading UI file 'step_startrails_fill_gaps.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.12.0
 ##
@@ -50,7 +50,7 @@ class Ui_fillSettings(object):
     # setupUi
 
     def retranslateUi(self, fillSettings):
-        self.target.setText(QCoreApplication.translate("fillSettings", u"Select a stacked output image to fill its gaps.", None))
+        self.target.setText(QCoreApplication.translate("fillSettings", u"Stack images first to fill gaps.", None))
         self.run.setText(QCoreApplication.translate("fillSettings", u"Fill Gaps", None))
         pass
     # retranslateUi

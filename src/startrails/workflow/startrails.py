@@ -6,19 +6,27 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 
 from deferred_import import deferred_import
-dsm = deferred_import("startrails.op.detectStreaks")
-fgm = deferred_import("startrails.op.fillGaps")
+dsm = deferred_import("startrails.op.startrails.detect_streaks")
+fgm = deferred_import("startrails.op.startrails.fill_gaps")
 
-from startrails.lib.file import InputFile, OutputFile
-from startrails.lib.source_map import locate_sources, output_sidecar, relative_path
-from startrails.op.exportMaskedImages import ExportMaskedImages
-from startrails.op.exportStreaksTraining import ExportStreaksDetectTraining
-from startrails.op.stackImages import StackImages
+from startrails.lib.file import (
+    OP_FILL_GAPS,
+    OP_FILL_GAPS_MASK,
+    OP_STACKED_KEEP,
+    OP_STACKED_REMOVE,
+    InputFile,
+    OutputFile,
+    canonical_output,
+)
+from startrails.lib.startrails.source_map import locate_sources, output_sidecar, relative_path, signature
+from startrails.op.startrails.export_masked_images import ExportMaskedImages
+from startrails.op.startrails.export_streaks_training import ExportStreaksDetectTraining
+from startrails.op.startrails.stack_images import StackImages
 from startrails.workflow.base import Workflow
 
 if TYPE_CHECKING:
     from startrails.app import App
-    from startrails.lib.project import Project
+    from startrails.lib.project_startrails import Project
 
 
 class StarTrailsWorkflow(Workflow):
@@ -81,8 +89,8 @@ class StarTrailsWorkflow(Workflow):
         if sortOrder is not None:
             self.project.sortOrder = sortOrder
 
-        sort_by = getattr(self.project, "sortBy", "date") or "date"
-        sort_order = getattr(self.project, "sortOrder", "asc") or "asc"
+        sort_by = self.project.sortBy
+        sort_order = self.project.sortOrder
         reverse = (sort_order.lower() == "desc")
 
         if sort_by in ("name", "filename"):
@@ -142,6 +150,52 @@ class StarTrailsWorkflow(Workflow):
 
     remove_output_file = removeOutputFile
 
+    def _upsert_output_file(self, basename, path, operation, fadeGradient=None) -> OutputFile:
+        """Return the record for a completed artifact without touching older results first."""
+        target_path = os.path.abspath(path)
+        existing = next(
+            (
+                f
+                for f in self.project.outputFiles
+                if isinstance(f, OutputFile) and os.path.abspath(f.path) == target_path
+            ),
+            None,
+        )
+        if existing is None:
+            existing = canonical_output(self.project.outputFiles, operation)
+        if existing is not None:
+            existing.basename = basename
+            existing.path = path
+            existing.operation = operation
+            existing.fadeGradient = fadeGradient
+            existing.sourceMap = None
+            existing.sourceStack = None
+            existing.gapMask = None
+            existing.source_stack_signature = None
+            return existing
+        file = OutputFile(basename, path, operation, fadeGradient=fadeGradient)
+        self.project.outputFiles.append(file)
+        return file
+
+    def _output_extension(self, operation, fallback_path):
+        existing = canonical_output(self.project.outputFiles, operation)
+        path = existing.path if existing is not None else fallback_path
+        return os.path.splitext(os.path.basename(path))[1]
+
+    def _invalidate_fill_dependents(self, basis_path):
+        """Drop fill records produced from a replaced stack while keeping their files."""
+        basis = os.path.normcase(os.path.abspath(basis_path))
+        retained = []
+        for output in self.project.outputFiles:
+            if not isinstance(output, OutputFile) or output.operation not in (OP_FILL_GAPS, OP_FILL_GAPS_MASK):
+                retained.append(output)
+                continue
+            source = output_sidecar(output, "sourceStack")
+            if source is None or os.path.normcase(os.path.abspath(source)) == basis:
+                continue
+            retained.append(output)
+        self.project.outputFiles = retained
+
     # -------------------------------------------------------------------------
     # Stacking and Processing Operations
     # -------------------------------------------------------------------------
@@ -156,18 +210,22 @@ class StarTrailsWorkflow(Workflow):
         useGPU=True,
     ) -> OutputFile:
         stackImages = StackImages(useGPU)
-        filteredInputFiles = list(filter(lambda file: not file.excludeFromStack, self.project.rawInputFiles))
+        filteredInputFiles = self.project.stack_input_files()
         if not filteredInputFiles:
             raise ValueError("Include at least one input image in the stack.")
+        applied_corrections = self.project.corrections_count()
+        applied_signature = self.project.corrections_signature()
         outDir = str(self.project.get_output_dir())
-        filename = StackImages.suggestOutFileName(filteredInputFiles[0], outDir)
+        operation = OP_STACKED_REMOVE if satellitesRemoved else OP_STACKED_KEEP
+        extension = self._output_extension(operation, filteredInputFiles[0].path)
+        filename = StackImages.suggestOutFileName(outDir, operation, extension)
         os.makedirs(outDir, exist_ok=True)
 
         fadeGradient = None
         if fade:
             fadeGradient = StackImages.makeFadeGradient(len(filteredInputFiles), fadeAmount)
         basename = os.path.basename(filename)
-        file = self.appendOutputFile(basename, filename, "Stacked", fadeGradient=fadeGradient)
+        file = OutputFile(basename, filename, operation, fadeGradient=fadeGradient)
         stackImages.addObserver(progressBar)
         self.app.activeOperation = stackImages
         try:
@@ -182,8 +240,17 @@ class StarTrailsWorkflow(Workflow):
         finally:
             self.app.activeOperation = None
             stackImages.removeObserver(progressBar)
+        self._invalidate_fill_dependents(filename)
+        record = self._upsert_output_file(basename, filename, operation, fadeGradient=fadeGradient)
+        record.sourceMap = file.sourceMap
+        record.sourceStack = file.sourceStack
+        record.gapMask = file.gapMask
+        record.source_stack_signature = file.source_stack_signature
+        if satellitesRemoved:
+            self.project.applied_corrections = applied_corrections
+            self.project.applied_corrections_signature = applied_signature
         self.save_project()
-        return file
+        return record
 
     do_stack = doStack
 
@@ -276,15 +343,19 @@ class StarTrailsWorkflow(Workflow):
     def doFillGaps(self, file: OutputFile, progressBar) -> OutputFile:
         import startrails.app as app_module
         fgm_module = getattr(app_module, "fgm", getattr(self.app, "fgm", fgm))
+        basis_signature = signature(file.path)
         fillGaps = fgm_module.FillGaps()
         fillGaps.addObserver(progressBar)
         outDir = str(self.project.get_output_dir())
-        filenameFillGaps, fileNameFillGapsMask = fgm_module.FillGaps.suggestOutFileName(file, outDir)
-        fileFillGaps = self.appendOutputFile(
-            os.path.basename(filenameFillGaps), filenameFillGaps, "FillGaps"
+        os.makedirs(outDir, exist_ok=True)
+        fill_extension = self._output_extension(OP_FILL_GAPS, file.path)
+        mask_extension = self._output_extension(OP_FILL_GAPS_MASK, file.path)
+        filenameFillGaps, fileNameFillGapsMask = fgm_module.FillGaps.suggestOutFileName(
+            outDir, fill_extension, mask_extension
         )
-        fileFillGapsMask = self.appendOutputFile(
-            os.path.basename(fileNameFillGapsMask), fileNameFillGapsMask, "FillGapsMask"
+        fileFillGaps = OutputFile(os.path.basename(filenameFillGaps), filenameFillGaps, OP_FILL_GAPS)
+        fileFillGapsMask = OutputFile(
+            os.path.basename(fileNameFillGapsMask), fileNameFillGapsMask, OP_FILL_GAPS_MASK
         )
         self.app.activeOperation = fillGaps
         try:
@@ -292,15 +363,35 @@ class StarTrailsWorkflow(Workflow):
         finally:
             self.app.activeOperation = None
             fillGaps.removeObserver(progressBar)
+        directory = os.path.dirname(os.path.abspath(fileFillGaps.path))
+        source_stack = relative_path(file.path, directory)
         fileFillGaps.fadeGradient = file.fadeGradient
         fileFillGapsMask.fadeGradient = file.fadeGradient
-        if file.sourceMap and not fillGaps.shouldInterrupt():
-            directory = os.path.dirname(os.path.abspath(fileFillGaps.path))
+        fileFillGaps.sourceStack = source_stack
+        fileFillGapsMask.sourceStack = source_stack
+        fileFillGaps.source_stack_signature = basis_signature
+        fileFillGapsMask.source_stack_signature = basis_signature
+        if file.sourceMap:
             fileFillGaps.sourceMap = relative_path(output_sidecar(file, "sourceMap"), directory)
-            fileFillGaps.sourceStack = relative_path(file.path, directory)
             fileFillGaps.gapMask = relative_path(fileFillGapsMask.path, directory)
+        record = self._upsert_output_file(
+            fileFillGaps.basename, fileFillGaps.path, fileFillGaps.operation,
+            fadeGradient=fileFillGaps.fadeGradient,
+        )
+        record.sourceMap = fileFillGaps.sourceMap
+        record.sourceStack = fileFillGaps.sourceStack
+        record.gapMask = fileFillGaps.gapMask
+        record.source_stack_signature = fileFillGaps.source_stack_signature
+        mask_record = self._upsert_output_file(
+            fileFillGapsMask.basename, fileFillGapsMask.path, fileFillGapsMask.operation,
+            fadeGradient=fileFillGapsMask.fadeGradient,
+        )
+        mask_record.sourceMap = fileFillGapsMask.sourceMap
+        mask_record.sourceStack = fileFillGapsMask.sourceStack
+        mask_record.gapMask = fileFillGapsMask.gapMask
+        mask_record.source_stack_signature = fileFillGapsMask.source_stack_signature
         self.save_project()
-        return fileFillGaps
+        return record
 
     do_fill_gaps = doFillGaps
 

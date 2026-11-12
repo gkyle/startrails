@@ -1,16 +1,17 @@
 """Persistent, per-channel provenance for a particular completed stack."""
-from contextlib import contextmanager
+from contextlib import nullcontext
 from collections import OrderedDict
 from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
-import tempfile
 from threading import Lock
 
 import cv2
 import numpy as np
 
+from startrails.lib.artifacts import ArtifactTransaction
+from startrails.lib.file import OP_FILL_GAPS, output_sidecar_path
 from startrails.lib.signatures import read_file_identity
 
 
@@ -75,30 +76,40 @@ def relative_path(path, directory):
 
 
 def output_sidecar(output, name):
-    value = getattr(output, name, None)
-    return Path(output.path).resolve().parent / value if value else None
+    return output_sidecar_path(output, name)
 
 
-@contextmanager
-def atomic_file(path, mode):
-    """Publish complete sidecars; incomplete writes are never opened by lookup."""
-    path = Path(path)
-    handle = tempfile.NamedTemporaryFile(mode=mode, dir=path.parent,
-                                         prefix=path.name + ".", suffix=".tmp", delete=False)
-    temporary = Path(handle.name)
+def _check_fill_basis(output):
+    """Reject a fill whose producing stack cannot be verified as unchanged."""
+    expected = getattr(output, "source_stack_signature", None)
+    if expected is None:
+        raise SourceMapError(
+            "This gap-filled image has no verified source stack. Fill gaps again."
+        )
+    basis_path = output_sidecar(output, "sourceStack")
+    if basis_path is None:
+        raise SourceMapError("This gap-filled image does not record its source stack. Fill gaps again.")
     try:
-        with handle:
-            yield handle
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
+        current = signature(basis_path)
+    except OSError as error:
+        raise SourceMapError("The stack used to fill gaps is unavailable. Fill gaps again.") from error
+    if current != expected:
+        raise SourceMapError(
+            "The stack has changed since this gap-filled image was made. Fill gaps again."
+        )
 
 
-def save_source_map(output, owners, sources, settings):
-    """Write the array first, then its manifest; attach only after both succeed."""
+def save_source_map(output, owners, sources, settings, transaction=None, stack_path=None):
+    """Write the array first, then its manifest.
+
+    Published files keep canonical names. Sidecars are staged through the
+    supplied ``ArtifactTransaction`` when the caller owns commit; otherwise a
+    local transaction is committed here and ``output.sourceMap`` is attached
+    only after that commit. The signature is read from the staged stack image
+    whose size/mtime survive ``os.replace``.
+    """
     image_path = Path(output.path).resolve()
+    signature_path = Path(stack_path).resolve() if stack_path is not None else image_path
     array_path = image_path.with_name(image_path.name + ".sources.npy")
     manifest_path = image_path.with_name(image_path.name + ".sources.json")
     manifest = {
@@ -108,19 +119,24 @@ def save_source_map(output, owners, sources, settings):
         "dtype": owners.dtype.name,
         "no_source": int(np.iinfo(owners.dtype).max),
         "stack": image_path.name,
-        "stack_signature": signature(image_path),
+        "stack_signature": signature(signature_path),
         "settings": settings,
         "sources": sources,
     }
-    with atomic_file(array_path, "wb") as stream:
-        np.save(stream, owners, allow_pickle=False)
-    try:
-        with atomic_file(manifest_path, "w") as stream:
+    supplied_transaction = transaction is not None
+    transaction = transaction if supplied_transaction else ArtifactTransaction()
+    with nullcontext(transaction) if supplied_transaction else transaction:
+        staged_array = transaction.stage(array_path)
+        with staged_array.open("wb") as stream:
+            np.save(stream, owners, allow_pickle=False)
+        staged_manifest = transaction.stage(manifest_path)
+        with staged_manifest.open("w", encoding="utf-8") as stream:
             json.dump(manifest, stream, indent=2)
-    except Exception:
-        array_path.unlink(missing_ok=True)
-        raise
-    output.sourceMap = manifest_path.name
+        if not supplied_transaction:
+            transaction.commit()
+    if not supplied_transaction:
+        output.sourceMap = manifest_path.name
+    return manifest_path.name
 
 
 def snapshot_sources(files, output):
@@ -134,6 +150,8 @@ def locate_sources(output, files, x, y, radius=6, limit=8):
     manifest_path = output_sidecar(output, "sourceMap")
     if manifest_path is None:
         raise SourceMapError("This output has no source map. Build a new stack to use Locate Source.")
+    if output.operation == OP_FILL_GAPS:
+        _check_fill_basis(output)
     owners = None
     try:
         with manifest_path.open(encoding="utf-8") as stream:
@@ -165,7 +183,7 @@ def locate_sources(output, files, x, y, radius=6, limit=8):
             region, values = region[..., None], values[..., None]
         valid = region != manifest["no_source"]
         synthesized = False
-        if output.operation == "FillGaps":
+        if output.operation == OP_FILL_GAPS:
             mask_path = output_sidecar(output, "gapMask")
             mask = (_lookup_images.read(mask_path, signature(mask_path))
                     if mask_path and mask_path.is_file() else None)

@@ -30,7 +30,7 @@ from startrails.lib.finish.defaults import (
 )
 from startrails.lib.finish.starless_filters import STARLESS_FILTER_VERSION
 from startrails.lib.image_io import imwrite
-from startrails.lib.project import Project
+from startrails.lib.project_startrails import Project
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.project_finish import FinishProject, probe_source_image
 from startrails.lib.project_type import (

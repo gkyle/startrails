@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 from startrails.ui.progress import ProgressBarUpdater, progress_scope
 from startrails.ui.progress_overlay import ProgressOverlay
 from startrails.ui.signals import AsyncWorker, getSignals
-from startrails.ui.sidebar import Sidebar
+from startrails.ui.sidebar_startrails import Sidebar
 from startrails.ui.ui_interface import Ui_MainWindow
 from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.theme import system_theme, theme_palette

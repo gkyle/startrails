@@ -9,13 +9,13 @@ import cv2
 import torch
 
 from support import IsolatedTestCase
-from startrails.op.detectStreaks import DetectStreaks, StreaksPredictor
+from startrails.op.startrails.detect_streaks import DetectStreaks, StreaksPredictor
 from startrails.lib.file import InputFile
 
 
 class PredictionBatchTests(IsolatedTestCase):
     def make_detector(self):
-        with patch("startrails.op.detectStreaks.YOLO"):
+        with patch("startrails.op.startrails.detect_streaks.YOLO"):
             return DetectStreaks(useGPU=False)
 
     def test_empty_tiles_do_not_invoke_model(self):
@@ -29,7 +29,7 @@ class PredictionBatchTests(IsolatedTestCase):
         self.assertTrue(cv2.imwrite(str(path), np.zeros((32, 32, 3), np.uint8)))
         frame = InputFile(path.name, str(path))
         with patch.object(detector, "predict", side_effect=RuntimeError("Inference failed")):
-            with self.assertLogs("startrails.op.detectStreaks", level="ERROR") as records:
+            with self.assertLogs("startrails.op.startrails.detect_streaks", level="ERROR") as records:
                 with self.assertRaisesRegex(RuntimeError, "Inference failed"):
                     detector.detectStreaks([frame], 0.3, "NMS", 0.2)
         self.assertIn(str(path), "\n".join(records.output))

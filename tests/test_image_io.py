@@ -21,23 +21,33 @@ from startrails.lib.image_io import (
 
 class ImageIoTests(IsolatedTestCase):
     def test_locked_tiff_destination_uses_alternate_path(self):
-        destination = self.root / "image.tif"
-        destination.write_bytes(b"existing image")
         pixels = np.full((8, 11, 3), 32768, dtype=np.uint16)
         original_replace = Path.replace
 
-        def replace_with_locked_destination(path, target):
-            if target == destination:
-                raise PermissionError(errno.EACCES, "File is locked", str(target))
-            return original_replace(path, target)
+        for name, allow_alternate_path in (("image", True), ("strict", False)):
+            with self.subTest(allow_alternate_path=allow_alternate_path):
+                destination = self.root / f"{name}.tif"
+                destination.write_bytes(b"existing image")
 
-        with patch.object(Path, "replace", replace_with_locked_destination):
-            saved = imwrite(destination, pixels)
+                def replace_with_locked_destination(path, target, destination=destination):
+                    if target == destination:
+                        raise PermissionError(errno.EACCES, "File is locked", str(target))
+                    return original_replace(path, target)
 
-        self.assertEqual(saved, self.root / "image_1.tif")
-        self.assertEqual(destination.read_bytes(), b"existing image")
-        np.testing.assert_array_equal(imread(saved), pixels)
-        self.assertFalse(list(self.root.glob(".image-*")))
+                with patch.object(Path, "replace", replace_with_locked_destination):
+                    if allow_alternate_path:
+                        saved = imwrite(destination, pixels)
+                    else:
+                        with self.assertRaises(PermissionError):
+                            imwrite(destination, pixels, allow_alternate_path=False)
+
+                self.assertEqual(destination.read_bytes(), b"existing image")
+                if allow_alternate_path:
+                    self.assertEqual(saved, self.root / "image_1.tif")
+                    np.testing.assert_array_equal(imread(saved), pixels)
+                else:
+                    self.assertFalse((self.root / "strict_1.tif").exists())
+                self.assertFalse(list(self.root.glob(".image-*")))
 
     def test_non_lock_write_error_does_not_use_alternate_path(self):
         destination = self.root / "image.tif"

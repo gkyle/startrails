@@ -2,16 +2,26 @@
 
 from pathlib import Path
 
+import cv2
 import jsonpickle
 import numpy as np
 
 from support import IsolatedTestCase
 from startrails.app import App
-from startrails.lib.project import Project
+from startrails.lib.project_startrails import Project
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 from startrails.op.denoise.compose_horizon import ComposeHorizon
-from startrails.lib.file import InputFile
+from startrails.lib.file import (
+    OP_FILL_GAPS,
+    OP_FILL_GAPS_MASK,
+    OP_STACKED_KEEP,
+    OP_STACKED_REMOVE,
+    InputFile,
+    OutputFile,
+    filled_output,
+    preferred_stacked_output,
+)
 from startrails.op.denoise.align_stars import AlignStars
 from startrails.op.denoise.refine_mask import RefineMask
 
@@ -340,3 +350,309 @@ class ProjectTests(IsolatedTestCase):
         self.project.mask_path = str(self.root / "missing.png")
         with self.assertRaisesRegex(FileNotFoundError, "Sky mask is missing"):
             self.app.workflow.get_config()
+
+    def test_legacy_stacked_roundtrip_prefers_existing_canonical_keep(self):
+        legacy_path = self.root / "legacy-stacked.tif"
+        keep_path = self.root / "startrails-stacked-keep.tif"
+        legacy_path.write_bytes(b"legacy")
+        keep_path.write_bytes(b"keep")
+        legacy = OutputFile(legacy_path.name, str(legacy_path), OP_STACKED_REMOVE, mtime=200)
+        keep = OutputFile(keep_path.name, str(keep_path), OP_STACKED_KEEP, mtime=100)
+        del legacy.source_stack_signature
+        project = Project(
+            projectFile=str(self.root / "mixed.proj_startrails"),
+            outputFiles=[legacy, keep],
+        )
+        restored = jsonpickle.decode(jsonpickle.encode(project))
+        self.assertIs(preferred_stacked_output(restored.outputFiles), restored.outputFiles[1])
+        self.assertIsNone(restored.outputFiles[0].source_stack_signature)
+
+    def test_legacy_operation_is_not_reused_and_canonical_extension_stays_stable(self):
+        legacy_path = self.root / "legacy-stacked-200.tif"
+        self.assertTrue(cv2.imwrite(str(legacy_path), np.full((6, 6, 3), 20, np.uint8)))
+        legacy = OutputFile(legacy_path.name, str(legacy_path), OP_STACKED_KEEP)
+        legacy.sourceMap = "legacy.sources.json"
+        legacy.sourceStack = "legacy-stack.tif"
+        legacy.gapMask = "legacy-mask.tif"
+        legacy.source_stack_signature = {"size": 3, "mtime_ns": 4}
+        legacy_metadata = (
+            legacy.basename, legacy.path, legacy.operation, legacy.sourceMap,
+            legacy.sourceStack, legacy.gapMask, legacy.source_stack_signature,
+        )
+        project = Project(
+            projectFile=str(self.root / "stable.proj_startrails"),
+            outputFiles=[legacy],
+        )
+        app = self.make_app(project)
+        tif_path = self.root / "frame.tif"
+        self.assertTrue(cv2.imwrite(str(tif_path), np.full((6, 6, 3), 40, np.uint8)))
+        app.project.rawInputFiles = [InputFile(tif_path.name, str(tif_path))]
+        first = app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIsNot(first, legacy)
+        self.assertEqual(Path(first.path).suffix, ".tif")
+        self.assertIn(legacy, app.getOutputFileList())
+
+        # Reloading the project preserves the legacy record and the canonical role.
+        app.project = jsonpickle.decode(jsonpickle.encode(app.project))
+        app._workflow = None
+        restored_legacy = next(record for record in app.project.outputFiles if record.path == legacy.path)
+        self.assertEqual(
+            (
+                restored_legacy.basename, restored_legacy.path, restored_legacy.operation,
+                restored_legacy.sourceMap, restored_legacy.sourceStack, restored_legacy.gapMask,
+                restored_legacy.source_stack_signature,
+            ),
+            legacy_metadata,
+        )
+
+        jpg_path = self.root / "frame.jpg"
+        self.assertTrue(cv2.imwrite(str(jpg_path), np.full((6, 6, 3), 80, np.uint8)))
+        app.project.rawInputFiles = [InputFile(jpg_path.name, str(jpg_path))]
+        second = app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(second, next(
+            record for record in app.project.outputFiles
+            if record.path == first.path
+        ))
+        self.assertEqual(second.path, first.path)
+        self.assertEqual(Path(second.path).suffix, ".tif")
+        self.assertFalse((Path(first.path).parent / "startrails-stacked-keep.jpg").exists())
+        self.assertEqual(
+            (
+                restored_legacy.basename, restored_legacy.path, restored_legacy.operation,
+                restored_legacy.sourceMap, restored_legacy.sourceStack, restored_legacy.gapMask,
+                restored_legacy.source_stack_signature,
+            ),
+            legacy_metadata,
+        )
+
+    def test_missing_canonical_stacked_output_is_ignored_and_fallback_uses_newest(self):
+        missing_path = self.root / "startrails-stacked.tif"
+        older_path = self.root / "legacy-older.tif"
+        newer_path = self.root / "legacy-newer.tif"
+        older_path.write_bytes(b"older")
+        newer_path.write_bytes(b"newer")
+        missing = OutputFile(missing_path.name, str(missing_path), OP_STACKED_REMOVE, mtime=400)
+        older = OutputFile(older_path.name, str(older_path), OP_STACKED_REMOVE, mtime=100)
+        newer = OutputFile(newer_path.name, str(newer_path), OP_STACKED_KEEP, mtime=200)
+        self.assertFalse(missing_path.exists())
+        self.assertIsNone(preferred_stacked_output([missing]))
+        self.assertIs(preferred_stacked_output([missing, older, newer]), newer)
+
+    def test_filled_output_ignores_missing_final_and_mask_records(self):
+        missing_final_path = self.root / "startrails-final.tif"
+        mask_path = self.root / "startrails-final-mask.tif"
+        legacy_path = self.root / "legacy-final.tif"
+        mask_path.write_bytes(b"mask")
+        legacy_path.write_bytes(b"legacy")
+        missing_final = OutputFile(missing_final_path.name, str(missing_final_path), OP_FILL_GAPS)
+        mask = OutputFile(mask_path.name, str(mask_path), OP_FILL_GAPS_MASK)
+        legacy = OutputFile(legacy_path.name, str(legacy_path), OP_FILL_GAPS)
+        self.assertFalse(missing_final_path.exists())
+        self.assertIsNone(filled_output([missing_final, mask]))
+        self.assertIs(filled_output([missing_final, mask, legacy]), legacy)
+
+    def test_startrails_project_defaults_and_migration_at_load_boundary(self):
+        import json
+        from startrails.lib.project_startrails import EMPTY_CORRECTIONS_SIGNATURE, Project
+        from startrails.lib.startrails.defaults import (
+            DEFAULT_PROJECT_FILENAME,
+            STARTRAILS_DEFAULTS,
+        )
+
+        self.assertEqual(STARTRAILS_DEFAULTS.sort_by, "date")
+        self.assertEqual(STARTRAILS_DEFAULTS.sort_order, "asc")
+        self.assertEqual(STARTRAILS_DEFAULTS.fade_mode, 3)
+        self.assertEqual(STARTRAILS_DEFAULTS.fade_amount, 10)
+        self.assertEqual(STARTRAILS_DEFAULTS.batch_size, 1)
+        self.assertTrue(STARTRAILS_DEFAULTS.use_gpu)
+        self.assertIsNone(STARTRAILS_DEFAULTS.streaks_removed)
+        self.assertEqual(STARTRAILS_DEFAULTS.conf_threshold, 0.3)
+        self.assertEqual(STARTRAILS_DEFAULTS.merge_threshold, 0.2)
+        self.assertEqual(STARTRAILS_DEFAULTS.merge_method, "GREEDYNMM")
+
+        proj = Project()
+        self.assertEqual(proj.projectFile, DEFAULT_PROJECT_FILENAME)
+        self.assertEqual(proj.sortBy, STARTRAILS_DEFAULTS.sort_by)
+        self.assertEqual(proj.sortOrder, STARTRAILS_DEFAULTS.sort_order)
+        self.assertEqual(proj.fadeMode, STARTRAILS_DEFAULTS.fade_mode)
+        self.assertEqual(proj.fadeAmount, STARTRAILS_DEFAULTS.fade_amount)
+        self.assertEqual(proj.batchSize, STARTRAILS_DEFAULTS.batch_size)
+        self.assertEqual(proj.useGPU, STARTRAILS_DEFAULTS.use_gpu)
+        self.assertEqual(proj.streaksRemoved, STARTRAILS_DEFAULTS.streaks_removed)
+        self.assertEqual(proj.applied_corrections, 0)
+        self.assertEqual(proj.applied_corrections_signature, EMPTY_CORRECTIONS_SIGNATURE)
+        self.assertFalse(proj.corrections_pending())
+
+        app = self.make_app()
+
+        # py/state format: blank, missing, and None settings fall back to defaults.
+        state_file = self.root / "legacy_state.proj_startrails"
+        state_file.write_text(json.dumps({
+            "py/object": "startrails.lib.project.Project",
+            "py/state": {
+                "rawInputFiles": [],
+                "outputFiles": [],
+                "operations": {},
+                "projectFile": str(state_file),
+                "sortBy": "",
+                "sortOrder": None,
+                "fadeMode": 0,
+                "batchSize": 0,
+                "useGPU": False,
+                "streaksRemoved": False,
+            },
+        }))
+        app.loadProject(str(state_file))
+        project = app.project
+        self.assertEqual(project.projectFile, str(state_file))
+        self.assertEqual(project.sortBy, STARTRAILS_DEFAULTS.sort_by)
+        self.assertEqual(project.sortOrder, STARTRAILS_DEFAULTS.sort_order)
+        self.assertEqual(project.fadeMode, 0)
+        self.assertEqual(project.fadeAmount, STARTRAILS_DEFAULTS.fade_amount)
+        self.assertEqual(project.batchSize, 0)
+        self.assertFalse(project.useGPU)
+        self.assertFalse(project.streaksRemoved)
+        self.assertEqual(project.applied_corrections, 0)
+        self.assertEqual(project.applied_corrections_signature, EMPTY_CORRECTIONS_SIGNATURE)
+        self.assertFalse(project.corrections_pending())
+
+        # Flat jsonpickle format bypasses __setstate__; the app load boundary restores it.
+        flat_file = self.root / "legacy_flat.proj_startrails"
+        flat_file.write_text(json.dumps({
+            "py/object": "startrails.lib.project.Project",
+            "projectFile": str(flat_file),
+            "rawInputFiles": [],
+            "outputFiles": [],
+            "operations": {},
+            "applied_corrections": 2,
+        }))
+        app.loadProject(str(flat_file))
+        project = app.project
+        self.assertEqual(project.projectFile, str(flat_file))
+        self.assertEqual(project.sortBy, STARTRAILS_DEFAULTS.sort_by)
+        self.assertEqual(project.sortOrder, STARTRAILS_DEFAULTS.sort_order)
+        self.assertEqual(project.fadeMode, STARTRAILS_DEFAULTS.fade_mode)
+        self.assertEqual(project.fadeAmount, STARTRAILS_DEFAULTS.fade_amount)
+        self.assertEqual(project.batchSize, STARTRAILS_DEFAULTS.batch_size)
+        self.assertTrue(project.useGPU)
+        self.assertIsNone(project.streaksRemoved)
+        self.assertEqual(project.applied_corrections, 2)
+        self.assertIsNone(project.applied_corrections_signature)
+        self.assertTrue(project.corrections_pending())
+        project.rawInputFiles.append(InputFile("frame.tif", str(self.root / "frame.tif")))
+        project.rawInputFiles[0].streaksManualMasks.append(
+            np.array([[0, 0], [2, 0], [2, 2]], dtype=np.int64)
+        )
+        self.assertTrue(project.corrections_pending())
+        project.rawInputFiles[0].streaksManualMasks.clear()
+        self.assertTrue(project.corrections_pending())
+
+        # py/state round-trip: a positive legacy count without a signature is also unknown.
+        roundtrip_file = self.root / "legacy_roundtrip.proj_startrails"
+        roundtrip_project = Project(projectFile=str(roundtrip_file))
+        roundtrip_project.applied_corrections = 2
+        del roundtrip_project.applied_corrections_signature
+        roundtrip_file.write_text(jsonpickle.encode(roundtrip_project, indent=2))
+        app.loadProject(str(roundtrip_file))
+        self.assertEqual(app.project.applied_corrections, 2)
+        self.assertIsNone(app.project.applied_corrections_signature)
+        self.assertTrue(app.project.corrections_pending())
+
+    def test_correction_signature_tracks_applied_state_and_vertex_edits(self):
+        from startrails.lib.project_startrails import EMPTY_CORRECTIONS_SIGNATURE
+
+        app = self.make_app()
+        paths = []
+        for index in range(2):
+            path = self.root / f"correction-frame-{index}.jpg"
+            self.assertTrue(cv2.imwrite(str(path), np.full((6, 6, 3), 40 + index, np.uint8)))
+            paths.append(path)
+        included = InputFile(paths[0].name, str(paths[0]))
+        excluded = InputFile(paths[1].name, str(paths[1]))
+        excluded.excludeFromStack = True
+        excluded.streaksManualMasks.append(np.array([[0, 0], [2, 0], [2, 2]], dtype=np.int64))
+        app.project.rawInputFiles = [included, excluded]
+
+        self.assertEqual(app.project.corrections_count(), 0)
+        self.assertFalse(app.project.corrections_pending())
+
+        excluded.excludeFromStack = False
+        signature = app.project.corrections_signature()
+        excluded.streaksManualMasks[0] = np.asarray(
+            excluded.streaksManualMasks[0], dtype=np.int32
+        ).reshape(-1, 1, 2)
+        self.assertEqual(app.project.corrections_count(), 1)
+        self.assertEqual(app.project.corrections_signature(), signature)
+        self.assertTrue(app.project.corrections_pending())
+
+        # Keep never publishes corrections.
+        app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertEqual(app.project.applied_corrections, 0)
+        self.assertEqual(app.project.applied_corrections_signature, EMPTY_CORRECTIONS_SIGNATURE)
+        self.assertTrue(app.project.corrections_pending())
+
+        # Remove applies the current corrections.
+        app.doStack(True, lambda *args: None, useGPU=False)
+        self.assertEqual(app.project.applied_corrections, 1)
+        self.assertEqual(app.project.applied_corrections_signature, signature)
+        self.assertFalse(app.project.corrections_pending())
+
+        # Applied state survives a real project reload.
+        reloaded = self.make_app()
+        reloaded.loadProject(app.project.projectFile)
+        self.assertEqual(reloaded.project.applied_corrections, 1)
+        self.assertEqual(reloaded.project.applied_corrections_signature, signature)
+        self.assertFalse(reloaded.project.corrections_pending())
+
+        # Moving a vertex keeps the count but changes the applied signature.
+        corrected = reloaded.project.rawInputFiles[1]
+        corrected.streaksManualMasks[0][1] = [3, 0]
+        self.assertEqual(reloaded.project.corrections_count(), 1)
+        self.assertTrue(reloaded.project.corrections_pending())
+
+        # Removing the correction is also pending despite no remaining polygons.
+        corrected.streaksManualMasks.clear()
+        self.assertEqual(reloaded.project.corrections_count(), 0)
+        self.assertTrue(reloaded.project.corrections_pending())
+
+        # Deleted polygons are user corrections too.
+        corrected.streaksManualDeletedMasks.append(
+            np.array([[1, 1], [3, 1], [3, 3]], dtype=np.int64)
+        )
+        self.assertEqual(reloaded.project.corrections_count(), 1)
+        self.assertTrue(reloaded.project.corrections_pending())
+
+    def test_failed_or_cancelled_stack_preserves_applied_corrections(self):
+        from concurrent.futures import CancelledError
+        from unittest.mock import patch
+
+        app = self.make_app()
+        path = self.root / "cancelled-frame.jpg"
+        self.assertTrue(cv2.imwrite(str(path), np.full((6, 6, 3), 80, np.uint8)))
+        input_file = InputFile(path.name, str(path))
+        input_file.streaksManualMasks.append(np.array([[0, 0], [2, 0], [2, 2]], dtype=np.int64))
+        app.project.rawInputFiles = [input_file]
+        app.doStack(True, lambda *args: None, useGPU=False)
+        applied_count = app.project.applied_corrections
+        applied_signature = app.project.applied_corrections_signature
+        self.assertEqual(applied_count, 1)
+
+        input_file.streaksManualMasks[0][1] = [3, 0]
+        self.assertTrue(app.project.corrections_pending())
+
+        def cancel(total, increment, count, done, data):
+            if increment:
+                app.activeOperation.requestInterrupt()
+
+        with self.assertRaises(CancelledError):
+            app.doStack(True, cancel, useGPU=False)
+        self.assertEqual(app.project.applied_corrections, applied_count)
+        self.assertEqual(app.project.applied_corrections_signature, applied_signature)
+        self.assertTrue(app.project.corrections_pending())
+
+        with patch("startrails.op.startrails.stack_images.imwrite", side_effect=OSError("disk full")):
+            with self.assertRaises(OSError):
+                app.doStack(True, lambda *args: None, useGPU=False)
+        self.assertEqual(app.project.applied_corrections, applied_count)
+        self.assertEqual(app.project.applied_corrections_signature, applied_signature)
+        self.assertTrue(app.project.corrections_pending())

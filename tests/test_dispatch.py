@@ -11,6 +11,7 @@ import numpy as np
 from support import QtTestCase
 from startrails.ui import ui_wrap
 from startrails.lib.file import InputFile, OutputFile
+from startrails.lib.project_startrails import Project
 from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.progress import ProgressBarUpdater
 from startrails.ui.signals import Signals
@@ -27,9 +28,11 @@ class RecordingQueue:
 
 class DispatchTests(QtTestCase):
     def make_ui(self, files):
+        project = Project(rawInputFiles=files)
         app = SimpleNamespace(
+            project=project,
             getWindowSettings=lambda: {},
-            getInputFileList=lambda: files,
+            getInputFileList=lambda: project.rawInputFiles,
             stackSuggestBatchSize=lambda file, gpu: (8, 1024**3, False),
         )
         ui = ui_wrap.Ui_AppWindow(app)
@@ -60,7 +63,7 @@ class DispatchTests(QtTestCase):
         self.assertFalse(ui.pushButton_stackImages.isEnabled())
         self.assertEqual(ui.sidebar.toolsCard.ui.number.text(), "")
         self.assertEqual(ui.sidebar.toolsCard.ui.number.property("stepStatus"), "neutral")
-        ui.app.getInputFileList = lambda: [file]
+        ui.app.project.rawInputFiles = [file]
         ui.inputFiles.set_files([file])
         ui.updateReadyStates()
         self.assertTrue(ui.pushButton_stackImages.isEnabled())
@@ -181,6 +184,7 @@ class DispatchTests(QtTestCase):
             finish_task_progress=SimpleNamespace(emit=lambda *args: None),
             drawOutputFileList=SimpleNamespace(emit=lambda _: None),
             refreshReadiness=SimpleNamespace(emit=lambda: None),
+            detectStreaksFinished=SimpleNamespace(emit=lambda: None),
         )
         calls = []
         ui.app.doDetectStreaks = lambda tick, **settings: calls.append(("detect", settings))

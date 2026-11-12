@@ -124,6 +124,7 @@ def imwrite(
     tiff_uint8_as_uint16: bool = False,
     eight_bit: bool = False,
     bit_depth: Optional[int] = None,
+    allow_alternate_path: bool = True,
 ) -> Path:
     """Atomically write an image, handling CuPy arrays, float scaling, and codec options.
 
@@ -135,6 +136,8 @@ def imwrite(
         compression: Whether to apply lossless Deflate compression for TIFF.
         bit_depth: Optional explicit output depth (8 or 16). Incompatible codecs,
             integer dtypes and legacy conversion flags are rejected when supplied.
+        allow_alternate_path: If True, retry a busy destination as ``<stem>_1``.
+            Staged publication passes False so a fallback cannot bypass rollback.
 
     Returns:
         Path to the saved image file.
@@ -219,7 +222,9 @@ def imwrite(
         _do_write(path)
         return path
     except OSError as e:
-        if getattr(e, "errno", None) in (22, 13) or getattr(e, "winerror", None) in (5, 32, 1224):
+        if allow_alternate_path and (
+            getattr(e, "errno", None) in (22, 13) or getattr(e, "winerror", None) in (5, 32, 1224)
+        ):
             counter = 1
             while True:
                 alt_path = path.with_stem(f"{path.stem}_{counter}")

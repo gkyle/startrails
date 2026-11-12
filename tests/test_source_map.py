@@ -1,6 +1,7 @@
 """Real image reductions, sidecar persistence, and source lookup without ML models."""
 
 import json
+from concurrent.futures import CancelledError
 from pathlib import Path
 from support import IsolatedTestCase
 from unittest.mock import patch
@@ -11,11 +12,19 @@ import jsonpickle
 import numpy as np
 
 from startrails.app import App
-from startrails.lib.file import InputFile, OutputFile
+from startrails.lib.file import (
+    OP_FILL_GAPS,
+    OP_FILL_GAPS_MASK,
+    InputFile,
+    OutputFile,
+    filled_output,
+    preferred_stacked_output,
+)
 from startrails.lib.util import Observable
-from startrails.lib.source_map import locate_sources, output_sidecar, source_dtype, SourceMapError
-from startrails.lib.source_map import _LookupImageCache
-from startrails.op.stackImages import StackImages
+from startrails.lib.startrails.source_map import locate_sources, output_sidecar, source_dtype, SourceMapError
+from startrails.lib.startrails.source_map import save_source_map, signature, snapshot_sources
+from startrails.lib.startrails.source_map import _LookupImageCache
+from startrails.op.startrails.stack_images import StackImages
 from startrails.ui.project import Project
 
 
@@ -24,7 +33,7 @@ class SourceMapTests(IsolatedTestCase):
         super().setUp()
         self.folder = self.root
         self.files = []
-        cache = patch("startrails.lib.source_map._lookup_images", _LookupImageCache())
+        cache = patch("startrails.lib.startrails.source_map._lookup_images", _LookupImageCache())
         cache.start()
         self.addCleanup(cache.stop)
 
@@ -53,6 +62,34 @@ class SourceMapTests(IsolatedTestCase):
         app.gpuInfo = SimpleNamespace(get_gpu_present=lambda: False, getGpuPresent=lambda: False)
         return app
 
+    def fill_with_fake(self, app, basis, mask=None):
+        if mask is None:
+            mask = np.zeros(cv2.imread(basis.path).shape, np.uint8)
+
+        class FakeFill(Observable):
+            @staticmethod
+            def suggestOutFileName(directory, extension, mask_extension):
+                return (
+                    str(Path(directory) / "startrails-final.tif"),
+                    str(Path(directory) / "startrails-final-mask.tif"),
+                )
+
+            def fillGaps(self, file, filled, output_mask):
+                cv2.imwrite(filled.path, cv2.imread(file.path))
+                cv2.imwrite(output_mask.path, mask)
+
+            def shouldInterrupt(self):
+                return False
+
+        import startrails.app as app_module
+
+        original = app_module.fgm
+        app_module.fgm = SimpleNamespace(FillGaps=FakeFill)
+        try:
+            return app.doFillGaps(basis, lambda *args: None)
+        finally:
+            app_module.fgm = original
+
     def test_channel_winners_equal_stack_and_are_batch_order_independent(self):
         rng = np.random.default_rng(17)
         images = [rng.integers(0, 65535, (18, 24, 3), dtype=np.uint16) for _ in range(7)]
@@ -67,7 +104,7 @@ class SourceMapTests(IsolatedTestCase):
         for batch in (1, 3, 20):
             with (
                 self.subTest(batch=batch),
-                patch("startrails.op.stackImages.as_completed", side_effect=lambda futures: reversed(list(futures))),
+                patch("startrails.op.startrails.stack_images.as_completed", side_effect=lambda futures: reversed(list(futures))),
             ):
                 output, owners, _ = self.stack(batch=batch)
             np.testing.assert_array_equal(cv2.imread(output.path, -1), expected)
@@ -106,7 +143,7 @@ class SourceMapTests(IsolatedTestCase):
             calls.append(path)
             return read(path, *args, **kwargs)
 
-        with patch("startrails.lib.source_map.cv2.imread", side_effect=record):
+        with patch("startrails.lib.startrails.source_map.cv2.imread", side_effect=record):
             result = restored.locateSources(6, 8, basis)
         self.assertEqual(result.candidates[0].sourceId, winner.sourceId)
         self.assertTrue(result.candidates[0].excludeFromStack)
@@ -122,7 +159,7 @@ class SourceMapTests(IsolatedTestCase):
     def test_repeated_lookup_reuses_image_and_still_checks_sources(self):
         first = self.input(np.full((16, 16, 3), 200, np.uint16))
         output, _, _ = self.stack()
-        with patch("startrails.lib.source_map.cv2.imread", wraps=cv2.imread) as read:
+        with patch("startrails.lib.startrails.source_map.cv2.imread", wraps=cv2.imread) as read:
             for x, y in ((1, 1), (8, 8), (15, 15)):
                 self.assertEqual(locate_sources(output, self.files, x, y).candidates, [first])
             Path(first.path).unlink()
@@ -132,11 +169,13 @@ class SourceMapTests(IsolatedTestCase):
     def test_cached_gap_mask_is_refreshed_when_replaced(self):
         self.input(np.full((16, 16, 3), 200, np.uint8))
         output, _, _ = self.stack()
-        output.operation = "FillGaps"
+        output.operation = OP_FILL_GAPS
+        output.sourceStack = Path(output.path).name
+        output.source_stack_signature = signature(output.path)
         output.gapMask = "mask.tif"
         mask_path = self.folder / output.gapMask
         cv2.imwrite(str(mask_path), np.zeros((16, 16), np.uint8))
-        with patch("startrails.lib.source_map.cv2.imread", wraps=cv2.imread) as read:
+        with patch("startrails.lib.startrails.source_map.cv2.imread", wraps=cv2.imread) as read:
             for _ in range(2):
                 result = locate_sources(output, self.files, 8, 8)
                 self.assertEqual(result.candidates, self.files)
@@ -156,14 +195,14 @@ class SourceMapTests(IsolatedTestCase):
         first = self.input(np.full((6, 6, 3), 20, np.uint8))
         second = self.input(np.full((6, 6, 3), 40, np.uint8))
         cache = _LookupImageCache(max_bytes=6 * 6 * 3)
-        with patch("startrails.lib.source_map._lookup_images", cache):
+        with patch("startrails.lib.startrails.source_map._lookup_images", cache):
             output, _, _ = self.stack()
             self.assertEqual(locate_sources(output, self.files, 2, 2).candidates, [second])
             # A different stack evicts the first; revisiting must safely reload it.
             other = OutputFile("other.tif", str(self.folder / "other.tif"), "Stacked")
             StackImages(False).stack([first], other)
             self.assertEqual(locate_sources(other, self.files, 2, 2).candidates, [first])
-            with patch("startrails.lib.source_map.cv2.imread", wraps=cv2.imread) as read:
+            with patch("startrails.lib.startrails.source_map.cv2.imread", wraps=cv2.imread) as read:
                 self.assertEqual(locate_sources(output, self.files, 2, 2).candidates, [second])
                 self.assertEqual(read.call_count, 1)
 
@@ -178,6 +217,7 @@ class SourceMapTests(IsolatedTestCase):
     def test_invalid_clicks_and_legacy_output(self):
         self.input(np.full((6, 6, 3), 200, np.uint8))
         output, _, _ = self.stack()
+        manifest_name = output.sourceMap
         for point in ((-1, 0), (6, 0), (0, 6)):
             self.assertFalse(locate_sources(output, self.files, *point).candidates)
         output.sourceMap = None
@@ -187,21 +227,147 @@ class SourceMapTests(IsolatedTestCase):
         del output.sourceMap
         restored = jsonpickle.decode(jsonpickle.encode(output))
         self.assertIsNone(restored.sourceMap)
+        # A held legacy fill without a producing-basis fingerprint cannot be verified.
+        output.sourceMap = manifest_name
+        output.operation = OP_FILL_GAPS
+        output.sourceStack = Path(output.path).name
+        del output.source_stack_signature
+        legacy_fill = jsonpickle.decode(jsonpickle.encode(output))
+        self.assertIsNone(legacy_fill.source_stack_signature)
+        with self.assertRaisesRegex(SourceMapError, "Fill gaps again"):
+            locate_sources(legacy_fill, self.files, 2, 2)
 
-    def test_cancelled_and_failed_stack_dont_publish_a_map(self):
-        for i in range(8):
-            self.input(np.full((6, 6, 3), i, np.uint8))
-        output = OutputFile("cancel.tif", str(self.folder / "cancel.tif"), "Stacked")
-        operation = StackImages(False)
-        operation.addObserver(lambda total, increment, *args: operation.requestInterrupt() if increment else None)
-        operation.stack(self.files, output, batchSize=2)
-        self.assertIsNone(output.sourceMap)
-        self.assertFalse(list(self.folder.glob("*.sources.*")))
-        with patch("startrails.op.stackImages.cv2.imwrite", return_value=False):
+    def test_cancelled_and_failed_stack_preserve_previous_record_and_files(self):
+        for i in range(4):
+            self.input(np.full((6, 6, 3), 80 + i, np.uint8))
+        app = self.app()
+        record = app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(app.getOutputFileList()[0], record)
+
+        manifest_path = output_sidecar(record, "sourceMap")
+        data = json.loads(manifest_path.read_text())
+        array_path = manifest_path.parent / data["array"]
+        expected_image = Path(record.path).read_bytes()
+        expected_array = array_path.read_bytes()
+        expected_manifest = manifest_path.read_bytes()
+        expected_metadata = (record.sourceMap, record.sourceStack, record.gapMask)
+        previous_candidates = app.locateSources(2, 2, record).candidates
+        self.assertTrue(previous_candidates)
+
+        def cancel(total, increment, count, done, data):
+            if increment:
+                app.activeOperation.requestInterrupt()
+
+        with self.assertRaises(CancelledError):
+            app.doStack(False, cancel, useGPU=False)
+
+        with patch("startrails.op.startrails.stack_images.imwrite", side_effect=OSError("disk full")):
             with self.assertRaises(OSError):
-                StackImages(False).stack(self.files, output)
-        self.assertIsNone(output.sourceMap)
-        self.assertFalse(list(self.folder.glob("*.sources.*")))
+                app.doStack(False, lambda *args: None, useGPU=False)
+
+        self.assertEqual(app.getOutputFileList(), [record])
+        self.assertIs(app.getOutputFileList()[0], record)
+        self.assertEqual(Path(record.path).read_bytes(), expected_image)
+        self.assertEqual(array_path.read_bytes(), expected_array)
+        self.assertEqual(manifest_path.read_bytes(), expected_manifest)
+        self.assertEqual(
+            (record.sourceMap, record.sourceStack, record.gapMask), expected_metadata
+        )
+        self.assertEqual(app.locateSources(2, 2, record).candidates, previous_candidates)
+
+    def test_restack_invalidates_dependent_fill_and_rejects_stale_held_record(self):
+        low = self.input(np.full((6, 6, 3), 60, np.uint8))
+        high = self.input(np.full((6, 6, 3), 120, np.uint8))
+        app = self.app()
+        basis = app.doStack(False, lambda *args: None, useGPU=False)
+        filled = self.fill_with_fake(app, basis)
+        mask_record = next(
+            record for record in app.getOutputFileList()
+            if record.operation == OP_FILL_GAPS_MASK
+        )
+        self.assertTrue(filled.sourceStack)
+        self.assertEqual(filled.sourceStack, mask_record.sourceStack)
+        self.assertIsNotNone(filled.source_stack_signature)
+        self.assertIs(filled_output(app.getOutputFileList()), filled)
+        self.assertIs(app.locateSources(2, 2, filled).candidates[0], high)
+        image_bytes = Path(filled.path).read_bytes()
+        mask_bytes = Path(mask_record.path).read_bytes()
+
+        # A failed restack leaves the prior fill advertised and usable.
+        with patch("startrails.op.startrails.stack_images.imwrite", side_effect=OSError("disk full")):
+            with self.assertRaises(OSError):
+                app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(filled_output(app.getOutputFileList()), filled)
+        self.assertIs(app.locateSources(2, 2, filled).candidates[0], high)
+
+        # A successful restack with a new winner invalidates the dependent records.
+        self.assertTrue(cv2.imwrite(low.path, np.full((6, 6, 3), 200, np.uint8)))
+        restacked = app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(restacked, basis)
+        self.assertIsNone(filled_output(app.getOutputFileList()))
+        self.assertFalse(
+            any(
+                record.operation in (OP_FILL_GAPS, OP_FILL_GAPS_MASK)
+                for record in app.getOutputFileList()
+            )
+        )
+        self.assertEqual(Path(filled.path).read_bytes(), image_bytes)
+        self.assertEqual(Path(mask_record.path).read_bytes(), mask_bytes)
+        with self.assertRaisesRegex(SourceMapError, "changed since this gap-filled image"):
+            app.locateSources(2, 2, filled)
+        self.assertIs(app.locateSources(2, 2, restacked).candidates[0], low)
+
+    def test_fill_records_keep_basis_even_without_a_source_map(self):
+        self.input(np.full((6, 6, 3), 90, np.uint8))
+        app = self.app()
+        basis = app.doStack(False, lambda *args: None, useGPU=False)
+        basis.sourceMap = None
+        filled = self.fill_with_fake(app, basis)
+        mask_record = next(
+            record for record in app.getOutputFileList()
+            if record.operation == OP_FILL_GAPS_MASK
+        )
+        self.assertIsNone(filled.sourceMap)
+        self.assertTrue(filled.sourceStack)
+        self.assertEqual(filled.sourceStack, mask_record.sourceStack)
+        self.assertIsNotNone(filled.source_stack_signature)
+        self.assertEqual(filled.source_stack_signature, mask_record.source_stack_signature)
+
+    def test_new_preferred_stack_does_not_advertise_another_basis_fill(self):
+        self.input(np.full((6, 6, 3), 90, np.uint8))
+        app = self.app()
+        keep = app.doStack(False, lambda *args: None, useGPU=False)
+        keep_fill = self.fill_with_fake(app, keep)
+        keep_bytes = Path(keep_fill.path).read_bytes()
+
+        removed = app.doStack(True, lambda *args: None, useGPU=False)
+        self.assertIs(preferred_stacked_output(app.getOutputFileList()), removed)
+        self.assertIsNone(filled_output(app.getOutputFileList()))
+        self.assertIn(keep_fill, app.getOutputFileList())
+        self.assertEqual(Path(keep_fill.path).read_bytes(), keep_bytes)
+
+        # Filling the new preferred stack reuses the canonical fill role.
+        removed_fill = self.fill_with_fake(app, removed)
+        removed_bytes = Path(removed_fill.path).read_bytes()
+        self.assertEqual(Path(output_sidecar(removed_fill, "sourceStack")).resolve(), Path(removed.path).resolve())
+        self.assertIs(filled_output(app.getOutputFileList()), removed_fill)
+
+        # Restacking the non-preferred Keep must preserve the Removed fill.
+        app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(filled_output(app.getOutputFileList()), removed_fill)
+        self.assertEqual(Path(removed_fill.path).read_bytes(), removed_bytes)
+        self.assertIs(app.locateSources(2, 2, removed_fill).candidates[0], self.files[0])
+
+    def test_standalone_source_map_writer_attaches_sidecars_after_success(self):
+        source = self.input(np.full((4, 4, 3), 200, np.uint8))
+        output = OutputFile("standalone.tif", str(self.folder / "standalone.tif"), "Stacked")
+        self.assertTrue(cv2.imwrite(output.path, cv2.imread(source.path)))
+        save_source_map(
+            output, np.zeros((4, 4, 3), np.uint16),
+            snapshot_sources(self.files, output), {"tie_break": "test"},
+        )
+        self.assertEqual(output.sourceMap, "standalone.tif.sources.json")
+        self.assertEqual(locate_sources(output, self.files, 1, 1).candidates, [source])
 
     def test_missing_changed_sources_and_changed_stack(self):
         first = self.input(np.full((6, 6, 3), 200, np.uint8))
@@ -232,27 +398,7 @@ class SourceMapTests(IsolatedTestCase):
         basis = app.doStack(False, lambda *args: None, useGPU=False)
         mask = np.zeros((16, 16, 3), np.uint8)
         mask[7:10, 7:10] = 255
-
-        class FakeFill(Observable):
-            @staticmethod
-            def suggestOutFileName(file, directory):
-                return str(Path(directory) / "filled.tif"), str(Path(directory) / "gapmask.tif")
-
-            def fillGaps(self, file, filled, output_mask):
-                cv2.imwrite(filled.path, cv2.imread(file.path))
-                cv2.imwrite(output_mask.path, mask)
-
-            def shouldInterrupt(self):
-                return False
-
-        import startrails.app as app_module
-
-        original = app_module.fgm
-        try:
-            app_module.fgm = SimpleNamespace(FillGaps=FakeFill)
-            filled = app.doFillGaps(basis, lambda *args: None)
-        finally:
-            app_module.fgm = original
+        filled = self.fill_with_fake(app, basis, mask)
         self.assertEqual(output_sidecar(filled, "sourceMap"), output_sidecar(basis, "sourceMap"))
         result = app.locateSources(8, 8, filled)
         self.assertIn("generated by gap filling", result.message)
@@ -260,12 +406,16 @@ class SourceMapTests(IsolatedTestCase):
         restored = jsonpickle.decode(jsonpickle.encode(filled))
         self.assertEqual(locate_sources(restored, self.files, 2, 2).candidates, self.files)
 
-    def test_repeated_stacks_do_not_overwrite_previous_maps(self):
+    def test_keep_and_remove_stacks_have_separate_maps_and_restack_overwrites(self):
         self.input(np.full((6, 6, 3), 200, np.uint8))
         app = self.app()
-        first = app.doStack(False, lambda *args: None, useGPU=False)
-        second = app.doStack(False, lambda *args: None, useGPU=False)
-        self.assertNotEqual(first.path, second.path)
-        self.assertNotEqual(first.sourceMap, second.sourceMap)
-        self.assertEqual(app.locateSources(2, 2, first).candidates, self.files)
-        self.assertEqual(app.locateSources(2, 2, second).candidates, self.files)
+        kept = app.doStack(False, lambda *args: None, useGPU=False)
+        removed = app.doStack(True, lambda *args: None, useGPU=False)
+        self.assertNotEqual(kept.path, removed.path)
+        self.assertNotEqual(kept.sourceMap, removed.sourceMap)
+        self.assertEqual(app.locateSources(2, 2, kept).candidates, self.files)
+        self.assertEqual(app.locateSources(2, 2, removed).candidates, self.files)
+        restacked = app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(restacked, kept)
+        self.assertEqual(app.locateSources(2, 2, restacked).candidates, self.files)
+        self.assertEqual(len(app.getOutputFileList()), 2)

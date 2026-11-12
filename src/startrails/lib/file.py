@@ -1,6 +1,7 @@
 import os
 import time
 from enum import Enum
+from pathlib import Path
 from uuid import uuid4
 import weakref
 
@@ -87,12 +88,115 @@ class OutputFile(File):
         self.sourceMap = None
         self.sourceStack = None
         self.gapMask = None
+        self.source_stack_signature = None
 
 
 class Operation(Enum):
     STACK = 1
     FILL_GAPS = 2
     FILL_GAPS_MASK = 3
+
+
+OP_STACKED_KEEP = "Stacked Keep"
+OP_STACKED_REMOVE = "Stacked"
+STACKED_OPERATIONS = (OP_STACKED_REMOVE, OP_STACKED_KEEP)
+OP_FILL_GAPS = "FillGaps"
+OP_FILL_GAPS_MASK = "FillGapsMask"
+
+STACKED_REMOVE_STEM = "startrails-stacked"
+STACKED_KEEP_STEM = "startrails-stacked-keep"
+FINAL_OUTPUT_STEM = "startrails-final"
+FINAL_MASK_STEM = "startrails-final-mask"
+
+OUTPUT_STEMS_BY_OPERATION = {
+    OP_STACKED_REMOVE: STACKED_REMOVE_STEM,
+    OP_STACKED_KEEP: STACKED_KEEP_STEM,
+    OP_FILL_GAPS: FINAL_OUTPUT_STEM,
+    OP_FILL_GAPS_MASK: FINAL_MASK_STEM,
+}
+
+
+def _output_stem(file: OutputFile) -> str:
+    # The on-disk path is authoritative; a stale display basename must not decide identity.
+    return os.path.splitext(os.path.basename(file.path))[0]
+
+
+def output_sidecar_path(output: OutputFile, name: str):
+    value = getattr(output, name, None)
+    if not value or not getattr(output, "path", None):
+        return None
+    return Path(output.path).resolve().parent / value
+
+
+def canonical_output(outputs, operation: str) -> OutputFile | None:
+    """Return the existing record whose path owns ``operation``'s canonical stem."""
+    stem = OUTPUT_STEMS_BY_OPERATION.get(operation)
+    if stem is None:
+        return None
+    for file in reversed(outputs):
+        if isinstance(file, OutputFile) and file.path and _output_stem(file) == stem:
+            return file
+    return None
+
+
+def _existing_outputs(outputs) -> list[OutputFile]:
+    """Return output records whose file exists; selection never prefers missing files."""
+    existing = []
+    for file in outputs:
+        if not isinstance(file, OutputFile):
+            continue
+        path = file.path
+        if path and os.path.isfile(path):
+            existing.append(file)
+    return existing
+
+
+def _last_match(outputs, predicate) -> OutputFile | None:
+    """Return the newest record in project order that satisfies predicate."""
+    return next((f for f in reversed(outputs) if predicate(f)), None)
+
+
+def preferred_stacked_output(outputs) -> OutputFile | None:
+    """Return the preferred existing stacked output.
+
+    Canonical file stems outrank legacy operation labels, so a legacy
+    ``operation="Stacked"`` record cannot shadow an existing canonical keep.
+    Legacy records fall back newest-first instead of using the first entry.
+    """
+    existing = _existing_outputs(outputs)
+    for stem in (STACKED_REMOVE_STEM, STACKED_KEEP_STEM):
+        match = _last_match(existing, lambda f, stem=stem: _output_stem(f) == stem)
+        if match is not None:
+            return match
+    return _last_match(existing, lambda f: f.operation in STACKED_OPERATIONS)
+
+
+def filled_output(outputs) -> OutputFile | None:
+    """Return the preferred existing Fill Gaps image, never a mask or missing record.
+
+    When a stacked output is available, fill records bound to a different stack
+    are not advertised for the current Fill target. Records without a recorded
+    basis remain a legacy fallback.
+    """
+    existing = [
+        f
+        for f in _existing_outputs(outputs)
+        if f.operation != OP_FILL_GAPS_MASK and _output_stem(f) != FINAL_MASK_STEM
+        and (f.operation == OP_FILL_GAPS or _output_stem(f) == FINAL_OUTPUT_STEM)
+    ]
+    preferred = preferred_stacked_output(outputs)
+    if preferred is not None:
+        preferred_path = Path(preferred.path).resolve()
+        eligible = []
+        for file in existing:
+            source = output_sidecar_path(file, "sourceStack")
+            if source is None or source.resolve() == preferred_path:
+                eligible.append(file)
+        existing = eligible
+    match = _last_match(existing, lambda f: _output_stem(f) == FINAL_OUTPUT_STEM)
+    if match is not None:
+        return match
+    return _last_match(existing, lambda f: f.operation == OP_FILL_GAPS)
 
 
 class DenoiseInputFile(File):
@@ -122,4 +226,3 @@ class DenoiseInputFile(File):
     def __getstate__(self):
         return {name: value for name, value in self.__dict__.items()
                 if name not in ("_project_ref", "is_reference")}
-
