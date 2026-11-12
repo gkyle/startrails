@@ -74,6 +74,31 @@ class SettingsTests(QtTestCase):
             self.assertEqual(stack.values()["fadeAmount"], expected)
         self.assertTrue(stack.ui.fadeAmount.isEnabled())
 
+    def test_stack_and_detect_settings_default_to_startrails_defaults(self):
+        from startrails.lib.project import Project
+        from startrails.lib.startrails.defaults import (
+            DEFAULT_MERGE_METHOD_INDEX,
+            STARTRAILS_DEFAULTS,
+        )
+        detect = DetectSettings(self.app)
+        self.assertEqual(detect.ui.confidence.value(), STARTRAILS_DEFAULTS.conf_threshold)
+        self.assertEqual(detect.ui.mergeThreshold.value(), STARTRAILS_DEFAULTS.merge_threshold)
+        self.assertEqual(detect.ui.mergeMethod.currentIndex(), DEFAULT_MERGE_METHOD_INDEX)
+        self.assertEqual(detect.values()["mergeMethod"], STARTRAILS_DEFAULTS.merge_method)
+
+        # Standalone StackSettings with no files has default fade and batch settings
+        stack = StackSettings(self.app)
+        self.assertEqual(stack.ui.fade.currentIndex(), STARTRAILS_DEFAULTS.fade_mode)
+        self.assertEqual(stack.ui.fadeAmount.value(), STARTRAILS_DEFAULTS.fade_amount)
+        self.assertEqual(stack.ui.batchSize.value(), STARTRAILS_DEFAULTS.batch_size)
+
+        # Associated Project defaults match STARTRAILS_DEFAULTS
+        proj = Project()
+        self.assertEqual(proj.fadeMode, STARTRAILS_DEFAULTS.fade_mode)
+        self.assertEqual(proj.fadeAmount, STARTRAILS_DEFAULTS.fade_amount)
+        self.assertEqual(proj.batchSize, STARTRAILS_DEFAULTS.batch_size)
+        self.assertEqual(proj.useGPU, STARTRAILS_DEFAULTS.use_gpu)
+
     def test_invalid_text_does_not_produce_settings(self):
         detect = DetectSettings(self.app)
         detect.ui.confidence.lineEdit().setText("")

@@ -5,6 +5,18 @@ from typing import Final
 from PySide6.QtCore import QElapsedTimer, QEvent, Qt, QSignalBlocker, QObject, Signal, Property
 from PySide6.QtWidgets import QButtonGroup, QFrame, QSlider, QSpinBox, QWidget
 from startrails.lib.gpu import resolve_torch_device
+from startrails.lib.startrails.defaults import (
+    DEFAULT_MERGE_METHOD_INDEX,
+    FADE_MODE_BOTH,
+    FADE_MODE_END,
+    FADE_MODE_OFF,
+    FADE_MODE_START,
+    MERGE_METHODS,
+    PERCENT_SCALE,
+    STARTRAILS_DEFAULTS,
+    STREAKS_KEEP_INDEX,
+    STREAKS_REMOVE_INDEX,
+)
 
 PREVIEW_LONG_PRESS_MS: Final[int] = 250
 
@@ -458,9 +470,9 @@ class DetectSettings(QWidget):
         toggle_advanced_settings(self, checked)
 
     def reset(self):
-        self.ui.confidence.setValue(0.3)
-        self.ui.mergeThreshold.setValue(0.2)
-        self.ui.mergeMethod.setCurrentIndex(1)
+        self.ui.confidence.setValue(STARTRAILS_DEFAULTS.conf_threshold)
+        self.ui.mergeThreshold.setValue(STARTRAILS_DEFAULTS.merge_threshold)
+        self.ui.mergeMethod.setCurrentIndex(DEFAULT_MERGE_METHOD_INDEX)
         self._first_file = None
         self.ui.error.clear()
         self.ui.error.hide()
@@ -494,7 +506,7 @@ class DetectSettings(QWidget):
         return dict(
             confThreshold=self.ui.confidence.value(),
             mergeThreshold=self.ui.mergeThreshold.value(),
-            mergeMethod=("NMS", "GREEDYNMM")[self.ui.mergeMethod.currentIndex()],
+            mergeMethod=MERGE_METHODS[self.ui.mergeMethod.currentIndex()],
             useGPU=self.ui.useGPU.isChecked(),
         )
 
@@ -585,14 +597,15 @@ class StackSettings(QWidget):
             self.ui.advancedToggle.setChecked(False)
             self._toggle_advanced(False)
         self.ui.useGPU.toggled.connect(self.suggest_batch)
-        self.ui.fade.currentIndexChanged.connect(lambda index: self.ui.fadeAmount.setEnabled(index != 0))
+        self.ui.fade.currentIndexChanged.connect(lambda index: self.ui.fadeAmount.setEnabled(index != FADE_MODE_OFF))
         self.reset()
         self.ui.fade.currentIndexChanged.connect(self._on_setting_changed)
         self.ui.fadeAmount.valueChanged.connect(self._on_setting_changed)
         self.ui.batchSize.valueChanged.connect(self._on_setting_changed)
         self.ui.useGPU.toggled.connect(self._on_setting_changed)
-        if hasattr(self.ui.streaks, "currentIndexChanged"):
-            self.ui.streaks.currentIndexChanged.connect(self._on_setting_changed)
+        if hasattr(self.ui, "streaks",):
+            if hasattr(self.ui.streaks, "currentIndexChanged"):
+                self.ui.streaks.currentIndexChanged.connect(self._on_setting_changed)
 
     def _toggle_advanced(self, checked):
         toggle_advanced_settings(self, checked)
@@ -610,7 +623,7 @@ class StackSettings(QWidget):
         project.batchSize = self.ui.batchSize.value()
         project.useGPU = self.ui.useGPU.isChecked()
         if hasattr(self.ui, "streaks") and self.ui.streaks is not None and self._has_masks:
-            project.streaksRemoved = (self.ui.streaks.currentIndex() == 1)
+            project.streaksRemoved = (self.ui.streaks.currentIndex() == STREAKS_REMOVE_INDEX)
 
     def set_from_project(self):
         project = getattr(self.app, "project", None)
@@ -620,25 +633,48 @@ class StackSettings(QWidget):
         if fade_mode is not None:
             with QSignalBlocker(self.ui.fade):
                 self.ui.fade.setCurrentIndex(int(fade_mode))
-        self.ui.fadeAmount.setEnabled(self.ui.fade.currentIndex() != 0)
+        self.ui.fadeAmount.setEnabled(self.ui.fade.currentIndex() != FADE_MODE_OFF)
+        fade_amount = getattr(project, "fadeAmount", None)
         with QSignalBlocker(self.ui.fadeAmount):
-            self.ui.fadeAmount.setValue(getattr(project, "fadeAmount", 10) if getattr(project, "fadeAmount", None) is not None else 20)
+            self.ui.fadeAmount.setValue(
+                int(fade_amount) if fade_amount is not None else STARTRAILS_DEFAULTS.fade_amount
+            )
+        batch_size = getattr(project, "batchSize", None)
         with QSignalBlocker(self.ui.batchSize):
-            self.ui.batchSize.setValue(getattr(project, "batchSize", 1) if getattr(project, "batchSize", None) is not None else 1)
+            self.ui.batchSize.setValue(
+                int(batch_size) if batch_size is not None else STARTRAILS_DEFAULTS.batch_size
+            )
+        use_gpu = getattr(project, "useGPU", None)
         with QSignalBlocker(self.ui.useGPU):
-            self.ui.useGPU.setChecked(getattr(project, "useGPU", True) if getattr(project, "useGPU", None) is not None else True)
+            self.ui.useGPU.setChecked(
+                bool(use_gpu) if use_gpu is not None else STARTRAILS_DEFAULTS.use_gpu
+            )
         saved_streaks = getattr(project, "streaksRemoved", None)
         if saved_streaks is not None and hasattr(self.ui, "streaks") and self.ui.streaks is not None:
             with QSignalBlocker(self.ui.streaks):
-                self.ui.streaks.setCurrentIndex(1 if (saved_streaks and self._has_masks) else 0)
+                self.ui.streaks.setCurrentIndex(
+                    STREAKS_REMOVE_INDEX if (saved_streaks and self._has_masks) else STREAKS_KEEP_INDEX
+                )
 
     def reset(self):
         project = getattr(self.app, "project", None)
-        self.ui.fade.setCurrentIndex(getattr(project, "fadeMode", 3) if getattr(project, "fadeMode", None) is not None else 3)
-        self.ui.fadeAmount.setValue(getattr(project, "fadeAmount", 10) if getattr(project, "fadeAmount", None) is not None else 10)
-        self.ui.batchSize.setValue(getattr(project, "batchSize", 1) if getattr(project, "batchSize", None) is not None else 1)
-        if getattr(project, "useGPU", None) is not None:
-            self.ui.useGPU.setChecked(bool(project.useGPU))
+        fade_mode = getattr(project, "fadeMode", None) if project is not None else None
+        fade_amount = getattr(project, "fadeAmount", None) if project is not None else None
+        batch_size = getattr(project, "batchSize", None) if project is not None else None
+        use_gpu = getattr(project, "useGPU", None) if project is not None else None
+
+        self.ui.fade.setCurrentIndex(
+            int(fade_mode) if fade_mode is not None else STARTRAILS_DEFAULTS.fade_mode
+        )
+        self.ui.fadeAmount.setValue(
+            int(fade_amount) if fade_amount is not None else STARTRAILS_DEFAULTS.fade_amount
+        )
+        self.ui.batchSize.setValue(
+            int(batch_size) if batch_size is not None else STARTRAILS_DEFAULTS.batch_size
+        )
+        self.ui.useGPU.setChecked(
+            bool(use_gpu) if use_gpu is not None else STARTRAILS_DEFAULTS.use_gpu
+        )
         self._has_masks = None
         self.set_has_masks(False)
         self._first_file = None
@@ -648,19 +684,23 @@ class StackSettings(QWidget):
         self.refresh_inputs()
 
     def set_has_masks(self, available):
-        self.ui.streaks.model().item(1).setEnabled(available)
+        self.ui.streaks.model().item(STREAKS_REMOVE_INDEX).setEnabled(available)
         project = getattr(self.app, "project", None)
         saved_streaks = getattr(project, "streaksRemoved", None)
         if available != self._has_masks:
             self._has_masks = available
             if saved_streaks is not None:
-                self.ui.streaks.setCurrentIndex(1 if (available and saved_streaks) else 0)
+                self.ui.streaks.setCurrentIndex(
+                    STREAKS_REMOVE_INDEX if (available and saved_streaks) else STREAKS_KEEP_INDEX
+                )
             else:
-                self.ui.streaks.setCurrentIndex(1 if available else 0)
+                self.ui.streaks.setCurrentIndex(
+                    STREAKS_REMOVE_INDEX if available else STREAKS_KEEP_INDEX
+                )
 
     def set_streaks_removed(self, removed: bool = True):
         if hasattr(self.ui, "streaks") and self.ui.streaks is not None:
-            target_idx = 1 if (removed and bool(self._has_masks)) else 0
+            target_idx = STREAKS_REMOVE_INDEX if (removed and bool(self._has_masks)) else STREAKS_KEEP_INDEX
             self.ui.streaks.setCurrentIndex(target_idx)
             self._persist_to_project()
 
@@ -700,11 +740,14 @@ class StackSettings(QWidget):
         self.ui.error.clear()
         self.ui.error.hide()
         mode = self.ui.fade.currentIndex()
-        amount = self.ui.fadeAmount.value() / 100
+        amount = self.ui.fadeAmount.value() / PERCENT_SCALE
         return dict(
-            streaksRemoved=self.ui.streaks.currentIndex() == 1,
-            fade=mode != 0,
-            fadeAmount=(amount if mode in (1, 3) else 0, amount if mode in (2, 3) else 0),
+            streaksRemoved=self.ui.streaks.currentIndex() == STREAKS_REMOVE_INDEX,
+            fade=mode != FADE_MODE_OFF,
+            fadeAmount=(
+                amount if mode in (FADE_MODE_START, FADE_MODE_BOTH) else 0.0,
+                amount if mode in (FADE_MODE_END, FADE_MODE_BOTH) else 0.0,
+            ),
             batchSize=self.ui.batchSize.value(),
             useGPU=self.ui.useGPU.isChecked(),
         )

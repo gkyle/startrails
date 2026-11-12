@@ -6,12 +6,14 @@ from typing import Any, Union
 import jsonpickle
 
 from startrails.lib.finish.defaults import FINISH_EXT, FINISH_OUTPUT_DIR_SUFFIX, PROJECT_TYPE_FINISH as TYPE_FINISH
+from startrails.lib.startrails.defaults import (
+    LEGACY_STARTRAILS_EXT,
+    PROJECT_TYPE_STARTRAILS as TYPE_STARTRAILS,
+    STARTRAILS_EXT,
+)
 
-STARTRAILS_EXT = ".proj_startrails"
 DENOISE_EXT = ".proj_denoise"
-LEGACY_STARTRAILS_EXT = ".project.json"
 
-TYPE_STARTRAILS = "startrails"
 TYPE_DENOISE = "denoise"
 
 
