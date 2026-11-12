@@ -119,6 +119,17 @@ def _output_stem(file: OutputFile) -> str:
     return os.path.splitext(os.path.basename(file.path))[0]
 
 
+def canonical_output(outputs, operation: str) -> OutputFile | None:
+    """Return the existing record whose path owns ``operation``'s canonical stem."""
+    stem = OUTPUT_STEMS_BY_OPERATION.get(operation)
+    if stem is None:
+        return None
+    for file in reversed(outputs):
+        if isinstance(file, OutputFile) and file.path and _output_stem(file) == stem:
+            return file
+    return None
+
+
 def _existing_outputs(outputs) -> list[OutputFile]:
     """Return output records whose file exists; selection never prefers missing files."""
     existing = []

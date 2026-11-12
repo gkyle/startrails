@@ -105,8 +105,9 @@ class FillGapsTests(IsolatedTestCase):
             try:
                 basis = app.doStack(False, lambda *args: None, useGPU=False)
                 records_before = list(app.getOutputFileList())
+                extension = Path(basis.path).suffix
                 filled_path, mask_path = FillGaps.suggestOutFileName(
-                    basis, str(app.project.get_output_dir())
+                    str(app.project.get_output_dir()), extension, extension
                 )
 
                 def cancel(total, increment, count, done, data):

@@ -8,7 +8,7 @@ import numpy
 
 from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.util import applyMask, imwrite, Observable
-from startrails.lib.file import InputFile, OutputFile, STACKED_KEEP_STEM, STACKED_REMOVE_STEM
+from startrails.lib.file import OUTPUT_STEMS_BY_OPERATION, InputFile, OutputFile
 from startrails.lib.source_map import save_source_map, snapshot_sources, source_dtype
 from startrails.lib.gpu import GPUInfo, free_cupy_memory, get_array_module, is_cupy_available
 
@@ -157,11 +157,8 @@ class StackImages(Observable):
         return fadeGradient
 
     @staticmethod
-    def suggestOutFileName(file: InputFile, outDir: str, streaksRemoved: bool = False):
-        fileName = os.path.basename(file.path)
-        _, extension = os.path.splitext(fileName)
-        stem = STACKED_REMOVE_STEM if streaksRemoved else STACKED_KEEP_STEM
-        return os.path.join(outDir, f"{stem}{extension}")
+    def suggestOutFileName(outDir: str, operation: str, extension: str):
+        return os.path.join(outDir, f"{OUTPUT_STEMS_BY_OPERATION[operation]}{extension}")
 
     def suggestBatchSize(path: str, gpuInfo: GPUInfo, useGPU=True, sourceCount=0):
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)

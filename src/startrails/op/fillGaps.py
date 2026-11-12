@@ -8,7 +8,12 @@ import cv2
 from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.util import imwrite, Observable
 from startrails.models.fillGaps.model import UNet
-from startrails.lib.file import FINAL_MASK_STEM, FINAL_OUTPUT_STEM, InputFile, OutputFile
+from startrails.lib.file import (
+    OP_FILL_GAPS,
+    OP_FILL_GAPS_MASK,
+    OUTPUT_STEMS_BY_OPERATION,
+    OutputFile,
+)
 from startrails.lib.gpu import resolve_torch_device
 from startrails.paths import APPLICATION_DIR
 
@@ -102,12 +107,10 @@ class FillGaps(Observable):
         return full_image, full_mask
 
     @staticmethod
-    def suggestOutFileName(file: InputFile, outDir: str):
-        fileName = os.path.basename(file.path)
-        _, extension = os.path.splitext(fileName)
+    def suggestOutFileName(outDir: str, extension: str, mask_extension: str):
         return [
-            os.path.join(outDir, f"{FINAL_OUTPUT_STEM}{extension}"),
-            os.path.join(outDir, f"{FINAL_MASK_STEM}{extension}"),
+            os.path.join(outDir, f"{OUTPUT_STEMS_BY_OPERATION[OP_FILL_GAPS]}{extension}"),
+            os.path.join(outDir, f"{OUTPUT_STEMS_BY_OPERATION[OP_FILL_GAPS_MASK]}{mask_extension}"),
         ]
 
 

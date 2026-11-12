@@ -271,7 +271,7 @@ class SourceMapTests(IsolatedTestCase):
 
         class FakeFill(Observable):
             @staticmethod
-            def suggestOutFileName(file, directory):
+            def suggestOutFileName(directory, extension, mask_extension):
                 return str(Path(directory) / "filled.tif"), str(Path(directory) / "gapmask.tif")
 
             def fillGaps(self, file, filled, output_mask):

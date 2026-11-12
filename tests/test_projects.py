@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import cv2
 import jsonpickle
 import numpy as np
 
@@ -363,6 +364,61 @@ class ProjectTests(IsolatedTestCase):
         )
         restored = jsonpickle.decode(jsonpickle.encode(project))
         self.assertIs(preferred_stacked_output(restored.outputFiles), restored.outputFiles[1])
+
+    def test_legacy_operation_is_not_reused_and_canonical_extension_stays_stable(self):
+        legacy_path = self.root / "legacy-stacked-200.tif"
+        self.assertTrue(cv2.imwrite(str(legacy_path), np.full((6, 6, 3), 20, np.uint8)))
+        legacy = OutputFile(legacy_path.name, str(legacy_path), OP_STACKED_KEEP)
+        legacy.sourceMap = "legacy.sources.json"
+        legacy.sourceStack = "legacy-stack.tif"
+        legacy.gapMask = "legacy-mask.tif"
+        legacy_metadata = (
+            legacy.basename, legacy.path, legacy.operation, legacy.sourceMap,
+            legacy.sourceStack, legacy.gapMask,
+        )
+        project = Project(
+            projectFile=str(self.root / "stable.proj_startrails"),
+            outputFiles=[legacy],
+        )
+        app = self.make_app(project)
+        tif_path = self.root / "frame.tif"
+        self.assertTrue(cv2.imwrite(str(tif_path), np.full((6, 6, 3), 40, np.uint8)))
+        app.project.rawInputFiles = [InputFile(tif_path.name, str(tif_path))]
+        first = app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIsNot(first, legacy)
+        self.assertEqual(Path(first.path).suffix, ".tif")
+        self.assertIn(legacy, app.getOutputFileList())
+
+        # Reloading the project preserves the legacy record and the canonical role.
+        app.project = jsonpickle.decode(jsonpickle.encode(app.project))
+        app._workflow = None
+        restored_legacy = next(record for record in app.project.outputFiles if record.path == legacy.path)
+        self.assertEqual(
+            (
+                restored_legacy.basename, restored_legacy.path, restored_legacy.operation,
+                restored_legacy.sourceMap, restored_legacy.sourceStack, restored_legacy.gapMask,
+            ),
+            legacy_metadata,
+        )
+
+        jpg_path = self.root / "frame.jpg"
+        self.assertTrue(cv2.imwrite(str(jpg_path), np.full((6, 6, 3), 80, np.uint8)))
+        app.project.rawInputFiles = [InputFile(jpg_path.name, str(jpg_path))]
+        second = app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(second, next(
+            record for record in app.project.outputFiles
+            if record.path == first.path
+        ))
+        self.assertEqual(second.path, first.path)
+        self.assertEqual(Path(second.path).suffix, ".tif")
+        self.assertFalse((Path(first.path).parent / "startrails-stacked-keep.jpg").exists())
+        self.assertEqual(
+            (
+                restored_legacy.basename, restored_legacy.path, restored_legacy.operation,
+                restored_legacy.sourceMap, restored_legacy.sourceStack, restored_legacy.gapMask,
+            ),
+            legacy_metadata,
+        )
 
     def test_missing_canonical_stacked_output_is_ignored_and_fallback_uses_newest(self):
         missing_path = self.root / "startrails-stacked.tif"
