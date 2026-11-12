@@ -121,6 +121,9 @@ class SegmentedButtonGroup(QObject):
                     def setEnabled(self, val):
                         self._btn.setEnabled(val)
 
+                    def isEnabled(self):
+                        return self._btn.isEnabled()
+
                 return _ItemAdapter(self._buttons[index])
 
         return _ModelAdapter(self.buttons)
@@ -497,6 +500,8 @@ class DetectSettings(QWidget):
 
 
 class StackSettings(QWidget):
+    settings_changed = Signal()
+
     def __init__(self, app=None, parent=None, ui=None):
         if isinstance(app, QWidget) and parent is None:
             parent = app
@@ -582,26 +587,82 @@ class StackSettings(QWidget):
         self.ui.useGPU.toggled.connect(self.suggest_batch)
         self.ui.fade.currentIndexChanged.connect(lambda index: self.ui.fadeAmount.setEnabled(index != 0))
         self.reset()
+        self.ui.fade.currentIndexChanged.connect(self._on_setting_changed)
+        self.ui.fadeAmount.valueChanged.connect(self._on_setting_changed)
+        self.ui.batchSize.valueChanged.connect(self._on_setting_changed)
+        self.ui.useGPU.toggled.connect(self._on_setting_changed)
+        if hasattr(self.ui.streaks, "currentIndexChanged"):
+            self.ui.streaks.currentIndexChanged.connect(self._on_setting_changed)
 
     def _toggle_advanced(self, checked):
         toggle_advanced_settings(self, checked)
 
+    def _on_setting_changed(self, *args):
+        self._persist_to_project()
+        self.settings_changed.emit()
+
+    def _persist_to_project(self):
+        project = getattr(self.app, "project", None)
+        if project is None or not hasattr(project, "fadeMode"):
+            return
+        project.fadeMode = self.ui.fade.currentIndex()
+        project.fadeAmount = self.ui.fadeAmount.value()
+        project.batchSize = self.ui.batchSize.value()
+        project.useGPU = self.ui.useGPU.isChecked()
+        if hasattr(self.ui, "streaks") and self.ui.streaks is not None and self._has_masks:
+            project.streaksRemoved = (self.ui.streaks.currentIndex() == 1)
+
+    def set_from_project(self):
+        project = getattr(self.app, "project", None)
+        if project is None:
+            return
+        fade_mode = getattr(project, "fadeMode", None)
+        if fade_mode is not None:
+            with QSignalBlocker(self.ui.fade):
+                self.ui.fade.setCurrentIndex(int(fade_mode))
+        self.ui.fadeAmount.setEnabled(self.ui.fade.currentIndex() != 0)
+        with QSignalBlocker(self.ui.fadeAmount):
+            self.ui.fadeAmount.setValue(getattr(project, "fadeAmount", 10) if getattr(project, "fadeAmount", None) is not None else 20)
+        with QSignalBlocker(self.ui.batchSize):
+            self.ui.batchSize.setValue(getattr(project, "batchSize", 1) if getattr(project, "batchSize", None) is not None else 1)
+        with QSignalBlocker(self.ui.useGPU):
+            self.ui.useGPU.setChecked(getattr(project, "useGPU", True) if getattr(project, "useGPU", None) is not None else True)
+        saved_streaks = getattr(project, "streaksRemoved", None)
+        if saved_streaks is not None and hasattr(self.ui, "streaks") and self.ui.streaks is not None:
+            with QSignalBlocker(self.ui.streaks):
+                self.ui.streaks.setCurrentIndex(1 if (saved_streaks and self._has_masks) else 0)
+
     def reset(self):
-        self.ui.fade.setCurrentIndex(3)
-        self.ui.fadeAmount.setValue(20)
-        self.ui.batchSize.setValue(1)
+        project = getattr(self.app, "project", None)
+        self.ui.fade.setCurrentIndex(getattr(project, "fadeMode", 3) if getattr(project, "fadeMode", None) is not None else 3)
+        self.ui.fadeAmount.setValue(getattr(project, "fadeAmount", 10) if getattr(project, "fadeAmount", None) is not None else 10)
+        self.ui.batchSize.setValue(getattr(project, "batchSize", 1) if getattr(project, "batchSize", None) is not None else 1)
+        if getattr(project, "useGPU", None) is not None:
+            self.ui.useGPU.setChecked(bool(project.useGPU))
         self._has_masks = None
         self.set_has_masks(False)
         self._first_file = None
         self.ui.error.clear()
         self.ui.error.hide()
+        self.set_from_project()
         self.refresh_inputs()
 
     def set_has_masks(self, available):
         self.ui.streaks.model().item(1).setEnabled(available)
+        project = getattr(self.app, "project", None)
+        saved_streaks = getattr(project, "streaksRemoved", None)
         if available != self._has_masks:
-            self.ui.streaks.setCurrentIndex(1 if available else 0)
             self._has_masks = available
+            if saved_streaks is not None:
+                self.ui.streaks.setCurrentIndex(1 if (available and saved_streaks) else 0)
+            else:
+                self.ui.streaks.setCurrentIndex(1 if available else 0)
+
+    def set_streaks_removed(self, removed: bool = True):
+        if hasattr(self.ui, "streaks") and self.ui.streaks is not None:
+            target_idx = 1 if (removed and bool(self._has_masks)) else 0
+            self.ui.streaks.setCurrentIndex(target_idx)
+            self._persist_to_project()
 
     def refresh_inputs(self):
         files = self.app.getInputFileList() if (self.app and hasattr(self.app, "getInputFileList")) else []
@@ -682,16 +743,25 @@ class ReviewSettings(QWidget):
                 nextSource=ui.nextSource,
                 backToStack=ui.backToStack,
                 sourceLookupStatus=ui.sourceLookupStatus,
+                pendingCorrectionsNotice=getattr(ui, "pendingCorrectionsNotice", None),
                 training=getattr(ui, "exportTraining", getattr(ui, "training", None)),
                 contribute=getattr(ui, "contribute", getattr(ui, "contributeTraining", None)),
             )
         else:
             self.ui = Ui_ReviewSettings()
             self.ui.setupUi(self)
+            if not hasattr(self.ui, "pendingCorrectionsNotice"):
+                self.ui.pendingCorrectionsNotice = None
             if not hasattr(self.ui, "training"):
                 self.ui.training = None
             if not hasattr(self.ui, "contribute"):
                 self.ui.contribute = None
+        self.set_pending_notice_visible(False)
+
+    def set_pending_notice_visible(self, visible: bool):
+        notice = getattr(self.ui, "pendingCorrectionsNotice", None)
+        if notice is not None:
+            notice.setVisible(bool(visible))
 
     def set_counts(self, auto: int, manual: int, deleted: int):
         if getattr(self.ui, "statAutoNum", None) is not None:
@@ -703,6 +773,7 @@ class ReviewSettings(QWidget):
 
     def reset(self):
         self.set_counts(0, 0, 0)
+        self.set_pending_notice_visible(False)
         if getattr(self.ui, "showDeletedMasks", None) is not None:
             with QSignalBlocker(self.ui.showDeletedMasks):
                 self.ui.showDeletedMasks.setChecked(False)

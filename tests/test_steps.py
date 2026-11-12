@@ -51,6 +51,18 @@ class SettingsTests(QtTestCase):
         stack.set_has_masks(True)
         self.assertFalse(stack.values()["streaksRemoved"])
 
+    def test_stack_streaks_defaults_to_remove_when_masks_available_with_project(self):
+        from startrails.lib.project import Project
+        self.app.project = Project()
+        stack = StackSettings(self.app)
+        self.assertIsNone(self.app.project.streaksRemoved)
+        stack.ui.batchSize.setValue(5)
+        self.assertIsNone(self.app.project.streaksRemoved)
+        stack.set_has_masks(True)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 1)
+        self.assertTrue(stack.values()["streaksRemoved"])
+        self.assertTrue(self.app.project.streaksRemoved)
+
     def test_collapse_and_fade_mapping(self):
         stack = StackSettings(self.app)
         card = StepCard("Stack Images", stack, 2)

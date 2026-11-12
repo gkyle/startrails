@@ -143,15 +143,29 @@ class Sidebar(QWidget):
         corrections_count = manual_count + deleted_count
         corrections_text = f"{corrections_count} correction" if corrections_count == 1 else f"{corrections_count} corrections"
 
+        applied_corrections = getattr(getattr(app, "project", None), "applied_corrections", 0)
+        new_corrections = max(0, corrections_count - applied_corrections)
+
         if not has_inputs:
             self.reviewCard.setStatus("locked", "Add input files to begin")
-        elif has_stacked:
-            self.reviewCard.setStatus("done", corrections_text)
+        elif new_corrections > 0:
+            applied_str = f"{applied_corrections} applied" if applied_corrections == 1 else f"{applied_corrections} applied"
+            new_str = f"{new_corrections} new"
+            self.reviewCard.setStatus("ready", f"{applied_str} · {new_str}")
+        elif corrections_count > 0:
+            text = f"{corrections_count} applied" if corrections_count == 1 else f"{corrections_count} applied"
+            self.reviewCard.setStatus("done" if has_stacked else "ready", text)
         else:
-            self.reviewCard.setStatus("ready", corrections_text)
+            self.reviewCard.setStatus("done" if has_stacked else "ready", "0 corrections")
+
+        has_unapplied_corrections = (new_corrections > 0)
+        if hasattr(self, "review") and hasattr(self.review, "set_pending_notice_visible"):
+            self.review.set_pending_notice_visible(has_unapplied_corrections)
 
         if not has_inputs:
             self.stackCard.setStatus("locked", "Add input files to begin")
+        elif has_unapplied_corrections:
+            self.stackCard.setStatus("ready", "Ready · corrections updated")
         elif has_stacked:
             self.stackCard.setStatus("done", "Stacked image generated")
         else:

@@ -245,3 +245,94 @@ class StarTrailsViewPreviewTests(QtTestCase):
         self.assertFalse(sidebar.inputs.is_expanded)
         self.assertFalse(sidebar.outputs.is_expanded)
         self.assertIs(shell.currentFile, ctx.in1)
+
+    def test_corrections_change_stack_status_to_ready_and_track_applied_vs_new(self):
+        ctx = self._build_view()
+        sidebar = ctx.sidebar
+
+        # Initial state with stack already present: 0 corrections
+        sidebar.update_operations_progress()
+        self.assertEqual(sidebar.stackCard.status, "done")
+        self.assertEqual(sidebar.reviewCard.status, "done")
+        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "0 corrections")
+        self.assertTrue(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
+
+        # Adding a manual correction makes Stack Images "ready" and displays count breakdown & blurb
+        ctx.in1.streaksManualMasks.append([[1, 1], [2, 2], [3, 3]])
+        ctx.view.slotFileIndicators(ctx.in1)
+
+        self.assertEqual(sidebar.stackCard.status, "ready")
+        self.assertEqual(sidebar.reviewCard.status, "ready")
+        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "0 applied · 1 new")
+        self.assertFalse(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
+
+        # Running stack applies corrections
+        ctx.app.doStack(True, lambda *args: None, useGPU=False)
+        ctx.view.slotRefreshOutputs()
+
+        self.assertEqual(sidebar.stackCard.status, "done")
+        self.assertEqual(sidebar.reviewCard.status, "done")
+        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "1 applied")
+        self.assertTrue(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
+
+        # Adding another correction again marks it ready with applied vs new
+        ctx.in2.streaksManualDeletedMasks.append([[4, 4], [5, 5]])
+        ctx.view.slotFileIndicators(ctx.in2)
+
+        self.assertEqual(sidebar.stackCard.status, "ready")
+        self.assertEqual(sidebar.reviewCard.status, "ready")
+        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "1 applied · 1 new")
+        self.assertFalse(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
+
+    def test_stack_settings_persist_to_project_file(self):
+        ctx = self._build_view()
+        stack = ctx.sidebar.stack
+
+        # Set specific settings
+        stack.ui.fade.setCurrentIndex(1)  # Fade start
+        stack.ui.fadeAmount.setValue(45)
+        stack.ui.useGPU.setChecked(False)
+
+        # Check in project
+        proj = ctx.app.project
+        self.assertEqual(proj.fadeMode, 1)
+        self.assertEqual(proj.fadeAmount, 45)
+        self.assertFalse(proj.useGPU)
+
+        # Re-stacking preserves these settings
+        vals = stack.values()
+        self.assertEqual(vals["fade"], True)
+        self.assertEqual(vals["fadeAmount"], (0.45, 0.0))
+        self.assertFalse(vals["useGPU"])
+
+        # Resetting or reloading restores settings from project
+        stack.reset()
+        self.assertEqual(stack.ui.fade.currentIndex(), 1)
+        self.assertEqual(stack.ui.fadeAmount.value(), 45)
+        self.assertFalse(stack.ui.useGPU.isChecked())
+
+    def test_completing_detect_streaks_defaults_stack_streaks_to_remove(self):
+        ctx = self._build_view()
+        stack = ctx.sidebar.stack
+
+        # Initially no masks exist for in1 or in2
+        self.assertEqual(stack.ui.streaks.currentIndex(), 0)
+        self.assertFalse(stack.ui.streaks.model().item(1).isEnabled())
+
+        # Simulate streak detection completing and finding a mask on in1
+        ctx.in1.streaksMasks.append([[0, 0], [10, 10]])
+        ctx.view.slotDetectStreaksFinished()
+
+        # Stack Images streaks setting defaults to Remove (index 1)
+        self.assertTrue(stack.ui.streaks.model().item(1).isEnabled())
+        self.assertEqual(stack.ui.streaks.currentIndex(), 1)
+        self.assertTrue(stack.values()["streaksRemoved"])
+        self.assertTrue(ctx.app.project.streaksRemoved)
+
+        # If user switches to Keep, but then runs and completes Detect Streaks again, it defaults back to Remove
+        stack.ui.streaks.setCurrentIndex(0)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 0)
+        self.assertFalse(stack.values()["streaksRemoved"])
+        ctx.view.slotDetectStreaksFinished()
+        self.assertEqual(stack.ui.streaks.currentIndex(), 1)
+        self.assertTrue(stack.values()["streaksRemoved"])

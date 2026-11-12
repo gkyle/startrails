@@ -239,6 +239,11 @@ class StarTrailsWorkflow(Workflow):
             self.app.activeOperation = None
             stackImages.removeObserver(progressBar)
         self._invalidate_fill_dependents(filename)
+        total_corrections = sum(
+            len(getattr(f, "streaksManualMasks", [])) + len(getattr(f, "streaksManualDeletedMasks", []))
+            for f in self.project.rawInputFiles
+        )
+        self.project.applied_corrections = total_corrections
         record = self._upsert_output_file(basename, filename, operation, fadeGradient=fadeGradient)
         record.sourceMap = file.sourceMap
         record.sourceStack = file.sourceStack

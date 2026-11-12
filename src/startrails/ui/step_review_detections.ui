@@ -238,7 +238,7 @@ color: #92400e;</string>
    <item>
     <widget class="QLabel" name="findBrightestHint">
      <property name="text">
-      <string>Click on a streak in a stacked or gap-filled image to locate its source frame.</string>
+      <string>Click on a streak in the image to locate its source frame.</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
@@ -298,6 +298,24 @@ color: #92400e;</string>
     <widget class="QLabel" name="sourceLookupStatus">
      <property name="text">
       <string/>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="pendingCorrectionsNotice">
+     <property name="styleSheet">
+      <string notr="true">background-color: #fffbeb;
+border: 1px solid #fef3c7;
+border-radius: 6px;
+padding: 6px 8px;
+color: #92400e;
+font-size: 11px;</string>
+     </property>
+     <property name="text">
+      <string>Regenerate the stack to apply corrections.</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>

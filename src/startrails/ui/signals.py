@@ -39,6 +39,7 @@ class Signals(QObject):
     updateFile: Signal = Signal(File)
     fileMetadataChanged: Signal = Signal(File)
     refreshReadiness: Signal = Signal()
+    detectStreaksFinished: Signal = Signal()
 
     focusFile: Signal = Signal(File)
     drawInputFileList: Signal = Signal(File)

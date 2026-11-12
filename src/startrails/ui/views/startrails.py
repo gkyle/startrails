@@ -251,6 +251,8 @@ class StarTrailsView(ModeView):
         self.connect_signal(signals.drawOutputFileList, self.slotRefreshOutputs)
         self.connect_signal(signals.fileMetadataChanged, self.slotFileIndicators)
         self.connect_signal(signals.refreshReadiness, self.slotRefreshReadiness)
+        if hasattr(signals, "detectStreaksFinished"):
+            self.connect_signal(signals.detectStreaksFinished, self.slotDetectStreaksFinished)
         self.connect_signal(signals.findBrightestFrame, self.doFindBrightFrame)
         self.connect_signal(signals.sourceLookupReady, self.slotSourceLookupReady)
 
@@ -276,6 +278,9 @@ class StarTrailsView(ModeView):
         self.connect_signal(self.sidebar.review.ui.nextSource.clicked, self.nextSourceCandidate)
         self.connect_signal(self.sidebar.review.ui.backToStack.clicked, self.backToSourceStack)
 
+        if hasattr(self.sidebar, "stack") and self.sidebar.stack is not None:
+            self.connect_signal(self.sidebar.stack.settings_changed, self._on_stack_settings_changed)
+
         if self.pushButton_findBrightest is not None and hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
             self.connect_signal(self.pushButton_findBrightest.toggled, self.shell.canvas_main.setFindBrightestMode)
             self.connect_signal(self.shell.canvas_main.findBrightestModeChanged, self.pushButton_findBrightest.setChecked)
@@ -285,6 +290,10 @@ class StarTrailsView(ModeView):
         super().teardown()
         if self.sidebar is not None:
             self.sidebar.setParent(None)
+
+    def _on_stack_settings_changed(self):
+        if hasattr(self.app, "saveProject"):
+            self.app.saveProject()
 
     # -------------------------------------------------------------------------
     # File View & Selection
@@ -382,11 +391,19 @@ class StarTrailsView(ModeView):
             self.inputFiles.model.update_file(file)
         if self.outputFiles is not None:
             self.outputFiles.model.update_file(file)
+        self.updateReadyStates()
 
     @Slot()
     def slotRefreshReadiness(self):
         if self.inputFiles is not None:
             self.inputFiles.model.refresh_annotations()
+
+    @Slot()
+    def slotDetectStreaksFinished(self):
+        self.slotRefreshReadiness()
+        if self.sidebar is not None and hasattr(self.sidebar, "stack") and self.sidebar.stack is not None:
+            if self.readyStreaksRemoved:
+                self.sidebar.stack.set_streaks_removed(True)
 
     def onShowDeletedMasksChanged(self, state):
         if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
@@ -816,6 +833,8 @@ class StarTrailsView(ModeView):
             self.app.doDetectStreaks(progressUpdater.tick, **settings)
             try:
                 signals.refreshReadiness.emit()
+                if hasattr(signals, "detectStreaksFinished"):
+                    signals.detectStreaksFinished.emit()
             except RuntimeError:
                 pass
 

@@ -18,6 +18,11 @@ class Project(Unpickle):
         projectFile: str = f"projects/default{STARTRAILS_EXT}",
         sortBy: str = "date",
         sortOrder: str = "asc",
+        fadeMode: int = 3,
+        fadeAmount: int = 10,
+        batchSize: int = 1,
+        useGPU: bool = True,
+        streaksRemoved: Optional[bool] = None,
     ):
         super().__init__()
         self.rawInputFiles = list(rawInputFiles) if rawInputFiles is not None else []
@@ -27,6 +32,12 @@ class Project(Unpickle):
         self.projectFile = projectFile
         self.sortBy = sortBy
         self.sortOrder = sortOrder
+        self.fadeMode = fadeMode
+        self.fadeAmount = fadeAmount
+        self.batchSize = batchSize
+        self.useGPU = useGPU
+        self.streaksRemoved = streaksRemoved
+        self.applied_corrections: int = 0
 
     def get_output_dir(self) -> Path:
         """Resolve the authoritative output directory for this project."""
