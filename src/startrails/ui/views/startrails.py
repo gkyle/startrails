@@ -251,8 +251,7 @@ class StarTrailsView(ModeView):
         self.connect_signal(signals.drawOutputFileList, self.slotRefreshOutputs)
         self.connect_signal(signals.fileMetadataChanged, self.slotFileIndicators)
         self.connect_signal(signals.refreshReadiness, self.slotRefreshReadiness)
-        if hasattr(signals, "detectStreaksFinished"):
-            self.connect_signal(signals.detectStreaksFinished, self.slotDetectStreaksFinished)
+        self.connect_signal(signals.detectStreaksFinished, self.slotDetectStreaksFinished)
         self.connect_signal(signals.findBrightestFrame, self.doFindBrightFrame)
         self.connect_signal(signals.sourceLookupReady, self.slotSourceLookupReady)
 
@@ -344,9 +343,7 @@ class StarTrailsView(ModeView):
         if self.inputFiles is None:
             return
         self.inputFiles.set_files(self.app.getInputFileList())
-        sortBy = getattr(getattr(self.app, "project", None), "sortBy", "date") or "date"
-        sortOrder = getattr(getattr(self.app, "project", None), "sortOrder", "asc") or "asc"
-        self.inputFiles.set_sort_state(sortBy, sortOrder)
+        self.inputFiles.set_sort_state(self.app.project.sortBy, self.app.project.sortOrder)
         self.outputFiles.set_files(self.app.getOutputFileList())
         self.sidebar.reset_settings()
         self.sidebar.detectCard.setExpanded(True)
@@ -360,9 +357,7 @@ class StarTrailsView(ModeView):
         if self.inputFiles is None:
             return
         self.inputFiles.set_files(self.app.getInputFileList())
-        sortBy = getattr(getattr(self.app, "project", None), "sortBy", "date") or "date"
-        sortOrder = getattr(getattr(self.app, "project", None), "sortOrder", "asc") or "asc"
-        self.inputFiles.set_sort_state(sortBy, sortOrder)
+        self.inputFiles.set_sort_state(self.app.project.sortBy, self.app.project.sortOrder)
         self.sidebar.refresh_inputs()
         self.updateReadyStates()
         if focus is not None:
@@ -832,9 +827,7 @@ class StarTrailsView(ModeView):
             )
             self.app.doDetectStreaks(progressUpdater.tick, **settings)
             try:
-                signals.refreshReadiness.emit()
-                if hasattr(signals, "detectStreaksFinished"):
-                    signals.detectStreaksFinished.emit()
+                signals.detectStreaksFinished.emit()
             except RuntimeError:
                 pass
 

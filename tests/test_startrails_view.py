@@ -250,39 +250,74 @@ class StarTrailsViewPreviewTests(QtTestCase):
         ctx = self._build_view()
         sidebar = ctx.sidebar
 
-        # Initial state with stack already present: 0 corrections
+        # 1. Pre-stack state: before any stack exists, detection is optional and no applied claim
+        ctx.app.project.outputFiles.clear()
         sidebar.update_operations_progress()
-        self.assertEqual(sidebar.stackCard.status, "done")
-        self.assertEqual(sidebar.reviewCard.status, "done")
+        self.assertEqual(sidebar.stackCard.status, "ready")
+        self.assertEqual(sidebar.stackCard.ui.subtitle.text(), "Ready · detection is optional")
+        self.assertEqual(sidebar.reviewCard.status, "ready")
         self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "0 corrections")
         self.assertTrue(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
 
-        # Adding a manual correction makes Stack Images "ready" and displays count breakdown & blurb
+        # Adding a manual correction pre-stack displays count without applied claim or regenerate notice
         ctx.in1.streaksManualMasks.append([[1, 1], [2, 2], [3, 3]])
         ctx.view.slotFileIndicators(ctx.in1)
-
         self.assertEqual(sidebar.stackCard.status, "ready")
+        self.assertEqual(sidebar.stackCard.ui.subtitle.text(), "Ready · detection is optional")
         self.assertEqual(sidebar.reviewCard.status, "ready")
-        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "0 applied · 1 new")
-        self.assertFalse(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
+        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "1 correction")
+        self.assertTrue(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
 
-        # Running stack applies corrections
+        # 2. Running stack with Remove applies corrections and marks steps done
         ctx.app.doStack(True, lambda *args: None, useGPU=False)
         ctx.view.slotRefreshOutputs()
-
         self.assertEqual(sidebar.stackCard.status, "done")
         self.assertEqual(sidebar.reviewCard.status, "done")
         self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "1 applied")
         self.assertTrue(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
 
-        # Adding another correction again marks it ready with applied vs new
-        ctx.in2.streaksManualDeletedMasks.append([[4, 4], [5, 5]])
-        ctx.view.slotFileIndicators(ctx.in2)
-
+        # 3. Same-count vertex move marks corrections changed and shows notice
+        ctx.in1.streaksManualMasks[0][0] = [10, 10]
+        ctx.view.slotFileIndicators(ctx.in1)
         self.assertEqual(sidebar.stackCard.status, "ready")
+        self.assertEqual(sidebar.stackCard.ui.subtitle.text(), "Ready · corrections updated")
         self.assertEqual(sidebar.reviewCard.status, "ready")
-        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "1 applied · 1 new")
+        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "1 applied · corrections changed")
         self.assertFalse(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
+
+        # 4. Stacking in Keep mode does NOT clear pending notice or mark corrections applied
+        ctx.app.doStack(False, lambda *args: None, useGPU=False)
+        ctx.view.slotRefreshOutputs()
+        self.assertEqual(sidebar.stackCard.status, "ready")
+        self.assertEqual(sidebar.stackCard.ui.subtitle.text(), "Ready · corrections updated")
+        self.assertEqual(sidebar.reviewCard.status, "ready")
+        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "1 applied · corrections changed")
+        self.assertFalse(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
+
+        # 5. Successful Remove stack clears pending notice
+        ctx.app.doStack(True, lambda *args: None, useGPU=False)
+        ctx.view.slotRefreshOutputs()
+        self.assertEqual(sidebar.stackCard.status, "done")
+        self.assertEqual(sidebar.reviewCard.status, "done")
+        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "1 applied")
+        self.assertTrue(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
+
+        # 6. Removal of all corrections marks corrections changed and shows notice
+        ctx.in1.streaksManualMasks.clear()
+        ctx.view.slotFileIndicators(ctx.in1)
+        self.assertEqual(sidebar.stackCard.status, "ready")
+        self.assertEqual(sidebar.stackCard.ui.subtitle.text(), "Ready · corrections updated")
+        self.assertEqual(sidebar.reviewCard.status, "ready")
+        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "1 applied · corrections changed")
+        self.assertFalse(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
+
+        # Successful Remove stack clears snapshot to 0 corrections
+        ctx.app.doStack(True, lambda *args: None, useGPU=False)
+        ctx.view.slotRefreshOutputs()
+        self.assertEqual(sidebar.stackCard.status, "done")
+        self.assertEqual(sidebar.reviewCard.status, "done")
+        self.assertEqual(sidebar.reviewCard.ui.subtitle.text(), "0 corrections")
+        self.assertTrue(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
 
     def test_stack_settings_persist_to_project_file(self):
         from unittest.mock import MagicMock

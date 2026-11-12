@@ -222,6 +222,27 @@ color: #92400e;</string>
     </layout>
    </item>
    <item>
+    <widget class="QLabel" name="pendingCorrectionsNotice">
+     <property name="accessibleName">
+      <string>Pending corrections notice</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">background-color: #fffbeb;
+border: 1px solid #fef3c7;
+border-radius: 6px;
+padding: 6px 8px;
+color: #92400e;
+font-size: 11px;</string>
+     </property>
+     <property name="text">
+      <string>Regenerate the stack to apply corrections.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QFrame" name="sepFindBrightest">
      <property name="frameShape">
       <enum>QFrame::Shape::HLine</enum>
@@ -298,24 +319,6 @@ color: #92400e;</string>
     <widget class="QLabel" name="sourceLookupStatus">
      <property name="text">
       <string/>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="pendingCorrectionsNotice">
-     <property name="styleSheet">
-      <string notr="true">background-color: #fffbeb;
-border: 1px solid #fef3c7;
-border-radius: 6px;
-padding: 6px 8px;
-color: #92400e;
-font-size: 11px;</string>
-     </property>
-     <property name="text">
-      <string>Regenerate the stack to apply corrections.</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>

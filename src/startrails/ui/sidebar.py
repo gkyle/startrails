@@ -2,6 +2,7 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 from startrails.lib.file import OutputFile, filled_output, preferred_stacked_output
+from startrails.lib.project import Project
 from .file_manager import FileSection
 from .steps import StepCard, DetectSettings, ReviewSettings, StackSettings, FillSettings, AdditionalToolsSettings
 from .theme import system_theme
@@ -140,25 +141,25 @@ class Sidebar(QWidget):
         else:
             self.detectCard.setStatus("ready", "Ready to detect streaks")
 
-        corrections_count = manual_count + deleted_count
-        corrections_text = f"{corrections_count} correction" if corrections_count == 1 else f"{corrections_count} corrections"
+        project = app.project if app is not None else Project()
+        has_pending = project.corrections_pending()
+        corrections_count = project.corrections_count()
+        applied_corrections = project.applied_corrections
 
-        applied_corrections = getattr(getattr(app, "project", None), "applied_corrections", 0)
-        new_corrections = max(0, corrections_count - applied_corrections)
+        corrections_text = f"{corrections_count} correction" if corrections_count == 1 else f"{corrections_count} corrections"
+        has_unapplied_corrections = has_stacked and has_pending
 
         if not has_inputs:
             self.reviewCard.setStatus("locked", "Add input files to begin")
-        elif new_corrections > 0:
-            applied_str = f"{applied_corrections} applied" if applied_corrections == 1 else f"{applied_corrections} applied"
-            new_str = f"{new_corrections} new"
-            self.reviewCard.setStatus("ready", f"{applied_str} · {new_str}")
+        elif not has_stacked:
+            self.reviewCard.setStatus("ready", corrections_text)
+        elif has_pending:
+            self.reviewCard.setStatus("ready", f"{applied_corrections} applied · corrections changed")
         elif corrections_count > 0:
-            text = f"{corrections_count} applied" if corrections_count == 1 else f"{corrections_count} applied"
-            self.reviewCard.setStatus("done" if has_stacked else "ready", text)
+            self.reviewCard.setStatus("done", f"{corrections_count} applied")
         else:
-            self.reviewCard.setStatus("done" if has_stacked else "ready", "0 corrections")
+            self.reviewCard.setStatus("done", "0 corrections")
 
-        has_unapplied_corrections = (new_corrections > 0)
         if hasattr(self, "review") and hasattr(self.review, "set_pending_notice_visible"):
             self.review.set_pending_notice_visible(has_unapplied_corrections)
 
