@@ -9,7 +9,14 @@ from deferred_import import deferred_import
 dsm = deferred_import("startrails.op.detectStreaks")
 fgm = deferred_import("startrails.op.fillGaps")
 
-from startrails.lib.file import InputFile, OutputFile
+from startrails.lib.file import (
+    OP_FILL_GAPS,
+    OP_FILL_GAPS_MASK,
+    OP_STACKED_KEEP,
+    OP_STACKED_REMOVE,
+    InputFile,
+    OutputFile,
+)
 from startrails.lib.source_map import locate_sources, output_sidecar, relative_path
 from startrails.op.exportMaskedImages import ExportMaskedImages
 from startrails.op.exportStreaksTraining import ExportStreaksDetectTraining
@@ -142,6 +149,29 @@ class StarTrailsWorkflow(Workflow):
 
     remove_output_file = removeOutputFile
 
+    def _upsert_output_file(self, basename, path, operation, fadeGradient=None) -> OutputFile:
+        target_path = os.path.abspath(path)
+        existing = next(
+            (
+                f
+                for f in self.project.outputFiles
+                if isinstance(f, OutputFile)
+                and (os.path.abspath(f.path) == target_path or f.operation == operation)
+            ),
+            None,
+        )
+        if existing is not None:
+            existing.basename = basename
+            existing.path = path
+            existing.operation = operation
+            existing.fadeGradient = fadeGradient
+            existing.sourceMap = None
+            existing.sourceStack = None
+            existing.gapMask = None
+            self.save_project()
+            return existing
+        return self.appendOutputFile(basename, path, operation, fadeGradient=fadeGradient)
+
     # -------------------------------------------------------------------------
     # Stacking and Processing Operations
     # -------------------------------------------------------------------------
@@ -160,14 +190,17 @@ class StarTrailsWorkflow(Workflow):
         if not filteredInputFiles:
             raise ValueError("Include at least one input image in the stack.")
         outDir = str(self.project.get_output_dir())
-        filename = StackImages.suggestOutFileName(filteredInputFiles[0], outDir)
+        operation = OP_STACKED_REMOVE if satellitesRemoved else OP_STACKED_KEEP
+        filename = StackImages.suggestOutFileName(
+            filteredInputFiles[0], outDir, streaksRemoved=satellitesRemoved
+        )
         os.makedirs(outDir, exist_ok=True)
 
         fadeGradient = None
         if fade:
             fadeGradient = StackImages.makeFadeGradient(len(filteredInputFiles), fadeAmount)
         basename = os.path.basename(filename)
-        file = self.appendOutputFile(basename, filename, "Stacked", fadeGradient=fadeGradient)
+        file = self._upsert_output_file(basename, filename, operation, fadeGradient=fadeGradient)
         stackImages.addObserver(progressBar)
         self.app.activeOperation = stackImages
         try:
@@ -279,12 +312,13 @@ class StarTrailsWorkflow(Workflow):
         fillGaps = fgm_module.FillGaps()
         fillGaps.addObserver(progressBar)
         outDir = str(self.project.get_output_dir())
+        os.makedirs(outDir, exist_ok=True)
         filenameFillGaps, fileNameFillGapsMask = fgm_module.FillGaps.suggestOutFileName(file, outDir)
-        fileFillGaps = self.appendOutputFile(
-            os.path.basename(filenameFillGaps), filenameFillGaps, "FillGaps"
+        fileFillGaps = self._upsert_output_file(
+            os.path.basename(filenameFillGaps), filenameFillGaps, OP_FILL_GAPS
         )
-        fileFillGapsMask = self.appendOutputFile(
-            os.path.basename(fileNameFillGapsMask), fileNameFillGapsMask, "FillGapsMask"
+        fileFillGapsMask = self._upsert_output_file(
+            os.path.basename(fileNameFillGapsMask), fileNameFillGapsMask, OP_FILL_GAPS_MASK
         )
         self.app.activeOperation = fillGaps
         try:

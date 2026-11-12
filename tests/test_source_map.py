@@ -260,12 +260,16 @@ class SourceMapTests(IsolatedTestCase):
         restored = jsonpickle.decode(jsonpickle.encode(filled))
         self.assertEqual(locate_sources(restored, self.files, 2, 2).candidates, self.files)
 
-    def test_repeated_stacks_do_not_overwrite_previous_maps(self):
+    def test_keep_and_remove_stacks_have_separate_maps_and_restack_overwrites(self):
         self.input(np.full((6, 6, 3), 200, np.uint8))
         app = self.app()
-        first = app.doStack(False, lambda *args: None, useGPU=False)
-        second = app.doStack(False, lambda *args: None, useGPU=False)
-        self.assertNotEqual(first.path, second.path)
-        self.assertNotEqual(first.sourceMap, second.sourceMap)
-        self.assertEqual(app.locateSources(2, 2, first).candidates, self.files)
-        self.assertEqual(app.locateSources(2, 2, second).candidates, self.files)
+        kept = app.doStack(False, lambda *args: None, useGPU=False)
+        removed = app.doStack(True, lambda *args: None, useGPU=False)
+        self.assertNotEqual(kept.path, removed.path)
+        self.assertNotEqual(kept.sourceMap, removed.sourceMap)
+        self.assertEqual(app.locateSources(2, 2, kept).candidates, self.files)
+        self.assertEqual(app.locateSources(2, 2, removed).candidates, self.files)
+        restacked = app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(restacked, kept)
+        self.assertEqual(app.locateSources(2, 2, restacked).candidates, self.files)
+        self.assertEqual(len(app.getOutputFileList()), 2)

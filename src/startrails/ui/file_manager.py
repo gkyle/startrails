@@ -16,7 +16,7 @@ from PySide6.QtGui import QAction, QActionGroup, QBrush, QFont, QIcon, QPainter,
 from PySide6.QtWidgets import QFrame, QHeaderView, QMenu, QStyle, QStyledItemDelegate, QStyleOptionViewItem, QToolButton, QWidget
 
 from types import SimpleNamespace
-from startrails.lib.file import File, InputFile, DenoiseInputFile
+from startrails.lib.file import DenoiseInputFile, File, InputFile, STACKED_OPERATIONS
 from . import resources_rc  # Register SVG icons when this module is used directly.
 from .ui_file_manager import Ui_FileSection
 from .theme import is_dark, themed_color
@@ -161,7 +161,7 @@ class AnnotationBadgeDelegate(QStyledItemDelegate):
                 y = option.rect.top() + (option.rect.height() - badge_h) // 2
                 badge_w = fm.horizontalAdvance(op_text) + 12
                 pill_rect = QRect(option.rect.left() + 4, y, badge_w, badge_h)
-                if op_text == "Stacked":
+                if op_text in STACKED_OPERATIONS:
                     bg_col, text_col, border_col = color("#eff6ff", "background"), color("#1d4ed8"), color("#bfdbfe", "border")
                 elif "FillGaps" in op_text:
                     bg_col, text_col, border_col = color("#f3e8ff", "background"), color("#6b21a8"), color("#e9d5ff", "border")

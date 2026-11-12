@@ -1,4 +1,3 @@
-from datetime import datetime
 from copy import copy
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -8,7 +7,7 @@ import psutil
 import numpy
 
 from startrails.lib.util import applyMask, Observable
-from startrails.lib.file import InputFile, OutputFile
+from startrails.lib.file import InputFile, OutputFile, STACKED_KEEP_STEM, STACKED_REMOVE_STEM
 from startrails.lib.source_map import save_source_map, snapshot_sources, source_dtype
 from startrails.lib.gpu import GPUInfo, free_cupy_memory, get_array_module, is_cupy_available
 
@@ -154,11 +153,12 @@ class StackImages(Observable):
 
         return fadeGradient
 
-    def suggestOutFileName(file: InputFile, outDir: str):
+    @staticmethod
+    def suggestOutFileName(file: InputFile, outDir: str, streaksRemoved: bool = False):
         fileName = os.path.basename(file.path)
-        baseName, extension = os.path.splitext(fileName)
-        ts = datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
-        return "{}/stacked-{}-{}{}".format(outDir, baseName, ts, extension)
+        _, extension = os.path.splitext(fileName)
+        stem = STACKED_REMOVE_STEM if streaksRemoved else STACKED_KEEP_STEM
+        return os.path.join(outDir, f"{stem}{extension}")
 
     def suggestBatchSize(path: str, gpuInfo: GPUInfo, useGPU=True, sourceCount=0):
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)

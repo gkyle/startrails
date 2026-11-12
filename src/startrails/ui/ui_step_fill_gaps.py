@@ -50,7 +50,7 @@ class Ui_fillSettings(object):
     # setupUi
 
     def retranslateUi(self, fillSettings):
-        self.target.setText(QCoreApplication.translate("fillSettings", u"Select a stacked output image to fill its gaps.", None))
+        self.target.setText(QCoreApplication.translate("fillSettings", u"Stack images first to fill gaps.", None))
         self.run.setText(QCoreApplication.translate("fillSettings", u"Fill Gaps", None))
         pass
     # retranslateUi

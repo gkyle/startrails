@@ -8,7 +8,15 @@ import numpy as np
 from PySide6.QtCore import Slot, QSignalBlocker, QTimer
 from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox, QWidget
 
-from startrails.lib.file import File, InputFile, OutputFile
+from startrails.lib.file import (
+    File,
+    InputFile,
+    OP_FILL_GAPS,
+    OutputFile,
+    STACKED_OPERATIONS,
+    filled_output,
+    preferred_stacked_output,
+)
 from startrails.lib.source_map import SourceLookup, SourceMapError
 from startrails.ui.progress import ProgressBarUpdater
 from startrails.ui.signals import getSignals
@@ -46,6 +54,7 @@ class StarTrailsView(ModeView):
         self.readyStreaksRemoved = False
         self.readyManualStreaksRemoved = False
         self.sourceLookupSession = None
+        self._suppress_review_expand_preview = False
 
     def _from_shell(self, name: str) -> Any:
         shell = getattr(self, "shell", None)
@@ -246,10 +255,20 @@ class StarTrailsView(ModeView):
         self.connect_signal(signals.sourceLookupReady, self.slotSourceLookupReady)
 
         for section in (self.inputFiles, self.outputFiles):
-            self.connect_signal(section.showFile, self.showFile)
+            self.connect_signal(section.showFile, self._on_file_section_show_file)
             self.connect_signal(section.removeFile, self.slotRemoveFile)
             self.connect_signal(section.excludeFile, self.slotExcludeFile)
             self.connect_signal(signals.focusFile, section.focus_file)
+
+        if hasattr(self.sidebar, "detectCard") and self.sidebar.detectCard is not None:
+            self.connect_signal(self.sidebar.detectCard.expanded, self._on_detect_card_expanded)
+        if hasattr(self.sidebar, "stackCard") and self.sidebar.stackCard is not None:
+            self.connect_signal(self.sidebar.stackCard.expanded, self._on_stack_card_expanded)
+        if hasattr(self.sidebar, "reviewCard") and self.sidebar.reviewCard is not None:
+            self.connect_signal(self.sidebar.reviewCard.expanded, self._on_review_card_expanded)
+        if hasattr(self.sidebar, "fillCard") and self.sidebar.fillCard is not None:
+            self.connect_signal(self.sidebar.fillCard.expanded, self._on_fill_card_expanded)
+            self.connect_signal(self.sidebar.fillCard.before_after_toggled, self._on_fill_before_after)
 
         self.connect_signal(self.inputFiles.sortRequested, self.slotSortInputFiles)
         self.connect_signal(self.inputFiles.model.summaryChanged, self.updateReadyStates)
@@ -300,29 +319,26 @@ class StarTrailsView(ModeView):
     def updateFillEligibility(self):
         if self.sidebar is None or self.pushButton_fillGaps is None:
             return
-        current = getattr(self.shell, "currentFile", None)
-        eligible = isinstance(current, OutputFile) and current.operation == "Stacked"
+        stacked = self._preferred_stacked_output()
+        eligible = stacked is not None
         self.pushButton_fillGaps.setEnabled(eligible)
+        current = getattr(self.shell, "currentFile", None)
         bright_eligible = (
-            isinstance(current, OutputFile) and current.operation in ("Stacked", "FillGaps")
+            isinstance(current, OutputFile) and current.operation in (*STACKED_OPERATIONS, OP_FILL_GAPS)
         )
         if self.pushButton_findBrightest is not None:
             self.pushButton_findBrightest.setEnabled(bright_eligible)
             if not bright_eligible and self.pushButton_findBrightest.isChecked():
                 self.pushButton_findBrightest.setChecked(False)
-        self.sidebar.fillCard.setSubtitle("Ready to fill gaps" if eligible else "Select a stacked output image")
+        self.sidebar.fillCard.setSubtitle("Ready to fill gaps" if eligible else "Stack images to fill gaps")
         self.sidebar.fill.ui.target.setText(
-            current.basename if eligible else "Select a stacked output image to fill its gaps."
+            stacked.basename if eligible else "Stack images first to fill gaps."
         )
         self.sidebar.update_operations_progress(self.app, current)
 
-    @Slot(File)
-    def showFile(self, file: Optional[File]):
-        if self.shell is not None and hasattr(self.shell, "showFile"):
-            self.shell.showFile(file)
-
     def resetProjectView(self):
         self.clearSourceLookup()
+        self._reset_preview_toggles()
         self.showFile(None)
         if self.inputFiles is None:
             return
@@ -360,8 +376,12 @@ class StarTrailsView(ModeView):
     def slotRefreshOutputs(self, focus=None):
         if self.outputFiles is not None:
             self.outputFiles.model.sync_files(self.app.getOutputFileList())
+            if focus is not None:
+                self.outputFiles.model.update_file(focus)
+        self.updateFillEligibility()
         if focus is not None:
-            self.showFile(focus)
+            self._reset_preview_toggles()
+            self.showFile(focus, reload=True)
 
     @Slot(File)
     def slotFileIndicators(self, file):
@@ -433,20 +453,89 @@ class StarTrailsView(ModeView):
             self.pushButton_removeStreaks.setEnabled(len(self.app.getInputFileList()) > 0)
         self.updateReadyStates()
 
+    def _preferred_stacked_output(self) -> Optional[OutputFile]:
+        outputs = self.app.getOutputFileList() if hasattr(self.app, "getOutputFileList") else []
+        return preferred_stacked_output(outputs)
+
+    def _filled_output(self) -> Optional[OutputFile]:
+        outputs = self.app.getOutputFileList() if hasattr(self.app, "getOutputFileList") else []
+        return filled_output(outputs)
+
+    def _reset_preview_toggles(self) -> None:
+        if (
+            self.sidebar is not None
+            and hasattr(self.sidebar, "fillCard")
+            and self.sidebar.fillCard is not None
+            and hasattr(self.sidebar.fillCard, "reset_before_after")
+        ):
+            self.sidebar.fillCard.reset_before_after(emit=False)
+
+    def _focus_file_in_sections(self, file: Optional[File], *, expand: bool) -> None:
+        if expand:
+            signals = getSignals()
+            if hasattr(signals, "focusFile"):
+                signals.focusFile.emit(file)
+            return
+        for section in (self.inputFiles, self.outputFiles):
+            if section is not None and hasattr(section, "focus_file"):
+                section.focus_file(file, expand=False)
+
+    def _on_file_section_show_file(self, file: Optional[File]) -> None:
+        self._reset_preview_toggles()
+        self.showFile(file)
+
+    def _on_detect_card_expanded(self) -> None:
+        self._reset_preview_toggles()
+        current = getattr(self.shell, "currentFile", None)
+        inputs = self.app.getInputFileList() if hasattr(self.app, "getInputFileList") else []
+        if isinstance(current, InputFile) and current in inputs:
+            return
+        if inputs:
+            self.showFile(inputs[0], expand_sections=False)
+
+    def _on_stack_card_expanded(self) -> None:
+        self._reset_preview_toggles()
+        stacked = self._preferred_stacked_output()
+        if stacked is not None:
+            self.showFile(stacked, expand_sections=False)
+
+    def _on_review_card_expanded(self) -> None:
+        if self._suppress_review_expand_preview:
+            return
+        self._reset_preview_toggles()
+        stacked = self._preferred_stacked_output()
+        if stacked is not None:
+            self.showFile(stacked, expand_sections=False)
+
+    def _on_fill_card_expanded(self) -> None:
+        self._reset_preview_toggles()
+        target = self._filled_output() or self._preferred_stacked_output()
+        if target is not None:
+            self.showFile(target, expand_sections=False)
+
+    def _on_fill_before_after(self, showing_before: bool) -> None:
+        target = self._preferred_stacked_output() if showing_before else self._filled_output()
+        if target is not None:
+            self.showFile(target, preserve_view=True, expand_sections=False)
+
     @Slot(File)
-    def showFile(self, file: Optional[File]):
+    def showFile(
+        self,
+        file: Optional[File],
+        preserve_view: Optional[bool] = None,
+        reload: bool = False,
+        expand_sections: bool = True,
+    ):
         session = self.sourceLookupSession
         if session and file not in [session["basis"], *session["result"].candidates]:
             self.clearSourceLookup()
         if hasattr(self.shell, "currentFile"):
             self.shell.currentFile = file
         if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            self.shell.canvas_main.setFile(file)
+            self.shell.canvas_main.setFile(file, reload=reload, preserve_view=preserve_view)
         if hasattr(self.shell, "label_imageName") and self.shell.label_imageName is not None:
             self.shell.label_imageName.setText(file.basename if file is not None else "")
-        signals = getSignals()
-        if hasattr(signals, "focusFile"):
-            signals.focusFile.emit(file)
+        self._focus_file_in_sections(file, expand=expand_sections)
         self.updateFillEligibility()
 
     # -------------------------------------------------------------------------
@@ -454,7 +543,7 @@ class StarTrailsView(ModeView):
     # -------------------------------------------------------------------------
 
     def doFindBrightFrame(self, file, x, y):
-        if not isinstance(file, OutputFile) or file.operation not in ("Stacked", "FillGaps"):
+        if not isinstance(file, OutputFile) or file.operation not in (*STACKED_OPERATIONS, OP_FILL_GAPS):
             return
         canvas = self.shell.canvas_main
         view = (canvas.zoom_factor, canvas.posX, canvas.posY)
@@ -485,7 +574,11 @@ class StarTrailsView(ModeView):
             return
         self.clearSourceLookup()
         if self.sidebar is not None:
-            self.sidebar.reviewCard.setExpanded(True)
+            self._suppress_review_expand_preview = True
+            try:
+                self.sidebar.reviewCard.setExpanded(True)
+            finally:
+                self._suppress_review_expand_preview = False
             if not result.candidates:
                 self.sidebar.review.ui.sourceLookupStatus.setText(result.message)
                 return
@@ -539,17 +632,19 @@ class StarTrailsView(ModeView):
     # -------------------------------------------------------------------------
 
     def doFillGaps(self):
+        target = self._preferred_stacked_output()
+        if target is None:
+            return
         signals = getSignals()
 
         def f():
-            current = getattr(self.shell, "currentFile", None)
             progressUpdater = ProgressBarUpdater(
                 getattr(self.shell, "progressBar", None),
                 getattr(self.shell, "label_progressBar", None),
                 total=1,
                 desc="Filling Gaps:",
             )
-            fileFillGaps = self.app.doFillGaps(current, progressUpdater.tick)
+            fileFillGaps = self.app.doFillGaps(target, progressUpdater.tick)
             try:
                 signals.refreshReadiness.emit()
                 signals.drawOutputFileList.emit(fileFillGaps)

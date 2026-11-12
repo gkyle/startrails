@@ -1,4 +1,3 @@
-from datetime import datetime
 import os
 import torch
 import numpy as np
@@ -7,7 +6,7 @@ import cv2
 
 from startrails.lib.util import imwrite, Observable
 from startrails.models.fillGaps.model import UNet
-from startrails.lib.file import OutputFile, InputFile
+from startrails.lib.file import FINAL_MASK_STEM, FINAL_OUTPUT_STEM, InputFile, OutputFile
 from startrails.lib.gpu import resolve_torch_device
 from startrails.paths import APPLICATION_DIR
 
@@ -94,13 +93,13 @@ class FillGaps(Observable):
 
         return full_image, full_mask
 
+    @staticmethod
     def suggestOutFileName(file: InputFile, outDir: str):
         fileName = os.path.basename(file.path)
-        baseName, extension = os.path.splitext(fileName)
-        ts = datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
+        _, extension = os.path.splitext(fileName)
         return [
-            "{}/fillgaps-{}-{}{}".format(outDir, baseName, ts, extension),
-            "{}/fillgaps_mask-{}-{}{}".format(outDir, baseName, ts, extension),
+            os.path.join(outDir, f"{FINAL_OUTPUT_STEM}{extension}"),
+            os.path.join(outDir, f"{FINAL_MASK_STEM}{extension}"),
         ]
 
 
