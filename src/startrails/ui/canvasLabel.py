@@ -44,6 +44,7 @@ class CanvasLabel(QLabel):
         self.draggingMask: bool = False
         self.selectedNub: Optional[Tuple[List[List[float]], int, List[float]]] = None  # (mask, idx, original point)
         self.draggingNub: bool = False
+        self._completing_polygon: bool = False
 
         self.renderWidth: Optional[int] = None
         self.renderHeight: Optional[int] = None
@@ -102,10 +103,17 @@ class CanvasLabel(QLabel):
             self.findBrightestModeChanged.emit(active)
 
     def keyPressEvent(self, ev) -> None:
-        if ev.key() == Qt.Key_Escape and self.findBrightestMode:
-            self.setFindBrightestMode(False)
-            ev.accept()
-            return
+        if ev.key() == Qt.Key_Escape:
+            if isinstance(self.file, InputFile) and self.file.activeMaskPoints:
+                self.file.activeMaskPoints = []
+                self.signals.updateFile.emit(self.file)
+                self.repaint()
+                ev.accept()
+                return
+            if self.findBrightestMode:
+                self.setFindBrightestMode(False)
+                ev.accept()
+                return
         if self.maskEditMode:
             if ev.key() == Qt.Key_BracketLeft:
                 self.set_brush_radius(self.brushRadius - 5)
@@ -128,6 +136,7 @@ class CanvasLabel(QLabel):
         # clear previous active mask points
         if isinstance(self.file, InputFile):
             self.file.activeMaskPoints = []
+        self._completing_polygon = False
         self.file = file
 
     def set_file_pixels(
@@ -606,15 +615,19 @@ class CanvasLabel(QLabel):
                 return
 
         if ev.button() == Qt.LeftButton:
+            if isinstance(self.file, InputFile) and self.file.activeMaskPoints:
+                points = self.file.activeMaskPoints
+                self.file.activeMaskPoints = []
+                self._completing_polygon = True
+                if len(points) >= self.MIN_MANUAL_MASK_POINTS:
+                    self.file.streaksManualMasks.append(np.array(points).astype(np.int64))
+                self.signals.updateFile.emit(self.file)
+                self.repaint()
+                ev.accept()
+                return
+
             self.dragX = pos.x() - self.posX
             self.dragY = pos.y() - self.posY
-
-            if isinstance(self.file, InputFile) and self.file.activeMaskPoints:
-                if len(self.file.activeMaskPoints) >= self.MIN_MANUAL_MASK_POINTS:
-                    self.file.streaksManualMasks.append(np.array(self.file.activeMaskPoints).astype(np.int64))
-                    self.signals.updateFile.emit(self.file)
-                self.file.activeMaskPoints = []
-                self.repaint()
 
         if self.findBrightestMode and isinstance(self.file, OutputFile):
             if ev.button() == Qt.LeftButton:
@@ -696,6 +709,9 @@ class CanvasLabel(QLabel):
             self._last_brush_pos = curr_pos
             return
 
+        if self._completing_polygon:
+            return
+
         if ev.buttons() == Qt.LeftButton:
             if self.draggingNub and self.selectedNub:
                 if self.renderWidth is None:
@@ -724,6 +740,11 @@ class CanvasLabel(QLabel):
 
     def mouseReleaseEvent(self, ev: QMouseEvent) -> None:
         super().mouseReleaseEvent(ev)
+        if self._completing_polygon:
+            if ev.button() == Qt.LeftButton:
+                self._completing_polygon = False
+            return
+
         if self._is_brush_painting:
             self._is_brush_painting = False
             self._last_brush_pos = None

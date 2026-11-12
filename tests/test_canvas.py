@@ -3,7 +3,7 @@
 from unittest.mock import patch
 import numpy as np
 from PySide6.QtCore import QEvent, QPointF, Qt
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtGui import QKeyEvent, QMouseEvent
 
 from support import QtTestCase, qt_app
 from startrails.lib.file import File, InputFile
@@ -181,16 +181,57 @@ class CanvasTests(QtTestCase):
             )
             self.canvas.mouseReleaseEvent(ev)
 
-        def left_click(x, y):
+        def left_press(x, y, modifiers=Qt.KeyboardModifier.NoModifier):
             ev = QMouseEvent(
                 QEvent.Type.MouseButtonPress,
                 QPointF(x, y),
                 QPointF(x, y),
                 Qt.MouseButton.LeftButton,
                 Qt.MouseButton.LeftButton,
-                Qt.KeyboardModifier.NoModifier,
+                modifiers,
             )
             self.canvas.mousePressEvent(ev)
+
+        def mouse_move(x, y):
+            ev = QMouseEvent(
+                QEvent.Type.MouseMove,
+                QPointF(x, y),
+                QPointF(x, y),
+                Qt.MouseButton.NoButton,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier,
+            )
+            self.canvas.mouseMoveEvent(ev)
+
+        def left_release(x, y):
+            ev = QMouseEvent(
+                QEvent.Type.MouseButtonRelease,
+                QPointF(x, y),
+                QPointF(x, y),
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier,
+            )
+            self.canvas.mouseReleaseEvent(ev)
+
+        def left_click(x, y, modifiers=Qt.KeyboardModifier.NoModifier):
+            left_press(x, y, modifiers)
+            left_release(x, y)
+
+        def key_escape():
+            ev = QKeyEvent(
+                QEvent.Type.KeyPress,
+                Qt.Key.Key_Escape,
+                Qt.KeyboardModifier.NoModifier,
+            )
+            self.canvas.keyPressEvent(ev)
+
+        observed_drafts_on_update = []
+        def on_update_file(f):
+            observed_drafts_on_update.append(list(f.activeMaskPoints))
+
+        self.canvas.signals.updateFile.connect(on_update_file)
+        self.addCleanup(self.canvas.signals.updateFile.disconnect, on_update_file)
 
         # Two right-click points discarded when closed with left click.
         right_click(20, 20)
@@ -198,12 +239,46 @@ class CanvasTests(QtTestCase):
         left_click(60, 20)
         self.assertEqual(input_file.activeMaskPoints, [])
         self.assertEqual(input_file.streaksManualMasks, [])
+        self.assertEqual(observed_drafts_on_update[-1], [])
+        self.assertFalse(self.canvas.draggingNub)
+        self.assertFalse(self.canvas.draggingMask)
 
-        # Three right-click points form a valid mask when closed.
+        # Three right-click points form a valid mask when closed with Shift + small move + release.
         right_click(20, 20)
         right_click(60, 20)
         right_click(60, 60)
-        left_click(20, 20)
+        left_press(20, 20, modifiers=Qt.KeyboardModifier.ShiftModifier)
+        mouse_move(22, 22)
+        left_release(22, 22)
         self.assertEqual(input_file.activeMaskPoints, [])
         self.assertEqual(len(input_file.streaksManualMasks), 1)
         self.assertEqual(len(input_file.streaksManualMasks[0]), 3)
+        self.assertEqual(input_file.streaksManualDeletedMasks, [])
+        self.assertEqual(observed_drafts_on_update[-1], [])
+        self.assertFalse(self.canvas.draggingNub)
+        self.assertFalse(self.canvas.draggingMask)
+        committed_coords = np.array(input_file.streaksManualMasks[0], copy=True)
+        np.testing.assert_array_equal(committed_coords, [[2, 2], [6, 2], [6, 6]])
+
+        # Discard on existing polygon leaves it intact.
+        right_click(10, 10)
+        left_press(20, 20)
+        mouse_move(25, 25)
+        left_release(25, 25)
+        self.assertEqual(input_file.activeMaskPoints, [])
+        self.assertEqual(len(input_file.streaksManualMasks), 1)
+        self.assertEqual(input_file.streaksManualDeletedMasks, [])
+        self.assertEqual(observed_drafts_on_update[-1], [])
+        self.assertFalse(self.canvas.draggingNub)
+        self.assertFalse(self.canvas.draggingMask)
+        np.testing.assert_array_equal(input_file.streaksManualMasks[0], committed_coords)
+
+        # Escape clears draft without committing a mask.
+        right_click(15, 15)
+        right_click(35, 35)
+        self.assertEqual(len(input_file.activeMaskPoints), 2)
+        key_escape()
+        self.assertEqual(input_file.activeMaskPoints, [])
+        self.assertEqual(len(input_file.streaksManualMasks), 1)
+        self.assertEqual(observed_drafts_on_update[-1], [])
+        self.assertTrue(all(draft == [] for draft in observed_drafts_on_update))
