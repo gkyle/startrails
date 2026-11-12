@@ -2,10 +2,11 @@
 
 from unittest.mock import patch
 import numpy as np
-from PySide6.QtCore import QPointF
+from PySide6.QtCore import QEvent, QPointF, Qt
+from PySide6.QtGui import QMouseEvent
 
 from support import QtTestCase, qt_app
-from startrails.lib.file import File
+from startrails.lib.file import File, InputFile
 from startrails.lib.image_io import imwrite
 from startrails.ui.canvasLabel import CanvasLabel
 
@@ -162,3 +163,47 @@ class CanvasTests(QtTestCase):
         imwrite(path_a, np.full((32, 32, 3), 50000, dtype=np.uint16), bit_depth=16)
         self.canvas.setFile(file_a, reload=True, preserve_view=True)
         self.assertGreater(self.canvas.pixmap.toImage().pixelColor(16, 16).red(), 150)
+
+    def test_closing_manual_mask_requires_at_least_three_points(self):
+        path = self.root / "input.tif"
+        imwrite(path, np.zeros((40, 40, 3), dtype=np.uint8))
+        input_file = InputFile(path.name, str(path))
+        self.canvas.setFile(input_file)
+
+        def right_click(x, y):
+            ev = QMouseEvent(
+                QEvent.Type.MouseButtonRelease,
+                QPointF(x, y),
+                QPointF(x, y),
+                Qt.MouseButton.RightButton,
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier,
+            )
+            self.canvas.mouseReleaseEvent(ev)
+
+        def left_click(x, y):
+            ev = QMouseEvent(
+                QEvent.Type.MouseButtonPress,
+                QPointF(x, y),
+                QPointF(x, y),
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier,
+            )
+            self.canvas.mousePressEvent(ev)
+
+        # Two right-click points discarded when closed with left click.
+        right_click(20, 20)
+        right_click(60, 20)
+        left_click(60, 20)
+        self.assertEqual(input_file.activeMaskPoints, [])
+        self.assertEqual(input_file.streaksManualMasks, [])
+
+        # Three right-click points form a valid mask when closed.
+        right_click(20, 20)
+        right_click(60, 20)
+        right_click(60, 60)
+        left_click(20, 20)
+        self.assertEqual(input_file.activeMaskPoints, [])
+        self.assertEqual(len(input_file.streaksManualMasks), 1)
+        self.assertEqual(len(input_file.streaksManualMasks[0]), 3)

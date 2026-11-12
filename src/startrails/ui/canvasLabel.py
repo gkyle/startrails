@@ -21,6 +21,7 @@ QImageReader.setAllocationLimit(0)
 class CanvasLabel(QLabel):
     NUB_SIZE = 10
     NUB_SIZE_TOLERANT = 15
+    MIN_MANUAL_MASK_POINTS = 3
     findBrightestModeChanged = Signal(bool)
     mask_changed = Signal()
     mask_brush_edited = Signal()
@@ -608,12 +609,12 @@ class CanvasLabel(QLabel):
             self.dragX = pos.x() - self.posX
             self.dragY = pos.y() - self.posY
 
-            if isinstance(self.file, InputFile):
-                if len(self.file.activeMaskPoints) > 0:
+            if isinstance(self.file, InputFile) and self.file.activeMaskPoints:
+                if len(self.file.activeMaskPoints) >= self.MIN_MANUAL_MASK_POINTS:
                     self.file.streaksManualMasks.append(np.array(self.file.activeMaskPoints).astype(np.int64))
-                    self.file.activeMaskPoints = []
-                    self.repaint()
                     self.signals.updateFile.emit(self.file)
+                self.file.activeMaskPoints = []
+                self.repaint()
 
         if self.findBrightestMode and isinstance(self.file, OutputFile):
             if ev.button() == Qt.LeftButton:
