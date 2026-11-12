@@ -75,10 +75,12 @@ class Project(Unpickle):
         self.useGPU = useGPU
         self.streaksRemoved = streaksRemoved
         self.applied_corrections: int = 0
-        self.applied_corrections_signature: str = EMPTY_CORRECTIONS_SIGNATURE
+        self.applied_corrections_signature: Optional[str] = EMPTY_CORRECTIONS_SIGNATURE
 
     def __setstate__(self, state: dict) -> None:
         super().__setstate__(state)
+        if "applied_corrections_signature" not in state:
+            self.applied_corrections_signature = None
         self.normalize_loaded_state()
 
     def normalize_loaded_state(self) -> None:
@@ -94,7 +96,9 @@ class Project(Unpickle):
 
         signature = getattr(self, "applied_corrections_signature", None)
         if not isinstance(signature, str) or not signature:
-            self.applied_corrections_signature = EMPTY_CORRECTIONS_SIGNATURE
+            self.applied_corrections_signature = (
+                None if self.applied_corrections > 0 else EMPTY_CORRECTIONS_SIGNATURE
+            )
 
     def get_output_dir(self) -> Path:
         """Resolve the authoritative output directory for this project."""

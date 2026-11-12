@@ -537,13 +537,26 @@ class ProjectTests(IsolatedTestCase):
         self.assertTrue(project.useGPU)
         self.assertIsNone(project.streaksRemoved)
         self.assertEqual(project.applied_corrections, 2)
-        self.assertEqual(project.applied_corrections_signature, EMPTY_CORRECTIONS_SIGNATURE)
-        self.assertFalse(project.corrections_pending())
+        self.assertIsNone(project.applied_corrections_signature)
+        self.assertTrue(project.corrections_pending())
         project.rawInputFiles.append(InputFile("frame.tif", str(self.root / "frame.tif")))
         project.rawInputFiles[0].streaksManualMasks.append(
             np.array([[0, 0], [2, 0], [2, 2]], dtype=np.int64)
         )
         self.assertTrue(project.corrections_pending())
+        project.rawInputFiles[0].streaksManualMasks.clear()
+        self.assertTrue(project.corrections_pending())
+
+        # py/state round-trip: a positive legacy count without a signature is also unknown.
+        roundtrip_file = self.root / "legacy_roundtrip.proj_startrails"
+        roundtrip_project = Project(projectFile=str(roundtrip_file))
+        roundtrip_project.applied_corrections = 2
+        del roundtrip_project.applied_corrections_signature
+        roundtrip_file.write_text(jsonpickle.encode(roundtrip_project, indent=2))
+        app.loadProject(str(roundtrip_file))
+        self.assertEqual(app.project.applied_corrections, 2)
+        self.assertIsNone(app.project.applied_corrections_signature)
+        self.assertTrue(app.project.corrections_pending())
 
     def test_correction_signature_tracks_applied_state_and_vertex_edits(self):
         from startrails.lib.project import EMPTY_CORRECTIONS_SIGNATURE
