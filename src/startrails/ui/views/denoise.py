@@ -411,6 +411,11 @@ class DenoiseView(ModeView):
         if self.sidebar is not None:
             self.sidebar.sync_expanded_step()
 
+        if self.tune_card is not None and self.tune_card.is_expanded:
+            self._show_final_composite()
+        elif self.stack_card is not None and self.stack_card.is_expanded:
+            self._show_stacked_composite()
+
     def _snapshot_config(self, task_id):
         revision = self.app.workflow.project.processing_revision
         try:

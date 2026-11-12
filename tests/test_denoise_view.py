@@ -466,28 +466,38 @@ class DenoiseViewTests(QtTestCase):
         self.assertFalse(sidebar.tuneCard.ui.previewToggle.isChecked())
         self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
 
-    def test_reset_project_view_restores_mask_edit_mode_when_eye_toggle_was_before(self):
-        sidebar, _, _, _ = self._setup_completed_denoise_sidebar()
-        sidebar.skyCard.setExpanded(True)
-        self.qt.processEvents()
-        self.assertTrue(self.shell.canvas_main.is_mask_edit_mode())
+    def test_reset_project_view_restores_expanded_step_after_preview_and_overlay(self):
+        sidebar, star_path, base_comp_path, final_path = self._setup_completed_denoise_sidebar()
 
-        # Toggle eye to "before" (hide mask overlay)
-        sidebar.skyCard.ui.previewToggle.click()
-        self.qt.processEvents()
-        self.assertTrue(sidebar.skyCard.is_showing_before())
-        self.assertFalse(self.view.mask_controller.is_overlay_enabled())
-        self.assertFalse(self.shell.canvas_main.is_mask_edit_mode())
+        for step_name in ("sky", "stack", "tune"):
+            with self.subTest(step=step_name):
+                card = getattr(sidebar, step_name + "Card")
+                card.setExpanded(True)
+                self.qt.processEvents()
 
-        # Resetting the project view must reset the preview toggle before show_file
-        self.view.reset_project_view()
-        self.qt.processEvents()
+                # Toggle eye to "before" if active
+                if card.ui.previewToggle.isVisible():
+                    card.ui.previewToggle.click()
+                    self.qt.processEvents()
+                    self.assertTrue(card.is_showing_before())
 
-        # Canvas mask edit mode must match the controller's overlay-enabled state
-        self.assertFalse(sidebar.skyCard.is_showing_before())
-        self.assertTrue(self.view.mask_controller.is_overlay_enabled())
-        self.assertTrue(self.shell.canvas_main.is_mask_edit_mode())
-        self.assertIsNotNone(self.shell.canvas_main.get_denoise_mask())
+                self.view.reset_project_view()
+                self.qt.processEvents()
+
+                self.assertTrue(card.is_expanded)
+                self.assertFalse(card.is_showing_before())
+
+                if step_name == "sky":
+                    self.assertTrue(self.view.mask_controller.is_overlay_enabled())
+                    self.assertTrue(self.shell.canvas_main.is_mask_edit_mode())
+                    self.assertIsNotNone(self.shell.canvas_main.get_denoise_mask())
+                    self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), star_path.resolve())
+                elif step_name == "stack":
+                    self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+                    self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+                elif step_name == "tune":
+                    self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
+                    self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
 
     def test_background_error_surfaces_for_current_worker_and_ignores_stale(self):
         sidebar, _, _, final_path = self._setup_completed_denoise_sidebar()
@@ -540,6 +550,14 @@ class DenoiseViewTests(QtTestCase):
         self.project.invalidate_results(alignment=False)
         self.view.last_compositor = None
         self.view._show_stacked_composite()
+        self.assertNotEqual(
+            getattr(self.shell.canvas_main.file, "path", None),
+            str(base_comp_path),
+        )
+
+        # Even with step 3 expanded, reset must not display the stale disk file
+        sidebar.stackCard.setExpanded(True)
+        self.view.reset_project_view()
         self.assertNotEqual(
             getattr(self.shell.canvas_main.file, "path", None),
             str(base_comp_path),
