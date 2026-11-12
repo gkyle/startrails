@@ -107,9 +107,8 @@ class SidebarDenoise(QWidget):
         self.stackSettings.reset()
         self.tuneSettings.reset()
         self.exportSettings.reset()
-        for card in (self.skyCard, self.stackCard, self.tuneCard):
-            if card is not None:
-                card.reset_before_after(emit=False)
+        if hasattr(self, "skyCard") and self.skyCard is not None:
+            self.skyCard.reset_before_after(emit=False)
         if hasattr(self, "exportCard") and self.exportCard is not None:
             self.exportCard.set_alert(False)
 

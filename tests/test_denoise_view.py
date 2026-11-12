@@ -411,3 +411,26 @@ class DenoiseViewTests(QtTestCase):
         self.assertFalse(sidebar.tuneCard.ui.previewToggle.isVisible())
         self.assertFalse(sidebar.tuneCard.ui.previewToggle.isChecked())
         self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
+
+    def test_reset_project_view_restores_mask_edit_mode_when_eye_toggle_was_before(self):
+        sidebar, _, _, _ = self._setup_completed_denoise_sidebar()
+        sidebar.skyCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertTrue(self.shell.canvas_main.is_mask_edit_mode())
+
+        # Toggle eye to "before" (hide mask overlay)
+        sidebar.skyCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertTrue(sidebar.skyCard.is_showing_before())
+        self.assertFalse(self.view.mask_controller.is_overlay_enabled())
+        self.assertFalse(self.shell.canvas_main.is_mask_edit_mode())
+
+        # Resetting the project view must reset the preview toggle before show_file
+        self.view.reset_project_view()
+        self.qt.processEvents()
+
+        # Canvas mask edit mode must match the controller's overlay-enabled state
+        self.assertFalse(sidebar.skyCard.is_showing_before())
+        self.assertTrue(self.view.mask_controller.is_overlay_enabled())
+        self.assertTrue(self.shell.canvas_main.is_mask_edit_mode())
+        self.assertIsNotNone(self.shell.canvas_main.get_denoise_mask())

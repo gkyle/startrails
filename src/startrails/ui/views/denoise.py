@@ -381,6 +381,7 @@ class DenoiseView(ModeView):
             self.tune_settings.set_from_project()
 
         self.update_ready_states()
+        self._reset_preview_toggles()
 
         ref = self.app.workflow.get_reference_file()
         if ref is not None:
@@ -406,7 +407,6 @@ class DenoiseView(ModeView):
             if self.stack_card is not None:
                 self.stack_card.setStatus("done")
         self.update_ready_states()
-        self._reset_preview_toggles()
 
         if self.sidebar is not None:
             self.sidebar.sync_expanded_step()
