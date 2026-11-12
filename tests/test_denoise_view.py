@@ -434,3 +434,37 @@ class DenoiseViewTests(QtTestCase):
         self.assertTrue(self.view.mask_controller.is_overlay_enabled())
         self.assertTrue(self.shell.canvas_main.is_mask_edit_mode())
         self.assertIsNotNone(self.shell.canvas_main.get_denoise_mask())
+
+    def test_background_error_surfaces_for_current_worker_and_ignores_stale(self):
+        sidebar, _, _, final_path = self._setup_completed_denoise_sidebar()
+        sidebar.tuneCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.tuneSettings.ui.error.isVisible())
+
+        worker = FinalCompositeSaveWorker(
+            self.view.last_compositor,
+            self.view._horizon_params(),
+            final_path,
+            self.view._final_save_request_id,
+            parent=self.view,
+        )
+        worker.project = self.project
+        worker.generation = self.view._generation
+        worker.failed_error.connect(self.view._on_background_error)
+
+        # Stale request -> hidden
+        worker.failed_error.emit("Stale error", self.view._final_save_request_id - 1)
+        self.assertFalse(sidebar.tuneSettings.ui.error.isVisible())
+
+        # Current request -> visible with finalpath unchanged
+        orig_final = self.project.final_output_path
+        worker.failed_error.emit("Save failed: permission denied", self.view._final_save_request_id)
+        self.assertTrue(sidebar.tuneSettings.ui.error.isVisible())
+        self.assertIn("permission denied", sidebar.tuneSettings.ui.error.text())
+        self.assertEqual(self.project.final_output_path, orig_final)
+
+        # Cancelled -> hidden after clear
+        sidebar.tuneSettings.ui.error.hide()
+        worker.cancel()
+        worker.failed_error.emit("Cancelled error", self.view._final_save_request_id)
+        self.assertFalse(sidebar.tuneSettings.ui.error.isVisible())

@@ -924,11 +924,18 @@ class DenoiseView(ModeView):
                 canvas.set_horizon_patches(patches)
 
     def _on_background_error(self, message: str, req_id: int) -> None:
-        worker = self.sender()
-        if worker is not None and (
-            worker.project is not self.app.project or worker.is_cancelled() or worker.generation != self._generation
-        ):
+        worker = self.sender() or self._final_save_worker
+        latest_id = (
+            self._horizon_request_id
+            if isinstance(worker, HorizonOverlayWorker)
+            else self._final_save_request_id
+        )
+        if not self._worker_is_current(worker, req_id, latest_id):
             return
+        if self.tune_settings is None:
+            return
+        err_msg = message if message.startswith("Failed:") else f"Failed: {message}"
+        self._show_task_error("composeHorizon", err_msg)
 
     def _on_gradient_mask_toggled(self, checked: bool) -> None:
         if not hasattr(self.shell, "canvas_main") or self.shell.canvas_main is None:
