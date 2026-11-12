@@ -685,8 +685,10 @@ class DenoiseView(ModeView):
             return
         self.show_file(source, preserve_view=True, expand_sections=False)
         canvas = getattr(self.shell, "canvas_main", None)
-        if canvas is not None and hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
-            canvas.set_mask_edit_mode(False)
+        if canvas is not None:
+            if hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
+                canvas.set_mask_edit_mode(False)
+            canvas.set_gradient_mask_visible(False)
 
     def _stacked_composite_file(self) -> Optional[OutputFile]:
         for f in self.app.workflow.get_output_file_list():
@@ -730,6 +732,7 @@ class DenoiseView(ModeView):
                 self._horizon_preview_id = id(compositor)
                 if compositor.gradient_mask is not None:
                     canvas.set_gradient_mask(compositor.gradient_mask)
+                self._resync_gradient_mask_visibility()
             self._set_active_file_metadata(base_file, expand_sections=False)
 
     def _show_final_composite(self) -> None:
@@ -738,6 +741,7 @@ class DenoiseView(ModeView):
         if final_path is not None and not self._has_pending_horizon_save():
             final_file = OutputFile(basename=final_path.name, path=str(final_path), operation="Final Composite")
             self.show_file(final_file, preserve_view=True, expand_sections=False)
+            self._resync_gradient_mask_visibility()
             return
         self._schedule_horizon_tuning(save=False)
 
@@ -795,6 +799,9 @@ class DenoiseView(ModeView):
                 is_bgr=False,
             )
             self._horizon_preview_id = id(self.last_compositor)
+            if self.last_compositor.gradient_mask is not None:
+                canvas.set_gradient_mask(self.last_compositor.gradient_mask)
+            self._resync_gradient_mask_visibility()
         # Invalidate immediately, before the debounce interval elapses.
         self._horizon_request_id += 1
         if save:
@@ -915,6 +922,10 @@ class DenoiseView(ModeView):
             return
         err_msg = message if message.startswith("Failed:") else f"Failed: {message}"
         self._show_task_error("composeHorizon", err_msg)
+
+    def _resync_gradient_mask_visibility(self) -> None:
+        if self.tune_settings is not None:
+            self._on_gradient_mask_toggled(self.tune_settings.ui.showGradientMask.isChecked())
 
     def _on_gradient_mask_toggled(self, checked: bool) -> None:
         if not hasattr(self.shell, "canvas_main") or self.shell.canvas_main is None:

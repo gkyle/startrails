@@ -8,7 +8,7 @@ from unittest.mock import patch
 import jsonpickle
 import numpy as np
 from PySide6.QtCore import QEventLoop, QObject, QTimer
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import QLabel
 from shiboken6 import isValid
 
@@ -306,12 +306,18 @@ class DenoiseViewTests(QtTestCase):
         self.view.bind()
         self.view.reset_project_view()
         sidebar.show()
+        self.shell.canvas_main.resize(200, 200)
         self.shell.canvas_main.show()
         self.qt.processEvents()
         return sidebar, star_path, base_comp_path, final_path
 
     def _canvas_center_rgb(self):
-        img = self.shell.canvas_main.pixmap.toImage()
+        canvas = self.shell.canvas_main
+        if canvas.width() <= 0 or canvas.height() <= 0:
+            canvas.resize(200, 200)
+        pm = QPixmap(canvas.size())
+        canvas.render(pm)
+        img = pm.toImage()
         c = QColor(img.pixel(img.width() // 2, img.height() // 2))
         return c.red(), c.green(), c.blue()
 
@@ -322,6 +328,9 @@ class DenoiseViewTests(QtTestCase):
         self.assertEqual(sidebar.stackCard.status, "done")
         self.assertFalse(sidebar.stackCard.ui.previewToggle.isVisible())
 
+        # Turn on gradient mask checkbox to verify roundtrip across Before/After
+        sidebar.tuneSettings.ui.showGradientMask.setChecked(True)
+
         # Expanding Step 3 displays the stacked sky+ground composite ("after") and shows the eye chip.
         sidebar.stackCard.setExpanded(True)
         self.qt.processEvents()
@@ -330,7 +339,10 @@ class DenoiseViewTests(QtTestCase):
         self.assertTrue(sidebar.stackCard.ui.previewToggle.isVisible())
         self.assertFalse(sidebar.stackCard.ui.previewToggle.isChecked())
         self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+        self.assertIsNotNone(sidebar.outputFiles.current_file())
+        self.assertEqual(Path(sidebar.outputFiles.current_file().path).resolve(), base_comp_path.resolve())
         self.assertFalse(self.shell.canvas_main.is_mask_edit_mode())
+        self.assertTrue(self.shell.canvas_main.is_gradient_mask_visible())
         after_rgb = self._canvas_center_rgb()
 
         # Toggling before shows the clean input image without expanding collapsed file sections.
@@ -340,7 +352,12 @@ class DenoiseViewTests(QtTestCase):
         self.assertFalse(sidebar.starFiles.ui.toggle.isChecked())
         self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
         self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), star_path.resolve())
+        self.assertIsNotNone(sidebar.starFiles.current_file())
+        self.assertEqual(Path(sidebar.starFiles.current_file().path).resolve(), star_path.resolve())
+        self.assertIsNone(sidebar.outputFiles.current_file())
         self.assertFalse(self.shell.canvas_main.is_mask_edit_mode())
+        # Gradient mask must NEVER be visible on source before
+        self.assertFalse(self.shell.canvas_main.is_gradient_mask_visible())
         before_rgb = self._canvas_center_rgb()
         self.assertLess(before_rgb[0], after_rgb[0])
 
@@ -351,6 +368,9 @@ class DenoiseViewTests(QtTestCase):
         self.assertFalse(sidebar.starFiles.ui.toggle.isChecked())
         self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
         self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+        self.assertIsNotNone(sidebar.outputFiles.current_file())
+        self.assertEqual(Path(sidebar.outputFiles.current_file().path).resolve(), base_comp_path.resolve())
+        self.assertTrue(self.shell.canvas_main.is_gradient_mask_visible())
         self.assertEqual(self._canvas_center_rgb(), after_rgb)
 
         # Collapsing while showing "before" resets the toggle and restores the stacked composite.
