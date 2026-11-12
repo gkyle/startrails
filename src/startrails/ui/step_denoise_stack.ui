@@ -90,7 +90,6 @@
      </item>
     </layout>
    </item>
-
    <item>
     <layout class="QHBoxLayout" name="runLayout">
      <property name="spacing">
@@ -170,7 +169,6 @@
       <property name="bottomMargin">
        <number>2</number>
       </property>
-
       <item>
        <layout class="QHBoxLayout" name="useGPURow">
         <item>
