@@ -4,9 +4,9 @@ StarTrails AI is an open-source desktop app for stacking and finishing nightscap
 
 | Mode | Use it for | Main capabilities |
 | :---: | --- | --- |
-| ![Startrails](src/startrails/ui/icons/project_startrails.png)<br>**Startrails** | Long star trails that show the sky's motion | Detect and remove satellite and airplane streaks, create star trail stacks, and fill gaps in the trails. |
-| ![Denoise](src/startrails/ui/icons/project_denoise.png)<br>**Denoise** | A cleaner nightscape with point-like stars | Create tight sky masks with sky detection, refinement, and painting tools, align and stack the sky separately from the ground, and tune noise. |
-| ![Finish](src/startrails/ui/icons/project_finish.png)<br>**Finish** | Finish a single nightscape image | Separate stars from the sky, denoise and sharpen the starless layer, then recombine and export. |
+| <img width="50%" src="src/startrails/ui/icons/project_startrails.png" alt="Startrails"><br>**Startrails** | Long star trails that show the sky's motion | Detect and remove satellite and airplane streaks, create star trail stacks, and fill gaps in the trails. |
+| <img width="50%" src="src/startrails/ui/icons/project_denoise.png" alt="Denoise"><br>**Denoise** | A cleaner nightscape with point-like stars | Create tight sky masks with sky detection, refinement, and painting tools, align and stack the sky separately from the ground, and tune noise. |
+| <img width="50%" src="src/startrails/ui/icons/project_finish.png" alt="Finish"><br>**Finish** | Finish a single nightscape image | Separate stars from the sky, denoise and sharpen the starless layer, then recombine and export. |
 
 ## Get started
 
@@ -14,10 +14,9 @@ Download an installer from [GitHub Releases](https://github.com/gkyle/startrails
 
 - **Windows 10/11 (x64):** Run `StarTrailsAI-<version>-windows-x64-setup.exe`.
 - **macOS 14+ (Apple Silicon):** Open `StarTrailsAI-<version>-macos-arm64.dmg`, then double-click **Install StarTrails AI.app**.
+- **Linux (or other source users):** Download the source distribution. Unzip and run `run.sh` or `run.bat`.
 
-Initial installation needs an internet connection. A compatible GPU can speed up processing steps(NVIDIA CUDA, AMD ROCm, Intel XPU, Apple Silicon MPS, and CPU are supported).
-
-To run from source, clone the repository or [download the source ZIP](https://github.com/gkyle/startrails/archive/refs/heads/main.zip). From the extracted folder, run `run.bat` on Windows or `./run.sh` on Linux or macOS. These scripts use **uv** to set up an isolated Python environment and install dependencies.
+Initial installation needs an internet connection. A compatible GPU can speed up processing steps(NVIDIA CUDA, AMD ROCm, Intel XPU, Apple Silicon MPS, and CPU are supported). Whether running from an installer or the source distribution, setup will create an isolated Python environment using `uv`, identify compatible GPU hardware, and install the necessary dependencies.
 
 On the welcome screen, choose **Star Trails**, **Astro Denoise Stacking**, or **Astro Finish** and create or open a project.
 
@@ -30,8 +29,6 @@ A key feature of Startrails mode is **automatic satellite and airplane streak re
 | Streaks retained | Detected streaks removed |
 | :---: | :---: |
 | [![The 517-frame startrails sequence stacked with satellite and airplane streaks retained.](docs/images/startrails_with_streaks.jpg)](docs/images/startrails_with_streaks.jpg) | [![The same sequence stacked with detected satellite and airplane streaks masked out.](docs/images/startrails_streaks_removed.jpg)](docs/images/startrails_streaks_removed.jpg) |
-
-In this example, both images use the same 517-frame sequence.
 
 To begin, create a Startrails project and add your sequence to **Input Files**.
 
@@ -87,8 +84,8 @@ Create a Denoise project and add your exposures to **Star Images**. Optionally a
 An accurate sky/ground boundary is critical. The mask determines which pixels belong to the sky that will be aligned and which belong to the ground. Inspect detailed edges, including trees, rock formations, and small openings in the foreground.
 
 1. **Detect Sky** creates an automatic starting mask.
-2. **Refine Mask** adjusts the boundary to follow the horizon more closely. It searches for local contrast at the edges of the mask to better separate sky from ground. It can be run multiple times and combined with manual painting to improve results.
-3. Zoom in and use the **painting tools** to make local corrections. While **Define Sky Region** is expanded with the mask overlay shown (use the header eye button to toggle it on or off), left-drag paints sky and right-drag erases it. Adjust the brush size for broad areas or fine details.
+2. **Refine Mask** adjusts the boundary to follow the horizon more closely. It searches for local contrast at the edges of the mask to better separate sky from ground. *It can be run multiple times and combined with manual painting to improve results.*
+3. If necessary, zoom in and use the **painting tools** to make local corrections. While **Define Sky Region** is expanded with the mask overlay shown. Left-drag paints sky. Right-drag erases it. Adjust the brush size for broad areas or fine details.
 
 The green overlay shows the selected sky region. Automated detection, refinement, and manual painting work together so you can get a tight mask before stacking.
 
@@ -121,6 +118,33 @@ This example compares the stack without horizon corrections to the same stack wi
 
 Use **Save Image** to export the result as TIFF or JPEG.
 
+## Finish workflow
+
+Finish mode takes a single nightscape image and separates stars from the sky to enable targeted post processing. For example, denoise and sharpen the nebula/milky way without damaging stars, adjust the white balance of just the stars, or apply a tone curve to the sky to elevate the milky way.
+
+1. **Define Sky Region:** Detect and refine the sky mask, paint corrections, or select the full frame for an image without foreground.
+2. **Separate Stars:** Run star removal to create starless and stars layers.
+3. **Finish Starless:** Adjust AI denoise strength and scope, and optionally sharpen with Structure and Detail controls.
+4. **Recombine and Save:** Adjust star amount, threshold, and Add or Screen blending, then save the image or export layers.
+
+You can export the stars and starless layers for editing and recombining in external software such as Photoshop or blend and recombine in the app.
+
+### Step 2: Separate Stars
+
+Star separation isolates the point stars into a dedicated `stars` layer and reconstructs the background sky in the `starless` layer, preserving foreground edges defined by the sky mask.
+
+| Before separating stars | After separating stars |
+| :---: | :---: |
+| [![Center crop showing stars across the Milky Way and rock arch.](docs/images/finish_separate_before.png)](docs/images/finish_separate_before.png) | [![The same region after Separate Stars removes stars while keeping Milky Way texture and foreground edges intact.](docs/images/finish_separate_after.png)](docs/images/finish_separate_after.png) |
+
+### Step 3: Finish Starless
+
+With stars removed, **Finish Starless** applies AI sky denoising and optional **Structure** and **Detail** sharpening directly to the starless layer without introducing halos or artifacts around stars.
+
+| Before final denoise | After final denoise |
+| :---: | :---: |
+| [![Center crop of the separated starless layer before denoising and sharpening.](docs/images/finish_separate_after.png)](docs/images/finish_separate_after.png) | [![The same region after Finish Starless with sky-only AI denoise at 50% strength, Structure 30, and Detail 20.](docs/images/finish_starless_after.png)](docs/images/finish_starless_after.png) |
+
 ## Contributing and training
 
 After correcting streaks in **Startrails** mode or painting the sky mask in **Denoise** mode, open **Contribute and Export** in the sidebar.
@@ -129,15 +153,6 @@ Choose **Contribute Corrections** to upload training data for review, or **Expor
 Streak data contains 512×512 image crops and labels. Sky data contains a half-size, 8-bit reference image and corrected mask (`image.jpg` and `mask.png`).
 
 The [training dataset](https://github.com/gkyle/startrails/releases/tag/training) and [training notebooks](training/) for streak detection are available.
-
-## Finish workflow
-
-Finish mode takes a single nightscape image and separates stars from the sky to enable targeted post processing. For example, adjust the white balance of stars, or apply a tone curve to the sky to elevate the milky way, without adversely affecting the stars. It offers additional sky denoise and sharpening. You can export the stars and starless layers for editing and recombining in software like Photoshop or blend and recombine in the app.
-
-1. **Define Sky Region:** Detect and refine the sky mask, paint corrections, or select the full frame for an image without foreground.
-2. **Separate Stars:** Run star removal to create starless and stars layers.
-3. **Finish Starless:** Adjust AI denoise strength and scope, and optionally sharpen with Structure and Detail controls.
-4. **Recombine and Save:** Adjust star amount, threshold, and Add or Screen blending, then save the image or export layers.
 
 ## Third-party model licenses
 
