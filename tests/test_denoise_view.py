@@ -21,7 +21,7 @@ from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.sidebar_denoise import SidebarDenoise
 from startrails.ui.ui_wrap import MainWindow
 from startrails.ui.views.denoise import DenoiseView
-from startrails.ui.workers_denoise import FinalCompositeSaveWorker
+from startrails.ui.workers_denoise import FinalCompositeSaveWorker, HorizonOverlayWorker
 from startrails.ui.progress import ProgressBarUpdater
 from startrails.op.denoise.align_stars import AlignStars
 
@@ -397,6 +397,8 @@ class DenoiseViewTests(QtTestCase):
         self.assertTrue(sidebar.tuneCard.ui.previewToggle.isVisible())
         self.assertFalse(sidebar.tuneCard.ui.previewToggle.isChecked())
         self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
+        self.assertIsNotNone(sidebar.outputFiles.current_file())
+        self.assertEqual(Path(sidebar.outputFiles.current_file().path).resolve(), final_path.resolve())
         final_rgb = self._canvas_center_rgb()
 
         # Toggling before shows the stacked composite ("before") with no horizon overlay or section expansion.
@@ -405,14 +407,27 @@ class DenoiseViewTests(QtTestCase):
         self.assertTrue(sidebar.tuneCard.ui.previewToggle.isChecked())
         self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
         self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
-        self.assertEqual(self.shell.canvas_main._horizon_overlay_patches, [])
+        self.assertIsNotNone(sidebar.outputFiles.current_file())
+        self.assertEqual(Path(sidebar.outputFiles.current_file().path).resolve(), base_comp_path.resolve())
         stacked_rgb = self._canvas_center_rgb()
         self.assertLess(stacked_rgb[0], final_rgb[0])
 
-        # Stale horizon overlay patches arriving while viewing "before" are ignored.
-        patch_arr = np.full((4, 4, 3), 1.0, dtype=np.float32)
-        self.view._on_horizon_patches_ready([(patch_arr, (0, 0, 4, 4))], self.view._horizon_request_id)
-        self.assertEqual(self.shell.canvas_main._horizon_overlay_patches, [])
+        # Construct cheap worker without thread
+        worker = HorizonOverlayWorker(
+            self.view.last_compositor,
+            self.view._horizon_params(),
+            self.view._horizon_request_id,
+            parent=self.view,
+        )
+        worker.project = self.project
+        worker.generation = self.view._generation
+        worker.finished_patches.connect(self.view._on_horizon_patches_ready)
+
+        patch_arr = np.full((16, 20, 3), 1.0, dtype=np.float32)
+
+        # While viewing "before", overlay patches arriving from a valid current worker are rejected
+        worker.finished_patches.emit([(patch_arr, (0, 0, 20, 16))], self.view._horizon_request_id)
+        self.assertEqual(self._canvas_center_rgb(), stacked_rgb)
 
         # Toggling again restores the final composite ("after") without expanding file sections.
         sidebar.tuneCard.ui.previewToggle.click()
@@ -422,7 +437,26 @@ class DenoiseViewTests(QtTestCase):
         self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
         self.assertEqual(self._canvas_center_rgb(), final_rgb)
 
-        # Collapsing while showing "before" resets the toggle and restores the final composite.
+        # Genuine _show_stacked_composite displays live base (tuneAfter + expanded)
+        self.view._show_stacked_composite()
+        self.qt.processEvents()
+        worker.finished_patches.emit([(patch_arr, (0, 0, 20, 16))], self.view._horizon_request_id)
+        self.assertEqual(self._canvas_center_rgb(), (255, 255, 255))
+
+        # view.show_file(reference) clears identity without bumping request
+        ref_file = self.project.reference_file
+        self.view.show_file(ref_file)
+        self.qt.processEvents()
+        ref_rgb = self._canvas_center_rgb()
+
+        # Emit same current worker patches -> canvas unchanged, proving identity guard
+        worker.finished_patches.emit([(patch_arr, (0, 0, 20, 16))], self.view._horizon_request_id)
+        self.assertEqual(self._canvas_center_rgb(), ref_rgb)
+
+        # Switch back to step 4 before testing collapse
+        self.view._show_final_composite()
+        sidebar.tuneCard.setExpanded(True)
+        self.qt.processEvents()
         sidebar.tuneCard.ui.previewToggle.click()
         self.qt.processEvents()
         self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())

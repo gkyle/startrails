@@ -491,6 +491,7 @@ class DenoiseView(ModeView):
 
     def _on_file_section_show_file(self, file: Optional[File]) -> None:
         self._reset_preview_toggles()
+        self._cancel_horizon_overlay()
         self.show_file(file, preserve_view=True)
 
     def _focus_file_in_sections(self, file: Optional[File], *, expand: bool = True) -> None:
@@ -772,6 +773,10 @@ class DenoiseView(ModeView):
             self._show_final_composite()
 
     def _can_apply_horizon_patches(self) -> bool:
+        if self.last_compositor is None:
+            return False
+        if self._horizon_preview_id is None or self._horizon_preview_id != id(self.last_compositor):
+            return False
         if self.tune_card is not None and self.tune_card.is_showing_before():
             return False
         if self.stack_card is not None and (self.stack_card.is_expanded or self.stack_card.is_showing_before()):
