@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Final, List, Optional
+
+import numpy as np
 
 from startrails.lib.file import InputFile, OutputFile, Unpickle
 from startrails.lib.project_type import get_project_output_dir
@@ -21,6 +25,24 @@ _PERSISTED_SETTING_DEFAULTS: Final[dict[str, str]] = {
 }
 
 _EMPTY_STRING_SETTINGS: Final[frozenset[str]] = frozenset({"sortBy", "sortOrder"})
+
+
+def _corrections_signature(payload) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+EMPTY_CORRECTIONS_SIGNATURE: Final[str] = _corrections_signature([])
+
+
+def _canonical_polygons(masks) -> list[list[list[int]]]:
+    """Normalize user-drawn polygons to dtype-independent integer coordinates."""
+    polygons = [
+        np.asarray(mask, dtype=np.int64).reshape(-1, 2).tolist()
+        for mask in masks
+    ]
+    polygons.sort()
+    return polygons
 
 
 class Project(Unpickle):
@@ -53,6 +75,7 @@ class Project(Unpickle):
         self.useGPU = useGPU
         self.streaksRemoved = streaksRemoved
         self.applied_corrections: int = 0
+        self.applied_corrections_signature: str = EMPTY_CORRECTIONS_SIGNATURE
 
     def __setstate__(self, state: dict) -> None:
         super().__setstate__(state)
@@ -69,6 +92,36 @@ class Project(Unpickle):
         if not isinstance(applied, int) or isinstance(applied, bool) or applied < 0:
             self.applied_corrections = 0
 
+        signature = getattr(self, "applied_corrections_signature", None)
+        if not isinstance(signature, str) or not signature:
+            self.applied_corrections_signature = EMPTY_CORRECTIONS_SIGNATURE
+
     def get_output_dir(self) -> Path:
         """Resolve the authoritative output directory for this project."""
         return get_project_output_dir(self.projectFile)
+
+    def stack_input_files(self) -> List[InputFile]:
+        """Return the inputs included in stacking, in project order."""
+        return [file for file in self.rawInputFiles if not file.excludeFromStack]
+
+    def corrections_count(self) -> int:
+        """Count user corrections on the inputs included in stacking."""
+        return sum(
+            len(file.streaksManualMasks) + len(file.streaksManualDeletedMasks)
+            for file in self.stack_input_files()
+        )
+
+    def corrections_signature(self) -> str:
+        """Fingerprint included inputs and their manual/deleted polygons."""
+        entries = []
+        for file in sorted(self.stack_input_files(), key=lambda file: (str(file.path), str(file.basename))):
+            manual = _canonical_polygons(file.streaksManualMasks)
+            deleted = _canonical_polygons(file.streaksManualDeletedMasks)
+            if not manual and not deleted:
+                continue
+            entries.append({"path": str(file.path), "manual": manual, "deleted": deleted})
+        return _corrections_signature(entries)
+
+    def corrections_pending(self) -> bool:
+        """Whether current user corrections differ from the last applied stack."""
+        return self.corrections_signature() != self.applied_corrections_signature

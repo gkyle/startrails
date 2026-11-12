@@ -453,7 +453,7 @@ class ProjectTests(IsolatedTestCase):
 
     def test_startrails_project_defaults_and_migration_at_load_boundary(self):
         import json
-        from startrails.lib.project import Project
+        from startrails.lib.project import EMPTY_CORRECTIONS_SIGNATURE, Project
         from startrails.lib.startrails.defaults import (
             DEFAULT_PROJECT_FILENAME,
             STARTRAILS_DEFAULTS,
@@ -480,6 +480,8 @@ class ProjectTests(IsolatedTestCase):
         self.assertEqual(proj.useGPU, STARTRAILS_DEFAULTS.use_gpu)
         self.assertEqual(proj.streaksRemoved, STARTRAILS_DEFAULTS.streaks_removed)
         self.assertEqual(proj.applied_corrections, 0)
+        self.assertEqual(proj.applied_corrections_signature, EMPTY_CORRECTIONS_SIGNATURE)
+        self.assertFalse(proj.corrections_pending())
 
         app = self.make_app()
 
@@ -511,6 +513,8 @@ class ProjectTests(IsolatedTestCase):
         self.assertFalse(project.useGPU)
         self.assertFalse(project.streaksRemoved)
         self.assertEqual(project.applied_corrections, 0)
+        self.assertEqual(project.applied_corrections_signature, EMPTY_CORRECTIONS_SIGNATURE)
+        self.assertFalse(project.corrections_pending())
 
         # Flat jsonpickle format bypasses __setstate__; the app load boundary restores it.
         flat_file = self.root / "legacy_flat.proj_startrails"
@@ -533,3 +537,109 @@ class ProjectTests(IsolatedTestCase):
         self.assertTrue(project.useGPU)
         self.assertIsNone(project.streaksRemoved)
         self.assertEqual(project.applied_corrections, 2)
+        self.assertEqual(project.applied_corrections_signature, EMPTY_CORRECTIONS_SIGNATURE)
+        self.assertFalse(project.corrections_pending())
+        project.rawInputFiles.append(InputFile("frame.tif", str(self.root / "frame.tif")))
+        project.rawInputFiles[0].streaksManualMasks.append(
+            np.array([[0, 0], [2, 0], [2, 2]], dtype=np.int64)
+        )
+        self.assertTrue(project.corrections_pending())
+
+    def test_correction_signature_tracks_applied_state_and_vertex_edits(self):
+        from startrails.lib.project import EMPTY_CORRECTIONS_SIGNATURE
+
+        app = self.make_app()
+        paths = []
+        for index in range(2):
+            path = self.root / f"correction-frame-{index}.jpg"
+            self.assertTrue(cv2.imwrite(str(path), np.full((6, 6, 3), 40 + index, np.uint8)))
+            paths.append(path)
+        included = InputFile(paths[0].name, str(paths[0]))
+        excluded = InputFile(paths[1].name, str(paths[1]))
+        excluded.excludeFromStack = True
+        excluded.streaksManualMasks.append(np.array([[0, 0], [2, 0], [2, 2]], dtype=np.int64))
+        app.project.rawInputFiles = [included, excluded]
+
+        self.assertEqual(app.project.corrections_count(), 0)
+        self.assertFalse(app.project.corrections_pending())
+
+        excluded.excludeFromStack = False
+        signature = app.project.corrections_signature()
+        excluded.streaksManualMasks[0] = np.asarray(
+            excluded.streaksManualMasks[0], dtype=np.int32
+        ).reshape(-1, 1, 2)
+        self.assertEqual(app.project.corrections_count(), 1)
+        self.assertEqual(app.project.corrections_signature(), signature)
+        self.assertTrue(app.project.corrections_pending())
+
+        # Keep never publishes corrections.
+        app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertEqual(app.project.applied_corrections, 0)
+        self.assertEqual(app.project.applied_corrections_signature, EMPTY_CORRECTIONS_SIGNATURE)
+        self.assertTrue(app.project.corrections_pending())
+
+        # Remove applies the current corrections.
+        app.doStack(True, lambda *args: None, useGPU=False)
+        self.assertEqual(app.project.applied_corrections, 1)
+        self.assertEqual(app.project.applied_corrections_signature, signature)
+        self.assertFalse(app.project.corrections_pending())
+
+        # Applied state survives a real project reload.
+        reloaded = self.make_app()
+        reloaded.loadProject(app.project.projectFile)
+        self.assertEqual(reloaded.project.applied_corrections, 1)
+        self.assertEqual(reloaded.project.applied_corrections_signature, signature)
+        self.assertFalse(reloaded.project.corrections_pending())
+
+        # Moving a vertex keeps the count but changes the applied signature.
+        corrected = reloaded.project.rawInputFiles[1]
+        corrected.streaksManualMasks[0][1] = [3, 0]
+        self.assertEqual(reloaded.project.corrections_count(), 1)
+        self.assertTrue(reloaded.project.corrections_pending())
+
+        # Removing the correction is also pending despite no remaining polygons.
+        corrected.streaksManualMasks.clear()
+        self.assertEqual(reloaded.project.corrections_count(), 0)
+        self.assertTrue(reloaded.project.corrections_pending())
+
+        # Deleted polygons are user corrections too.
+        corrected.streaksManualDeletedMasks.append(
+            np.array([[1, 1], [3, 1], [3, 3]], dtype=np.int64)
+        )
+        self.assertEqual(reloaded.project.corrections_count(), 1)
+        self.assertTrue(reloaded.project.corrections_pending())
+
+    def test_failed_or_cancelled_stack_preserves_applied_corrections(self):
+        from concurrent.futures import CancelledError
+        from unittest.mock import patch
+
+        app = self.make_app()
+        path = self.root / "cancelled-frame.jpg"
+        self.assertTrue(cv2.imwrite(str(path), np.full((6, 6, 3), 80, np.uint8)))
+        input_file = InputFile(path.name, str(path))
+        input_file.streaksManualMasks.append(np.array([[0, 0], [2, 0], [2, 2]], dtype=np.int64))
+        app.project.rawInputFiles = [input_file]
+        app.doStack(True, lambda *args: None, useGPU=False)
+        applied_count = app.project.applied_corrections
+        applied_signature = app.project.applied_corrections_signature
+        self.assertEqual(applied_count, 1)
+
+        input_file.streaksManualMasks[0][1] = [3, 0]
+        self.assertTrue(app.project.corrections_pending())
+
+        def cancel(total, increment, count, done, data):
+            if increment:
+                app.activeOperation.requestInterrupt()
+
+        with self.assertRaises(CancelledError):
+            app.doStack(True, cancel, useGPU=False)
+        self.assertEqual(app.project.applied_corrections, applied_count)
+        self.assertEqual(app.project.applied_corrections_signature, applied_signature)
+        self.assertTrue(app.project.corrections_pending())
+
+        with patch("startrails.op.stackImages.imwrite", side_effect=OSError("disk full")):
+            with self.assertRaises(OSError):
+                app.doStack(True, lambda *args: None, useGPU=False)
+        self.assertEqual(app.project.applied_corrections, applied_count)
+        self.assertEqual(app.project.applied_corrections_signature, applied_signature)
+        self.assertTrue(app.project.corrections_pending())

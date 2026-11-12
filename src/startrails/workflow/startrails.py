@@ -210,9 +210,11 @@ class StarTrailsWorkflow(Workflow):
         useGPU=True,
     ) -> OutputFile:
         stackImages = StackImages(useGPU)
-        filteredInputFiles = list(filter(lambda file: not file.excludeFromStack, self.project.rawInputFiles))
+        filteredInputFiles = self.project.stack_input_files()
         if not filteredInputFiles:
             raise ValueError("Include at least one input image in the stack.")
+        applied_corrections = self.project.corrections_count()
+        applied_signature = self.project.corrections_signature()
         outDir = str(self.project.get_output_dir())
         operation = OP_STACKED_REMOVE if satellitesRemoved else OP_STACKED_KEEP
         extension = self._output_extension(operation, filteredInputFiles[0].path)
@@ -239,16 +241,14 @@ class StarTrailsWorkflow(Workflow):
             self.app.activeOperation = None
             stackImages.removeObserver(progressBar)
         self._invalidate_fill_dependents(filename)
-        total_corrections = sum(
-            len(getattr(f, "streaksManualMasks", [])) + len(getattr(f, "streaksManualDeletedMasks", []))
-            for f in self.project.rawInputFiles
-        )
-        self.project.applied_corrections = total_corrections
         record = self._upsert_output_file(basename, filename, operation, fadeGradient=fadeGradient)
         record.sourceMap = file.sourceMap
         record.sourceStack = file.sourceStack
         record.gapMask = file.gapMask
         record.source_stack_signature = file.source_stack_signature
+        if satellitesRemoved:
+            self.project.applied_corrections = applied_corrections
+            self.project.applied_corrections_signature = applied_signature
         self.save_project()
         return record
 
