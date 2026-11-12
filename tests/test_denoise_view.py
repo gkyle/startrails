@@ -468,3 +468,25 @@ class DenoiseViewTests(QtTestCase):
         worker.cancel()
         worker.failed_error.emit("Cancelled error", self.view._final_save_request_id)
         self.assertFalse(sidebar.tuneSettings.ui.error.isVisible())
+
+    def test_stacked_composite_resolves_base_output_and_avoids_stale_disk_or_phantom_file(self):
+        sidebar, _, base_comp_path, _ = self._setup_completed_denoise_sidebar()
+        self.assertTrue(base_comp_path.is_file())
+
+        # When deleted from disk, in-memory compositor still renders without selecting a phantom file
+        base_comp_path.unlink()
+        self.view._show_stacked_composite()
+        self.assertIsNotNone(self.shell.canvas_main.pixmap)
+        self.assertFalse(self.shell.canvas_main.pixmap.isNull())
+        self.assertIsNone(self.shell.canvas_main.file)
+        self.assertIsNone(sidebar.outputFiles.current_file())
+
+        # When stacks are invalidated and old base exists on disk, it is never displayed
+        base_comp_path.write_bytes(b"stale")
+        self.project.invalidate_results(alignment=False)
+        self.view.last_compositor = None
+        self.view._show_stacked_composite()
+        self.assertNotEqual(
+            getattr(self.shell.canvas_main.file, "path", None),
+            str(base_comp_path),
+        )

@@ -688,22 +688,11 @@ class DenoiseView(ModeView):
         if canvas is not None and hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
             canvas.set_mask_edit_mode(False)
 
-    def _existing_base_composite_path(self) -> Optional[Path]:
-        proj = getattr(self.app.workflow, "project", None) if hasattr(self.app, "workflow") else None
-        if proj is None or not hasattr(proj, "get_output_dir"):
-            return None
-        candidate = (proj.get_output_dir() / "base_composite.tif").resolve()
-        return candidate if candidate.is_file() else None
-
-    def _stacked_composite_file(self) -> OutputFile:
-        base_path = self._existing_base_composite_path()
-        if base_path is not None:
-            return OutputFile(basename=base_path.name, path=str(base_path), operation="Base Stack")
-        proj = getattr(self.app.workflow, "project", None) if hasattr(self.app, "workflow") else None
-        if proj is not None and hasattr(proj, "get_output_dir"):
-            candidate = (proj.get_output_dir() / "base_composite.tif").resolve()
-            return OutputFile(basename=candidate.name, path=str(candidate), operation="Base Stack")
-        return OutputFile(basename="base_composite.tif", path="", operation="Base Stack")
+    def _stacked_composite_file(self) -> Optional[OutputFile]:
+        for f in self.app.workflow.get_output_file_list():
+            if f.operation == "Base Stack":
+                return f
+        return None
 
     def _existing_final_output_path(self) -> Optional[Path]:
         final_output = getattr(self._project, "final_output_path", None)
@@ -742,12 +731,6 @@ class DenoiseView(ModeView):
                 if compositor.gradient_mask is not None:
                     canvas.set_gradient_mask(compositor.gradient_mask)
             self._set_active_file_metadata(base_file, expand_sections=False)
-            return
-
-        base_path = self._existing_base_composite_path()
-        if base_path is not None:
-            base_file = OutputFile(basename=base_path.name, path=str(base_path), operation="Base Stack")
-            self.show_file(base_file, preserve_view=True, expand_sections=False)
 
     def _show_final_composite(self) -> None:
         """Display the final horizon-tuned composite, using live tuning when uncached."""
@@ -761,11 +744,7 @@ class DenoiseView(ModeView):
     def _on_stack_card_expanded(self) -> None:
         self._reset_preview_toggles()
         self._cancel_horizon_overlay()
-        if (
-            self.last_compositor is not None
-            or self._has_existing_stacks()
-            or self._existing_base_composite_path() is not None
-        ):
+        if self.last_compositor is not None or self._has_existing_stacks():
             self._show_stacked_composite()
 
     def _on_stack_before_after(self, showing_before: bool) -> None:
