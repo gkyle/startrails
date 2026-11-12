@@ -5,6 +5,7 @@ from typing import Final
 from PySide6.QtCore import QElapsedTimer, QEvent, Qt, QSignalBlocker, QObject, Signal, Property
 from PySide6.QtWidgets import QButtonGroup, QFrame, QSlider, QSpinBox, QWidget
 from startrails.lib.gpu import resolve_torch_device
+from startrails.lib.project import Project
 from startrails.lib.startrails.defaults import (
     DEFAULT_MERGE_METHOD_INDEX,
     FADE_MODE_BOTH,
@@ -627,54 +628,28 @@ class StackSettings(QWidget):
 
     def set_from_project(self):
         project = getattr(self.app, "project", None)
-        if project is None:
-            return
-        fade_mode = getattr(project, "fadeMode", None)
-        if fade_mode is not None:
-            with QSignalBlocker(self.ui.fade):
-                self.ui.fade.setCurrentIndex(int(fade_mode))
+        source = project if project is not None else Project()
+
+        with QSignalBlocker(self.ui.fade):
+            self.ui.fade.setCurrentIndex(int(source.fadeMode))
         self.ui.fadeAmount.setEnabled(self.ui.fade.currentIndex() != FADE_MODE_OFF)
-        fade_amount = getattr(project, "fadeAmount", None)
         with QSignalBlocker(self.ui.fadeAmount):
-            self.ui.fadeAmount.setValue(
-                int(fade_amount) if fade_amount is not None else STARTRAILS_DEFAULTS.fade_amount
-            )
-        batch_size = getattr(project, "batchSize", None)
+            self.ui.fadeAmount.setValue(int(source.fadeAmount))
         with QSignalBlocker(self.ui.batchSize):
-            self.ui.batchSize.setValue(
-                int(batch_size) if batch_size is not None else STARTRAILS_DEFAULTS.batch_size
-            )
-        use_gpu = getattr(project, "useGPU", None)
+            self.ui.batchSize.setValue(int(source.batchSize))
         with QSignalBlocker(self.ui.useGPU):
-            self.ui.useGPU.setChecked(
-                bool(use_gpu) if use_gpu is not None else STARTRAILS_DEFAULTS.use_gpu
-            )
-        saved_streaks = getattr(project, "streaksRemoved", None)
-        if saved_streaks is not None and hasattr(self.ui, "streaks") and self.ui.streaks is not None:
+            self.ui.useGPU.setChecked(bool(source.useGPU))
+
+        if hasattr(self.ui, "streaks") and self.ui.streaks is not None:
+            saved_streaks = source.streaksRemoved
             with QSignalBlocker(self.ui.streaks):
-                self.ui.streaks.setCurrentIndex(
-                    STREAKS_REMOVE_INDEX if (saved_streaks and self._has_masks) else STREAKS_KEEP_INDEX
-                )
+                if saved_streaks is None:
+                    target_idx = STREAKS_REMOVE_INDEX if self._has_masks else STREAKS_KEEP_INDEX
+                else:
+                    target_idx = STREAKS_REMOVE_INDEX if (saved_streaks and self._has_masks) else STREAKS_KEEP_INDEX
+                self.ui.streaks.setCurrentIndex(target_idx)
 
     def reset(self):
-        project = getattr(self.app, "project", None)
-        fade_mode = getattr(project, "fadeMode", None) if project is not None else None
-        fade_amount = getattr(project, "fadeAmount", None) if project is not None else None
-        batch_size = getattr(project, "batchSize", None) if project is not None else None
-        use_gpu = getattr(project, "useGPU", None) if project is not None else None
-
-        self.ui.fade.setCurrentIndex(
-            int(fade_mode) if fade_mode is not None else STARTRAILS_DEFAULTS.fade_mode
-        )
-        self.ui.fadeAmount.setValue(
-            int(fade_amount) if fade_amount is not None else STARTRAILS_DEFAULTS.fade_amount
-        )
-        self.ui.batchSize.setValue(
-            int(batch_size) if batch_size is not None else STARTRAILS_DEFAULTS.batch_size
-        )
-        self.ui.useGPU.setChecked(
-            bool(use_gpu) if use_gpu is not None else STARTRAILS_DEFAULTS.use_gpu
-        )
         self._has_masks = None
         self.set_has_masks(False)
         self._first_file = None
@@ -686,23 +661,25 @@ class StackSettings(QWidget):
     def set_has_masks(self, available):
         self.ui.streaks.model().item(STREAKS_REMOVE_INDEX).setEnabled(available)
         project = getattr(self.app, "project", None)
-        saved_streaks = getattr(project, "streaksRemoved", None)
+        source = project if project is not None else Project()
+        saved_streaks = source.streaksRemoved
         if available != self._has_masks:
             self._has_masks = available
-            if saved_streaks is not None:
-                self.ui.streaks.setCurrentIndex(
-                    STREAKS_REMOVE_INDEX if (available and saved_streaks) else STREAKS_KEEP_INDEX
-                )
-            else:
-                self.ui.streaks.setCurrentIndex(
-                    STREAKS_REMOVE_INDEX if available else STREAKS_KEEP_INDEX
-                )
+            if hasattr(self.ui, "streaks") and self.ui.streaks is not None:
+                if saved_streaks is None:
+                    target_idx = STREAKS_REMOVE_INDEX if available else STREAKS_KEEP_INDEX
+                else:
+                    target_idx = STREAKS_REMOVE_INDEX if (available and saved_streaks) else STREAKS_KEEP_INDEX
+                with QSignalBlocker(self.ui.streaks):
+                    self.ui.streaks.setCurrentIndex(target_idx)
 
     def set_streaks_removed(self, removed: bool = True):
         if hasattr(self.ui, "streaks") and self.ui.streaks is not None:
             target_idx = STREAKS_REMOVE_INDEX if (removed and bool(self._has_masks)) else STREAKS_KEEP_INDEX
-            self.ui.streaks.setCurrentIndex(target_idx)
-            self._persist_to_project()
+            if self.ui.streaks.currentIndex() != target_idx:
+                self.ui.streaks.setCurrentIndex(target_idx)
+            else:
+                self._on_setting_changed()
 
     def refresh_inputs(self):
         files = self.app.getInputFileList() if (self.app and hasattr(self.app, "getInputFileList")) else []
@@ -724,11 +701,18 @@ class StackSettings(QWidget):
             self.ui.memory.setText(f"Batch suggestion unavailable: {error}")
             available = False
         else:
-            self.ui.batchSize.setValue(max(1, int(size)))
             device = "GPU" if available else "CPU"
             self.ui.memory.setText(f"Suggested batch: {size} · {memory / 1024**3:.2f} GB {device}")
-        with QSignalBlocker(self.ui.useGPU):
-            self.ui.useGPU.setChecked(bool(available) and self.ui.useGPU.isEnabled())
+            project = getattr(self.app, "project", None)
+            if project is None:
+                with QSignalBlocker(self.ui.batchSize):
+                    self.ui.batchSize.setValue(max(1, int(size)))
+        if not available:
+            with QSignalBlocker(self.ui.useGPU):
+                self.ui.useGPU.setChecked(False)
+        elif getattr(self.app, "project", None) is None:
+            with QSignalBlocker(self.ui.useGPU):
+                self.ui.useGPU.setChecked(bool(available) and self.ui.useGPU.isEnabled())
 
     def values(self):
         for field in (self.ui.batchSize, self.ui.fadeAmount):

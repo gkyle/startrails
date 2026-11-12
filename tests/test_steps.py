@@ -58,10 +58,42 @@ class SettingsTests(QtTestCase):
         self.assertIsNone(self.app.project.streaksRemoved)
         stack.ui.batchSize.setValue(5)
         self.assertIsNone(self.app.project.streaksRemoved)
+
+        # 1. Automatic selection when masks available does not persist; project stays None
+        stack.set_has_masks(True)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 1)
+        self.assertTrue(stack.values()["streaksRemoved"])
+        self.assertIsNone(self.app.project.streaksRemoved)
+
+        # 2. Explicit detection action sets True and persists to project
+        stack.set_streaks_removed(True)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 1)
+        self.assertTrue(self.app.project.streaksRemoved)
+        self.assertTrue(stack.values()["streaksRemoved"])
+
+        # 3. True intent survives availability flips
+        stack.set_has_masks(False)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 0)
+        self.assertFalse(stack.values()["streaksRemoved"])
+        self.assertTrue(self.app.project.streaksRemoved)
+
         stack.set_has_masks(True)
         self.assertEqual(stack.ui.streaks.currentIndex(), 1)
         self.assertTrue(stack.values()["streaksRemoved"])
         self.assertTrue(self.app.project.streaksRemoved)
+
+        # 4. Changed user control still persists
+        stack.ui.streaks.setCurrentIndex(0)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 0)
+        self.assertFalse(stack.values()["streaksRemoved"])
+        self.assertFalse(self.app.project.streaksRemoved)
+
+        # 5. False intent survives availability flips
+        stack.set_has_masks(False)
+        self.assertFalse(self.app.project.streaksRemoved)
+        stack.set_has_masks(True)
+        self.assertEqual(stack.ui.streaks.currentIndex(), 0)
+        self.assertFalse(self.app.project.streaksRemoved)
 
     def test_collapse_and_fade_mapping(self):
         stack = StackSettings(self.app)

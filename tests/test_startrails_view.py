@@ -285,31 +285,54 @@ class StarTrailsViewPreviewTests(QtTestCase):
         self.assertFalse(sidebar.review.ui.pendingCorrectionsNotice.isHidden())
 
     def test_stack_settings_persist_to_project_file(self):
+        from unittest.mock import MagicMock
+
         ctx = self._build_view()
         stack = ctx.sidebar.stack
 
-        # Set specific settings
+        # Simulate masks present so streaks choice can be non-default False
+        ctx.in1.streaksMasks.append([[0, 0], [10, 10]])
+        ctx.view.slotDetectStreaksFinished()
+
+        # Set non-default ALL settings including False
         stack.ui.fade.setCurrentIndex(1)  # Fade start
         stack.ui.fadeAmount.setValue(45)
+        stack.ui.batchSize.setValue(3)
         stack.ui.useGPU.setChecked(False)
+        stack.ui.streaks.setCurrentIndex(0)  # Keep
 
         # Check in project
         proj = ctx.app.project
         self.assertEqual(proj.fadeMode, 1)
         self.assertEqual(proj.fadeAmount, 45)
+        self.assertEqual(proj.batchSize, 3)
         self.assertFalse(proj.useGPU)
+        self.assertFalse(proj.streaksRemoved)
 
-        # Re-stacking preserves these settings
+        # Values reflect these settings
         vals = stack.values()
         self.assertEqual(vals["fade"], True)
         self.assertEqual(vals["fadeAmount"], (0.45, 0.0))
+        self.assertEqual(vals["batchSize"], 3)
         self.assertFalse(vals["useGPU"])
+        self.assertFalse(vals["streaksRemoved"])
 
-        # Resetting or reloading restores settings from project
-        stack.reset()
+        # Resetting view restores settings from project without overwriting on-disk or saving during hydration
+        ctx.app.saveProject = MagicMock()
+        ctx.view.resetProjectView()
+        ctx.app.saveProject.assert_not_called()
+
+        self.assertEqual(proj.fadeMode, 1)
+        self.assertEqual(proj.fadeAmount, 45)
+        self.assertEqual(proj.batchSize, 3)
+        self.assertFalse(proj.useGPU)
+        self.assertFalse(proj.streaksRemoved)
+
         self.assertEqual(stack.ui.fade.currentIndex(), 1)
         self.assertEqual(stack.ui.fadeAmount.value(), 45)
+        self.assertEqual(stack.ui.batchSize.value(), 3)
         self.assertFalse(stack.ui.useGPU.isChecked())
+        self.assertEqual(stack.ui.streaks.currentIndex(), 0)
 
     def test_completing_detect_streaks_defaults_stack_streaks_to_remove(self):
         ctx = self._build_view()
