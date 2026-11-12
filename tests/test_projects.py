@@ -451,7 +451,7 @@ class ProjectTests(IsolatedTestCase):
         self.assertIsNone(filled_output([missing_final, mask]))
         self.assertIs(filled_output([missing_final, mask, legacy]), legacy)
 
-    def test_startrails_defaults_are_authoritative_and_survive_deserialization(self):
+    def test_startrails_project_defaults_and_migration_at_load_boundary(self):
         import json
         from startrails.lib.project import Project
         from startrails.lib.startrails.defaults import (
@@ -459,7 +459,6 @@ class ProjectTests(IsolatedTestCase):
             STARTRAILS_DEFAULTS,
         )
 
-        # Test defaults object contracts
         self.assertEqual(STARTRAILS_DEFAULTS.sort_by, "date")
         self.assertEqual(STARTRAILS_DEFAULTS.sort_order, "asc")
         self.assertEqual(STARTRAILS_DEFAULTS.fade_mode, 3)
@@ -471,15 +470,6 @@ class ProjectTests(IsolatedTestCase):
         self.assertEqual(STARTRAILS_DEFAULTS.merge_threshold, 0.2)
         self.assertEqual(STARTRAILS_DEFAULTS.merge_method, "GREEDYNMM")
 
-        # Test compatibility aliases
-        self.assertEqual(STARTRAILS_DEFAULTS.fadeMode, 3)
-        self.assertEqual(STARTRAILS_DEFAULTS.fadeAmount, 10)
-        self.assertEqual(STARTRAILS_DEFAULTS.batchSize, 1)
-        self.assertTrue(STARTRAILS_DEFAULTS.useGPU)
-        self.assertEqual(STARTRAILS_DEFAULTS.sortBy, "date")
-        self.assertEqual(STARTRAILS_DEFAULTS.sortOrder, "asc")
-
-        # Fresh project uses authoritative defaults
         proj = Project()
         self.assertEqual(proj.projectFile, DEFAULT_PROJECT_FILENAME)
         self.assertEqual(proj.sortBy, STARTRAILS_DEFAULTS.sort_by)
@@ -489,17 +479,57 @@ class ProjectTests(IsolatedTestCase):
         self.assertEqual(proj.batchSize, STARTRAILS_DEFAULTS.batch_size)
         self.assertEqual(proj.useGPU, STARTRAILS_DEFAULTS.use_gpu)
         self.assertEqual(proj.streaksRemoved, STARTRAILS_DEFAULTS.streaks_removed)
+        self.assertEqual(proj.applied_corrections, 0)
 
-        # Legacy project without new fields restores defaults on load
-        legacy_state = {
+        app = self.make_app()
+
+        # py/state format: blank, missing, and None settings fall back to defaults.
+        state_file = self.root / "legacy_state.proj_startrails"
+        state_file.write_text(json.dumps({
             "py/object": "startrails.lib.project.Project",
-            "projectFile": "projects/legacy.proj_startrails",
+            "py/state": {
+                "rawInputFiles": [],
+                "outputFiles": [],
+                "operations": {},
+                "projectFile": str(state_file),
+                "sortBy": "",
+                "sortOrder": None,
+                "fadeMode": 0,
+                "batchSize": 0,
+                "useGPU": False,
+                "streaksRemoved": False,
+            },
+        }))
+        app.loadProject(str(state_file))
+        project = app.project
+        self.assertEqual(project.projectFile, str(state_file))
+        self.assertEqual(project.sortBy, STARTRAILS_DEFAULTS.sort_by)
+        self.assertEqual(project.sortOrder, STARTRAILS_DEFAULTS.sort_order)
+        self.assertEqual(project.fadeMode, 0)
+        self.assertEqual(project.fadeAmount, STARTRAILS_DEFAULTS.fade_amount)
+        self.assertEqual(project.batchSize, 0)
+        self.assertFalse(project.useGPU)
+        self.assertFalse(project.streaksRemoved)
+        self.assertEqual(project.applied_corrections, 0)
+
+        # Flat jsonpickle format bypasses __setstate__; the app load boundary restores it.
+        flat_file = self.root / "legacy_flat.proj_startrails"
+        flat_file.write_text(json.dumps({
+            "py/object": "startrails.lib.project.Project",
+            "projectFile": str(flat_file),
             "rawInputFiles": [],
             "outputFiles": [],
             "operations": {},
-        }
-        restored = jsonpickle.decode(json.dumps(legacy_state))
-        self.assertEqual(restored.fadeMode, STARTRAILS_DEFAULTS.fade_mode)
-        self.assertEqual(restored.fadeAmount, STARTRAILS_DEFAULTS.fade_amount)
-        self.assertEqual(restored.batchSize, STARTRAILS_DEFAULTS.batch_size)
-        self.assertEqual(restored.useGPU, STARTRAILS_DEFAULTS.use_gpu)
+            "applied_corrections": 2,
+        }))
+        app.loadProject(str(flat_file))
+        project = app.project
+        self.assertEqual(project.projectFile, str(flat_file))
+        self.assertEqual(project.sortBy, STARTRAILS_DEFAULTS.sort_by)
+        self.assertEqual(project.sortOrder, STARTRAILS_DEFAULTS.sort_order)
+        self.assertEqual(project.fadeMode, STARTRAILS_DEFAULTS.fade_mode)
+        self.assertEqual(project.fadeAmount, STARTRAILS_DEFAULTS.fade_amount)
+        self.assertEqual(project.batchSize, STARTRAILS_DEFAULTS.batch_size)
+        self.assertTrue(project.useGPU)
+        self.assertIsNone(project.streaksRemoved)
+        self.assertEqual(project.applied_corrections, 2)

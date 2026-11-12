@@ -19,7 +19,6 @@ from startrails.lib.file import (
     canonical_output,
 )
 from startrails.lib.source_map import locate_sources, output_sidecar, relative_path, signature
-from startrails.lib.startrails.defaults import DEFAULT_SORT_BY, DEFAULT_SORT_ORDER
 from startrails.op.exportMaskedImages import ExportMaskedImages
 from startrails.op.exportStreaksTraining import ExportStreaksDetectTraining
 from startrails.op.stackImages import StackImages
@@ -90,8 +89,8 @@ class StarTrailsWorkflow(Workflow):
         if sortOrder is not None:
             self.project.sortOrder = sortOrder
 
-        sort_by = getattr(self.project, "sortBy", DEFAULT_SORT_BY) or DEFAULT_SORT_BY
-        sort_order = getattr(self.project, "sortOrder", DEFAULT_SORT_ORDER) or DEFAULT_SORT_ORDER
+        sort_by = self.project.sortBy
+        sort_order = self.project.sortOrder
         reverse = (sort_order.lower() == "desc")
 
         if sort_by in ("name", "filename"):

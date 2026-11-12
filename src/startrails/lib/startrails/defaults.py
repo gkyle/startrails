@@ -62,47 +62,5 @@ class StartrailsSettings:
     merge_threshold: float = DEFAULT_MERGE_THRESHOLD
     merge_method: str = DEFAULT_MERGE_METHOD
 
-    # CamelCase compatibility properties
-    @property
-    def sortBy(self) -> str:
-        return self.sort_by
-
-    @property
-    def sortOrder(self) -> str:
-        return self.sort_order
-
-    @property
-    def fadeMode(self) -> int:
-        return self.fade_mode
-
-    @property
-    def fadeAmount(self) -> int:
-        return self.fade_amount
-
-    @property
-    def batchSize(self) -> int:
-        return self.batch_size
-
-    @property
-    def useGPU(self) -> bool:
-        return self.use_gpu
-
-    @property
-    def streaksRemoved(self) -> Optional[bool]:
-        return self.streaks_removed
-
-    @property
-    def confThreshold(self) -> float:
-        return self.conf_threshold
-
-    @property
-    def mergeThreshold(self) -> float:
-        return self.merge_threshold
-
-    @property
-    def mergeMethod(self) -> str:
-        return self.merge_method
-
 
 STARTRAILS_DEFAULTS: Final[StartrailsSettings] = StartrailsSettings()
-

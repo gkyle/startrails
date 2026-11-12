@@ -1,12 +1,26 @@
 """Project state model and persistence for StarTrails mode."""
 
 from __future__ import annotations
+
 from pathlib import Path
-from typing import List, Optional
+from typing import Final, List, Optional
 
 from startrails.lib.file import InputFile, OutputFile, Unpickle
 from startrails.lib.project_type import get_project_output_dir
 from startrails.lib.startrails.defaults import DEFAULT_PROJECT_FILENAME, STARTRAILS_DEFAULTS
+
+# Persisted Project field names mapped to their authoritative defaults.
+_PERSISTED_SETTING_DEFAULTS: Final[dict[str, str]] = {
+    "sortBy": "sort_by",
+    "sortOrder": "sort_order",
+    "fadeMode": "fade_mode",
+    "fadeAmount": "fade_amount",
+    "batchSize": "batch_size",
+    "useGPU": "use_gpu",
+    "streaksRemoved": "streaks_removed",
+}
+
+_EMPTY_STRING_SETTINGS: Final[frozenset[str]] = frozenset({"sortBy", "sortOrder"})
 
 
 class Project(Unpickle):
@@ -42,25 +56,18 @@ class Project(Unpickle):
 
     def __setstate__(self, state: dict) -> None:
         super().__setstate__(state)
-        if getattr(self, "fadeMode", None) is None:
-            self.fadeMode = STARTRAILS_DEFAULTS.fade_mode
-        if getattr(self, "fadeAmount", None) is None:
-            self.fadeAmount = STARTRAILS_DEFAULTS.fade_amount
-        if getattr(self, "batchSize", None) is None:
-            self.batchSize = STARTRAILS_DEFAULTS.batch_size
-        if getattr(self, "useGPU", None) is None:
-            self.useGPU = STARTRAILS_DEFAULTS.use_gpu
-        if getattr(self, "sortBy", None) is None:
-            self.sortBy = STARTRAILS_DEFAULTS.sort_by
-        if getattr(self, "sortOrder", None) is None:
-            self.sortOrder = STARTRAILS_DEFAULTS.sort_order
+        self.normalize_loaded_state()
 
-    def __getattr__(self, name: str):
-        if hasattr(STARTRAILS_DEFAULTS, name):
-            val = getattr(STARTRAILS_DEFAULTS, name)
-            setattr(self, name, val)
-            return val
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+    def normalize_loaded_state(self) -> None:
+        """Restore persisted settings omitted or blanked by older project formats."""
+        for field_name, default_name in _PERSISTED_SETTING_DEFAULTS.items():
+            value = getattr(self, field_name, None)
+            if value is None or (field_name in _EMPTY_STRING_SETTINGS and value == ""):
+                setattr(self, field_name, getattr(STARTRAILS_DEFAULTS, default_name))
+
+        applied = getattr(self, "applied_corrections", None)
+        if not isinstance(applied, int) or isinstance(applied, bool) or applied < 0:
+            self.applied_corrections = 0
 
     def get_output_dir(self) -> Path:
         """Resolve the authoritative output directory for this project."""

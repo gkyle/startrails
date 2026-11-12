@@ -262,16 +262,14 @@ class App:
             loaded_proj.projectFile = str(path)
         if isinstance(loaded_proj, FinishProject):
             loaded_proj.remove_retired_star_effect_caches()
+        if isinstance(loaded_proj, Project):
+            loaded_proj.normalize_loaded_state()
 
         # Validation succeeded: safely replace active project and workflow
         self.project = loaded_proj
         self.workflow = self._create_workflow(self.project)
 
         if isinstance(self.project, Project):
-            if not getattr(self.project, "sortBy", None):
-                self.project.sortBy = "date"
-            if not getattr(self.project, "sortOrder", None):
-                self.project.sortOrder = "asc"
             if any(getattr(f, "timestamp", 0) == 0 for f in self.project.rawInputFiles):
                 self.sortInputFiles()
 
