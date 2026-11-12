@@ -150,6 +150,7 @@ class StarTrailsWorkflow(Workflow):
     remove_output_file = removeOutputFile
 
     def _upsert_output_file(self, basename, path, operation, fadeGradient=None) -> OutputFile:
+        """Return the record for a completed artifact without touching older results first."""
         target_path = os.path.abspath(path)
         existing = next(
             (
@@ -168,9 +169,10 @@ class StarTrailsWorkflow(Workflow):
             existing.sourceMap = None
             existing.sourceStack = None
             existing.gapMask = None
-            self.save_project()
             return existing
-        return self.appendOutputFile(basename, path, operation, fadeGradient=fadeGradient)
+        file = OutputFile(basename, path, operation, fadeGradient=fadeGradient)
+        self.project.outputFiles.append(file)
+        return file
 
     # -------------------------------------------------------------------------
     # Stacking and Processing Operations
@@ -200,7 +202,7 @@ class StarTrailsWorkflow(Workflow):
         if fade:
             fadeGradient = StackImages.makeFadeGradient(len(filteredInputFiles), fadeAmount)
         basename = os.path.basename(filename)
-        file = self._upsert_output_file(basename, filename, operation, fadeGradient=fadeGradient)
+        file = OutputFile(basename, filename, operation, fadeGradient=fadeGradient)
         stackImages.addObserver(progressBar)
         self.app.activeOperation = stackImages
         try:
@@ -215,8 +217,12 @@ class StarTrailsWorkflow(Workflow):
         finally:
             self.app.activeOperation = None
             stackImages.removeObserver(progressBar)
+        record = self._upsert_output_file(basename, filename, operation, fadeGradient=fadeGradient)
+        record.sourceMap = file.sourceMap
+        record.sourceStack = file.sourceStack
+        record.gapMask = file.gapMask
         self.save_project()
-        return file
+        return record
 
     do_stack = doStack
 
@@ -314,10 +320,8 @@ class StarTrailsWorkflow(Workflow):
         outDir = str(self.project.get_output_dir())
         os.makedirs(outDir, exist_ok=True)
         filenameFillGaps, fileNameFillGapsMask = fgm_module.FillGaps.suggestOutFileName(file, outDir)
-        fileFillGaps = self._upsert_output_file(
-            os.path.basename(filenameFillGaps), filenameFillGaps, OP_FILL_GAPS
-        )
-        fileFillGapsMask = self._upsert_output_file(
+        fileFillGaps = OutputFile(os.path.basename(filenameFillGaps), filenameFillGaps, OP_FILL_GAPS)
+        fileFillGapsMask = OutputFile(
             os.path.basename(fileNameFillGapsMask), fileNameFillGapsMask, OP_FILL_GAPS_MASK
         )
         self.app.activeOperation = fillGaps
@@ -328,13 +332,27 @@ class StarTrailsWorkflow(Workflow):
             fillGaps.removeObserver(progressBar)
         fileFillGaps.fadeGradient = file.fadeGradient
         fileFillGapsMask.fadeGradient = file.fadeGradient
-        if file.sourceMap and not fillGaps.shouldInterrupt():
+        if file.sourceMap:
             directory = os.path.dirname(os.path.abspath(fileFillGaps.path))
             fileFillGaps.sourceMap = relative_path(output_sidecar(file, "sourceMap"), directory)
             fileFillGaps.sourceStack = relative_path(file.path, directory)
             fileFillGaps.gapMask = relative_path(fileFillGapsMask.path, directory)
+        record = self._upsert_output_file(
+            fileFillGaps.basename, fileFillGaps.path, fileFillGaps.operation,
+            fadeGradient=fileFillGaps.fadeGradient,
+        )
+        record.sourceMap = fileFillGaps.sourceMap
+        record.sourceStack = fileFillGaps.sourceStack
+        record.gapMask = fileFillGaps.gapMask
+        mask_record = self._upsert_output_file(
+            fileFillGapsMask.basename, fileFillGapsMask.path, fileFillGapsMask.operation,
+            fadeGradient=fileFillGapsMask.fadeGradient,
+        )
+        mask_record.sourceMap = fileFillGapsMask.sourceMap
+        mask_record.sourceStack = fileFillGapsMask.sourceStack
+        mask_record.gapMask = fileFillGapsMask.gapMask
         self.save_project()
-        return fileFillGaps
+        return record
 
     do_fill_gaps = doFillGaps
 

@@ -1,12 +1,13 @@
 from copy import copy
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
 from typing import List
 import cv2
 import psutil
 import numpy
 
-from startrails.lib.util import applyMask, Observable
+from startrails.lib.artifacts import ArtifactTransaction
+from startrails.lib.util import applyMask, imwrite, Observable
 from startrails.lib.file import InputFile, OutputFile, STACKED_KEEP_STEM, STACKED_REMOVE_STEM
 from startrails.lib.source_map import save_source_map, snapshot_sources, source_dtype
 from startrails.lib.gpu import GPUInfo, free_cupy_memory, get_array_module, is_cupy_available
@@ -14,6 +15,8 @@ from startrails.lib.gpu import GPUInfo, free_cupy_memory, get_array_module, is_c
 
 USE_GPU_IF_AVAILABLE = True
 MAX_BATCH_SIZE = 16
+# Keep the historical JPEG quality for stacked output.
+STACKED_JPEG_QUALITY = 100
 
 
 class StackImages(Observable):
@@ -23,7 +26,7 @@ class StackImages(Observable):
         super().__init__()
         self.useGPU = USE_GPU_IF_AVAILABLE and useGPU and is_cupy_available()
 
-    def processBatch(self, inputImages, outImage, outfile, writeToFile=True):
+    def processBatch(self, inputImages, outImage):
         """Reduce (stable source ID, preprocessed image) pairs and their owners."""
         np, _ = get_array_module(self.useGPU)
         if outImage is not None:
@@ -43,9 +46,6 @@ class StackImages(Observable):
             np.maximum(outImage, image, out=outImage)
         if self.useGPU:
             outImage = np.asnumpy(outImage)
-        if writeToFile:
-            if not cv2.imwrite(outfile, outImage, [cv2.IMWRITE_JPEG_QUALITY, 100]):
-                raise OSError(f"Could not write stacked image: {outfile}")
         return outImage
 
     def stack(self, srcFiles: List[InputFile], outfile: OutputFile, applyMasks=False, fade=False, fadeGradient=None, batchSize=None):
@@ -55,7 +55,6 @@ class StackImages(Observable):
         self.batch = []
         self.sourceOwners = None
         self.ownerDtype = source_dtype(len(srcFiles))
-        outfile.sourceMap = None
         sources = snapshot_sources(srcFiles, outfile)
         # Freeze preprocessing inputs before workers start. Later edits belong to
         # the next stack, not the output whose provenance is being recorded.
@@ -75,44 +74,48 @@ class StackImages(Observable):
         targetCount = len(inputs)
         outImg = None
         self.startJob(targetCount)
+        transaction = ArtifactTransaction(self.shouldInterrupt)
         try:
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = []
-                next_index = 0
-                while completedCount < targetCount and not self.shouldInterrupt():
-                    while len(futures) < batchSize * 2 and next_index < targetCount:
-                        futures.append(executor.submit(processFile, inputs[next_index], next_index))
-                        next_index += 1
-                    for future in as_completed(futures):
+            with transaction:
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = []
+                    next_index = 0
+                    while completedCount < targetCount and not self.shouldInterrupt():
+                        while len(futures) < batchSize * 2 and next_index < targetCount:
+                            futures.append(executor.submit(processFile, inputs[next_index], next_index))
+                            next_index += 1
+                        for future in as_completed(futures):
+                            if self.shouldInterrupt():
+                                break
+                            source_id, result = future.result()
+                            futures.remove(future)
+                            self.batch.append((source_id, result))
+                            completedCount += 1
+                            if len(self.batch) == batchSize:
+                                outImg = self.processBatch(self.batch, outImg)
+                                # Preview from memory until the complete publication is committed.
+                                self.updateJob(len(self.batch), outImg)
+                                self.batch.clear()
                         if self.shouldInterrupt():
+                            for future in futures:
+                                future.cancel()
                             break
-                        source_id, result = future.result()
-                        futures.remove(future)
-                        self.batch.append((source_id, result))
-                        completedCount += 1
-                        if len(self.batch) == batchSize:
-                            shouldWrite = completedCount % (batchSize * 8) == 0 or completedCount == targetCount
-                            outImg = self.processBatch(self.batch, outImg, outfile.path, shouldWrite)
-                            self.updateJob(len(self.batch), outfile if shouldWrite else outImg)
-                            self.batch.clear()
-                    if self.shouldInterrupt():
-                        for future in futures:
-                            future.cancel()
-                        break
-            if self.batch:
-                outImg = self.processBatch(self.batch, outImg, outfile.path)
-                self.updateJob(len(self.batch), outfile)
-                self.batch.clear()
-            elif outImg is not None and self.shouldInterrupt():
-                # A cancelled stack may still be previewed, but has no complete map.
-                if not cv2.imwrite(outfile.path, outImg, [cv2.IMWRITE_JPEG_QUALITY, 100]):
-                    raise OSError(f"Could not write stacked image: {outfile.path}")
-            if completedCount == targetCount and not self.shouldInterrupt():
+                if self.batch:
+                    outImg = self.processBatch(self.batch, outImg)
+                    self.updateJob(len(self.batch), outImg)
+                    self.batch.clear()
+                if self.shouldInterrupt() or completedCount != targetCount:
+                    raise CancelledError("Stack cancelled")
                 owners = get_array_module(self.useGPU)[0].asnumpy(self.sourceOwners) if self.useGPU else self.sourceOwners
-                save_source_map(outfile, owners, sources, {
+                staged_image = transaction.stage(outfile.path)
+                imwrite(staged_image, outImg, quality=STACKED_JPEG_QUALITY, compression=False,
+                        allow_alternate_path=False)
+                source_map_name = save_source_map(outfile, owners, sources, {
                     "apply_masks": bool(applyMasks), "fade": bool(fade),
                     "fade_gradient": fadeGradient, "tie_break": "first_source_in_stack_order",
-                })
+                }, transaction=transaction, stack_path=staged_image)
+                transaction.commit()
+                outfile.sourceMap = source_map_name
         finally:
             self.batch.clear()
             self.sourceOwners = None

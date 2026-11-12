@@ -1,6 +1,7 @@
 """Real image reductions, sidecar persistence, and source lookup without ML models."""
 
 import json
+from concurrent.futures import CancelledError
 from pathlib import Path
 from support import IsolatedTestCase
 from unittest.mock import patch
@@ -14,6 +15,7 @@ from startrails.app import App
 from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.util import Observable
 from startrails.lib.source_map import locate_sources, output_sidecar, source_dtype, SourceMapError
+from startrails.lib.source_map import save_source_map, snapshot_sources
 from startrails.lib.source_map import _LookupImageCache
 from startrails.op.stackImages import StackImages
 from startrails.ui.project import Project
@@ -188,20 +190,54 @@ class SourceMapTests(IsolatedTestCase):
         restored = jsonpickle.decode(jsonpickle.encode(output))
         self.assertIsNone(restored.sourceMap)
 
-    def test_cancelled_and_failed_stack_dont_publish_a_map(self):
-        for i in range(8):
-            self.input(np.full((6, 6, 3), i, np.uint8))
-        output = OutputFile("cancel.tif", str(self.folder / "cancel.tif"), "Stacked")
-        operation = StackImages(False)
-        operation.addObserver(lambda total, increment, *args: operation.requestInterrupt() if increment else None)
-        operation.stack(self.files, output, batchSize=2)
-        self.assertIsNone(output.sourceMap)
-        self.assertFalse(list(self.folder.glob("*.sources.*")))
-        with patch("startrails.op.stackImages.cv2.imwrite", return_value=False):
+    def test_cancelled_and_failed_stack_preserve_previous_record_and_files(self):
+        for i in range(4):
+            self.input(np.full((6, 6, 3), 80 + i, np.uint8))
+        app = self.app()
+        record = app.doStack(False, lambda *args: None, useGPU=False)
+        self.assertIs(app.getOutputFileList()[0], record)
+
+        manifest_path = output_sidecar(record, "sourceMap")
+        data = json.loads(manifest_path.read_text())
+        array_path = manifest_path.parent / data["array"]
+        expected_image = Path(record.path).read_bytes()
+        expected_array = array_path.read_bytes()
+        expected_manifest = manifest_path.read_bytes()
+        expected_metadata = (record.sourceMap, record.sourceStack, record.gapMask)
+        previous_candidates = app.locateSources(2, 2, record).candidates
+        self.assertTrue(previous_candidates)
+
+        def cancel(total, increment, count, done, data):
+            if increment:
+                app.activeOperation.requestInterrupt()
+
+        with self.assertRaises(CancelledError):
+            app.doStack(False, cancel, useGPU=False)
+
+        with patch("startrails.op.stackImages.imwrite", side_effect=OSError("disk full")):
             with self.assertRaises(OSError):
-                StackImages(False).stack(self.files, output)
-        self.assertIsNone(output.sourceMap)
-        self.assertFalse(list(self.folder.glob("*.sources.*")))
+                app.doStack(False, lambda *args: None, useGPU=False)
+
+        self.assertEqual(app.getOutputFileList(), [record])
+        self.assertIs(app.getOutputFileList()[0], record)
+        self.assertEqual(Path(record.path).read_bytes(), expected_image)
+        self.assertEqual(array_path.read_bytes(), expected_array)
+        self.assertEqual(manifest_path.read_bytes(), expected_manifest)
+        self.assertEqual(
+            (record.sourceMap, record.sourceStack, record.gapMask), expected_metadata
+        )
+        self.assertEqual(app.locateSources(2, 2, record).candidates, previous_candidates)
+
+    def test_standalone_source_map_writer_attaches_sidecars_after_success(self):
+        source = self.input(np.full((4, 4, 3), 200, np.uint8))
+        output = OutputFile("standalone.tif", str(self.folder / "standalone.tif"), "Stacked")
+        self.assertTrue(cv2.imwrite(output.path, cv2.imread(source.path)))
+        save_source_map(
+            output, np.zeros((4, 4, 3), np.uint16),
+            snapshot_sources(self.files, output), {"tie_break": "test"},
+        )
+        self.assertEqual(output.sourceMap, "standalone.tif.sources.json")
+        self.assertEqual(locate_sources(output, self.files, 1, 1).candidates, [source])
 
     def test_missing_changed_sources_and_changed_stack(self):
         first = self.input(np.full((6, 6, 3), 200, np.uint8))

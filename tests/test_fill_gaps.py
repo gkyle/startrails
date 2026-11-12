@@ -1,5 +1,8 @@
 """Gap filling processes image edges and reports completion after all patches."""
 
+from concurrent.futures import CancelledError
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import cv2
@@ -7,7 +10,8 @@ import numpy as np
 import torch
 
 from support import IsolatedTestCase
-from startrails.lib.file import OutputFile
+from startrails.lib.file import OP_FILL_GAPS, OP_FILL_GAPS_MASK, InputFile, OutputFile
+from startrails.lib.source_map import locate_sources
 from startrails.models.fillGaps.model import UNet
 from startrails.op.fillGaps import FillGaps
 
@@ -82,3 +86,77 @@ class FillGapsTests(IsolatedTestCase):
         self.assertEqual(progress[-1], (9, 9, True))
         self.assertTrue(all(not done and count < total for total, count, done in progress[:-1]))
         np.testing.assert_array_equal(cv2.imread(str(output_path)), image)
+
+    def test_cancelled_fill_preserves_published_output_and_output_records(self):
+        import startrails.app as app_module
+
+        with (
+            patch("startrails.op.fillGaps.UNet", return_value=IdentityGapModel()),
+            patch("startrails.op.fillGaps.torch.load", return_value={}),
+            patch("startrails.op.fillGaps.resolve_torch_device", return_value=torch.device("cpu")),
+        ):
+            app = self.make_app()
+            source = self.root / "input.png"
+            image = np.full((7, 9, 3), 100, dtype=np.uint8)
+            self.assertTrue(cv2.imwrite(str(source), image))
+            app.project.rawInputFiles.append(InputFile(source.name, str(source)))
+            original = app_module.fgm
+            app_module.fgm = SimpleNamespace(FillGaps=FillGaps)
+            try:
+                basis = app.doStack(False, lambda *args: None, useGPU=False)
+                records_before = list(app.getOutputFileList())
+                filled_path, mask_path = FillGaps.suggestOutFileName(
+                    basis, str(app.project.get_output_dir())
+                )
+
+                def cancel(total, increment, count, done, data):
+                    if increment:
+                        app.activeOperation.requestInterrupt()
+
+                # A first fill cancelled before publication leaves no phantom records.
+                with self.assertRaises(CancelledError):
+                    app.doFillGaps(basis, cancel)
+                self.assertEqual(list(app.getOutputFileList()), records_before)
+                self.assertFalse(Path(filled_path).exists())
+                self.assertFalse(Path(mask_path).exists())
+
+                filled = app.doFillGaps(basis, lambda *args: None)
+                self.assertEqual(filled.operation, OP_FILL_GAPS)
+                mask = next(
+                    record for record in app.getOutputFileList()
+                    if record.operation == OP_FILL_GAPS_MASK
+                )
+                previous_bytes = {
+                    Path(filled.path): Path(filled.path).read_bytes(),
+                    Path(mask.path): Path(mask.path).read_bytes(),
+                }
+                previous_metadata = (filled.sourceMap, filled.sourceStack, filled.gapMask)
+                records = list(app.getOutputFileList())
+                previous_candidates = locate_sources(
+                    filled, app.project.rawInputFiles, 2, 2
+                ).candidates
+                self.assertTrue(previous_candidates)
+
+                def assert_preserved():
+                    self.assertEqual(list(app.getOutputFileList()), records)
+                    for path, content in previous_bytes.items():
+                        self.assertEqual(path.read_bytes(), content)
+                    self.assertEqual(
+                        (filled.sourceMap, filled.sourceStack, filled.gapMask),
+                        previous_metadata,
+                    )
+                    self.assertEqual(
+                        locate_sources(filled, app.project.rawInputFiles, 2, 2).candidates,
+                        previous_candidates,
+                    )
+
+                with self.assertRaises(CancelledError):
+                    app.doFillGaps(basis, cancel)
+                assert_preserved()
+
+                with patch("startrails.op.fillGaps.imwrite", side_effect=OSError("disk full")):
+                    with self.assertRaises(OSError):
+                        app.doFillGaps(basis, lambda *args: None)
+                assert_preserved()
+            finally:
+                app_module.fgm = original

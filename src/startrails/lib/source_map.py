@@ -1,16 +1,16 @@
 """Persistent, per-channel provenance for a particular completed stack."""
-from contextlib import contextmanager
+from contextlib import nullcontext
 from collections import OrderedDict
 from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
-import tempfile
 from threading import Lock
 
 import cv2
 import numpy as np
 
+from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.signatures import read_file_identity
 
 
@@ -79,26 +79,17 @@ def output_sidecar(output, name):
     return Path(output.path).resolve().parent / value if value else None
 
 
-@contextmanager
-def atomic_file(path, mode):
-    """Publish complete sidecars; incomplete writes are never opened by lookup."""
-    path = Path(path)
-    handle = tempfile.NamedTemporaryFile(mode=mode, dir=path.parent,
-                                         prefix=path.name + ".", suffix=".tmp", delete=False)
-    temporary = Path(handle.name)
-    try:
-        with handle:
-            yield handle
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
+def save_source_map(output, owners, sources, settings, transaction=None, stack_path=None):
+    """Write the array first, then its manifest.
 
-
-def save_source_map(output, owners, sources, settings):
-    """Write the array first, then its manifest; attach only after both succeed."""
+    Published files keep canonical names. Sidecars are staged through the
+    supplied ``ArtifactTransaction`` when the caller owns commit; otherwise a
+    local transaction is committed here and ``output.sourceMap`` is attached
+    only after that commit. The signature is read from the staged stack image
+    whose size/mtime survive ``os.replace``.
+    """
     image_path = Path(output.path).resolve()
+    signature_path = Path(stack_path).resolve() if stack_path is not None else image_path
     array_path = image_path.with_name(image_path.name + ".sources.npy")
     manifest_path = image_path.with_name(image_path.name + ".sources.json")
     manifest = {
@@ -108,19 +99,24 @@ def save_source_map(output, owners, sources, settings):
         "dtype": owners.dtype.name,
         "no_source": int(np.iinfo(owners.dtype).max),
         "stack": image_path.name,
-        "stack_signature": signature(image_path),
+        "stack_signature": signature(signature_path),
         "settings": settings,
         "sources": sources,
     }
-    with atomic_file(array_path, "wb") as stream:
-        np.save(stream, owners, allow_pickle=False)
-    try:
-        with atomic_file(manifest_path, "w") as stream:
+    supplied_transaction = transaction is not None
+    transaction = transaction if supplied_transaction else ArtifactTransaction()
+    with nullcontext(transaction) if supplied_transaction else transaction:
+        staged_array = transaction.stage(array_path)
+        with staged_array.open("wb") as stream:
+            np.save(stream, owners, allow_pickle=False)
+        staged_manifest = transaction.stage(manifest_path)
+        with staged_manifest.open("w", encoding="utf-8") as stream:
             json.dump(manifest, stream, indent=2)
-    except Exception:
-        array_path.unlink(missing_ok=True)
-        raise
-    output.sourceMap = manifest_path.name
+        if not supplied_transaction:
+            transaction.commit()
+    if not supplied_transaction:
+        output.sourceMap = manifest_path.name
+    return manifest_path.name
 
 
 def snapshot_sources(files, output):

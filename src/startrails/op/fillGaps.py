@@ -1,9 +1,11 @@
 import os
+from concurrent.futures import CancelledError
 import torch
 import numpy as np
 from torchvision.transforms import ToTensor
 import cv2
 
+from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.util import imwrite, Observable
 from startrails.models.fillGaps.model import UNet
 from startrails.lib.file import FINAL_MASK_STEM, FINAL_OUTPUT_STEM, InputFile, OutputFile
@@ -46,6 +48,8 @@ class FillGaps(Observable):
         # Patch-wise inference
         for y in patch_rows:
             for x in patch_columns:
+                if self.shouldInterrupt():
+                    raise CancelledError("Gap filling cancelled")
 
                 # Extract the patch from the large image
                 patch = input_full_image[y:y + self.patch_size[0], x:x + self.patch_size[1]]
@@ -84,12 +88,16 @@ class FillGaps(Observable):
                 full_image[y:y + self.patch_size[0], x:x + self.patch_size[1]] = merged
                 full_mask[y:y + self.patch_size[0], x:x + self.patch_size[1]] = fmask
 
-            imwrite(fileFillGaps.path, full_image)
-            imwrite(fileFillGapsMask.path, full_mask)
-            self.updateJob(len(patch_columns), fileFillGaps)
+            self.updateJob(len(patch_columns))
 
-            if self.shouldInterrupt():
-                break
+        if self.shouldInterrupt():
+            raise CancelledError("Gap filling cancelled")
+
+        transaction = ArtifactTransaction(self.shouldInterrupt)
+        with transaction:
+            imwrite(transaction.stage(fileFillGaps.path), full_image, allow_alternate_path=False)
+            imwrite(transaction.stage(fileFillGapsMask.path), full_mask, allow_alternate_path=False)
+            transaction.commit()
 
         return full_image, full_mask
 
