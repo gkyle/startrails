@@ -11,7 +11,16 @@ from startrails.lib.project import Project
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 from startrails.op.denoise.compose_horizon import ComposeHorizon
-from startrails.lib.file import InputFile
+from startrails.lib.file import (
+    OP_FILL_GAPS,
+    OP_FILL_GAPS_MASK,
+    OP_STACKED_KEEP,
+    OP_STACKED_REMOVE,
+    InputFile,
+    OutputFile,
+    filled_output,
+    preferred_stacked_output,
+)
 from startrails.op.denoise.align_stars import AlignStars
 from startrails.op.denoise.refine_mask import RefineMask
 
@@ -340,3 +349,43 @@ class ProjectTests(IsolatedTestCase):
         self.project.mask_path = str(self.root / "missing.png")
         with self.assertRaisesRegex(FileNotFoundError, "Sky mask is missing"):
             self.app.workflow.get_config()
+
+    def test_legacy_stacked_roundtrip_prefers_existing_canonical_keep(self):
+        legacy_path = self.root / "legacy-stacked.tif"
+        keep_path = self.root / "startrails-stacked-keep.tif"
+        legacy_path.write_bytes(b"legacy")
+        keep_path.write_bytes(b"keep")
+        legacy = OutputFile(legacy_path.name, str(legacy_path), OP_STACKED_REMOVE, mtime=200)
+        keep = OutputFile(keep_path.name, str(keep_path), OP_STACKED_KEEP, mtime=100)
+        project = Project(
+            projectFile=str(self.root / "mixed.proj_startrails"),
+            outputFiles=[legacy, keep],
+        )
+        restored = jsonpickle.decode(jsonpickle.encode(project))
+        self.assertIs(preferred_stacked_output(restored.outputFiles), restored.outputFiles[1])
+
+    def test_missing_canonical_stacked_output_is_ignored_and_fallback_uses_newest(self):
+        missing_path = self.root / "startrails-stacked.tif"
+        older_path = self.root / "legacy-older.tif"
+        newer_path = self.root / "legacy-newer.tif"
+        older_path.write_bytes(b"older")
+        newer_path.write_bytes(b"newer")
+        missing = OutputFile(missing_path.name, str(missing_path), OP_STACKED_REMOVE, mtime=400)
+        older = OutputFile(older_path.name, str(older_path), OP_STACKED_REMOVE, mtime=100)
+        newer = OutputFile(newer_path.name, str(newer_path), OP_STACKED_KEEP, mtime=200)
+        self.assertFalse(missing_path.exists())
+        self.assertIsNone(preferred_stacked_output([missing]))
+        self.assertIs(preferred_stacked_output([missing, older, newer]), newer)
+
+    def test_filled_output_ignores_missing_final_and_mask_records(self):
+        missing_final_path = self.root / "startrails-final.tif"
+        mask_path = self.root / "startrails-final-mask.tif"
+        legacy_path = self.root / "legacy-final.tif"
+        mask_path.write_bytes(b"mask")
+        legacy_path.write_bytes(b"legacy")
+        missing_final = OutputFile(missing_final_path.name, str(missing_final_path), OP_FILL_GAPS)
+        mask = OutputFile(mask_path.name, str(mask_path), OP_FILL_GAPS_MASK)
+        legacy = OutputFile(legacy_path.name, str(legacy_path), OP_FILL_GAPS)
+        self.assertFalse(missing_final_path.exists())
+        self.assertIsNone(filled_output([missing_final, mask]))
+        self.assertIs(filled_output([missing_final, mask, legacy]), legacy)

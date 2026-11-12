@@ -106,37 +106,62 @@ STACKED_KEEP_STEM = "startrails-stacked-keep"
 FINAL_OUTPUT_STEM = "startrails-final"
 FINAL_MASK_STEM = "startrails-final-mask"
 
+OUTPUT_STEMS_BY_OPERATION = {
+    OP_STACKED_REMOVE: STACKED_REMOVE_STEM,
+    OP_STACKED_KEEP: STACKED_KEEP_STEM,
+    OP_FILL_GAPS: FINAL_OUTPUT_STEM,
+    OP_FILL_GAPS_MASK: FINAL_MASK_STEM,
+}
+
 
 def _output_stem(file: OutputFile) -> str:
-    name = getattr(file, "basename", None) or getattr(file, "path", None) or ""
-    return os.path.splitext(os.path.basename(name))[0]
+    # The on-disk path is authoritative; a stale display basename must not decide identity.
+    return os.path.splitext(os.path.basename(file.path))[0]
+
+
+def _existing_outputs(outputs) -> list[OutputFile]:
+    """Return output records whose file exists; selection never prefers missing files."""
+    existing = []
+    for file in outputs:
+        if not isinstance(file, OutputFile):
+            continue
+        path = file.path
+        if path and os.path.isfile(path):
+            existing.append(file)
+    return existing
+
+
+def _last_match(outputs, predicate) -> OutputFile | None:
+    """Return the newest record in project order that satisfies predicate."""
+    return next((f for f in reversed(outputs) if predicate(f)), None)
 
 
 def preferred_stacked_output(outputs) -> OutputFile | None:
-    """Return the preferred stacked output, preferring streak-removed over keep."""
-    output_list = [f for f in outputs if isinstance(f, OutputFile)]
-    for predicate in (
-        lambda f: f.operation == OP_STACKED_REMOVE or _output_stem(f) == STACKED_REMOVE_STEM,
-        lambda f: f.operation == OP_STACKED_KEEP or _output_stem(f) == STACKED_KEEP_STEM,
-    ):
-        match = next((f for f in output_list if predicate(f)), None)
+    """Return the preferred existing stacked output.
+
+    Canonical file stems outrank legacy operation labels, so a legacy
+    ``operation="Stacked"`` record cannot shadow an existing canonical keep.
+    Legacy records fall back newest-first instead of using the first entry.
+    """
+    existing = _existing_outputs(outputs)
+    for stem in (STACKED_REMOVE_STEM, STACKED_KEEP_STEM):
+        match = _last_match(existing, lambda f, stem=stem: _output_stem(f) == stem)
         if match is not None:
             return match
-    return None
+    return _last_match(existing, lambda f: f.operation in STACKED_OPERATIONS)
 
 
 def filled_output(outputs) -> OutputFile | None:
-    """Return the Fill Gaps output image if present."""
-    output_list = [f for f in outputs if isinstance(f, OutputFile)]
-    for predicate in (
-        lambda f: f.operation == OP_FILL_GAPS and _output_stem(f) == FINAL_OUTPUT_STEM,
-        lambda f: f.operation == OP_FILL_GAPS,
-        lambda f: _output_stem(f) == FINAL_OUTPUT_STEM,
-    ):
-        match = next((f for f in output_list if predicate(f)), None)
-        if match is not None:
-            return match
-    return None
+    """Return the preferred existing Fill Gaps image, never a mask or missing record."""
+    existing = [
+        f
+        for f in _existing_outputs(outputs)
+        if f.operation != OP_FILL_GAPS_MASK and _output_stem(f) != FINAL_MASK_STEM
+    ]
+    match = _last_match(existing, lambda f: _output_stem(f) == FINAL_OUTPUT_STEM)
+    if match is not None:
+        return match
+    return _last_match(existing, lambda f: f.operation == OP_FILL_GAPS)
 
 
 class DenoiseInputFile(File):
@@ -166,4 +191,3 @@ class DenoiseInputFile(File):
     def __getstate__(self):
         return {name: value for name, value in self.__dict__.items()
                 if name not in ("_project_ref", "is_reference")}
-
