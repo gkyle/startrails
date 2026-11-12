@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 
 from deferred_import import deferred_import
-dsm = deferred_import("startrails.op.detectStreaks")
-fgm = deferred_import("startrails.op.fillGaps")
+dsm = deferred_import("startrails.op.startrails.detect_streaks")
+fgm = deferred_import("startrails.op.startrails.fill_gaps")
 
 from startrails.lib.file import (
     OP_FILL_GAPS,
@@ -18,15 +18,15 @@ from startrails.lib.file import (
     OutputFile,
     canonical_output,
 )
-from startrails.lib.source_map import locate_sources, output_sidecar, relative_path, signature
-from startrails.op.exportMaskedImages import ExportMaskedImages
-from startrails.op.exportStreaksTraining import ExportStreaksDetectTraining
-from startrails.op.stackImages import StackImages
+from startrails.lib.startrails.source_map import locate_sources, output_sidecar, relative_path, signature
+from startrails.op.startrails.export_masked_images import ExportMaskedImages
+from startrails.op.startrails.export_streaks_training import ExportStreaksDetectTraining
+from startrails.op.startrails.stack_images import StackImages
 from startrails.workflow.base import Workflow
 
 if TYPE_CHECKING:
     from startrails.app import App
-    from startrails.lib.project import Project
+    from startrails.lib.project_startrails import Project
 
 
 class StarTrailsWorkflow(Workflow):

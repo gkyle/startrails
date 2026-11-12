@@ -9,7 +9,7 @@ from shapely.geometry import Polygon, box
 
 from startrails.lib.util import imwrite, Observable
 from startrails.lib.file import InputFile
-from startrails.op.detectStreaks import ROI_SIZE
+from startrails.op.startrails.detect_streaks import ROI_SIZE
 
 MAX_STREAKLESS_ATTEMPTS = 20
 DEBUG = False

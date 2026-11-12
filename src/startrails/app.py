@@ -8,12 +8,12 @@ import jsonpickle
 
 # Use deferred loading for modules that use torch to reduce startup latency.
 from deferred_import import deferred_import
-dsm = deferred_import("startrails.op.detectStreaks")
-fgm = deferred_import("startrails.op.fillGaps")
+dsm = deferred_import("startrails.op.startrails.detect_streaks")
+fgm = deferred_import("startrails.op.startrails.fill_gaps")
 
 from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.util import Observable
-from startrails.lib.project import Project
+from startrails.lib.project_startrails import Project
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.project_finish import FinishProject
 from startrails.lib.project_type import (

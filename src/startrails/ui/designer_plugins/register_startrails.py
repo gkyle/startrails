@@ -88,15 +88,15 @@ class StartrailsStylePlugin(QDesignerCustomWidgetInterface):
 # Register style preview hook with Qt Designer
 QPyDesignerCustomWidgetCollection.instance().addCustomWidget(StartrailsStylePlugin())
 
-from startrails.ui.sidebar import Sidebar
+from startrails.ui.sidebar_startrails import Sidebar
 from startrails.ui.sidebar_denoise import SidebarDenoise
-from startrails.ui.steps import (
+from startrails.ui.steps import StepCard
+from startrails.ui.steps_startrails import (
     DetectSettings,
     StackSettings,
     ReviewSettings,
     FillSettings,
     AdditionalToolsSettings,
-    StepCard,
 )
 from startrails.ui.file_manager import FileSection
 from startrails.ui.steps_denoise import (
@@ -110,7 +110,7 @@ from startrails.ui.steps_denoise import (
 # 1. Sidebar (composite container)
 QPyDesignerCustomWidgetCollection.registerCustomWidget(
     Sidebar,
-    module="startrails.ui.sidebar",
+    module="startrails.ui.sidebar_startrails",
     group="Startrails",
     tool_tip="StarTrails AI Sidebar",
     container=True,
@@ -160,7 +160,7 @@ QPyDesignerCustomWidgetCollection.registerCustomWidget(
 # 2. DetectSettings
 QPyDesignerCustomWidgetCollection.registerCustomWidget(
     DetectSettings,
-    module="startrails.ui.steps",
+    module="startrails.ui.steps_startrails",
     group="Startrails",
     tool_tip="Detect Streaks Settings",
     xml="""<ui language='c++'>
@@ -172,7 +172,7 @@ QPyDesignerCustomWidgetCollection.registerCustomWidget(
 # 3. StackSettings
 QPyDesignerCustomWidgetCollection.registerCustomWidget(
     StackSettings,
-    module="startrails.ui.steps",
+    module="startrails.ui.steps_startrails",
     group="Startrails",
     tool_tip="Stack Images Settings",
     xml="""<ui language='c++'>
@@ -184,7 +184,7 @@ QPyDesignerCustomWidgetCollection.registerCustomWidget(
 # 4. ReviewSettings
 QPyDesignerCustomWidgetCollection.registerCustomWidget(
     ReviewSettings,
-    module="startrails.ui.steps",
+    module="startrails.ui.steps_startrails",
     group="Startrails",
     tool_tip="Review and Correct Settings",
     xml="""<ui language='c++'>
@@ -196,7 +196,7 @@ QPyDesignerCustomWidgetCollection.registerCustomWidget(
 # 5. FillSettings
 QPyDesignerCustomWidgetCollection.registerCustomWidget(
     FillSettings,
-    module="startrails.ui.steps",
+    module="startrails.ui.steps_startrails",
     group="Startrails",
     tool_tip="Fill Gaps Settings",
     xml="""<ui language='c++'>
@@ -208,7 +208,7 @@ QPyDesignerCustomWidgetCollection.registerCustomWidget(
 # 6. AdditionalToolsSettings
 QPyDesignerCustomWidgetCollection.registerCustomWidget(
     AdditionalToolsSettings,
-    module="startrails.ui.steps",
+    module="startrails.ui.steps_startrails",
     group="Startrails",
     tool_tip="Additional Tools Settings",
     xml="""<ui language='c++'>

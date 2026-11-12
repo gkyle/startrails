@@ -17,10 +17,10 @@ from startrails.lib.file import (
     filled_output,
     preferred_stacked_output,
 )
-from startrails.lib.source_map import SourceLookup, SourceMapError
+from startrails.lib.startrails.source_map import SourceLookup, SourceMapError
 from startrails.ui.progress import ProgressBarUpdater
 from startrails.ui.signals import getSignals
-from startrails.ui.sidebar import Sidebar
+from startrails.ui.sidebar_startrails import Sidebar
 from startrails.ui.views.base import ModeView
 
 if TYPE_CHECKING:

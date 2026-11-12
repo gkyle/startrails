@@ -34,7 +34,7 @@ class IsolatedTestCase(TestCase):
     def make_app(self, project=None):
         """Use real workflows without starting GPU discovery or default projects."""
         from startrails.app import App
-        from startrails.lib.project import Project
+        from startrails.lib.project_startrails import Project
 
         app = App.__new__(App)
         app.project = project if project is not None else Project(projectFile=str(self.root / "test.proj_startrails"))

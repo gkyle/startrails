@@ -8,7 +8,7 @@ import numpy as np
 
 from support import IsolatedTestCase
 from startrails.app import App
-from startrails.lib.project import Project
+from startrails.lib.project_startrails import Project
 from startrails.lib.project_denoise import DenoiseProject
 from startrails.lib.denoise.stacking.horizon_compositor import HorizonCompositor
 from startrails.op.denoise.compose_horizon import ComposeHorizon
@@ -453,7 +453,7 @@ class ProjectTests(IsolatedTestCase):
 
     def test_startrails_project_defaults_and_migration_at_load_boundary(self):
         import json
-        from startrails.lib.project import EMPTY_CORRECTIONS_SIGNATURE, Project
+        from startrails.lib.project_startrails import EMPTY_CORRECTIONS_SIGNATURE, Project
         from startrails.lib.startrails.defaults import (
             DEFAULT_PROJECT_FILENAME,
             STARTRAILS_DEFAULTS,
@@ -559,7 +559,7 @@ class ProjectTests(IsolatedTestCase):
         self.assertTrue(app.project.corrections_pending())
 
     def test_correction_signature_tracks_applied_state_and_vertex_edits(self):
-        from startrails.lib.project import EMPTY_CORRECTIONS_SIGNATURE
+        from startrails.lib.project_startrails import EMPTY_CORRECTIONS_SIGNATURE
 
         app = self.make_app()
         paths = []
@@ -650,7 +650,7 @@ class ProjectTests(IsolatedTestCase):
         self.assertEqual(app.project.applied_corrections_signature, applied_signature)
         self.assertTrue(app.project.corrections_pending())
 
-        with patch("startrails.op.stackImages.imwrite", side_effect=OSError("disk full")):
+        with patch("startrails.op.startrails.stack_images.imwrite", side_effect=OSError("disk full")):
             with self.assertRaises(OSError):
                 app.doStack(True, lambda *args: None, useGPU=False)
         self.assertEqual(app.project.applied_corrections, applied_count)

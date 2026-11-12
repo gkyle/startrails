@@ -8,13 +8,12 @@ from PySide6.QtTest import QTest
 from support import QtTestCase
 from startrails.lib.file import InputFile
 from startrails.lib.project_denoise import DenoiseProject
-from startrails.ui.steps import (
-    PREVIEW_LONG_PRESS_MS,
+from startrails.ui.steps import PREVIEW_LONG_PRESS_MS, StepCard
+from startrails.ui.steps_startrails import (
+    AdditionalToolsSettings,
     DetectSettings,
     FillSettings,
     StackSettings,
-    StepCard,
-    AdditionalToolsSettings,
 )
 from startrails.ui.steps_denoise import (
     DenoiseAlignSettings,
@@ -52,7 +51,7 @@ class SettingsTests(QtTestCase):
         self.assertFalse(stack.values()["streaksRemoved"])
 
     def test_stack_streaks_defaults_to_remove_when_masks_available_with_project(self):
-        from startrails.lib.project import Project
+        from startrails.lib.project_startrails import Project
         self.app.project = Project()
         stack = StackSettings(self.app)
         self.assertIsNone(self.app.project.streaksRemoved)
@@ -107,7 +106,7 @@ class SettingsTests(QtTestCase):
         self.assertTrue(stack.ui.fadeAmount.isEnabled())
 
     def test_stack_and_detect_settings_default_to_startrails_defaults(self):
-        from startrails.lib.project import Project
+        from startrails.lib.project_startrails import Project
         from startrails.lib.startrails.defaults import (
             DEFAULT_MERGE_METHOD_INDEX,
             STARTRAILS_DEFAULTS,
@@ -170,7 +169,7 @@ class SettingsTests(QtTestCase):
         self.app.gpuInfo = SimpleNamespace(get_gpu_present=lambda: True)
 
         with patch(
-            "startrails.ui.steps.resolve_torch_device",
+            "startrails.ui.steps_startrails.resolve_torch_device",
             side_effect=lambda *, use_gpu: torch.device("mps" if use_gpu else "cpu"),
         ):
             detect = DetectSettings(self.app)

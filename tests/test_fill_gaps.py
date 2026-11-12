@@ -11,9 +11,9 @@ import torch
 
 from support import IsolatedTestCase
 from startrails.lib.file import OP_FILL_GAPS, OP_FILL_GAPS_MASK, InputFile, OutputFile
-from startrails.lib.source_map import locate_sources
+from startrails.lib.startrails.source_map import locate_sources
 from startrails.models.fillGaps.model import UNet
-from startrails.op.fillGaps import FillGaps
+from startrails.op.startrails.fill_gaps import FillGaps
 
 
 class IdentityGapModel(torch.nn.Module):
@@ -29,8 +29,8 @@ class FillGapsTests(IsolatedTestCase):
         weights["final_conv.weight"].zero_()
         weights["final_conv.bias"].zero_()
         with (
-            patch("startrails.op.fillGaps.torch.load", return_value=weights),
-            patch("startrails.op.fillGaps.resolve_torch_device", return_value=torch.device("cpu")),
+            patch("startrails.op.startrails.fill_gaps.torch.load", return_value=weights),
+            patch("startrails.op.startrails.fill_gaps.resolve_torch_device", return_value=torch.device("cpu")),
         ):
             filler = FillGaps()
         previous_threads = torch.get_num_threads()
@@ -64,9 +64,9 @@ class FillGapsTests(IsolatedTestCase):
 
     def test_progress_reaches_completion_only_after_partial_edge_patches(self):
         with (
-            patch("startrails.op.fillGaps.UNet", return_value=IdentityGapModel()),
-            patch("startrails.op.fillGaps.torch.load", return_value={}),
-            patch("startrails.op.fillGaps.resolve_torch_device", return_value=torch.device("cpu")),
+            patch("startrails.op.startrails.fill_gaps.UNet", return_value=IdentityGapModel()),
+            patch("startrails.op.startrails.fill_gaps.torch.load", return_value={}),
+            patch("startrails.op.startrails.fill_gaps.resolve_torch_device", return_value=torch.device("cpu")),
         ):
             filler = FillGaps()
         source = self.root / "input.png"
@@ -91,9 +91,9 @@ class FillGapsTests(IsolatedTestCase):
         import startrails.app as app_module
 
         with (
-            patch("startrails.op.fillGaps.UNet", return_value=IdentityGapModel()),
-            patch("startrails.op.fillGaps.torch.load", return_value={}),
-            patch("startrails.op.fillGaps.resolve_torch_device", return_value=torch.device("cpu")),
+            patch("startrails.op.startrails.fill_gaps.UNet", return_value=IdentityGapModel()),
+            patch("startrails.op.startrails.fill_gaps.torch.load", return_value={}),
+            patch("startrails.op.startrails.fill_gaps.resolve_torch_device", return_value=torch.device("cpu")),
         ):
             app = self.make_app()
             source = self.root / "input.png"
@@ -155,7 +155,7 @@ class FillGapsTests(IsolatedTestCase):
                     app.doFillGaps(basis, cancel)
                 assert_preserved()
 
-                with patch("startrails.op.fillGaps.imwrite", side_effect=OSError("disk full")):
+                with patch("startrails.op.startrails.fill_gaps.imwrite", side_effect=OSError("disk full")):
                     with self.assertRaises(OSError):
                         app.doFillGaps(basis, lambda *args: None)
                 assert_preserved()

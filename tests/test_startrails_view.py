@@ -18,7 +18,7 @@ from startrails.lib.file import (
     preferred_stacked_output,
 )
 from startrails.lib.util import Observable
-from startrails.op.fillGaps import FillGaps
+from startrails.op.startrails.fill_gaps import FillGaps
 from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.views.startrails import StarTrailsView
 

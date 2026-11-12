@@ -9,7 +9,7 @@ import numpy
 from startrails.lib.artifacts import ArtifactTransaction
 from startrails.lib.util import applyMask, imwrite, Observable
 from startrails.lib.file import OUTPUT_STEMS_BY_OPERATION, InputFile, OutputFile
-from startrails.lib.source_map import save_source_map, snapshot_sources, source_dtype
+from startrails.lib.startrails.source_map import save_source_map, snapshot_sources, source_dtype
 from startrails.lib.gpu import GPUInfo, free_cupy_memory, get_array_module, is_cupy_available
 
 

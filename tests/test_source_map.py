@@ -21,10 +21,10 @@ from startrails.lib.file import (
     preferred_stacked_output,
 )
 from startrails.lib.util import Observable
-from startrails.lib.source_map import locate_sources, output_sidecar, source_dtype, SourceMapError
-from startrails.lib.source_map import save_source_map, signature, snapshot_sources
-from startrails.lib.source_map import _LookupImageCache
-from startrails.op.stackImages import StackImages
+from startrails.lib.startrails.source_map import locate_sources, output_sidecar, source_dtype, SourceMapError
+from startrails.lib.startrails.source_map import save_source_map, signature, snapshot_sources
+from startrails.lib.startrails.source_map import _LookupImageCache
+from startrails.op.startrails.stack_images import StackImages
 from startrails.ui.project import Project
 
 
@@ -33,7 +33,7 @@ class SourceMapTests(IsolatedTestCase):
         super().setUp()
         self.folder = self.root
         self.files = []
-        cache = patch("startrails.lib.source_map._lookup_images", _LookupImageCache())
+        cache = patch("startrails.lib.startrails.source_map._lookup_images", _LookupImageCache())
         cache.start()
         self.addCleanup(cache.stop)
 
@@ -104,7 +104,7 @@ class SourceMapTests(IsolatedTestCase):
         for batch in (1, 3, 20):
             with (
                 self.subTest(batch=batch),
-                patch("startrails.op.stackImages.as_completed", side_effect=lambda futures: reversed(list(futures))),
+                patch("startrails.op.startrails.stack_images.as_completed", side_effect=lambda futures: reversed(list(futures))),
             ):
                 output, owners, _ = self.stack(batch=batch)
             np.testing.assert_array_equal(cv2.imread(output.path, -1), expected)
@@ -143,7 +143,7 @@ class SourceMapTests(IsolatedTestCase):
             calls.append(path)
             return read(path, *args, **kwargs)
 
-        with patch("startrails.lib.source_map.cv2.imread", side_effect=record):
+        with patch("startrails.lib.startrails.source_map.cv2.imread", side_effect=record):
             result = restored.locateSources(6, 8, basis)
         self.assertEqual(result.candidates[0].sourceId, winner.sourceId)
         self.assertTrue(result.candidates[0].excludeFromStack)
@@ -159,7 +159,7 @@ class SourceMapTests(IsolatedTestCase):
     def test_repeated_lookup_reuses_image_and_still_checks_sources(self):
         first = self.input(np.full((16, 16, 3), 200, np.uint16))
         output, _, _ = self.stack()
-        with patch("startrails.lib.source_map.cv2.imread", wraps=cv2.imread) as read:
+        with patch("startrails.lib.startrails.source_map.cv2.imread", wraps=cv2.imread) as read:
             for x, y in ((1, 1), (8, 8), (15, 15)):
                 self.assertEqual(locate_sources(output, self.files, x, y).candidates, [first])
             Path(first.path).unlink()
@@ -175,7 +175,7 @@ class SourceMapTests(IsolatedTestCase):
         output.gapMask = "mask.tif"
         mask_path = self.folder / output.gapMask
         cv2.imwrite(str(mask_path), np.zeros((16, 16), np.uint8))
-        with patch("startrails.lib.source_map.cv2.imread", wraps=cv2.imread) as read:
+        with patch("startrails.lib.startrails.source_map.cv2.imread", wraps=cv2.imread) as read:
             for _ in range(2):
                 result = locate_sources(output, self.files, 8, 8)
                 self.assertEqual(result.candidates, self.files)
@@ -195,14 +195,14 @@ class SourceMapTests(IsolatedTestCase):
         first = self.input(np.full((6, 6, 3), 20, np.uint8))
         second = self.input(np.full((6, 6, 3), 40, np.uint8))
         cache = _LookupImageCache(max_bytes=6 * 6 * 3)
-        with patch("startrails.lib.source_map._lookup_images", cache):
+        with patch("startrails.lib.startrails.source_map._lookup_images", cache):
             output, _, _ = self.stack()
             self.assertEqual(locate_sources(output, self.files, 2, 2).candidates, [second])
             # A different stack evicts the first; revisiting must safely reload it.
             other = OutputFile("other.tif", str(self.folder / "other.tif"), "Stacked")
             StackImages(False).stack([first], other)
             self.assertEqual(locate_sources(other, self.files, 2, 2).candidates, [first])
-            with patch("startrails.lib.source_map.cv2.imread", wraps=cv2.imread) as read:
+            with patch("startrails.lib.startrails.source_map.cv2.imread", wraps=cv2.imread) as read:
                 self.assertEqual(locate_sources(output, self.files, 2, 2).candidates, [second])
                 self.assertEqual(read.call_count, 1)
 
@@ -261,7 +261,7 @@ class SourceMapTests(IsolatedTestCase):
         with self.assertRaises(CancelledError):
             app.doStack(False, cancel, useGPU=False)
 
-        with patch("startrails.op.stackImages.imwrite", side_effect=OSError("disk full")):
+        with patch("startrails.op.startrails.stack_images.imwrite", side_effect=OSError("disk full")):
             with self.assertRaises(OSError):
                 app.doStack(False, lambda *args: None, useGPU=False)
 
@@ -294,7 +294,7 @@ class SourceMapTests(IsolatedTestCase):
         mask_bytes = Path(mask_record.path).read_bytes()
 
         # A failed restack leaves the prior fill advertised and usable.
-        with patch("startrails.op.stackImages.imwrite", side_effect=OSError("disk full")):
+        with patch("startrails.op.startrails.stack_images.imwrite", side_effect=OSError("disk full")):
             with self.assertRaises(OSError):
                 app.doStack(False, lambda *args: None, useGPU=False)
         self.assertIs(filled_output(app.getOutputFileList()), filled)

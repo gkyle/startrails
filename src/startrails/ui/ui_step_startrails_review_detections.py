@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'step_review_detections.ui'
+## Form generated from reading UI file 'step_startrails_review_detections.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.12.0
 ##

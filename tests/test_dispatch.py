@@ -11,7 +11,7 @@ import numpy as np
 from support import QtTestCase
 from startrails.ui import ui_wrap
 from startrails.lib.file import InputFile, OutputFile
-from startrails.lib.project import Project
+from startrails.lib.project_startrails import Project
 from startrails.ui.canvasLabel import CanvasLabel
 from startrails.ui.progress import ProgressBarUpdater
 from startrails.ui.signals import Signals

@@ -2,9 +2,10 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget
 from startrails.lib.file import OutputFile, filled_output, preferred_stacked_output
-from startrails.lib.project import Project
+from startrails.lib.project_startrails import Project
 from .file_manager import FileSection
-from .steps import StepCard, DetectSettings, ReviewSettings, StackSettings, FillSettings, AdditionalToolsSettings
+from .steps import StepCard
+from .steps_startrails import DetectSettings, ReviewSettings, StackSettings, FillSettings, AdditionalToolsSettings
 from .theme import system_theme
 
 
@@ -38,7 +39,7 @@ class Sidebar(QWidget):
             self.exportCard = self.toolsCard
             self.update_operations_progress(app)
         else:
-            from .ui_sidebar import Ui_Sidebar
+            from .ui_sidebar_startrails import Ui_Sidebar
             self.ui = Ui_Sidebar()
             self.ui.setupUi(self)
             self.ui.contentLayout.setAlignment(Qt.AlignTop)

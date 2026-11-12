@@ -505,7 +505,7 @@
   <customwidget>
    <class>Sidebar</class>
    <extends>QWidget</extends>
-   <header>startrails.ui.sidebar</header>
+   <header>startrails.ui.sidebar_startrails</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
