@@ -307,14 +307,7 @@ class StarTrailsView(ModeView):
         if hasattr(self.sidebar, "toolsCard") and self.sidebar.toolsCard is not None:
             self.sidebar.toolsCard.set_alert(self.readyManualStreaksRemoved)
         self.sidebar.stack.set_has_masks(self.readyStreaksRemoved)
-        self.sidebar.detectCard.setSubtitle(
-            "Ready to detect streaks" if self.readyInputImages else "Add input files to begin"
-        )
-        self.sidebar.stackCard.setSubtitle(
-            "Ready · detection is optional" if self.readyInputImages else "Add input files to begin"
-        )
         self.updateFillEligibility()
-        self.sidebar.update_operations_progress(self.app, getattr(self.shell, "currentFile", None))
 
     def updateFillEligibility(self):
         if self.sidebar is None or self.pushButton_fillGaps is None:
@@ -330,7 +323,6 @@ class StarTrailsView(ModeView):
             self.pushButton_findBrightest.setEnabled(bright_eligible)
             if not bright_eligible and self.pushButton_findBrightest.isChecked():
                 self.pushButton_findBrightest.setChecked(False)
-        self.sidebar.fillCard.setSubtitle("Ready to fill gaps" if eligible else "Stack images to fill gaps")
         self.sidebar.fill.ui.target.setText(
             stacked.basename if eligible else "Stack images first to fill gaps."
         )
@@ -348,10 +340,11 @@ class StarTrailsView(ModeView):
         self.inputFiles.set_sort_state(sortBy, sortOrder)
         self.outputFiles.set_files(self.app.getOutputFileList())
         self.sidebar.reset_settings()
+        self.sidebar.detectCard.setExpanded(True)
         self.updateReadyStates()
         files = self.app.getInputFileList() or self.app.getOutputFileList()
         if files:
-            self.showFile(files[0])
+            self.showFile(files[0], expand_sections=False)
 
     @Slot(File)
     def slotRefreshInputs(self, focus=None):
@@ -514,9 +507,23 @@ class StarTrailsView(ModeView):
             self.showFile(target, expand_sections=False)
 
     def _on_fill_before_after(self, showing_before: bool) -> None:
-        target = self._preferred_stacked_output() if showing_before else self._filled_output()
-        if target is not None:
-            self.showFile(target, preserve_view=True, expand_sections=False)
+        if showing_before:
+            target = self._preferred_stacked_output()
+            if target is not None:
+                self.showFile(target, preserve_view=True, expand_sections=False)
+            else:
+                self._reset_preview_toggles()
+                self.updateFillEligibility()
+        else:
+            target = self._filled_output()
+            if target is not None:
+                self.showFile(target, preserve_view=True, expand_sections=False)
+            else:
+                self._reset_preview_toggles()
+                self.updateFillEligibility()
+                stacked = self._preferred_stacked_output()
+                if stacked is not None:
+                    self.showFile(stacked, preserve_view=True, expand_sections=False)
 
     @Slot(File)
     def showFile(

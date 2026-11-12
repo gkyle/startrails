@@ -69,7 +69,6 @@ class Sidebar(QWidget):
 
         self._step_cards = (self.detectCard, self.stackCard, self.reviewCard,
                             self.fillCard, self.toolsCard)
-        self.fillCard.set_before_after_enabled(True)
         for card in self._step_cards:
             card.expanded.connect(lambda card=card: self._collapse_other_steps(card))
 
@@ -158,8 +157,13 @@ class Sidebar(QWidget):
         else:
             self.stackCard.setStatus("ready", "Ready · detection is optional")
 
+        can_compare = has_stacked and has_filled
+        self.fillCard.set_before_after_enabled(can_compare)
         if has_filled:
-            self.fillCard.setStatus("done", "Gaps filled for stacked image")
+            if has_stacked:
+                self.fillCard.setStatus("done", "Gaps filled for stacked image")
+            else:
+                self.fillCard.setStatus("done", "Gaps filled · stack unavailable")
         elif has_stacked:
             self.fillCard.setStatus("ready", "Ready to fill gaps")
         else:

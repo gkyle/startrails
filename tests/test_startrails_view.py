@@ -134,6 +134,15 @@ class StarTrailsViewPreviewTests(QtTestCase):
         shell = ctx.shell
         canvas = ctx.canvas
 
+        # resetProjectView restores initial Detect Streaks step expansion and keeps file lists collapsed.
+        self.assertTrue(sidebar.detectCard.is_expanded)
+        self.assertFalse(sidebar.stackCard.is_expanded)
+        self.assertFalse(sidebar.reviewCard.is_expanded)
+        self.assertFalse(sidebar.fillCard.is_expanded)
+        self.assertFalse(sidebar.inputs.is_expanded)
+        self.assertFalse(sidebar.outputs.is_expanded)
+        self.assertIs(shell.currentFile, ctx.in1)
+
         # Detect Streaks keeps an already-displayed InputFile, otherwise selects first input.
         ctx.view.showFile(ctx.in2)
         sidebar.detectCard.setExpanded(True)
@@ -186,3 +195,53 @@ class StarTrailsViewPreviewTests(QtTestCase):
         self.assertEqual(sidebar.fill.ui.target.text(), "startrails-stacked-keep.tif")
         sidebar.reviewCard.setExpanded(True)
         self.assertIs(shell.currentFile, ctx.keep)
+
+        # When all stacked outputs are removed from metadata, comparison is disabled and subtitle clarifies.
+        sidebar.fillCard.setExpanded(True)
+        self.assertTrue(sidebar.fillCard._before_after_enabled)
+        ctx.app.removeOutputFile(ctx.keep)
+        ctx.view.slotRefreshOutputs()
+        self.assertEqual(sidebar.fill.ui.target.text(), "Stack images first to fill gaps.")
+        self.assertFalse(ctx.view.pushButton_fillGaps.isEnabled())
+        self.assertFalse(sidebar.fillCard._before_after_enabled)
+        self.assertFalse(sidebar.fillCard.ui.previewToggle.isVisible())
+        self.assertEqual(sidebar.fillCard.ui.subtitle.text(), "Gaps filled · stack unavailable")
+        self.assertEqual(sidebar.fillCard.status, "done")
+        ctx.view._on_fill_before_after(True)
+        self.assertIs(shell.currentFile, ctx.final)
+        self.assertFalse(sidebar.fillCard.is_showing_before())
+
+        # Physical disk deletion without metadata removal also disables comparison safely,
+        # covering the race where base is deleted on disk then clicked without prior slotRefreshOutputs.
+        keep_path = _write_solid_image(self.root / "out" / "startrails-stacked-keep-disk.tif", 110)
+        keep_disk = OutputFile(keep_path.name, str(keep_path), OP_STACKED_KEEP)
+        ctx.app.project.outputFiles.append(keep_disk)
+        ctx.view.slotRefreshOutputs()
+        self.assertTrue(sidebar.fillCard._before_after_enabled)
+        keep_path.unlink()
+        # Direct click in the race window without calling slotRefreshOutputs.
+        sidebar.fillCard.ui.previewToggle.click()
+        self.assertFalse(sidebar.fillCard._before_after_enabled)
+        self.assertFalse(sidebar.fillCard.ui.previewToggle.isVisible())
+        self.assertEqual(sidebar.fillCard.ui.subtitle.text(), "Gaps filled · stack unavailable")
+        self.assertIs(shell.currentFile, ctx.final)
+        self.assertFalse(sidebar.fillCard.is_showing_before())
+
+        # When After (final) is missing, comparison is also not claimed when only stack remains.
+        keep_path = _write_solid_image(self.root / "out" / "startrails-stacked-keep-disk.tif", 110)
+        Path(ctx.final.path).unlink()
+        ctx.view.slotRefreshOutputs()
+        self.assertFalse(sidebar.fillCard._before_after_enabled)
+        self.assertFalse(sidebar.fillCard.ui.previewToggle.isVisible())
+        self.assertEqual(sidebar.fillCard.status, "ready")
+        self.assertEqual(sidebar.fillCard.ui.subtitle.text(), "Ready to fill gaps")
+
+        # resetProjectView from an advanced step restores Detect step expansion and keeps file sections collapsed.
+        sidebar.fillCard.setExpanded(True)
+        self.assertTrue(sidebar.fillCard.is_expanded)
+        ctx.view.resetProjectView()
+        self.assertTrue(sidebar.detectCard.is_expanded)
+        self.assertFalse(sidebar.fillCard.is_expanded)
+        self.assertFalse(sidebar.inputs.is_expanded)
+        self.assertFalse(sidebar.outputs.is_expanded)
+        self.assertIs(shell.currentFile, ctx.in1)
