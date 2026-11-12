@@ -187,17 +187,17 @@ class DenoiseView(ModeView):
 
         if self.star_files is not None:
             self.connect_signal(self.star_files.addRequested, self.select_star_files)
-            self.connect_signal(self.star_files.showFile, self.showFile)
+            self.connect_signal(self.star_files.showFile, self._on_file_section_show_file)
             self.connect_signal(self.star_files.removeFile, self.remove_star_file)
             self.connect_signal(self.star_files.setReferenceRequested, self.set_reference_file)
 
         if self.noise_files is not None:
             self.connect_signal(self.noise_files.addRequested, self.select_noise_files)
-            self.connect_signal(self.noise_files.showFile, self.showFile)
+            self.connect_signal(self.noise_files.showFile, self._on_file_section_show_file)
             self.connect_signal(self.noise_files.removeFile, self.remove_noise_file)
 
         if self.output_files is not None:
-            self.connect_signal(self.output_files.showFile, self.showFile)
+            self.connect_signal(self.output_files.showFile, self._on_file_section_show_file)
             self.connect_signal(self.output_files.removeFile, self.remove_output_file)
 
         # Connect operation actions (resolve app.workflow dynamically so opening
@@ -220,7 +220,7 @@ class DenoiseView(ModeView):
                         and not self.shell.canvas_main.pixmap.isNull()
                     )
                     if not canvas_has_ref:
-                        self.show_file(ref)
+                        self.show_file(ref, expand_sections=False)
 
             def on_detection_finished(mask: np.ndarray) -> None:
                 self.has_manual_sky_corrections = False
@@ -261,6 +261,10 @@ class DenoiseView(ModeView):
             self.connect_signal(self.align_settings.settings_changed, self._on_alignment_settings_changed)
         if self.stack_settings is not None:
             self.connect_signal(self.stack_settings.settings_changed, self._on_stack_settings_changed)
+        if self.stack_card is not None:
+            self.connect_signal(self.stack_card.expanded, self._on_stack_card_expanded)
+            if hasattr(self.stack_card, "before_after_toggled"):
+                self.connect_signal(self.stack_card.before_after_toggled, self._on_stack_before_after)
         if self.btn_stack is not None:
             self.connect_signal(self.btn_stack.clicked, self.do_stack_action)
         if self.btn_compose is not None:
@@ -269,7 +273,9 @@ class DenoiseView(ModeView):
             self.connect_signal(self.tune_settings.gradient_mask_toggled, self._on_gradient_mask_toggled)
             self.connect_signal(self.tune_settings.settings_changed, self._schedule_horizon_tuning)
         if self.tune_card is not None:
-            self.connect_signal(self.tune_card.expanded, lambda: self._schedule_horizon_tuning(save=False))
+            self.connect_signal(self.tune_card.expanded, self._on_tune_card_expanded)
+            if hasattr(self.tune_card, "before_after_toggled"):
+                self.connect_signal(self.tune_card.before_after_toggled, self._on_tune_before_after)
         if self.btn_save_output is not None:
             self.connect_signal(self.btn_save_output.clicked, self.do_save_output_action)
         if self.btn_pipeline is not None:
@@ -400,6 +406,7 @@ class DenoiseView(ModeView):
             if self.stack_card is not None:
                 self.stack_card.setStatus("done")
         self.update_ready_states()
+        self._reset_preview_toggles()
 
         if self.sidebar is not None:
             self.sidebar.sync_expanded_step()
@@ -476,12 +483,37 @@ class DenoiseView(ModeView):
 
         QTimer.singleShot(0, self.shell, deliver)
 
-    def show_file(self, file: Optional[File]) -> None:
+    def _reset_preview_toggles(self, exclude: Optional[Any] = None) -> None:
+        """Reset step before/after preview toggles to their default after state without emitting."""
+        for card in (self.sky_card, self.stack_card, self.tune_card):
+            if card is not None and card is not exclude and hasattr(card, "reset_before_after"):
+                card.reset_before_after(emit=False)
+
+    def _on_file_section_show_file(self, file: Optional[File]) -> None:
+        self._reset_preview_toggles()
+        self.show_file(file, preserve_view=True)
+
+    def _focus_file_in_sections(self, file: Optional[File], *, expand: bool = True) -> None:
+        if expand:
+            signals = getSignals()
+            if hasattr(signals, "focusFile"):
+                signals.focusFile.emit(file)
+            return
+        for section in (self.star_files, self.noise_files, self.output_files):
+            if section is not None and hasattr(section, "focus_file"):
+                section.focus_file(file, expand=False)
+
+    def show_file(
+        self,
+        file: Optional[File],
+        preserve_view: Optional[bool] = None,
+        expand_sections: bool = True,
+    ) -> None:
         self._horizon_preview_id = None
         if hasattr(self.shell, "currentFile"):
             self.shell.currentFile = file
         if hasattr(self.shell, "canvas_main") and self.shell.canvas_main is not None:
-            self.shell.canvas_main.setFile(file)
+            self.shell.canvas_main.setFile(file, preserve_view=preserve_view)
             ref = self.app.workflow.get_reference_file() if hasattr(self.app, "workflow") else None
             if (
                 file is not None
@@ -495,9 +527,7 @@ class DenoiseView(ModeView):
                 self.shell.canvas_main.set_mask_edit_mode(False)
         if hasattr(self.shell, "label_imageName") and self.shell.label_imageName is not None:
             self.shell.label_imageName.setText(file.basename if file is not None else "")
-        signals = getSignals()
-        if hasattr(signals, "focusFile"):
-            signals.focusFile.emit(file)
+        self._focus_file_in_sections(file, expand=expand_sections)
 
     def remove_output_file(self, file: OutputFile) -> None:
         if hasattr(self.app, "removeOutputFile"):
@@ -622,6 +652,151 @@ class DenoiseView(ModeView):
             "value_denoise": vals["horizon_value_denoise_strength"],
         }
 
+    def _cancel_horizon_overlay(self) -> None:
+        """Stop pending live horizon overlay updates without cancelling final-output saves."""
+        self._horizon_debounce_timer.stop()
+        self._pending_horizon_params = None
+        self._horizon_request_id += 1
+        for worker in tuple(self._background_workers):
+            if isinstance(worker, HorizonOverlayWorker):
+                worker.cancel()
+
+    def _has_pending_horizon_save(self) -> bool:
+        return bool(
+            self._horizon_debounce_timer.isActive()
+            or self._horizon_save_debounce_timer.isActive()
+            or self._final_save_worker is not None
+            or self._pending_final_save
+        )
+
+    def _get_source_file(self) -> Optional[File]:
+        if not hasattr(self.app, "workflow"):
+            return None
+        ref = self.app.workflow.get_reference_file() if hasattr(self.app.workflow, "get_reference_file") else None
+        if ref is not None:
+            return ref
+        stars = self.app.workflow.get_star_files() if hasattr(self.app.workflow, "get_star_files") else []
+        return stars[0] if stars else None
+
+    def _show_source_before(self) -> None:
+        """Display the clean input reference image without mask or horizon overlays."""
+        source = self._get_source_file()
+        if source is None:
+            return
+        self.show_file(source, preserve_view=True, expand_sections=False)
+        canvas = getattr(self.shell, "canvas_main", None)
+        if canvas is not None and hasattr(canvas, "is_mask_edit_mode") and canvas.is_mask_edit_mode():
+            canvas.set_mask_edit_mode(False)
+
+    def _existing_base_composite_path(self) -> Optional[Path]:
+        proj = getattr(self.app.workflow, "project", None) if hasattr(self.app, "workflow") else None
+        if proj is None or not hasattr(proj, "get_output_dir"):
+            return None
+        candidate = (proj.get_output_dir() / "base_composite.tif").resolve()
+        return candidate if candidate.is_file() else None
+
+    def _stacked_composite_file(self) -> OutputFile:
+        base_path = self._existing_base_composite_path()
+        if base_path is not None:
+            return OutputFile(basename=base_path.name, path=str(base_path), operation="Base Stack")
+        proj = getattr(self.app.workflow, "project", None) if hasattr(self.app, "workflow") else None
+        if proj is not None and hasattr(proj, "get_output_dir"):
+            candidate = (proj.get_output_dir() / "base_composite.tif").resolve()
+            return OutputFile(basename=candidate.name, path=str(candidate), operation="Base Stack")
+        return OutputFile(basename="base_composite.tif", path="", operation="Base Stack")
+
+    def _existing_final_output_path(self) -> Optional[Path]:
+        final_output = getattr(self._project, "final_output_path", None)
+        if not final_output:
+            return None
+        candidate = Path(final_output)
+        return candidate if candidate.is_file() else None
+
+    def _set_active_file_metadata(self, file: Optional[File], *, expand_sections: bool = True) -> None:
+        if hasattr(self.shell, "currentFile"):
+            self.shell.currentFile = file
+        if hasattr(self.shell, "label_imageName") and self.shell.label_imageName is not None:
+            self.shell.label_imageName.setText(file.basename if file is not None else "")
+        self._focus_file_in_sections(file, expand=expand_sections)
+
+    def _show_stacked_composite(self) -> None:
+        """Display the sky+ground stacked base composite without horizon tuning."""
+        compositor = self.last_compositor
+        if compositor is None:
+            compositor = self._find_existing_compositor()
+            if compositor is not None:
+                self.last_compositor = compositor
+        if compositor is not None:
+            base_file = self._stacked_composite_file()
+            canvas = getattr(self.shell, "canvas_main", None)
+            if canvas is not None:
+                has_pixmap = canvas.pixmap is not None and not canvas.pixmap.isNull()
+                canvas.set_file_pixels(
+                    base_file,
+                    compositor.base_composite,
+                    reset_zoom_and_position=not has_pixmap,
+                    is_bgr=False,
+                )
+                canvas.set_mask_edit_mode(False)
+                self._horizon_preview_id = id(compositor)
+                if compositor.gradient_mask is not None:
+                    canvas.set_gradient_mask(compositor.gradient_mask)
+            self._set_active_file_metadata(base_file, expand_sections=False)
+            return
+
+        base_path = self._existing_base_composite_path()
+        if base_path is not None:
+            base_file = OutputFile(basename=base_path.name, path=str(base_path), operation="Base Stack")
+            self.show_file(base_file, preserve_view=True, expand_sections=False)
+
+    def _show_final_composite(self) -> None:
+        """Display the final horizon-tuned composite, using live tuning when uncached."""
+        final_path = self._existing_final_output_path()
+        if final_path is not None and not self._has_pending_horizon_save():
+            final_file = OutputFile(basename=final_path.name, path=str(final_path), operation="Final Composite")
+            self.show_file(final_file, preserve_view=True, expand_sections=False)
+            return
+        self._schedule_horizon_tuning(save=False)
+
+    def _on_stack_card_expanded(self) -> None:
+        self._reset_preview_toggles()
+        self._cancel_horizon_overlay()
+        if (
+            self.last_compositor is not None
+            or self._has_existing_stacks()
+            or self._existing_base_composite_path() is not None
+        ):
+            self._show_stacked_composite()
+
+    def _on_stack_before_after(self, showing_before: bool) -> None:
+        self._reset_preview_toggles(exclude=self.stack_card)
+        self._cancel_horizon_overlay()
+        if showing_before:
+            self._show_source_before()
+        else:
+            self._show_stacked_composite()
+
+    def _on_tune_card_expanded(self) -> None:
+        self._reset_preview_toggles()
+        self._show_final_composite()
+
+    def _on_tune_before_after(self, showing_before: bool) -> None:
+        self._reset_preview_toggles(exclude=self.tune_card)
+        if showing_before:
+            self._cancel_horizon_overlay()
+            self._show_stacked_composite()
+        else:
+            self._show_final_composite()
+
+    def _can_apply_horizon_patches(self) -> bool:
+        if self.tune_card is not None and self.tune_card.is_showing_before():
+            return False
+        if self.stack_card is not None and (self.stack_card.is_expanded or self.stack_card.is_showing_before()):
+            return False
+        if self.sky_card is not None and self.sky_card.is_expanded:
+            return False
+        return True
+
     def _schedule_horizon_tuning(self, save: bool = True) -> None:
         if self._disposed:
             return
@@ -629,11 +804,17 @@ class DenoiseView(ModeView):
             self.last_compositor = self._find_existing_compositor()
         if self.last_compositor is None:
             return
+        self._reset_preview_toggles()
         canvas = getattr(self.shell, "canvas_main", None)
         if canvas is not None and self._horizon_preview_id != id(self.last_compositor):
+            has_pixmap = canvas.pixmap is not None and not canvas.pixmap.isNull()
             canvas.clear_horizon_overlay()
             canvas.set_mask_edit_mode(False)
-            canvas.setFromNumpyArray(self.last_compositor.base_composite, resetZoomAndPosition=False, is_bgr=False)
+            canvas.setFromNumpyArray(
+                self.last_compositor.base_composite,
+                resetZoomAndPosition=not has_pixmap,
+                is_bgr=False,
+            )
             self._horizon_preview_id = id(self.last_compositor)
         # Invalidate immediately, before the debounce interval elapses.
         self._horizon_request_id += 1
@@ -735,7 +916,11 @@ class DenoiseView(ModeView):
 
     def _on_horizon_patches_ready(self, patches, req_id: int) -> None:
         worker = self.sender() or self._horizon_worker
-        if self._worker_is_current(worker, req_id, self._horizon_request_id) and patches is not None:
+        if (
+            self._worker_is_current(worker, req_id, self._horizon_request_id)
+            and patches is not None
+            and self._can_apply_horizon_patches()
+        ):
             canvas = getattr(self.shell, "canvas_main", None)
             if canvas is not None:
                 canvas.set_horizon_patches(patches)
@@ -1225,6 +1410,7 @@ class DenoiseView(ModeView):
                         self._horizon_preview_id = id(compositor)
                         if compositor.gradient_mask is not None:
                             self.shell.canvas_main.set_gradient_mask(compositor.gradient_mask)
+                self._reset_preview_toggles()
                 if self.stack_card is not None:
                     self.stack_card.setStatus("done")
                 self.update_ready_states()
@@ -1275,6 +1461,7 @@ class DenoiseView(ModeView):
                 return
 
             def publish():
+                self._reset_preview_toggles()
                 image, output_path = result
                 self._output_saved = True
                 if self.output_files is not None:
@@ -1340,6 +1527,7 @@ class DenoiseView(ModeView):
             def on_pipeline_done():
                 if not out_path or not Path(out_path).is_file():
                     return
+                self._reset_preview_toggles()
                 self.last_compositor = self.app.workflow.last_compositor
                 self.last_align_result = None
                 out_files = (

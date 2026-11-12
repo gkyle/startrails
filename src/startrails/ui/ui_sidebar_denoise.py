@@ -182,6 +182,7 @@ class Ui_SidebarDenoise(object):
         self.stackCard.setObjectName(u"stackCard")
         self.stackCard.setProperty(u"step_number", 3)
         self.stackCard.setProperty(u"is_expanded", False)
+        self.stackCard.setProperty(u"before_after_enabled", True)
         self.stackSettings = DenoiseStackSettings(self.stackCard)
         self.stackSettings.setObjectName(u"stackSettings")
         self.stackSettings.setGeometry(QRect(0, 0, 100, 30))
@@ -198,6 +199,7 @@ class Ui_SidebarDenoise(object):
         self.tuneCard.setObjectName(u"tuneCard")
         self.tuneCard.setProperty(u"step_number", 4)
         self.tuneCard.setProperty(u"is_expanded", False)
+        self.tuneCard.setProperty(u"before_after_enabled", True)
         self.tuneSettings = DenoiseTuneSettings(self.tuneCard)
         self.tuneSettings.setObjectName(u"tuneSettings")
         self.tuneSettings.setGeometry(QRect(0, 0, 100, 30))
@@ -315,4 +317,3 @@ class Ui_SidebarDenoise(object):
         pass
     # retranslateUi
 
-Ui_sidebarDenoise = Ui_SidebarDenoise

@@ -577,7 +577,7 @@ class FileSection(QFrame):
                 self.ui.files.clearSelection()
         self._refresh()
 
-    def focus_file(self, file):
+    def focus_file(self, file, expand: bool = True):
         try:
             index = self.model.index_for_file(file)
             with QSignalBlocker(self.ui.files.selectionModel()):
@@ -590,8 +590,10 @@ class FileSection(QFrame):
                     self.ui.files.setCurrentIndex(QModelIndex())
                     self.ui.files.clearSelection()
             if index.isValid():
-                self.setExpanded(True)
-                self.ui.files.scrollTo(index)
+                if expand:
+                    self.setExpanded(True)
+                if self.ui.toggle.isChecked():
+                    self.ui.files.scrollTo(index)
             self._refresh()
         except RuntimeError:
             pass

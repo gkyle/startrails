@@ -1,5 +1,6 @@
 """Project ownership of queued results, errors, and real background publication."""
 
+from pathlib import Path
 from types import SimpleNamespace
 from io import StringIO
 from unittest.mock import patch
@@ -7,6 +8,7 @@ from unittest.mock import patch
 import jsonpickle
 import numpy as np
 from PySide6.QtCore import QEventLoop, QObject, QTimer
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QLabel
 from shiboken6 import isValid
 
@@ -241,3 +243,158 @@ class DenoiseViewTests(QtTestCase):
         window.ui.app.workflow = window.ui.app._create_workflow(original)
         window.ui.switch_to_project_mode()
         self.assertEqual(window.ui.active_view.mode_name, "startrails")
+
+    def _setup_completed_denoise_sidebar(self):
+        shape = (16, 20, 3)
+        star_path = self.root / "star_input.tif"
+        imwrite(star_path, np.full(shape, 0.2, dtype=np.float32), convertBGR=True)
+        self.project.star_files = [DenoiseInputFile(star_path.name, str(star_path))]
+        self.project.reference_file = self.project.star_files[0]
+
+        out_dir = self.project.get_output_dir()
+        out_dir.mkdir(parents=True, exist_ok=True)
+        mask_path = self.project.artifact_path("mask")
+        from startrails.lib.denoise.mask import MaskHandler
+
+        mask = np.zeros(shape[:2], dtype=np.float32)
+        mask[:8, :] = 1.0
+        MaskHandler.save_brush_mask(mask, mask_path)
+        self.project.mask_path = str(mask_path)
+        self.project.homographies = {str(star_path): np.eye(3).tolist()}
+        self.project.alignment_signature = self.project.source_signature()
+
+        sky_stack = np.full(shape, 0.6, dtype=np.float32)
+        ground_stack = np.full(shape, 0.4, dtype=np.float32)
+        sky_path = self.project.artifact_path("sky_stack")
+        ground_path = self.project.artifact_path("ground_stack")
+        imwrite(sky_path, sky_stack, convertBGR=True)
+        imwrite(ground_path, ground_stack, convertBGR=True)
+        self.project.sky_stack_path = str(sky_path)
+        self.project.ground_stack_path = str(ground_path)
+
+        grad_mask = np.zeros(shape[:2], dtype=np.float32)
+        grad_path = self.project.artifact_path("gradient_mask")
+        MaskHandler.save_mask(grad_mask, grad_path)
+        self.project.gradient_mask_path = str(grad_path)
+
+        compositor = HorizonCompositor(sky_stack, ground_stack, grad_mask, mask)
+        base_comp_path = out_dir / "base_composite.tif"
+        imwrite(base_comp_path, compositor.base_composite, convertBGR=True)
+        self.project.output_path = str(out_dir / f"{self.project.get_project_stem()}.tif")
+        self.project.record_stacks()
+
+        final_path = out_dir / f"{self.project.get_project_stem()}_final.tif"
+        imwrite(final_path, np.full(shape, 0.85, dtype=np.float32), convertBGR=True)
+        self.project.final_output_path = str(final_path)
+
+        sidebar = SidebarDenoise(app=self.app)
+        self.addCleanup(sidebar.deleteLater)
+        self.view.sidebar = sidebar
+        self.view.bind()
+        self.view.reset_project_view()
+        sidebar.show()
+        self.shell.canvas_main.show()
+        self.qt.processEvents()
+        return sidebar, star_path, base_comp_path, final_path
+
+    def _canvas_center_rgb(self):
+        img = self.shell.canvas_main.pixmap.toImage()
+        c = QColor(img.pixel(img.width() // 2, img.height() // 2))
+        return c.red(), c.green(), c.blue()
+
+    def test_step3_before_after_toggles_input_and_stacked_composite(self):
+        sidebar, star_path, base_comp_path, _ = self._setup_completed_denoise_sidebar()
+
+        # Hidden while collapsed even when done.
+        self.assertEqual(sidebar.stackCard.status, "done")
+        self.assertFalse(sidebar.stackCard.ui.previewToggle.isVisible())
+
+        # Expanding Step 3 displays the stacked sky+ground composite ("after") and shows the eye chip.
+        sidebar.stackCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.starFiles.ui.toggle.isChecked())
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertTrue(sidebar.stackCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.stackCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+        self.assertFalse(self.shell.canvas_main.is_mask_edit_mode())
+        after_rgb = self._canvas_center_rgb()
+
+        # Toggling before shows the clean input image without expanding collapsed file sections.
+        sidebar.stackCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertTrue(sidebar.stackCard.ui.previewToggle.isChecked())
+        self.assertFalse(sidebar.starFiles.ui.toggle.isChecked())
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), star_path.resolve())
+        self.assertFalse(self.shell.canvas_main.is_mask_edit_mode())
+        before_rgb = self._canvas_center_rgb()
+        self.assertLess(before_rgb[0], after_rgb[0])
+
+        # Toggling again restores the stacked composite ("after") without expanding file sections.
+        sidebar.stackCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertFalse(sidebar.stackCard.ui.previewToggle.isChecked())
+        self.assertFalse(sidebar.starFiles.ui.toggle.isChecked())
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+        self.assertEqual(self._canvas_center_rgb(), after_rgb)
+
+        # Collapsing while showing "before" resets the toggle and restores the stacked composite.
+        sidebar.stackCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), star_path.resolve())
+        sidebar.stackCard.setExpanded(False)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.stackCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.stackCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+
+    def test_step4_before_after_toggles_stacked_and_final_composite(self):
+        sidebar, _, base_comp_path, final_path = self._setup_completed_denoise_sidebar()
+
+        # Hidden while collapsed even when done.
+        self.assertEqual(sidebar.tuneCard.status, "done")
+        self.assertFalse(sidebar.tuneCard.ui.previewToggle.isVisible())
+
+        # Expanding Step 4 displays the final composite ("after") and shows the eye chip.
+        sidebar.tuneCard.setExpanded(True)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertTrue(sidebar.tuneCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.tuneCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
+        final_rgb = self._canvas_center_rgb()
+
+        # Toggling before shows the stacked composite ("before") with no horizon overlay or section expansion.
+        sidebar.tuneCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertTrue(sidebar.tuneCard.ui.previewToggle.isChecked())
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+        self.assertEqual(self.shell.canvas_main._horizon_overlay_patches, [])
+        stacked_rgb = self._canvas_center_rgb()
+        self.assertLess(stacked_rgb[0], final_rgb[0])
+
+        # Stale horizon overlay patches arriving while viewing "before" are ignored.
+        patch_arr = np.full((4, 4, 3), 1.0, dtype=np.float32)
+        self.view._on_horizon_patches_ready([(patch_arr, (0, 0, 4, 4))], self.view._horizon_request_id)
+        self.assertEqual(self.shell.canvas_main._horizon_overlay_patches, [])
+
+        # Toggling again restores the final composite ("after") without expanding file sections.
+        sidebar.tuneCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertFalse(sidebar.tuneCard.ui.previewToggle.isChecked())
+        self.assertFalse(sidebar.outputFiles.ui.toggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
+        self.assertEqual(self._canvas_center_rgb(), final_rgb)
+
+        # Collapsing while showing "before" resets the toggle and restores the final composite.
+        sidebar.tuneCard.ui.previewToggle.click()
+        self.qt.processEvents()
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), base_comp_path.resolve())
+        sidebar.tuneCard.setExpanded(False)
+        self.qt.processEvents()
+        self.assertFalse(sidebar.tuneCard.ui.previewToggle.isVisible())
+        self.assertFalse(sidebar.tuneCard.ui.previewToggle.isChecked())
+        self.assertEqual(Path(self.shell.canvas_main.file.path).resolve(), final_path.resolve())
