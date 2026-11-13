@@ -3,7 +3,7 @@
 from __future__ import annotations
 from typing import Optional
 from pathlib import Path
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import QWidget
 
 from startrails.ui.file_manager import FileSection
@@ -70,6 +70,20 @@ class SidebarDenoise(QWidget):
 
         self.update_operations_progress(app)
         system_theme().register(self)
+
+        # Keep scroll content constrained to the viewport width since horizontal scrolling is disabled.
+        self.ui.scroll.viewport().installEventFilter(self)
+        self._sync_content_width()
+
+    def _sync_content_width(self) -> None:
+        viewport_width = self.ui.scroll.viewport().width()
+        if viewport_width > 0:
+            self.ui.content.setMaximumWidth(viewport_width)
+
+    def eventFilter(self, watched, event) -> bool:
+        if watched is self.ui.scroll.viewport() and event.type() == QEvent.Type.Resize:
+            self._sync_content_width()
+        return super().eventFilter(watched, event)
 
     def sync_expanded_step(self) -> None:
         """Apply accordion behavior to a step that is already expanded."""

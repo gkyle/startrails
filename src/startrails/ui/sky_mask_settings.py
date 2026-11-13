@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Optional
 from PySide6.QtCore import QSignalBlocker, Signal
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QComboBox, QWidget
 
 from startrails.lib.denoise.defaults import DEFAULT_MASK_BRUSH_RADIUS
 from .ui_step_denoise_sky import Ui_DenoiseSkySettings
@@ -52,6 +52,8 @@ class SkyMaskSettings(QWidget):
         self.ui.refineMask.clicked.connect(self.refine_mask_requested.emit)
 
         # Connect change signals
+        self.ui.modelType.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.ui.modelType.setMinimumContentsLength(10)
         self.ui.modelType.currentIndexChanged.connect(self._on_change)
         self.ui.searchRadius.valueChanged.connect(self._on_change)
         self.ui.erosionPixels.valueChanged.connect(self._on_change)

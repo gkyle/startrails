@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import jsonpickle
 import numpy as np
-from PySide6.QtCore import QEventLoop, QObject, QTimer
+from PySide6.QtCore import QEventLoop, QObject, Qt, QTimer
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import QLabel
 from shiboken6 import isValid
@@ -562,3 +562,36 @@ class DenoiseViewTests(QtTestCase):
             getattr(self.shell.canvas_main.file, "path", None),
             str(base_comp_path),
         )
+
+    def test_existing_project_displays_reference_annotation_within_sidebar(self):
+        paths = [str(self.root / f"star{i}.tif") for i in range(3)]
+        for p in paths:
+            imwrite(p, np.zeros((8, 8, 3), np.uint16))
+
+        proj_path = self.root / "existing.proj_denoise"
+        saved_proj = DenoiseProject(project_file=str(proj_path))
+        saved_app = self.make_app(saved_proj)
+        saved_app.workflow.add_star_files(paths)
+        proj_path.write_text(jsonpickle.encode(saved_proj), encoding="utf-8")
+
+        loaded_app = self.make_app(DenoiseProject(project_file=str(self.root / "dummy.proj_denoise")))
+        loaded_app.loadProject(str(proj_path))
+        window = MainWindow(loaded_app)
+        self.addCleanup(window.close)
+        window.show()
+        self.qt.processEvents()
+
+        sidebar = window.ui.active_view.sidebar
+        star_files = window.ui.active_view.star_files
+        star_files.setExpanded(True)
+        self.qt.processEvents()
+
+        model = star_files.model
+        annotations = [model.data(model.index(i, 1), Qt.DisplayRole) for i in range(model.rowCount())]
+        self.assertEqual(annotations, ["—", "Reference", "—"])
+
+        tree = star_files.ui.files
+        ref_rect = tree.visualRect(model.index(1, 1))
+        self.assertGreater(ref_rect.width(), 0)
+        self.assertLessEqual(sidebar.ui.content.width(), sidebar.ui.scroll.viewport().width())
+        self.assertTrue(tree.viewport().rect().contains(ref_rect))

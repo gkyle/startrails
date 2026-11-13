@@ -410,6 +410,7 @@ class FileSection(QFrame):
         self.ui.files.setModel(self.model)
         self.delegate = AnnotationBadgeDelegate(self.ui.files)
         self.ui.files.setItemDelegate(self.delegate)
+        self.ui.files.header().setStretchLastSection(False)
         self.ui.files.header().setSectionResizeMode(0, QHeaderView.Stretch)
         self.ui.files.header().setSectionResizeMode(1, QHeaderView.Interactive)
         self.ui.files.header().resizeSection(1, 130)
