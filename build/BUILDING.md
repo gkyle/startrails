@@ -20,8 +20,9 @@ python build/models.py
 
 The command writes the ZIP and `SHA256SUMS` to `out/models/`. If authenticated
 `gh` is available, it asks before syncing. After confirmation, a missing
-GitHub Release is published without **Latest** or **Prerelease** status. Its
-Git tag must already exist remotely. If `gh` is absent or you decline, the files
+GitHub Release is published without **Latest** or **Prerelease** status. If the
+Git tag does not exist remotely yet, it asks before creating and pushing the tag
+from `HEAD` (or pushing an existing local tag). If `gh` is absent or you decline, the files
 remain local for manual upload. Keep the model asset unchanged for a given
 version; publish changed models under a new version. Default platform builds
 need the model ZIP on the tagged release.

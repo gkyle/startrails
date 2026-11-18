@@ -26,6 +26,22 @@ def run_gh(*arguments: str, check: bool = True) -> subprocess.CompletedProcess[s
     return result
 
 
+def run_git(*arguments: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(["git", "-C", str(ROOT), *arguments], capture_output=True, text=True, check=False)
+    if check and result.returncode:
+        raise RuntimeError(result.stderr.strip() or f"git {' '.join(arguments[:2])} failed.")
+    return result
+
+
+def remote_tag_exists(tag: str) -> bool:
+    result = run_gh("api", f"repos/{GITHUB_REPOSITORY}/git/ref/tags/{tag}", check=False)
+    if result.returncode:
+        if re.search(r"\bHTTP 404\b", result.stderr):
+            return False
+        raise RuntimeError(result.stderr.strip() or f"Could not inspect Git tag {tag}.")
+    return True
+
+
 def confirm(question: str) -> bool:
     try:
         return input(f"{question} [y/N] ").strip().lower() in {"y", "yes"}
@@ -77,11 +93,30 @@ def sync_release(version: str, artifacts: list[Path], *, create_release: bool) -
     release = release_state(f"tags/{tag}")
     if release is None and not create_release:
         raise RuntimeError(f"GitHub Release {tag} does not exist. Publish the model archive first.")
-    if release is None and not confirm(
-        f"Create published release {tag} without a Latest or prerelease label from its existing Git tag?"
-    ):
-        print("GitHub Release unchanged.")
-        return
+    push_tag = False
+    create_local_tag = False
+    if release is None:
+        if not remote_tag_exists(tag):
+            local_tag = run_git("rev-parse", "--short", f"refs/tags/{tag}^{{commit}}", check=False)
+            if local_tag.returncode == 0:
+                tag_prompt = (
+                    f"Git tag {tag} does not exist in {GITHUB_REPOSITORY}. "
+                    f"Push existing local tag {tag} ({local_tag.stdout.strip()}) to origin?"
+                )
+            else:
+                head_sha = run_git("rev-parse", "--short", "HEAD").stdout.strip()
+                tag_prompt = (
+                    f"Git tag {tag} does not exist in {GITHUB_REPOSITORY}. "
+                    f"Create and push {tag} at HEAD ({head_sha})?"
+                )
+                create_local_tag = True
+            if not confirm(tag_prompt):
+                print("GitHub Release unchanged.")
+                return
+            push_tag = True
+        if not confirm(f"Create published release {tag} without a Latest or prerelease label?"):
+            print("GitHub Release unchanged.")
+            return
     if release is not None and release.get("draft"):
         raise RuntimeError(f"GitHub Release {tag} is a draft; publish it before syncing assets.")
     if release is not None and release.get("immutable"):
@@ -149,6 +184,11 @@ def sync_release(version: str, artifacts: list[Path], *, create_release: bool) -
             return
 
         if release is None:
+            if push_tag:
+                if create_local_tag:
+                    run_git("tag", tag)
+                run_git("push", "origin", f"refs/tags/{tag}")
+                print(f"Pushed tag {tag} to origin.")
             run_gh(
                 "release", "create", tag, "--repo", GITHUB_REPOSITORY,
                 "--verify-tag", "--latest=false", "--notes", "",

@@ -27,10 +27,24 @@ class PublishTests(unittest.TestCase):
         self.artifact.write_bytes(b"verified model archive")
         self.digest = hashlib.sha256(self.artifact.read_bytes()).hexdigest()
         self.calls = []
+        self.git_calls = []
         self.uploaded_checksums = None
         self.release = None
+        self.remote_tag = True
+        self.local_tag_sha = None
         self.enterContext(patch.object(publish.shutil, "which", return_value="gh"))
         self.enterContext(patch.object(publish, "run_gh", side_effect=self.fake_gh))
+        self.enterContext(patch.object(publish, "run_git", side_effect=self.fake_git))
+
+    def fake_git(self, *arguments, check=True):
+        self.git_calls.append(arguments)
+        if arguments[0] == "rev-parse":
+            if "HEAD" in arguments:
+                return completed(stdout="abc1234\n")
+            if self.local_tag_sha is not None:
+                return completed(stdout=f"{self.local_tag_sha}\n")
+            return completed(returncode=1)
+        return completed()
 
     def fake_gh(self, *arguments, check=True):
         self.calls.append(arguments)
@@ -38,6 +52,10 @@ class PublishTests(unittest.TestCase):
             if arguments[1].endswith("/latest"):
                 if getattr(self, "latest", False):
                     return completed(stdout=json.dumps({"tag_name": TAG}))
+                return completed(stderr="gh: Not Found (HTTP 404)", returncode=1)
+            if arguments[1].endswith(f"/git/ref/tags/{TAG}"):
+                if self.remote_tag:
+                    return completed(stdout=json.dumps({"ref": f"refs/tags/{TAG}"}))
                 return completed(stderr="gh: Not Found (HTTP 404)", returncode=1)
             if self.release is None:
                 return completed(stderr="gh: Not Found (HTTP 404)", returncode=1)
@@ -79,8 +97,46 @@ class PublishTests(unittest.TestCase):
         with patch("builtins.input", side_effect=["yes", "no"]):
             publish.sync_release("0.1.1", [self.artifact], create_release=True)
 
-        self.assertEqual(len(self.calls), 1)
-        self.assertEqual(self.calls[0][0], "api")
+        self.assertTrue(all(args[0] == "api" for args in self.calls))
+        self.assertEqual(self.git_calls, [])
+
+    def test_declining_missing_tag_creation_leaves_remote_unchanged(self):
+        self.remote_tag = False
+        with patch("builtins.input", side_effect=["yes", "no"]):
+            publish.sync_release("0.1.1", [self.artifact], create_release=True)
+
+        self.assertTrue(all(args[0] == "api" for args in self.calls))
+        self.assertFalse(any(args[0] in {"tag", "push"} for args in self.git_calls))
+
+    def test_missing_remote_tag_is_created_and_pushed_before_release_creation(self):
+        self.remote_tag = False
+        with patch("builtins.input", side_effect=["yes", "yes", "yes"]):
+            publish.sync_release("0.1.1", [self.artifact], create_release=True)
+
+        self.assertIn(("tag", TAG), self.git_calls)
+        self.assertIn(("push", "origin", f"refs/tags/{TAG}"), self.git_calls)
+        tag_index = self.git_calls.index(("tag", TAG))
+        push_index = self.git_calls.index(("push", "origin", f"refs/tags/{TAG}"))
+        self.assertLess(tag_index, push_index)
+        self.assertTrue(any(args[:2] == ("release", "create") for args in self.calls))
+
+    def test_existing_local_tag_is_pushed_without_recreating_tag(self):
+        self.remote_tag = False
+        self.local_tag_sha = "def5678"
+        with patch("builtins.input", side_effect=["yes", "yes", "yes"]):
+            publish.sync_release("0.1.1", [self.artifact], create_release=True)
+
+        self.assertNotIn(("tag", TAG), self.git_calls)
+        self.assertIn(("push", "origin", f"refs/tags/{TAG}"), self.git_calls)
+        self.assertTrue(any(args[:2] == ("release", "create") for args in self.calls))
+
+    def test_declining_release_after_tag_approval_does_not_push_tag(self):
+        self.remote_tag = False
+        with patch("builtins.input", side_effect=["yes", "yes", "no"]):
+            publish.sync_release("0.1.1", [self.artifact], create_release=True)
+
+        self.assertFalse(any(args[0] in {"tag", "push"} for args in self.git_calls))
+        self.assertFalse(any(args[:2] == ("release", "create") for args in self.calls))
 
     def test_existing_asset_requires_separate_replacement_approval(self):
         self.release = {
