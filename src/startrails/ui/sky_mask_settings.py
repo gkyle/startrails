@@ -1,4 +1,4 @@
-"""Reusable Step 1: Define Sky Region settings widget shared between Denoise and Finish modes."""
+"""Reusable Step 1: Define Sky Region settings widget shared between Denoise and Split modes."""
 
 from __future__ import annotations
 

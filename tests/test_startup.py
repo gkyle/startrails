@@ -17,8 +17,8 @@ from main import create_main_window
 from startrails.app import App
 from startrails.lib.project_startrails import Project
 from startrails.lib.project_denoise import DenoiseProject
-from startrails.lib.project_finish import FinishProject
-from startrails.lib.project_type import DENOISE_EXT, FINISH_EXT, STARTRAILS_EXT
+from startrails.lib.project_split import SplitProject
+from startrails.lib.project_type import DENOISE_EXT, SPLIT_EXT, STARTRAILS_EXT
 from startrails.paths import WORK_DIR_ENV, configure_work_directory
 
 
@@ -124,25 +124,25 @@ class StartupTests(QtTestCase):
 
         cases = (
             (
-                f"default{FINISH_EXT}",
+                f"default{SPLIT_EXT}",
                 "{not json",
                 "selected.proj_startrails",
                 Project(projectFile=str(projects_dir / "selected.proj_startrails")),
                 Project,
             ),
             (
-                f"default{FINISH_EXT}",
-                jsonpickle.encode(Project(projectFile=str(projects_dir / f"default{FINISH_EXT}"))),
+                f"default{SPLIT_EXT}",
+                jsonpickle.encode(Project(projectFile=str(projects_dir / f"default{SPLIT_EXT}"))),
                 "selected.proj_denoise",
                 DenoiseProject(project_file=str(projects_dir / "selected.proj_denoise")),
                 DenoiseProject,
             ),
             (
                 f"default{DENOISE_EXT}",
-                jsonpickle.encode(FinishProject(project_file=str(projects_dir / f"default{DENOISE_EXT}"))),
-                "selected.proj_finish",
-                FinishProject(project_file=str(projects_dir / "selected.proj_finish")),
-                FinishProject,
+                jsonpickle.encode(SplitProject(project_file=str(projects_dir / f"default{DENOISE_EXT}"))),
+                "selected.proj_split",
+                SplitProject(project_file=str(projects_dir / "selected.proj_split")),
+                SplitProject,
             ),
         )
 
@@ -169,11 +169,11 @@ class StartupTests(QtTestCase):
                 finally:
                     starter_path.unlink(missing_ok=True)
 
-    def test_corrupt_selected_default_finish_recovers_without_overwriting(self):
+    def test_corrupt_selected_default_split_recovers_without_overwriting(self):
         projects_dir = self.root / "projects"
         projects_dir.mkdir()
-        starter_path = projects_dir / f"default{FINISH_EXT}"
-        corrupt_body = "{corrupt finish project"
+        starter_path = projects_dir / f"default{SPLIT_EXT}"
+        corrupt_body = "{corrupt split project"
         starter_path.write_text(corrupt_body, encoding="utf-8")
         Path("app.json").write_text(jsonpickle.encode({"projectFile": str(starter_path)}), encoding="utf-8")
 
@@ -186,4 +186,4 @@ class StartupTests(QtTestCase):
         self.assertIsInstance(app.project, Project)
         self.assertEqual(Path(app.project.projectFile), Path(f"projects/default{STARTRAILS_EXT}"))
         self.assertEqual(starter_path.read_text(encoding="utf-8"), corrupt_body)
-        self.assertTrue(any(f"default{FINISH_EXT}" in line for line in logs.output))
+        self.assertTrue(any(f"default{SPLIT_EXT}" in line for line in logs.output))

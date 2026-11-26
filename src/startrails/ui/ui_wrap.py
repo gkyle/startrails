@@ -25,14 +25,15 @@ from startrails.lib.file import File, InputFile, OutputFile
 from startrails.lib.project_type import (
     STARTRAILS_EXT,
     DENOISE_EXT,
-    FINISH_EXT,
+    SPLIT_EXT,
+    LEGACY_SPLIT_EXT,
     LEGACY_STARTRAILS_EXT,
     detect_project_type,
 )
 from startrails.ui.views.base import ModeView
 from startrails.ui.views.startrails import StarTrailsView
 from startrails.ui.views.denoise import DenoiseView
-from startrails.ui.views.finish import FinishView
+from startrails.ui.views.split import SplitView
 from startrails.ui.project_overlay import ProjectWelcomeOverlay
 from startrails.lib.recent import add_recent_project
 
@@ -57,10 +58,10 @@ class MainWindow(QMainWindow):
         self.project_overlay = ProjectWelcomeOverlay(self)
         self.project_overlay.createStarTrailsRequested.connect(self.ui.doCreateNewStarTrailsProject)
         self.project_overlay.createDenoiseRequested.connect(self.ui.doCreateNewDenoiseProject)
-        self.project_overlay.createFinishRequested.connect(self.ui.doCreateNewFinishProject)
+        self.project_overlay.createSplitRequested.connect(self.ui.doCreateNewSplitProject)
         self.project_overlay.openStarTrailsRequested.connect(self.ui.doOpenStarTrailsProject)
         self.project_overlay.openDenoiseRequested.connect(self.ui.doOpenDenoiseProject)
-        self.project_overlay.openFinishRequested.connect(self.ui.doOpenFinishProject)
+        self.project_overlay.openSplitRequested.connect(self.ui.doOpenSplitProject)
         self.project_overlay.projectSelected.connect(self.ui.load_project_and_dismiss)
         self.project_overlay.browseRequested.connect(self.ui.doBrowseAnyProject)
         self.project_overlay.dismissed.connect(self.hide_project_overlay)
@@ -162,8 +163,8 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
 
         if mode_name == "denoise":
             self.active_view = DenoiseView(app, self)
-        elif mode_name == "finish":
-            self.active_view = FinishView(app, self)
+        elif mode_name == "split":
+            self.active_view = SplitView(app, self)
         else:
             self.active_view = StarTrailsView(app, self)
 
@@ -311,13 +312,13 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             if self.bodySplitter.count() > 1:
                 old_widget = self.bodySplitter.widget(0)
                 if old_widget is not None and old_widget is not self.canvasHost:
-                    if mode_name in ("denoise", "finish") or not isinstance(old_widget, Sidebar):
+                    if mode_name in ("denoise", "split") or not isinstance(old_widget, Sidebar):
                         old_widget.setParent(None)
 
         if mode_name == "denoise":
             self.active_view = DenoiseView(self.app, self)
-        elif mode_name == "finish":
-            self.active_view = FinishView(self.app, self)
+        elif mode_name == "split":
+            self.active_view = SplitView(self.app, self)
         else:
             self.active_view = StarTrailsView(self.app, self)
         self.active_view.setParent(self)
@@ -339,7 +340,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             self.checkBox_showDeletedMasks = getattr(self.active_view, "checkBox_showDeletedMasks", None)
             self.pushButton_findBrightest = getattr(self.active_view, "pushButton_findBrightest", None)
             self.pushButton_fillGaps = getattr(self.active_view, "pushButton_fillGaps", None)
-            if mode_name in ("denoise", "finish"):
+            if mode_name in ("denoise", "split"):
                 sidebar_width = 300
                 sidebar_widget.setMinimumSize(sidebar_width, 0)
                 sidebar_widget.setMaximumSize(sidebar_width, 16777215)
@@ -369,8 +370,8 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
     def _update_window_title(self, mode_name: str) -> None:
         if mode_name == "denoise":
             title = "StarTrails AI — Denoise"
-        elif mode_name == "finish":
-            title = "StarTrails AI — Finish"
+        elif mode_name == "split":
+            title = "StarTrails AI — Split"
         else:
             title = "StarTrails AI"
         if self.mainWindow is not None:
@@ -648,10 +649,11 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
 
         QApplication.processEvents()
         filter_str = (
-            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{FINISH_EXT} *{LEGACY_STARTRAILS_EXT});;"
+            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{SPLIT_EXT} "
+            f"*{LEGACY_SPLIT_EXT} *{LEGACY_STARTRAILS_EXT});;"
             f"StarTrails Project (*{STARTRAILS_EXT});;"
             f"Denoise Project (*{DENOISE_EXT});;"
-            f"Finish Project (*{FINISH_EXT});;"
+            f"Split Project (*{SPLIT_EXT} *{LEGACY_SPLIT_EXT});;"
             f"Legacy Project (*{LEGACY_STARTRAILS_EXT});;"
             "All Files (*)"
         )
@@ -726,7 +728,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             if hasattr(self, "mainWindow") and hasattr(self.mainWindow, "hide_project_overlay"):
                 self.mainWindow.hide_project_overlay()
 
-    def doCreateNewFinishProject(self):
+    def doCreateNewSplitProject(self):
         if self.enqueued_tasks or self.current_running_task is not None:
             parent = getattr(self, "mainWindow", None)
             QMessageBox.warning(
@@ -737,19 +739,19 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
             return
 
         QApplication.processEvents()
-        filter_str = f"Finish Project (*{FINISH_EXT});;All Files (*)"
+        filter_str = f"Split Project (*{SPLIT_EXT});;All Files (*)"
         parent = getattr(self, "mainWindow", None)
         file_path, _ = QFileDialog.getSaveFileName(
             parent,
-            "Create New Finish Project",
-            f"projects/new_project{FINISH_EXT}",
+            "Create New Split Project",
+            f"projects/new_project{SPLIT_EXT}",
             filter_str,
         )
 
         if file_path:
             path = Path(file_path)
             if not path.suffix:
-                file_path = str(path.with_suffix(FINISH_EXT))
+                file_path = str(path.with_suffix(SPLIT_EXT))
 
             self.app.newProject(file_path)
             add_recent_project(file_path)
@@ -809,7 +811,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
         if fileName:
             self.load_project_and_dismiss(fileName)
 
-    def doOpenFinishProject(self):
+    def doOpenSplitProject(self):
         if self.enqueued_tasks or self.current_running_task is not None:
             parent = getattr(self, "mainWindow", None)
             QMessageBox.warning(
@@ -821,13 +823,13 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
 
         QApplication.processEvents()
         filter_str = (
-            f"Finish Project (*{FINISH_EXT});;"
+            f"Split Project (*{SPLIT_EXT} *{LEGACY_SPLIT_EXT});;"
             "All Files (*)"
         )
         parent = getattr(self, "mainWindow", None)
         fileName, _ = QFileDialog.getOpenFileName(
             parent,
-            "Open Finish Project",
+            "Open Split Project",
             dir="projects",
             filter=filter_str,
         )
@@ -846,10 +848,11 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
 
         QApplication.processEvents()
         filter_str = (
-            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{FINISH_EXT} *{LEGACY_STARTRAILS_EXT});;"
+            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{SPLIT_EXT} "
+            f"*{LEGACY_SPLIT_EXT} *{LEGACY_STARTRAILS_EXT});;"
             f"StarTrails Project (*{STARTRAILS_EXT});;"
             f"Denoise Project (*{DENOISE_EXT});;"
-            f"Finish Project (*{FINISH_EXT});;"
+            f"Split Project (*{SPLIT_EXT} *{LEGACY_SPLIT_EXT});;"
             f"Legacy Project (*{LEGACY_STARTRAILS_EXT});;"
             "All Files (*)"
         )

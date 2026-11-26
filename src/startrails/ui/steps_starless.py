@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 from PySide6.QtCore import QSignalBlocker, Signal
 from PySide6.QtWidgets import QButtonGroup, QWidget
 
-from startrails.lib.finish.defaults import (
+from startrails.lib.split.defaults import (
     DEFAULT_DENOISE_STRENGTH_PERCENT,
     DEFAULT_DETAIL_AMOUNT_PERCENT,
     DEFAULT_ENABLE_STARLESS_SHARPEN,
@@ -15,12 +15,12 @@ from startrails.lib.finish.defaults import (
     SCOPE_SKY_ONLY,
     SCOPE_WHOLE_IMAGE,
 )
-from startrails.lib.project_finish import FinishProject
+from startrails.lib.project_split import SplitProject
 from .steps import bind_percent_slider_spinbox, set_percent_slider_spinbox
-from .ui_step_finish_starless import Ui_FinishStarlessSettings
+from .ui_step_split_starless import Ui_SplitStarlessSettings
 
 
-class FinishStarlessSettings(QWidget):
+class SplitStarlessSettings(QWidget):
     """Step 3 card body widget handling GraXpert AI denoise and sharpening settings."""
 
     enable_denoise_changed = Signal(bool)
@@ -40,7 +40,7 @@ class FinishStarlessSettings(QWidget):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.ui = Ui_FinishStarlessSettings()
+        self.ui = Ui_SplitStarlessSettings()
         self.ui.setupUi(self)
 
         # Direct attribute aliases on self for backward compatibility and test access
@@ -238,8 +238,8 @@ class FinishStarlessSettings(QWidget):
         """Alias setting the detail amount without emitting change signals."""
         self.set_detail(value)
 
-    def set_from_project(self, project: FinishProject) -> None:
-        """Populate widget controls from active FinishProject settings."""
+    def set_from_project(self, project: SplitProject) -> None:
+        """Populate widget controls from active SplitProject settings."""
         settings = project.get_settings()
         self.set_enable_denoise(settings.enable_starless_denoise)
         self.set_enable_sharpen(settings.enable_starless_sharpen)
@@ -287,4 +287,4 @@ class FinishStarlessSettings(QWidget):
         self._update_controls_enabled()
 
 
-__all__ = ["FinishStarlessSettings"]
+__all__ = ["SplitStarlessSettings"]
