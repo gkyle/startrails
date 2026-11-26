@@ -6,7 +6,7 @@ StarTrails AI is an open-source desktop app for stacking and finishing nightscap
 | :---: | --- | --- |
 | <img width="50%" src="src/startrails/ui/icons/project_startrails.png" alt="Startrails"><br>**Startrails** | Long star trails that show the sky's motion | Detect and remove satellite and airplane streaks, create star trail stacks, and fill gaps in the trails. |
 | <img width="50%" src="src/startrails/ui/icons/project_denoise.png" alt="Denoise"><br>**Denoise** | A cleaner nightscape with point-like stars | Create tight sky masks with sky detection, refinement, and painting tools, align and stack the sky separately from the ground, and tune noise. |
-| <img width="50%" src="src/startrails/ui/icons/project_finish.png" alt="Finish"><br>**Finish** | Finish a single nightscape image | Separate stars from the sky, denoise and sharpen the starless layer, then recombine and export. |
+| <img width="50%" src="src/startrails/ui/icons/project_split.png" alt="Split"><br>**Split** | Split a single nightscape image | Separate stars from the sky, denoise and sharpen the starless layer, then recombine and export. |
 
 ## Get started
 
@@ -18,7 +18,7 @@ Download an installer from [GitHub Releases](https://github.com/gkyle/startrails
 
 Initial installation needs an internet connection. A compatible GPU can speed up processing steps(NVIDIA CUDA, AMD ROCm, Intel XPU, Apple Silicon MPS, and CPU are supported). Whether running from an installer or the source distribution, setup will create an isolated Python environment using `uv`, identify compatible GPU hardware, and install the necessary dependencies.
 
-On the welcome screen, choose **Star Trails**, **Astro Denoise Stacking**, or **Astro Finish** and create or open a project.
+On the welcome screen, choose **Star Trails**, **Astro Denoise Stacking**, or **Astro Split** and create or open a project.
 
 ## Startrails workflow
 
@@ -118,9 +118,9 @@ This example compares the stack without horizon corrections to the same stack wi
 
 Use **Save Image** to export the result as TIFF or JPEG.
 
-## Finish workflow
+## Split workflow
 
-Finish mode takes a single nightscape image and separates stars from the sky to enable targeted post processing. For example, denoise and sharpen the nebula/milky way without damaging stars, adjust the white balance of just the stars, or apply a tone curve to the sky to elevate the milky way.
+Split mode takes a single nightscape image and separates stars from the sky to enable targeted post processing. For example, denoise and sharpen the nebula/milky way without damaging stars, adjust the white balance of just the stars, or apply a tone curve to the sky to elevate the milky way.
 
 1. **Define Sky Region:** Detect and refine the sky mask, paint corrections, or select the full frame for an image without foreground.
 2. **Separate Stars:** Run star removal to create starless and stars layers.
@@ -135,7 +135,7 @@ Star separation isolates the point stars into a dedicated `stars` layer and reco
 
 | Before separating stars | After separating stars |
 | :---: | :---: |
-| [![Center crop showing stars across the Milky Way and rock arch.](docs/images/finish_separate_before.png)](docs/images/finish_separate_before.png) | [![The same region after Separate Stars removes stars while keeping Milky Way texture and foreground edges intact.](docs/images/finish_separate_after.png)](docs/images/finish_separate_after.png) |
+| [![Center crop showing stars across the Milky Way and rock arch.](docs/images/split_separate_before.png)](docs/images/split_separate_before.png) | [![The same region after Separate Stars removes stars while keeping Milky Way texture and foreground edges intact.](docs/images/split_separate_after.png)](docs/images/split_separate_after.png) |
 
 ### Step 3: Finish Starless
 
@@ -143,7 +143,7 @@ With stars removed, **Finish Starless** applies AI sky denoising and optional **
 
 | Before final denoise | After final denoise |
 | :---: | :---: |
-| [![Center crop of the separated starless layer before denoising and sharpening.](docs/images/finish_separate_after.png)](docs/images/finish_separate_after.png) | [![The same region after Finish Starless with sky-only AI denoise at 50% strength, Structure 30, and Detail 20.](docs/images/finish_starless_after.png)](docs/images/finish_starless_after.png) |
+| [![Center crop of the separated starless layer before denoising and sharpening.](docs/images/split_separate_after.png)](docs/images/split_separate_after.png) | [![The same region after Finish Starless with sky-only AI denoise at 50% strength, Structure 30, and Detail 20.](docs/images/split_starless_after.png)](docs/images/split_starless_after.png) |
 
 ## Contributing and training
 

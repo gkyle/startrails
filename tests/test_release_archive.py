@@ -12,7 +12,7 @@ from unittest.mock import patch
 from zipfile import ZipFile, ZipInfo
 
 from build import release, models as model_builder
-from startrails.lib.finish.defaults import GRAXPERT_MODEL_RELATIVE_PATH
+from startrails.lib.split.defaults import GRAXPERT_MODEL_RELATIVE_PATH
 
 
 class PublishedModelArchiveTests(unittest.TestCase):

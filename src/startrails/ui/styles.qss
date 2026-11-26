@@ -77,10 +77,10 @@ QLabel#lbl_unconf_msg {
 /* Sidebar Shells & Scrollbars */
 QWidget#Sidebar,
 QWidget#SidebarDenoise,
-QWidget#SidebarFinish,
+QWidget#SidebarSplit,
 QWidget#Sidebar QWidget#content,
 QWidget#SidebarDenoise QWidget#content,
-QWidget#SidebarFinish QWidget#content {
+QWidget#SidebarSplit QWidget#content {
     background-color: #f8fafc;
 }
 

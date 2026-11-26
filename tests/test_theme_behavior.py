@@ -36,11 +36,11 @@ class ThemeTests(QtTestCase):
             icon = QIcon(path)
             self.assertFalse(icon.pixmap(16, 16).isNull(), path)
 
-    def test_project_finish_resource_loads_without_filesystem(self):
+    def test_project_split_resource_loads_without_filesystem(self):
         from PySide6.QtGui import QPixmap
         import startrails.ui.resources_rc  # noqa: F401
 
-        pix = QPixmap(":/startrails/ui/project_finish.png")
+        pix = QPixmap(":/startrails/ui/project_split.png")
         self.assertFalse(pix.isNull())
         self.assertGreater(pix.width(), 0)
         self.assertGreater(pix.height(), 0)

@@ -21,7 +21,7 @@ _MASK_STAGE_PROGRESS_UNITS = 500
 class SkyMaskController(QObject):
     """Coordinates sky mask interactions between the UI canvas, settings widget, and workflow.
 
-    Uses explicit per-workflow callbacks so that neither Finish nor Denoise couples
+    Uses explicit per-workflow callbacks so that neither Split nor Denoise couples
     to the other's project model, invalidation lifecycle, or storage conventions.
     """
 

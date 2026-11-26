@@ -7,8 +7,8 @@ from typing import Any, Dict, Optional
 from PySide6.QtCore import QSignalBlocker, Signal
 from PySide6.QtWidgets import QWidget
 
-from startrails.lib.finish.nox import DEFAULT_STRIDE, validate_separation_stride
-from startrails.lib.project_finish import FinishProject
+from startrails.lib.split.nox import DEFAULT_STRIDE, validate_separation_stride
+from startrails.lib.project_split import SplitProject
 from .steps import toggle_advanced_settings
 from .ui_step_separate import Ui_SeparateStarsSettings
 
@@ -115,8 +115,8 @@ class SeparateStarsSettings(QWidget):
             index = self.combo_stride.findData(stride)
             self.combo_stride.setCurrentIndex(index)
 
-    def set_from_project(self, project: FinishProject) -> None:
-        """Populate widget controls from active FinishProject settings."""
+    def set_from_project(self, project: SplitProject) -> None:
+        """Populate widget controls from active SplitProject settings."""
         settings = project.get_settings()
         self.set_stride(settings.nox_stride)
         self.set_chroma_postfilter(settings.chroma_postfilter)

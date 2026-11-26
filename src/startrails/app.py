@@ -15,13 +15,13 @@ from startrails.lib.file import InputFile, OutputFile
 from startrails.lib.util import Observable
 from startrails.lib.project_startrails import Project
 from startrails.lib.project_denoise import DenoiseProject
-from startrails.lib.project_finish import FinishProject
+from startrails.lib.project_split import SplitProject
 from startrails.lib.project_type import (
     STARTRAILS_EXT,
     DENOISE_EXT,
-    FINISH_EXT,
+    SPLIT_EXT,
     TYPE_DENOISE,
-    TYPE_FINISH,
+    TYPE_SPLIT,
     detect_project_type_from_path,
     UnsupportedProjectError,
     InvalidProjectError,
@@ -31,7 +31,7 @@ from startrails.lib.recent import add_recent_project
 from startrails.workflow.base import Workflow
 from startrails.workflow.startrails import StarTrailsWorkflow
 from startrails.workflow.denoise import DenoiseWorkflow
-from startrails.workflow.finish import FinishWorkflow
+from startrails.workflow.split import SplitWorkflow
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class App:
         # Ensure starter projects exist on disk without letting a corrupt file block startup.
         for project_cls, default_path in (
             (DenoiseProject, f"projects/default{DENOISE_EXT}"),
-            (FinishProject, f"projects/default{FINISH_EXT}"),
+            (SplitProject, f"projects/default{SPLIT_EXT}"),
         ):
             try:
                 project_cls.ensure_default_project(default_path)
@@ -85,8 +85,8 @@ class App:
     def _create_workflow(self, project: Any) -> Workflow:
         if isinstance(project, DenoiseProject):
             return DenoiseWorkflow(self)
-        if isinstance(project, FinishProject):
-            return FinishWorkflow(self)
+        if isinstance(project, SplitProject):
+            return SplitWorkflow(self)
         return StarTrailsWorkflow(self)
 
     # -------------------------------------------------------------------------
@@ -221,8 +221,8 @@ class App:
                 proj_type = detect_project_type_from_path(path)
                 if proj_type == TYPE_DENOISE:
                     self.project = DenoiseProject(projectFile=str(path))
-                elif proj_type == TYPE_FINISH:
-                    self.project = FinishProject(project_file=str(path))
+                elif proj_type == TYPE_SPLIT:
+                    self.project = SplitProject(project_file=str(path))
                 else:
                     self.project = Project(projectFile=str(path))
                 self.workflow = self._create_workflow(self.project)
@@ -250,17 +250,17 @@ class App:
         except Exception as e:
             raise InvalidProjectError(f"Failed to decode project file '{path}': {e}") from e
 
-        if not isinstance(loaded_proj, (Project, DenoiseProject, FinishProject)):
+        if not isinstance(loaded_proj, (Project, DenoiseProject, SplitProject)):
             raise InvalidProjectError(
-                f"File '{path}' does not contain a recognized StarTrails, Denoise, or Finish project (got {type(loaded_proj).__name__})."
+                f"File '{path}' does not contain a recognized StarTrails, Denoise, or Split project (got {type(loaded_proj).__name__})."
             )
 
         # Treat the chosen Open filename as the authoritative save path
-        if isinstance(loaded_proj, (DenoiseProject, FinishProject)):
+        if isinstance(loaded_proj, (DenoiseProject, SplitProject)):
             loaded_proj.relocate(str(path))
         else:
             loaded_proj.projectFile = str(path)
-        if isinstance(loaded_proj, FinishProject):
+        if isinstance(loaded_proj, SplitProject):
             loaded_proj.remove_retired_star_effect_caches()
         if isinstance(loaded_proj, Project):
             loaded_proj.normalize_loaded_state()
@@ -302,8 +302,8 @@ class App:
         proj_type = detect_project_type_from_path(fileName)
         if proj_type == TYPE_DENOISE:
             self.project = DenoiseProject(projectFile=fileName)
-        elif proj_type == TYPE_FINISH:
-            self.project = FinishProject(project_file=fileName)
+        elif proj_type == TYPE_SPLIT:
+            self.project = SplitProject(project_file=fileName)
         else:
             self.project = Project(projectFile=fileName)
         self.workflow = self._create_workflow(self.project)

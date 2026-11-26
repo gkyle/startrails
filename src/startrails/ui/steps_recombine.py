@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING, Optional
 from PySide6.QtCore import QSignalBlocker, Signal
 from PySide6.QtWidgets import QWidget
 
-from startrails.lib.finish.defaults import FINISH_DEFAULTS
+from startrails.lib.split.defaults import SPLIT_DEFAULTS
 from .steps import bind_percent_slider_spinbox, set_percent_slider_spinbox
-from .ui_step_finish_recombine import Ui_FinishRecombineSettings
+from .ui_step_split_recombine import Ui_SplitRecombineSettings
 
 if TYPE_CHECKING:
-    from startrails.lib.project_finish import FinishProject
+    from startrails.lib.project_split import SplitProject
 
 
-class FinishRecombineSettings(QWidget):
+class SplitRecombineSettings(QWidget):
     """Step 4 card body widget handling layer blending amounts, modes, and export."""
 
     star_amount_changed = Signal(float)
@@ -27,7 +27,7 @@ class FinishRecombineSettings(QWidget):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.ui = Ui_FinishRecombineSettings()
+        self.ui = Ui_SplitRecombineSettings()
         self.ui.setupUi(self)
 
         # Attribute aliases for backward compatibility and test access
@@ -46,10 +46,10 @@ class FinishRecombineSettings(QWidget):
         self.combo_star_blend_mode.setItemData(0, "add")
         self.combo_star_blend_mode.setItemData(1, "screen")
 
-        # Initialize defaults from FINISH_DEFAULTS before connecting events
-        self.set_star_amount(FINISH_DEFAULTS.star_amount)
-        self.set_star_threshold(FINISH_DEFAULTS.star_threshold)
-        self.set_blend_mode(FINISH_DEFAULTS.blend_mode)
+        # Initialize defaults from SPLIT_DEFAULTS before connecting events
+        self.set_star_amount(SPLIT_DEFAULTS.star_amount)
+        self.set_star_threshold(SPLIT_DEFAULTS.star_threshold)
+        self.set_blend_mode(SPLIT_DEFAULTS.blend_mode)
 
         self.lbl_status.hide()
         self._init_events()
@@ -100,7 +100,7 @@ class FinishRecombineSettings(QWidget):
         with QSignalBlocker(self.combo_star_blend_mode):
             self.combo_star_blend_mode.setCurrentIndex(idx)
 
-    def set_from_project(self, project: FinishProject) -> None:
+    def set_from_project(self, project: SplitProject) -> None:
         settings = project.get_settings()
         self.set_star_amount(settings.star_amount)
         self.set_star_threshold(settings.star_threshold)
@@ -116,4 +116,4 @@ class FinishRecombineSettings(QWidget):
         self.btn_export_layers.setEnabled(has_prerequisites)
 
 
-__all__ = ["FinishRecombineSettings"]
+__all__ = ["SplitRecombineSettings"]
