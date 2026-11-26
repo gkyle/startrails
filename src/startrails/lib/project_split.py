@@ -22,6 +22,7 @@ from startrails.lib.split.defaults import (
     COMPOSITION_ONLY_SETTING_NAMES,
     SPLIT_DEFAULTS,
     SPLIT_EXT,
+    LEGACY_SPLIT_EXT,
     PERCENT_SCALE,
     RETIRED_SPLIT_SETTING_NAMES,
     SplitSettings,
@@ -319,8 +320,9 @@ class SplitProject(Unpickle):
         if not self.project_file:
             return "project"
         name = Path(self.project_file).name
-        if name.endswith(SPLIT_EXT):
-            return name[: -len(SPLIT_EXT)]
+        for extension in (SPLIT_EXT, LEGACY_SPLIT_EXT):
+            if name.lower().endswith(extension):
+                return name[: -len(extension)]
         if name.endswith(".json"):
             return name[:-5]
         return Path(self.project_file).stem

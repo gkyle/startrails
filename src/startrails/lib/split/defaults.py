@@ -15,6 +15,8 @@ BlendModeType = Literal["add", "screen"]
 PROJECT_TYPE_SPLIT: Final[str] = "split"
 SPLIT_EXT: Final[str] = ".proj_split"
 SPLIT_OUTPUT_DIR_SUFFIX: Final[str] = ".split"
+LEGACY_SPLIT_EXT: Final[str] = ".proj_finish"
+LEGACY_SPLIT_OUTPUT_DIR_SUFFIX: Final[str] = ".finish"
 
 # Bundled Split model paths
 NOX_MODEL_FILENAME: Final[str] = "nox_color_finetuned_best.pt"

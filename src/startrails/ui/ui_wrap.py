@@ -26,6 +26,7 @@ from startrails.lib.project_type import (
     STARTRAILS_EXT,
     DENOISE_EXT,
     SPLIT_EXT,
+    LEGACY_SPLIT_EXT,
     LEGACY_STARTRAILS_EXT,
     detect_project_type,
 )
@@ -648,10 +649,11 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
 
         QApplication.processEvents()
         filter_str = (
-            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{SPLIT_EXT} *{LEGACY_STARTRAILS_EXT});;"
+            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{SPLIT_EXT} "
+            f"*{LEGACY_SPLIT_EXT} *{LEGACY_STARTRAILS_EXT});;"
             f"StarTrails Project (*{STARTRAILS_EXT});;"
             f"Denoise Project (*{DENOISE_EXT});;"
-            f"Split Project (*{SPLIT_EXT});;"
+            f"Split Project (*{SPLIT_EXT} *{LEGACY_SPLIT_EXT});;"
             f"Legacy Project (*{LEGACY_STARTRAILS_EXT});;"
             "All Files (*)"
         )
@@ -821,7 +823,7 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
 
         QApplication.processEvents()
         filter_str = (
-            f"Split Project (*{SPLIT_EXT});;"
+            f"Split Project (*{SPLIT_EXT} *{LEGACY_SPLIT_EXT});;"
             "All Files (*)"
         )
         parent = getattr(self, "mainWindow", None)
@@ -846,10 +848,11 @@ class Ui_AppWindow(QObject, Ui_MainWindow):
 
         QApplication.processEvents()
         filter_str = (
-            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{SPLIT_EXT} *{LEGACY_STARTRAILS_EXT});;"
+            f"Supported Projects (*{STARTRAILS_EXT} *{DENOISE_EXT} *{SPLIT_EXT} "
+            f"*{LEGACY_SPLIT_EXT} *{LEGACY_STARTRAILS_EXT});;"
             f"StarTrails Project (*{STARTRAILS_EXT});;"
             f"Denoise Project (*{DENOISE_EXT});;"
-            f"Split Project (*{SPLIT_EXT});;"
+            f"Split Project (*{SPLIT_EXT} *{LEGACY_SPLIT_EXT});;"
             f"Legacy Project (*{LEGACY_STARTRAILS_EXT});;"
             "All Files (*)"
         )

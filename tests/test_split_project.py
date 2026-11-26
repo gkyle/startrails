@@ -775,6 +775,48 @@ class TestSplitProject(QtTestCase):
         with self.assertRaises(ValueError):
             workflow.do_export_composite(output_path=self.root / "fail.jpg")
 
+    def test_legacy_finish_project_load_and_save_preserves_source_and_settings(self):
+        source = self.create_synthetic_image("legacy_source.tif")
+        for index, extension in enumerate((".proj_finish", ".PROJ_FINISH", ".proj_split")):
+            with self.subTest(extension=extension):
+                stem = f"legacy_{index}"
+                legacy_path = self.root / f"{stem}.proj_finish"
+                output_dir = self.root / f"{stem}.finish"
+                self.assertEqual(detect_project_type_from_path(legacy_path), TYPE_SPLIT)
+                self.assertEqual(get_project_output_dir(legacy_path), output_dir)
+                project = SplitProject(project_file=str(legacy_path), denoise_strength=0.0, chroma_postfilter=False)
+                app = self.make_app(project)
+                workflow = SplitWorkflow(app)
+                workflow.do_import_source(source)
+                workflow.do_all_sky_mask()
+                mask = project.current_artifact_path(ROLE_SKY_MASK)
+                self.assertIsNotNone(mask)
+                mask_bytes = mask.read_bytes()
+                state = json.loads(jsonpickle.encode(project))
+                state["py/object"] = "startrails.lib.project_finish.FinishProject"
+                project_path = self.root / f"{stem}{extension}"
+                project_path.write_text(json.dumps(state), encoding="utf-8")
+
+                self.assertEqual(detect_project_type_from_path(project_path), TYPE_SPLIT)
+                self.assertEqual(detect_project_type(project_path), TYPE_SPLIT)
+                app.loadProject(str(project_path))
+                self.assertIsInstance(app.project, SplitProject)
+                self.assertIsInstance(app.workflow, SplitWorkflow)
+                self.assertEqual(app.project.project_file, str(project_path))
+                self.assertEqual(app.project.get_project_stem(), stem)
+                self.assertEqual(app.project.get_output_dir(), output_dir)
+                self.assertEqual(app.project.current_artifact_path(ROLE_SKY_MASK), mask)
+                self.assertEqual(Path(app.project.source_file.path), source)
+                self.assertEqual(app.project.denoise_strength, 0.0)
+                self.assertFalse(app.project.chroma_postfilter)
+
+                app.saveProject()
+                saved = json.loads(project_path.read_text(encoding="utf-8"))
+                self.assertEqual(saved["py/object"], "startrails.lib.project_split.SplitProject")
+                app.loadProject(str(project_path))
+                self.assertEqual(app.project.current_artifact_path(ROLE_SKY_MASK), mask)
+                self.assertEqual(mask.read_bytes(), mask_bytes)
+
     def test_three_mode_routing_and_legacy_loading(self):
         st_file = self.root / "sample.proj_startrails"
         dn_file = self.root / "sample.proj_denoise"

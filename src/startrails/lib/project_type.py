@@ -5,7 +5,13 @@ from pathlib import Path
 from typing import Any, Union
 import jsonpickle
 
-from startrails.lib.split.defaults import SPLIT_EXT, SPLIT_OUTPUT_DIR_SUFFIX, PROJECT_TYPE_SPLIT as TYPE_SPLIT
+from startrails.lib.split.defaults import (
+    LEGACY_SPLIT_EXT,
+    LEGACY_SPLIT_OUTPUT_DIR_SUFFIX,
+    SPLIT_EXT,
+    SPLIT_OUTPUT_DIR_SUFFIX,
+    PROJECT_TYPE_SPLIT as TYPE_SPLIT,
+)
 from startrails.lib.startrails.defaults import (
     LEGACY_STARTRAILS_EXT,
     PROJECT_TYPE_STARTRAILS as TYPE_STARTRAILS,
@@ -35,7 +41,9 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
     For denoise projects ('<base>.proj_denoise'), resolves to '<base>.denoise'
     (preserving legacy '<base>.denoise.project' if existing) to avoid naming collisions
     with startrails projects having the same basename.
-    For split projects ('<base>.proj_split'), resolves to '<base>.split'.
+    For split projects ('<base>.proj_split'), resolves to '<base>.split',
+    preserving an existing '<base>.finish' directory from Finish mode.
+    Legacy '<base>.proj_finish' projects retain their '<base>.finish' directory.
     Otherwise resolves to '<name>' directory in the project's parent directory.
     """
     path = Path(project_file).resolve()
@@ -62,8 +70,15 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
             return legacy_dir
         return parent / f"{base}.denoise"
 
+    if lower_name.endswith(LEGACY_SPLIT_EXT):
+        base = name[:-len(LEGACY_SPLIT_EXT)]
+        return parent / f"{base}{LEGACY_SPLIT_OUTPUT_DIR_SUFFIX}"
+
     if lower_name.endswith(SPLIT_EXT):
         base = name[:-len(SPLIT_EXT)]
+        legacy_dir = parent / f"{base}{LEGACY_SPLIT_OUTPUT_DIR_SUFFIX}"
+        if legacy_dir.is_dir():
+            return legacy_dir
         return parent / f"{base}{SPLIT_OUTPUT_DIR_SUFFIX}"
 
     if lower_name.endswith(".json"):
@@ -75,7 +90,7 @@ def get_project_output_dir(project_file: Union[str, Path]) -> Path:
 def detect_project_type_from_path(path: Union[str, Path]) -> str:
     """Detect project type purely by file extension without reading content."""
     name = str(path).lower()
-    if name.endswith(SPLIT_EXT):
+    if name.endswith((SPLIT_EXT, LEGACY_SPLIT_EXT)):
         return TYPE_SPLIT
     if name.endswith(DENOISE_EXT):
         return TYPE_DENOISE
